@@ -1875,9 +1875,10 @@ function buildWorld(idx) {
 function numberTex(n, bg, fg) {
   return canvasTex(128, 128, (g, w, h) => { g.fillStyle = bg; g.beginPath(); g.arc(64, 64, 60, 0, TAU); g.fill(); g.fillStyle = fg; g.font = '64px Bungee, Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 70); });
 }
-// glossy materials for car bodies: cheap Phong highlights read as paint and glass at this camera distance
-function paintMat(c) { return new THREE.MeshPhongMaterial({ color: c, specular: 0x404040, shininess: 60 }); }
-function glassMat() { return new THREE.MeshPhongMaterial({ color: 0x253450, specular: 0xA8B4D0, shininess: 110 }); }
+// Paint stays matte: the bodies are flat boxes seen from a fixed angle under a fixed sun, so any specular lights a
+// whole face at once and bright paint clips to white. Only the dark glass gets a (mild) shine.
+function paintMat(c) { return new THREE.MeshLambertMaterial({ color: c }); }
+function glassMat() { return new THREE.MeshPhongMaterial({ color: 0x253450, specular: 0x3C465E, shininess: 70 }); }
 let glowTex = null, blobTex = null;
 function radialTex(stops) { return canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); stops.forEach(([o, c]) => gr.addColorStop(o, c)); g.fillStyle = gr; g.fillRect(0, 0, w, h); }); }
 // brake-light glow sprites and a soft contact shadow under the body
