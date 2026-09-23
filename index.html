@@ -255,7 +255,34 @@ const STAGES = [
     trees: { density: 0.0034, pine: 0.55 }, rocks: 0.0012, bushes: 0.004, village: false, alpine: { rock: [18, 34], snow: [34, 42], treeLine: 26 } },
   { name: 'Mountain Pass', light: { sun: 0xFFE9D2, sunI: 0.98, sky: 0xD6E6FF, ground: 0x5A6A5A, hemiI: 0.6, cloud: 0.3, grade: [1.0, 1.0, 1.04], sat: 1.08 }, traffic: { on: 0, with: 2 }, blurb: 'Switchbacks, cliff ledges and a tunnel', type: 'pass', laps: 2, seed: 777, surface: 'tarmac', hillAmp: 14, jumps: 1, carve: 38, armco: true,
     colors: { grassA: 0x8FBF5A, grassB: 0x6B9F47, rock: 0x9C978C, dirt: 0xA88B66, road: 0x4F535B, sky: 0xAFD6EA, round: [0x5E9C45, 0x74B04E], pine: [0x2F6A3E, 0x3A7646, 0x285E38, 0x44804C] },
-    trees: { density: 0.0045, pine: 0.85 }, rocks: 0.003, bushes: 0.002, village: false, alpine: { rock: [55, 95], snow: [105, 135], treeLine: 80 } }
+    trees: { density: 0.0045, pine: 0.85 }, rocks: 0.003, bushes: 0.002, village: false, alpine: { rock: [55, 95], snow: [105, 135], treeLine: 80 } },
+  { name: 'Ravenrock Gorge', traffic: { on: 0, with: 2 }, blurb: 'Viaducts over a river gorge and a cliff-edge ledge', type: 'gorge', laps: 2, seed: 913, surface: 'tarmac', hillAmp: 5, jumps: 1, armco: true, viaduct: true,
+    startHeading: Math.PI,
+    light: { sun: 0xFFF1DE, sunI: 1.0, sky: 0xDCEBFF, ground: 0x5A6A5A, hemiI: 0.6, cloud: 0.26, grade: [1.0, 1.0, 1.03], sat: 1.1, haze: { color: 0x9DB8D2, top: 0, range: 45, amt: 0.5 } },
+    colors: { grassA: 0x8DBD58, grassB: 0x68A046, rock: 0x9A958A, dirt: 0xA88B66, road: 0x4F535B, sky: 0xAFD6EA, round: [0x5E9C45, 0x74B04E], pine: [0x2F6A3E, 0x3A7646, 0x285E38, 0x44804C] },
+    trees: { density: 0.0027, pine: 0.85 }, rocks: 0.0012, bushes: 0.0012, village: true, alpine: { rock: [38, 80], snow: [88, 120], treeLine: 70 },
+    river: { pts: [[-900, 118], [-560, 134], [-250, 126], [0, 132], [260, 124], [700, 136]], level: -40, width: 20 },
+    segs: (() => {
+      const town = { far: -8, rampF: 40, near: 1, rampN: 30 }, leg = { far: 14, rampF: 10, near: -12, rampN: 14 };
+      const ledge = { far: 44, rampF: 5, near: -80, rampN: 20 }, plat = { far: 16, rampF: 40, near: -6, rampN: 30, jump: true };
+      const desc = { far: 12, rampF: 18, near: -14, rampN: 22 }, cross = { far: -26, rampF: 25, near: -17, rampN: 30 };
+      return [
+        ['s', 70, 0, town], ['a', 35, -90, 0, town], ['s', 18, 0, town],
+        ['s', 150, 3, { bridge: true }],                                            // gorge viaduct
+        ['a', 30, 90, 4, leg], ['s', 195, 13, leg],                                 // switchback climb: three stacked hairpins
+        ['a', 22, -180, 16, leg], ['s', 170, 24, leg],
+        ['a', 22, 180, 27, leg], ['s', 170, 35, leg],
+        ['a', 22, -180, 38, leg],
+        ['s', 160, 42, ledge], ['a', 220, -14, 44, ledge], ['s', 300, 48, ledge], ['a', 30, 104, 50, ledge],   // cliff ledge
+        ['s', 105, 58, { tunnel: true, far: 30, near: 20 }],                        // summit tunnel
+        ['a', 30, 90, 60, plat], ['s', { toA: -395 }, 64, plat],                     // plateau
+        ['a', 35, 90, 62, desc], ['s', 90, 52, desc], ['a', 70, 30, 46, desc], ['a', 70, -30, 40, desc],
+        ['s', { toB: 178 }, 30, desc], ['s', { toB: 105 }, 24, { bridge: true }],   // river bridge on the descent
+        ['a', 35, 90, 22, cross], ['s', { toA: -140 }, 18, cross],
+        ['s', { toA: -70 }, 17, { bridge: true }],                                  // crossover above the viaduct
+        ['s', { toA: 115 }, 13, cross], ['a', 35, -90, 6, town], ['a', 35, -90, 1, town], ['s', { toA: 0 }, 0, town]
+      ];
+    })() }
 ];
 
 function genPath(stage, seed) {
@@ -307,7 +334,7 @@ function smoothArr(a, r) {
 }
 
 function buildTrack(stage) {
-  if (stage.type === 'loop' || stage.type === 'pass') return buildLoop(stage);
+  if (stage.type === 'loop' || stage.type === 'pass' || stage.type === 'gorge') return buildLoop(stage);
   let seed = stage.seed;
   for (let attempt = 0; attempt < 80; attempt++, seed += 977) {
     const g = genPath(stage, seed);
@@ -484,7 +511,41 @@ function genPass(stage) {
   for (let i = 0; i < A.length; i++) { xs.push((A[i] - B[i]) / Math.SQRT2); zs.push(-(A[i] + B[i]) / Math.SQRT2); }
   return { xs, zs, hs, tunnel: T, bridge: new Array(A.length).fill(0), smoothH: 12, pass: true };
 }
+// Section-tagged circuits. Segments: ['s', len, endH, tag] and ['a', radius, degrees (+ = left), endH, tag].
+// A straight's length can be {toA: v} / {toB: v}: drive until that screen coordinate is reached (used to close the loop).
+// Tags describe the ground either side: far = terrain height above the road on the up-screen side, near = on the
+// camera side (negative = a drop), with rampF / rampN metres to get there (small = sheer). Also bridge, tunnel, jump.
+function genCircuit(stage) {
+  let a = 0, b = 0, phi = stage.startHeading || 0, h = 0;
+  const A = [], B = [], hs = [], tunnel = [], bridge = [], farH = [], nearH = [], rampF = [], rampN = [], jumpOK = [];
+  const emit = (hh, tg) => {
+    A.push(a); B.push(b); hs.push(hh); tunnel.push(tg.tunnel ? 1 : 0); bridge.push(tg.bridge ? 1 : 0); jumpOK.push(tg.jump ? 1 : 0);
+    farH.push(tg.far ?? 0); nearH.push(tg.near ?? 0); rampF.push(tg.rampF ?? 20); rampN.push(tg.rampN ?? 20);
+  };
+  emit(0, stage.segs[0][3] || {});
+  for (const sg of stage.segs) {
+    const type = sg[0];
+    if (type === 's') {
+      let [, len, eh, tg = {}] = sg;
+      if (typeof len === 'object') len = len.toA !== undefined ? (len.toA - a) / Math.cos(phi) : (len.toB - b) / Math.sin(phi);
+      const n = Math.max(1, Math.round(len)), h0 = h, st = len / n;
+      for (let q = 1; q <= n; q++) { a += Math.cos(phi) * st; b += Math.sin(phi) * st; emit(lerp(h0, eh, q / n), tg); }
+      h = eh;
+    } else {
+      const [, R, deg, eh, tg = {}] = sg, th = deg * Math.PI / 180, n = Math.max(2, Math.round(R * Math.abs(th))), dphi = th / n, h0 = h;
+      const chord = 2 * R * Math.sin(Math.abs(dphi) / 2);
+      for (let q = 1; q <= n; q++) { phi += dphi / 2; a += Math.cos(phi) * chord; b += Math.sin(phi) * chord; phi += dphi / 2; emit(lerp(h0, eh, q / n), tg); }
+      h = eh;
+    }
+  }
+  while (A.length > 2 && Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) < 0.6) { A.pop(); B.pop(); for (const arr of [hs, tunnel, bridge, farH, nearH, rampF, rampN, jumpOK]) arr.pop(); }
+  const xs = [], zs = [];
+  for (let i = 0; i < A.length; i++) { xs.push((A[i] - B[i]) / Math.SQRT2); zs.push(-(A[i] + B[i]) / Math.SQRT2); }
+  const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width } : null;
+  return { xs, zs, hs, tunnel, bridge, smoothH: 10, profile: { farH, nearH, rampF, rampN, jumpOK }, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
+}
 function buildLoop(stage) {
+  if (stage.type === 'gorge') return finishLoop(stage, genCircuit(stage), stage.seed);
   if (stage.type === 'pass') return finishLoop(stage, genPass(stage), stage.seed);
   let seed = stage.seed;
   for (let attempt = 0; attempt < 80; attempt++, seed += 977) { const g = genLoop(stage, seed); if (validLoop(g)) return finishLoop(stage, g, seed); }
@@ -508,7 +569,7 @@ function finishLoop(stage, g, seed) {
   let placed = 0;
   for (let i = startIdx + 150; i < N0 - 80 && placed < stage.jumps; i += 5) {
     let ok = true;
-    for (let j = i - 15; j <= i + 60; j++) if (Math.abs(ks0[w(j)]) > 1 / 110 || Math.hypot(xs0[w(j)], zs0[w(j)]) < 80 || tunnel0[w(j)] || bridge0[w(j)]) { ok = false; break; }
+    for (let j = i - 15; j <= i + 60; j++) if (Math.abs(ks0[w(j)]) > 1 / 110 || Math.hypot(xs0[w(j)], zs0[w(j)]) < 80 || tunnel0[w(j)] || bridge0[w(j)] || (g.profile && !g.profile.jumpOK[w(j)])) { ok = false; break; }
     if (!ok) continue;
     const RH = 2.4;
     for (let q = 0; q <= 17; q++) H0[i + q] += RH * Math.pow(q / 17, 1.7);
@@ -538,7 +599,23 @@ function finishLoop(stage, g, seed) {
     }
     return v;
   };
-  const base = (x, z) => idw(x, z) + shape(x, z) + 5 * noise.fbm(x * 0.006 + 2.2, z * 0.006 - 4.1, 2);
+  // gorge tracks: ground height comes from the nearest road section's profile (far = up-screen side, near = camera side)
+  const PF = g.profile ? { far: smoothWrap(Float32Array.from(g.profile.farH), 12), near: smoothWrap(Float32Array.from(g.profile.nearH), 12),
+    rF: smoothWrap(Float32Array.from(g.profile.rampF), 12), rN: smoothWrap(Float32Array.from(g.profile.rampN), 12),
+    dot: Float32Array.from(th0, t => -Math.cos(t) * -Math.SQRT1_2 + Math.sin(t) * -Math.SQRT1_2) } : null;   // how much the road's right side faces up-screen
+  // profile for one side of sample i (side = +1 right, -1 left): roads running up/down the screen blend far and near
+  const sideProf = (i, side) => { const f = smoothstep(-0.45, 0.45, side * PF.dot[i]); return [lerp(PF.near[i], PF.far[i], f), lerp(PF.rN[i], PF.rF[i], f), f]; };
+  const profBase = (x, z) => {
+    const q = nearestT(x, z) || nearestFar(x, z); if (!q) return 0;
+    const i = q.i, lat = (x - xs0[i]) * -Math.cos(th0[i]) + (z - zs0[i]) * Math.sin(th0[i]);
+    const [prof, ramp] = sideProf(i, lat >= 0 ? 1 : -1);
+    const nearV = H0[i] + prof * smoothstep(HALF + 3, HALF + 3 + ramp, q.d);
+    // well away from every road, fade to a smooth regional surface: average road height, mountains rising up-screen
+    const k = smoothstep(55, 130, q.d), up = -(x + z) * Math.SQRT1_2;
+    const regional = k > 0 ? idw(x, z) + Math.max(0, up - 330) * 0.45 + 18 * Math.max(0, noise.fbm(x * 0.005 + 7, z * 0.005 - 3, 3) + 0.2) : 0;
+    return lerp(nearV, regional, k) + 4 * noise.fbm(x * 0.012 + 2.2, z * 0.012 - 4.1, 3) * smoothstep(HALF + 3, HALF + 25, q.d);
+  };
+  const base = g.profile ? profBase : (x, z) => idw(x, z) + shape(x, z) + 5 * noise.fbm(x * 0.006 + 2.2, z * 0.006 - 4.1, 2);
   const carveW = g.pass ? (x, z) => 1 - smoothstep(380, 440, toAB(x, z)[1]) : null;
   for (let i = 0; i < N0; i++) {
     const a = Math.abs(ks0[i]);
@@ -548,7 +625,15 @@ function finishLoop(stage, g, seed) {
   for (let i = 0; i < N0; i++) {
     const a = Math.abs(ks0[i]), out = ks0[i] > 0 ? wallR0 : wallL0;
     if (a > 1 / 110 && a <= 1 / 48 && !out[i] && !jump0[i]) out[i] = 3;
-    if (g.pass) {
+    if (PF) {
+      if (!tunnel0[i] && !bridge0[i]) {
+        for (const side of [1, -1]) {
+          const W = side > 0 ? wallR0 : wallL0, pr = sideProf(i, side)[0];
+          if (!W[i] && pr > 3) W[i] = 6;                               // rock face: the terrain is the wall
+          else if (!W[i] && pr < -3) W[i] = 2;                          // guard rail along the drop
+        }
+      }
+    } else if (g.pass) {
       if (!tunnel0[i]) {
         const rx = -Math.cos(th0[i]), rz = Math.sin(th0[i]);
         const L = base(xs0[i] - rx * 18, zs0[i] - rz * 18) - (stage.carve || 0) * 0.6, R = base(xs0[i] + rx * 18, zs0[i] + rz * 18) - (stage.carve || 0) * 0.6;
@@ -586,25 +671,35 @@ function finishLoop(stage, g, seed) {
   }
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (let i = 0; i < N0; i++) { minX = Math.min(minX, xs0[i]); maxX = Math.max(maxX, xs0[i]); minZ = Math.min(minZ, zs0[i]); maxZ = Math.max(maxZ, zs0[i]); }
-  const CELL = 36, hk = (cx, cz) => (cx + 1000) * 100000 + (cz + 1000);
-  const mkHash = (skipBridge, only) => { const h = new Map(); for (let i = 0; i < N0; i++) { if (skipBridge && (bridge0[i] || tunnel0[i])) continue; if (only && !only[i]) continue; const kk = hk(Math.floor(xs0[i] / CELL), Math.floor(zs0[i] / CELL)); let a = h.get(kk); if (!a) { a = []; h.set(kk, a); } a.push(i); } return h; };
+  const hk = (cx, cz) => (cx + 1000) * 100000 + (cz + 1000);
+  const mkHash = (skipBridge, only, CELL = 36, step = 1) => { const h = new Map(); h.cell = CELL; for (let i = 0; i < N0; i += step) { if (skipBridge && (bridge0[i] || tunnel0[i])) continue; if (only && !only[i]) continue; const kk = hk(Math.floor(xs0[i] / CELL), Math.floor(zs0[i] / CELL)); let a = h.get(kk); if (!a) { a = []; h.set(kk, a); } a.push(i); } return h; };
   const mkNearest = h => (x, z) => {
-    const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL); let best = Infinity, bi = -1;
+    const CELL = h.cell, cx = Math.floor(x / CELL), cz = Math.floor(z / CELL); let best = Infinity, bi = -1;
     for (let ddx = -1; ddx <= 1; ddx++) for (let ddz = -1; ddz <= 1; ddz++) {
       const a = h.get(hk(cx + ddx, cz + ddz)); if (!a) continue;
       for (let q = 0; q < a.length; q++) { const i = a[q]; const ex = x - xs0[i], ez = z - zs0[i]; const d = ex * ex + ez * ez; if (d < best) { best = d; bi = i; } }
     }
     return bi < 0 ? null : { i: bi, d: Math.sqrt(best) };
   };
-  const nearest = mkNearest(mkHash(false)), nearestT = mkNearest(mkHash(true));
+  const nearest = mkNearest(mkHash(false)), nearestT = mkNearest(mkHash(true)), nearestFar = mkNearest(mkHash(true, null, 240, 3));   // coarse, for ground far from any road
   const nearestTun = tunMid >= 0 ? mkNearest(mkHash(false, tunnel0)) : () => null;
   return { N, xs, zs, th, tx, tz, rx, rz, k, ks, H, jump, wallL, wallR, kerbL, kerbR, vmax, hairpins, finishIdx: startIdx + laps * N0, startIdx, noise, base, nearest, nearestT,
-    minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge, tunnel, nearestTun, carve: stage.carve || 0, carveW, margin: g.pass ? 230 : 95,
-    loopN: N0, laps, crossX: 0, crossZ: 0 };
+    minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge, tunnel, nearestTun, carve: stage.carve || 0, carveW, margin: g.pass ? 230 : g.profile ? 120 : 95,
+    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, gridS: g.profile ? 4 : 3, edge: g.profile ? HALF + 4 : HALF + 15 };
 }
 
+function riverDist(rv, x, z) {
+  let best = 1e9; const P = rv.pts;
+  for (let k = 0; k < P.length - 1; k++) {
+    const ax = P[k][0], az = P[k][1], dx = P[k + 1][0] - ax, dz = P[k + 1][1] - az, t = clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz), 0, 1);
+    best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
+  }
+  return best;
+}
+// river channel: 3 m below the water across its width, banks rising steeply either side
+function riverBed(rv, x, z) { const d = riverDist(rv, x, z); return rv.level - 3 + Math.max(0, d - rv.width / 2) * 1.1; }
 function buildTerrain(tr, stage) {
-  const S = 3, M = tr.margin || 95, x0 = Math.floor(Math.min(-200, tr.minX - M)), x1 = Math.ceil(Math.max(200, tr.maxX + M)), z0 = Math.floor(tr.minZ - Math.max(90, M)), z1 = Math.ceil(tr.maxZ + Math.max(120, M));
+  const S = tr.gridS || 3, M = tr.margin || 95, x0 = Math.floor(Math.min(-200, tr.minX - M)), x1 = Math.ceil(Math.max(200, tr.maxX + M)), z0 = Math.floor(tr.minZ - Math.max(90, M)), z1 = Math.ceil(tr.maxZ + Math.max(120, M));
   const cols = Math.floor((x1 - x0) / S) + 1, rows = Math.floor((z1 - z0) / S) + 1;
   const h = new Float32Array(cols * rows), dist = new Float32Array(cols * rows);
   const noise = tr.noise, amp = stage.hillAmp;
@@ -616,12 +711,13 @@ function buildTerrain(tr, stage) {
       const hills = amp * noise.fbm(x * 0.018 + 7.3, z * 0.018 + 2.1, 4) + 1.2 * noise.fbm(x * 0.06 + 1.3, z * 0.06, 2);
       let v = tr.base(x, z) + hills * smoothstep(HALF + 3, HALF + 30, d);
       if (tr.carve) v -= tr.carve * smoothstep(HALF + 8, HALF + 40, d) * (tr.carveW ? tr.carveW(x, z) : 1);
-      if (d < HALF + 15) {
+      if (d < (tr.edge || HALF + 15)) {
         let mn = 1e9;
         if (tr.loopN) { for (let kk = q.i - 3; kk <= q.i + 3; kk++) mn = Math.min(mn, tr.H[(kk + tr.loopN) % tr.loopN]); }
         else for (let kk = Math.max(0, q.i - 3); kk <= Math.min(tr.N - 1, q.i + 3); kk++) mn = Math.min(mn, tr.H[kk]);
-        v = lerp(mn - 0.35, v, smoothstep(HALF + 1, HALF + 15, d));
+        v = lerp(mn - 0.35, v, smoothstep(HALF + 1, tr.edge || HALF + 15, d));
       }
+      if (tr.river) v = Math.min(v, riverBed(tr.river, x, z));
       const qt = tr.nearestTun(x, z);
       if (qt && qt.d < HALF + 18) { const roof = tr.H[qt.i] + 11; v = Math.max(v, lerp(roof, tr.H[qt.i] - 1, smoothstep(HALF + 9, HALF + 18, qt.d))); }
       h[r * cols + c] = v; dist[r * cols + c] = d;
@@ -1182,7 +1278,8 @@ function addInstanced(group, geo, mat, items, opts = {}) {
 }
 const CUT = { car: { value: new THREE.Vector3() }, dir: { value: new THREE.Vector3(1, 1.3, 1).normalize() }, r: { value: 0 } };
 // world effects shared by the scenery shaders: time for wind and the drifting cloud-shadow texture
-const FX = { time: { value: 0 }, cloud: { value: null }, cloudAmt: { value: 0.3 }, wind: { value: new THREE.Vector2(3.2, 1.6) } };
+const FX = { time: { value: 0 }, cloud: { value: null }, cloudAmt: { value: 0.3 }, wind: { value: new THREE.Vector2(3.2, 1.6) },
+  hazeCol: { value: new THREE.Color(0x9DB8D2) }, hazeTop: { value: 0 }, hazeRange: { value: 40 }, hazeAmt: { value: 0 } };
 function makeCloudTex() {
   // tileable value noise: a few octaves on wrapping grids
   const N = 128, data = new Float32Array(N * N), rnd = mulberry32(4242);
@@ -1199,11 +1296,12 @@ function makeCloudTex() {
 }
 // opts: cut (see-through window over the player, default on), cloud (drifting cloud shadows), sway (foliage in the wind)
 function withCutaway(mat, solidInside, opts = {}) {
-  const cut = opts.cut !== false, cloud = !!opts.cloud, sway = opts.sway || 0;
+  const cut = opts.cut !== false, cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water;
   if (solidInside) mat.side = THREE.DoubleSide;
   mat.onBeforeCompile = sh => {
     sh.uniforms.uCutCar = CUT.car; sh.uniforms.uCutDir = CUT.dir; sh.uniforms.uCutR = CUT.r;
     sh.uniforms.uTime = FX.time; sh.uniforms.uCloud = FX.cloud; sh.uniforms.uCloudAmt = FX.cloudAmt; sh.uniforms.uWind = FX.wind;
+    sh.uniforms.uHazeCol = FX.hazeCol; sh.uniforms.uHazeTop = FX.hazeTop; sh.uniforms.uHazeRange = FX.hazeRange; sh.uniforms.uHazeAmt = FX.hazeAmt;
     let vs = 'varying vec3 vCutW;\nuniform float uTime;\n' + sh.vertexShader;
     if (sway) vs = vs.replace('#include <begin_vertex>', `#include <begin_vertex>
       #ifdef USE_INSTANCING
@@ -1221,7 +1319,7 @@ function withCutaway(mat, solidInside, opts = {}) {
         cutP = instanceMatrix * cutP;
       #endif
       vCutW = (modelMatrix * cutP).xyz;`);
-    let fs = 'uniform vec3 uCutCar;\nuniform vec3 uCutDir;\nuniform float uCutR;\nuniform float uTime;\nuniform sampler2D uCloud;\nuniform float uCloudAmt;\nuniform vec2 uWind;\nvarying vec3 vCutW;\n' + sh.fragmentShader;
+    let fs = 'uniform vec3 uCutCar;\nuniform vec3 uCutDir;\nuniform float uCutR;\nuniform float uTime;\nuniform sampler2D uCloud;\nuniform float uCloudAmt;\nuniform vec2 uWind;\nuniform vec3 uHazeCol;\nuniform float uHazeTop;\nuniform float uHazeRange;\nuniform float uHazeAmt;\nvarying vec3 vCutW;\n' + sh.fragmentShader;
     if (cut) fs = fs.replace('void main() {', `void main() {
       if (uCutR > 0.0) {
         vec3 cv = vCutW - uCutCar; float ct = dot(cv, uCutDir);
@@ -1233,11 +1331,14 @@ function withCutaway(mat, solidInside, opts = {}) {
       }`);
     if (cloud) fs = fs.replace('#include <fog_fragment>', `float cld = texture2D(uCloud, (vCutW.xz + uWind * uTime) / 260.0).r;
       gl_FragColor.rgb *= 1.0 - uCloudAmt * smoothstep(0.42, 0.72, cld);
+      ${water ? `float rp = sin(vCutW.x * 0.33 + vCutW.z * 0.12 + uTime * 2.1) * sin(vCutW.z * 0.29 - vCutW.x * 0.08 - uTime * 1.7);
+      gl_FragColor.rgb += vec3(0.75, 0.85, 0.95) * smoothstep(0.55, 0.95, rp) * 0.22;` : ''}
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, uHazeCol, clamp((uHazeTop - vCutW.y) / uHazeRange, 0.0, 1.0) * uHazeAmt);   // valley haze
       #include <fog_fragment>`);
     if (solidInside) fs = fs.replace('#include <color_fragment>', '#include <color_fragment>\n  if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.23, 0.21, 0.19);');
     sh.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => 'wfx' + (solidInside ? 's' : '') + (cut ? 'c' : '') + (cloud ? 'k' : '') + sway;
+  mat.customProgramCacheKey = () => 'wfx' + (solidInside ? 's' : '') + (cut ? 'c' : '') + (cloud ? 'k' : '') + (water ? 'w' : '') + sway;
   return mat;
 }
 function canvasTex(w, h, draw) { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d'), w, h); const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return t; }
@@ -1516,7 +1617,24 @@ function makeRoadMesh(tr, stage) {
 }
 let bridgeMats = [];
 function bridgeMat(opts) { const m = new THREE.MeshLambertMaterial(Object.assign({ transparent: true, opacity: 1 }, opts)); bridgeMats.push(m); return m; }
-function addBridge(group, tr, terr) {
+function addRiver(group, tr) {
+  const rv = tr.river; if (!rv) return;
+  const pos = [], hw = rv.width / 2 + 6, y = rv.level;
+  for (let k = 0; k < rv.pts.length - 1; k++) {
+    const [ax, az] = rv.pts[k], [bx, bz] = rv.pts[k + 1], L = Math.hypot(bx - ax, bz - az), n = Math.ceil(L / 8), nx = -(bz - az) / L * hw, nz = (bx - ax) / L * hw;
+    for (let q = 0; q < n; q++) {
+      const t0 = q / n, t1 = (q + 1) / n, x0 = lerp(ax, bx, t0), z0 = lerp(az, bz, t0), x1 = lerp(ax, bx, t1), z1 = lerp(az, bz, t1);
+      pos.push(x0 - nx, y, z0 - nz, x1 - nx, y, z1 - nz, x0 + nx, y, z0 + nz, x0 + nx, y, z0 + nz, x1 - nx, y, z1 - nz, x1 + nx, y, z1 + nz);
+    }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+  // wind the triangles upward if the polyline ran the other way
+  if (g.attributes.normal.array[1] < 0) { g.attributes.normal.array.forEach((v, i, a) => a[i] = -v); }
+  const mat = withCutaway(new THREE.MeshLambertMaterial({ color: 0x3E7DAE, side: THREE.DoubleSide }), false, { cut: false, cloud: true, water: true });   // opaque: nothing needs to show through
+  group.add(chunkMesh(g, mat, 80, true));
+}
+function addBridge(group, tr, terr, stage) {
+  if (stage && stage.viaduct) return addViaduct(group, tr, terr);
   const N = tr.loopN || tr.N, deck = [], rails = [], stripes = [], pillars = [];
   for (let i = 0; i < N; i++) {
     if (!tr.bridge[i]) continue;
@@ -1539,6 +1657,46 @@ function addBridge(group, tr, terr) {
   addInstanced(group, box(), bridgeMat({ color: 0xD5D8DE }), rails, { cast: true });
   addInstanced(group, box(), bridgeMat({ color: 0xffffff }), stripes, {});
   addInstanced(group, box(), bridgeMat({ color: 0x9A9DA5 }), pillars, { cast: true, receive: true });
+}
+
+// stone viaducts: deck, solid parapets, piers down to the valley floor and arches between them
+let archGeo = null;
+function addViaduct(group, tr, terr) {
+  const N = tr.loopN || tr.N, deck = [], walls = [], piers = [], arches = [], SP = 12;
+  if (!archGeo) {
+    const pts = [], SEG = 10; for (let k = 0; k <= SEG; k++) { const t = Math.PI * k / SEG; pts.push([Math.cos(t), Math.sin(t)]); }
+    const pos = [], q = (a, b, c, d) => pos.push(...a, ...b, ...c, ...c, ...b, ...d);
+    for (let k = 0; k < SEG; k++) {
+      const [c0, s0] = pts[k], [c1, s1] = pts[k + 1], r = 0.78;
+      for (const x of [-0.5, 0.5]) q([x, s0 * r, c0 * r], [x, s0, c0], [x, s1 * r, c1 * r], [x, s1, c1]);           // arch faces
+      q([-0.5, s0 * r, c0 * r], [0.5, s0 * r, c0 * r], [-0.5, s1 * r, c1 * r], [0.5, s1 * r, c1 * r]);              // soffit
+    }
+    archGeo = new THREE.BufferGeometry(); archGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); archGeo = flat(archGeo);
+  }
+  let run = 0;
+  for (let i = 0; i < N; i++) {
+    if (!tr.bridge[i]) { run = 0; continue; }
+    const j = (i + 1) % N, len = Math.hypot(tr.xs[j] - tr.xs[i], tr.zs[j] - tr.zs[i]) + 0.1, pitch = -Math.atan2(tr.H[j] - tr.H[i], len);
+    deck.push({ x: tr.xs[i], y: tr.H[i] - 0.75, z: tr.zs[i], ry: tr.th[i], rx: pitch, sx: 2 * WALL + 1.6, sy: 1.4, sz: len });
+    for (const side of [-1, 1]) walls.push({ x: tr.xs[i] + tr.rx[i] * side * (WALL + 0.35), y: tr.H[i] + 0.5, z: tr.zs[i] + tr.rz[i] * side * (WALL + 0.35), ry: tr.th[i], rx: pitch, sx: 0.7, sy: 1.1, sz: len });
+    if (run++ % SP === 0) {
+      const x = tr.xs[i], z = tr.zs[i], q = tr.nearestT(x, z);
+      const g = terr.at(x, z), top = tr.H[i] - 1.4, h = top - g + 1;
+      if (h > 1.5 && !(q && q.d < HALF + 3 && Math.abs(tr.H[q.i] - top) < 12)) {
+        piers.push({ x, y: g - 1 + h / 2, z, ry: tr.th[i], sx: 2 * WALL - 1, sy: h, sz: 2.8, color: 0x8F887C });
+        // arch spanning to the next pier, if the bridge continues that far and there is room underneath
+        const k2 = (i + SP) % N;
+        if (tr.bridge[k2] && h > SP / 2 + 1.5) {
+          const m = (i + SP / 2) % N, R = SP / 2 - 1.4;
+          arches.push({ x: tr.xs[m], y: tr.H[m] - 1.4 - R, z: tr.zs[m], ry: tr.th[m], sx: 2 * WALL - 1, sy: R, sz: R, color: 0x9A9387 });
+        }
+      }
+    }
+  }
+  addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1)), bridgeMat({ color: 0xA39C8F }), deck, { cast: true, receive: true });
+  addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1)), bridgeMat({ color: 0xBDB4A4 }), walls, { cast: true });
+  addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1)), bridgeMat({ color: 0xffffff }), piers, { cast: true, receive: true });
+  addInstanced(group, archGeo.clone(), bridgeMat({ color: 0xffffff, side: THREE.DoubleSide }), arches, { cast: true });
 }
 
 let barVis = null;
@@ -1857,6 +2015,7 @@ function buildWorld(idx) {
   const group = new THREE.Group(); scene.add(group);
   scene.background.set(stage.colors.sky); scene.fog.color.set(stage.colors.sky);
   const Lt = stage.light; sun.color.setHex(Lt.sun); sun.intensity = Lt.sunI; hemi.color.setHex(Lt.sky); hemi.groundColor.setHex(Lt.ground); hemi.intensity = Lt.hemiI; FX.cloudAmt.value = Lt.cloud; setGrade(Lt);
+  const hz = Lt.haze; FX.hazeAmt.value = hz ? hz.amt : 0; if (hz) { FX.hazeCol.value.setHex(hz.color); FX.hazeTop.value = hz.top; FX.hazeRange.value = hz.range; }
   group.add(makeTerrainMesh(terr, tr, stage));
   bridgeMats = [];
   const roads = makeRoadMesh(tr, stage); group.add(roads.main); if (roads.bridge) group.add(roads.bridge);
@@ -1864,7 +2023,8 @@ function buildWorld(idx) {
   fanChunks = addScenery(group, tr, terr, stage);
   if (tr.loopN) addGantry(group, tr, terr, tr.startIdx, 'START / FINISH');
   else { addGantry(group, tr, terr, tr.startIdx, 'START'); addGantry(group, tr, terr, tr.finishIdx, 'FINISH'); }
-  addBridge(group, tr, terr);
+  addBridge(group, tr, terr, stage);
+  addRiver(group, tr);
   addTunnel(group, tr, terr);
   addSigns(group, tr, terr);
   world = { idx, stage, tr, terr, group, W: { tr, terr, surf: stage.surface, armco: !!stage.armco, traffic: stage.traffic } };
@@ -2234,6 +2394,7 @@ const WALL_FX = {
   3: { cols: [0xE2C265, 0xD4B050, 0xF0D98A], size: [0.12, 0.35], n: 1.8, sparks: 0, dust: 0xE8D48E, snd: 'hay' },
   4: { cols: [0xB9BBC0, 0xA7AAB1, 0xD5D8DE], size: [0.15, 0.45], n: 0.8, sparks: 1.2, dust: 0xC8CACE, snd: 'metal' },
   5: { cols: [0x6A6660, 0x5F5C57, 0x807B73], size: [0.15, 0.45], n: 0.8, sparks: 1.2, dust: 0x8E8A84, snd: 'metal' },
+  6: { cols: [0x8E897E, 0x7A756B, 0xA39E92], size: [0.15, 0.5], n: 0.9, sparks: 1.0, dust: 0x9A958A, snd: 'metal' },
   armco: { cols: [0xCDD2D9, 0x8D939C, 0xB0B6BF], size: [0.1, 0.4], n: 0.7, sparks: 1.4, dust: 0xC0C4CA, snd: 'metal', splinter: true }
 };
 function wallFx(w) { return (w === 2 && world.stage.armco) ? WALL_FX.armco : (WALL_FX[w] || WALL_FX[1]); }
@@ -2558,7 +2719,8 @@ let bridgeOpacity = 1;
 function updateBridgeFade(dt) {
   if (!bridgeMats.length) return;
   const tr = world.tr, P = race && state !== 'menu' ? race.player : null;
-  const under = P && Math.hypot(P.x - tr.crossX, P.z - tr.crossZ) < 30 && !tr.bridge[P.pr.i] && P.y < tr.H[tr.startIdx] + 40 && (() => { for (let i = 0; i < tr.loopN; i += 2) if (tr.bridge[i] && tr.H[i] > P.y + 3) return true; return false; })();
+  if (!tr.bridgeList) { tr.bridgeList = []; for (let i = 0; i < (tr.loopN || tr.N); i += 2) if (tr.bridge[i]) tr.bridgeList.push(i); }
+  const under = P && tr.bridgeList.some(i => (tr.xs[i] - P.x) ** 2 + (tr.zs[i] - P.z) ** 2 < 18 * 18 && tr.H[i] > P.y + 3);
   const target = under ? 0.3 : 1; const next = bridgeOpacity + (target - bridgeOpacity) * (1 - Math.exp(-dt * 8));
   if (Math.abs(next - bridgeOpacity) < 0.001 && next === target) return;
   bridgeOpacity = next;
