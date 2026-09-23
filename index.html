@@ -145,7 +145,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
       <dt>R</dt><dd>Reset to the road</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
-    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button></div>
+    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button></div>
   </div>
 </div>
 
@@ -1160,7 +1160,7 @@ function merge(geos) {
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color();
 function addInstanced(group, geo, mat, items, opts = {}) {
   const chunks = new Map(); const out = [];
-  for (const it of items) { const k = Math.floor(it.z / 120); let a = chunks.get(k); if (!a) { a = []; chunks.set(k, a); } a.push(it); }
+  for (const it of items) { const k = Math.floor(it.x / 90) * 10007 + Math.floor(it.z / 90); let a = chunks.get(k); if (!a) { a = []; chunks.set(k, a); } a.push(it); }
   for (const list of chunks.values()) {
     const g = geo.clone(); const mesh = new THREE.InstancedMesh(g, mat, list.length);
     let cx = 0, cy = 0, cz = 0; for (const it of list) { cx += it.x; cy += it.y; cz += it.z; }
@@ -1173,6 +1173,7 @@ function addInstanced(group, geo, mat, items, opts = {}) {
     });
     mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     g.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, cy, cz), r + 4);
+    mesh.frustumCulled = true;   // InstancedMesh turns culling off by default; each chunk has a real bounding sphere, so cull it
     mesh.castShadow = !!opts.cast; mesh.receiveShadow = !!opts.receive;
     group.add(mesh); out.push({ mesh, list });
   }
@@ -1224,6 +1225,43 @@ function chevronTex(right) {
   });
 }
 
+// ---------- graphics quality ----------
+// Auto scales the render resolution with the frame rate; the fixed levels trade sharpness and shadow detail for speed.
+const QUALITY = {
+  auto: { label: 'Auto', pr: 2, shadow: 1536, dyn: true },
+  high: { label: 'High', pr: 2, shadow: 2048 },
+  medium: { label: 'Medium', pr: 1.25, shadow: 1536 },
+  low: { label: 'Low', pr: 0.85, shadow: 1024 }
+};
+const Q_ORDER = ['auto', 'high', 'medium', 'low'];
+let quality = 'auto', dynPR = Math.min(devicePixelRatio || 1, isTouchDevice() ? 1.25 : 1.5), perfAcc = 0, perfN = 0, perfGood = 0, perfCool = 0;
+try { const q = localStorage.getItem('downhill-rush-quality'); if (QUALITY[q]) quality = q; } catch (e) { }
+function isTouchDevice() { return matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window; }
+function applyQuality() {
+  const Q = QUALITY[quality], dpr = devicePixelRatio || 1;
+  const pr = Q.dyn ? dynPR : Math.min(dpr, Q.pr);
+  if (Math.abs(renderer.getPixelRatio() - pr) > 0.01) renderer.setPixelRatio(pr);
+  if (sun.shadow.mapSize.x !== Q.shadow) { sun.shadow.mapSize.set(Q.shadow, Q.shadow); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+  const b = $('gfx-btn'); if (b) b.textContent = 'Graphics: ' + Q.label;
+}
+function cycleQuality() {
+  quality = Q_ORDER[(Q_ORDER.indexOf(quality) + 1) % Q_ORDER.length];
+  try { localStorage.setItem('downhill-rush-quality', quality); } catch (e) { }
+  applyQuality();
+}
+// average frame time over ~1.5 s: drop resolution when it runs slow, creep back up when it's comfortably smooth
+function perfSample(dt) {
+  if (!QUALITY[quality].dyn || state !== 'racing' || dt > 0.25) return;
+  perfAcc += dt; perfN++; if (perfCool > 0) perfCool -= dt;
+  if (perfAcc < 1.5) return;
+  const avg = perfAcc / perfN; perfAcc = 0; perfN = 0;
+  if (perfCool > 0) return;
+  const maxPR = Math.min(devicePixelRatio || 1, 2);
+  if (avg > 1 / 50 && dynPR > 0.6) { dynPR = Math.max(0.6, dynPR - 0.15); perfGood = 0; perfCool = 1.5; applyQuality(); }
+  else if (avg < 1 / 57) { if (++perfGood >= 3 && dynPR < maxPR) { dynPR = Math.min(maxPR, dynPR + 0.1); perfGood = 0; perfCool = 1.5; applyQuality(); } }
+  else perfGood = 0;
+}
+
 // ---------- renderer ----------
 function createGLContext() {
   let reason = '';
@@ -1246,7 +1284,6 @@ function initRenderer() {
   renderer = new THREE.WebGLRenderer({ canvas: gl.canvas, context: gl.context, antialias: gl.aa });
   gl.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); contextLost = true; $('loading').hidden = false; $('loading-text').textContent = 'Graphics reset, recovering…'; });
   gl.canvas.addEventListener('webglcontextrestored', () => { try { sessionStorage.setItem('dr-recovered', '1'); } catch (_) { } location.reload(); });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   $('game').appendChild(renderer.domElement);
@@ -1257,10 +1294,32 @@ function initRenderer() {
   sun.shadow.mapSize.set(1536, 1536); const sc = sun.shadow.camera; sc.left = -75; sc.right = 75; sc.top = 75; sc.bottom = -75; sc.near = 1; sc.far = 260;
   sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04; scene.add(sun); scene.add(sun.target);
   addEventListener('resize', () => renderer.setSize(innerWidth, innerHeight));
+  applyQuality();
+  // the cracked-windscreen material only appears mid-race; keep one in the scene so its shader is compiled up front
+  const warm = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01), new THREE.MeshLambertMaterial({ map: getCrackTex() })); warm.visible = false; scene.add(warm);
 }
 
 function disposeGroup(g) { g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); } }); }
 
+// split a non-indexed mesh into square tiles so the parts off screen are culled instead of drawn every frame
+function chunkMesh(geo, mat, cell, receive) {
+  const pos = geo.attributes.position.array, nor = geo.attributes.normal.array, col = geo.attributes.color ? geo.attributes.color.array : null;
+  const buckets = new Map();
+  for (let t = 0, nt = pos.length / 9; t < nt; t++) {
+    const o = t * 9, k = (Math.floor((pos[o] + pos[o + 3] + pos[o + 6]) / 3 / cell) + 5000) * 10000 + Math.floor((pos[o + 2] + pos[o + 5] + pos[o + 8]) / 3 / cell) + 5000;
+    let a = buckets.get(k); if (!a) buckets.set(k, a = []); a.push(t);
+  }
+  const group = new THREE.Group();
+  for (const tris of buckets.values()) {
+    const P = new Float32Array(tris.length * 9), Nn = new Float32Array(tris.length * 9), C = col ? new Float32Array(tris.length * 9) : null;
+    tris.forEach((t, q) => { P.set(pos.subarray(t * 9, t * 9 + 9), q * 9); Nn.set(nor.subarray(t * 9, t * 9 + 9), q * 9); if (C) C.set(col.subarray(t * 9, t * 9 + 9), q * 9); });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3)); if (C) g.setAttribute('color', new THREE.BufferAttribute(C, 3));
+    g.computeBoundingSphere();
+    const m = new THREE.Mesh(g, mat); m.receiveShadow = !!receive; group.add(m);
+  }
+  geo.dispose();
+  return group;
+}
 function makeTerrainMesh(terr, tr, stage) {
   const { cols, rows, S, x0, z0, h, dist } = terr, n = cols * rows, C = stage.colors;
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
@@ -1290,9 +1349,9 @@ function makeTerrainMesh(terr, tr, stage) {
     idx[k++] = a; idx[k++] = cc; idx[k++] = b; idx[k++] = b; idx[k++] = cc; idx[k++] = d;
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeVertexNormals();
-  const mesh = new THREE.Mesh(g, withCutaway(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1, metalness: 0 }), true));
-  mesh.receiveShadow = true; return mesh;
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  const fg = g.toNonIndexed(); g.dispose(); fg.computeVertexNormals();          // per-face normals keep the faceted look with cheap Lambert lighting
+  return chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true), 60, true);
 }
 
 function makeRoadMesh(tr, stage) {
@@ -1351,7 +1410,7 @@ function makeRoadMesh(tr, stage) {
     }
   }
   const mk = (P, C, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m; };
-  const main = mk(mainPos, mainCol, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+  const mainM = mk(mainPos, mainCol, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
   const bridge = brPos.length ? mk(brPos, brCol, bridgeMat({ vertexColors: true, side: THREE.DoubleSide })) : null;
   if (bridge) bridge.castShadow = true;
   return { main, bridge };
@@ -1892,9 +1951,12 @@ function initCars() {
 }
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _mb = new THREE.Matrix4();
 function drawCar(c, v, dt, now) {
-  v.root.position.set(c.x, c.y, c.z);
+  let a = renderAlpha; if (c.px === undefined || Math.abs(c.x - c.px) + Math.abs(c.z - c.pz) > 6) a = 1;     // no smearing across a respawn
+  c.dx = a < 1 ? lerp(c.px, c.x, a) : c.x; c.dy = a < 1 ? lerp(c.py, c.y, a) : c.y; c.dz = a < 1 ? lerp(c.pz, c.z, a) : c.z;
+  const yaw = a < 1 ? c.pyaw + wrapAngle(c.yaw - c.pyaw) * a : c.yaw;
+  v.root.position.set(c.dx, c.dy, c.dz);
   if (c.onGround) { _v1.set(-c.gx, 1, -c.gz).normalize(); v.n.lerp(_v1, 1 - Math.exp(-dt * 14)).normalize(); }
-  _v2.set(Math.sin(c.yaw), 0, Math.cos(c.yaw));
+  _v2.set(Math.sin(yaw), 0, Math.cos(yaw));
   _v3.crossVectors(v.n, _v2).normalize(); _v2.crossVectors(_v3, v.n);
   _mb.makeBasis(_v3, v.n, _v2); v.root.quaternion.setFromRotationMatrix(_mb);
   v.wobble = (v.wobble || 0) * Math.exp(-dt * 4.5); v.wobT = (v.wobT || 0) + dt;
@@ -1912,7 +1974,7 @@ function updateCarVisuals(dt, now) {
   syncTrafficVis();
   for (const c of race.traffic) if (c.vis) drawCar(c, c.vis, dt, now);
   const P = race.player;
-  marker.position.set(P.x, P.y + 3.6 + Math.sin(now * 4) * 0.25, P.z); marker.rotation.y = now * 1.5;
+  marker.position.set(P.dx ?? P.x, (P.dy ?? P.y) + 3.6 + Math.sin(now * 4) * 0.25, P.dz ?? P.z); marker.rotation.y = now * 1.5;
   marker.visible = state !== 'menu';
 }
 
@@ -2187,6 +2249,8 @@ function readInput(dt) {
 }
 
 // ---------- camera ----------
+// the shadow camera's own right/up axes (as lookAt builds them), used to snap it to its texel grid
+const SUN_Z = new THREE.Vector3(-50, 95, -20).normalize(), SUN_U = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), SUN_Z).normalize(), SUN_V = new THREE.Vector3().crossVectors(SUN_Z, SUN_U);
 function updateCamera(dt, snap) {
   if (!world) return;
   let tx, ty, tz, sp = 0;
@@ -2195,7 +2259,7 @@ function updateCamera(dt, snap) {
     const i = Math.floor(attractS); tx = tr.xs[i]; tz = tr.zs[i]; ty = tr.H[i];
     if (attractS < prev) snap = true;
   } else {
-    const c = race.player; sp = Math.hypot(c.vx, c.vz); tx = c.x + c.vx * 0.42; tz = c.z + c.vz * 0.42; ty = c.y;
+    const c = race.player; sp = Math.hypot(c.vx, c.vz); tx = (c.dx ?? c.x) + c.vx * 0.42; tz = (c.dz ?? c.z) + c.vz * 0.42; ty = c.dy ?? c.y;
   }
   const k = snap ? 1 : 1 - Math.exp(-dt * (state === 'menu' ? 2.5 : 5));
   camT.x += (tx - camT.x) * k; camT.y += (ty - camT.y) * k; camT.z += (tz - camT.z) * k;
@@ -2205,18 +2269,30 @@ function updateCamera(dt, snap) {
   shake *= Math.exp(-dt * 7);
   if (shake > 0.01 && !matchMedia('(prefers-reduced-motion: reduce)').matches) shakeOff.set((Math.random() - 0.5), (Math.random() - 0.5) * 0.6, (Math.random() - 0.5)).multiplyScalar(shake * 1.1); else shakeOff.set(0, 0, 0);
   camera.position.copy(camT).add(shakeOff).addScaledVector(CAM_DIR, 300); camera.lookAt(_v1.copy(camT).add(shakeOff));
-  sun.position.set(camT.x - 50, camT.y + 95, camT.z - 20); sun.target.position.copy(camT); sun.target.updateMatrixWorld();
+  // move the shadow camera in whole shadow-map texels so shadow edges don't crawl as the camera moves
+  const tex = (sun.shadow.camera.right - sun.shadow.camera.left) / sun.shadow.mapSize.x;
+  const a0 = camT.dot(SUN_U), b0 = camT.dot(SUN_V);
+  _v3.copy(camT).addScaledVector(SUN_U, Math.round(a0 / tex) * tex - a0).addScaledVector(SUN_V, Math.round(b0 / tex) * tex - b0);
+  sun.position.set(_v3.x - 50, _v3.y + 95, _v3.z - 20); sun.target.position.copy(_v3); sun.target.updateMatrixWorld();
 }
 
 // ---------- HUD ----------
-function drawProfile(cv, tr, cars, dotR) {
-  const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight;
+function drawProfile(cv, tr, cars, dotR, cw, ch) {
+  const dpr = Math.min(devicePixelRatio || 1, 2), w = cw || cv.clientWidth, h = ch || cv.clientHeight;
   if (!w || !h) return;
-  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  if (!cw && cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d');
   const span = tr.loopN || tr.N;
+  // the profile line itself never changes during a race: draw it once to an offscreen canvas and just stamp it
+  if (cars && !(cv._cache && cv._cache.tr === tr && cv._cache.w === cv.width && cv._cache.h === cv.height)) {
+    const off = document.createElement('canvas'); off.width = cv.width; off.height = cv.height;
+    cv._cache = { tr, w: cv.width, h: cv.height, off }; drawProfile(off, tr, null, dotR, w, h);
+  }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  if (cars) g.drawImage(cv._cache.off, 0, 0, w, h);
   let mn = Infinity, mx = -Infinity; for (let i = 0; i < span; i += 4) { mn = Math.min(mn, tr.H[i]); mx = Math.max(mx, tr.H[i]); }
   const pad = dotR + 2, X = s => pad + s / (span - 1) * (w - 2 * pad), Y = v => pad + (1 - (v - mn) / (mx - mn)) * (h - 2 * pad);
+  if (!cars) {
   g.beginPath(); g.moveTo(X(0), h); for (let i = 0; i < span; i += 6) g.lineTo(X(i), Y(tr.H[i])); g.lineTo(X(span - 1), Y(tr.H[span - 1])); g.lineTo(X(span - 1), h); g.closePath();
   g.fillStyle = 'rgba(255,255,255,0.1)'; g.fill();
   g.beginPath(); for (let i = 0; i < span; i += 6) { i ? g.lineTo(X(i), Y(tr.H[i])) : g.moveTo(X(i), Y(tr.H[i])); } g.strokeStyle = '#FFC72C'; g.lineWidth = 2; g.stroke();
@@ -2226,7 +2302,8 @@ function drawProfile(cv, tr, cars, dotR) {
   }
   const fx = X(tr.loopN ? tr.startIdx : tr.finishIdx); g.fillStyle = '#fff'; for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) if ((r + c) % 2 === 0) g.fillRect(fx + c * 3, 2 + r * 3, 3, 3);
   g.fillRect(fx, 2, 1, h - 4);
-  if (!cars) return;
+  return;
+  }
   const order = cars.slice().sort((a, b) => (a.isPlayer ? 1 : 0) - (b.isPlayer ? 1 : 0));
   for (const c of order) {
     const s = tr.loopN ? ((c.progress % span) + span) % span : clamp(c.progress, 0, tr.N - 1), x = X(s), y = Y(roadH(tr, s));
@@ -2235,6 +2312,7 @@ function drawProfile(cv, tr, cars, dotR) {
   }
 }
 let standingsKey = '';
+function setTxt(id, v) { const el = $(id); if (el._t !== v) { el._t = v; el.textContent = v; } }
 function updateHUD(dt) {
   if (!race || state === 'menu') return;
   hudTick -= dt; profileTick -= dt;
@@ -2242,19 +2320,19 @@ function updateHUD(dt) {
   if (profileTick <= 0) { profileTick = 0.05; drawProfile($('profile'), world.tr, race.cars, 4); }
   if (hudTick > 0) return; hudTick = 1 / 30;
   const order = ranking(race), place = order.indexOf(P) + 1;
-  $('pos-n').textContent = place; $('pos-suf').textContent = ordinal(place).slice(-2);
+  setTxt('pos-n', String(place)); setTxt('pos-suf', ordinal(place).slice(-2));
   const key = order.map(c => c.name).join();
   if (key !== standingsKey) {
     standingsKey = key;
     $('standings').innerHTML = order.map((c, i) => `<li class="${c.isPlayer ? 'me' : ''}"><span class="st-p">${i + 1}</span><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}</li>`).join('');
   }
-  $('time').textContent = fmt(P.finished ? P.finishTime : race.time);
-  if (world.tr.loopN) { const L = world.tr.laps; $('lap').hidden = false; $('lap').textContent = P.finished ? 'Finished' : (P.lap + 1 === L ? 'Final lap' : `Lap ${P.lap + 1} of ${L}`); } else $('lap').hidden = true;
-  const b = best[world.idx]; $('best').textContent = b ? 'Best ' + fmt(b) : 'No best time yet';
-  $('speed').textContent = Math.round(Math.hypot(P.vx, P.vz) * 4.1);
+  setTxt('time', fmt(P.finished ? P.finishTime : race.time));
+  if (world.tr.loopN) { const L = world.tr.laps; $('lap').hidden = false; setTxt('lap', P.finished ? 'Finished' : (P.lap + 1 === L ? 'Final lap' : `Lap ${P.lap + 1} of ${L}`)); } else $('lap').hidden = true;
+  const b = best[world.idx]; setTxt('best', b ? 'Best ' + fmt(b) : 'No best time yet');
+  setTxt('speed', String(Math.round(Math.hypot(P.vx, P.vz) * 4.1)));
   const charge = P.boost > 0 ? 1 : clamp(P.driftT / 1.6, 0, 1);
-  $('boost-fill').style.width = (charge * 100).toFixed(0) + '%'; $('boost-fill').classList.toggle('live', P.boost > 0 || P.driftT > 0.6);
-  for (const z of ['f', 'b', 'l', 'r']) { const d = P.dmg[z]; $('dz-' + z).style.fill = d < 0.05 ? '' : `hsl(${Math.round(46 - 42 * d)} 92% ${Math.round(58 - 6 * d)}%)`; }
+  { const wv = (charge * 100).toFixed(0) + '%', bf = $('boost-fill'); if (bf._w !== wv) { bf._w = wv; bf.style.width = wv; } } $('boost-fill').classList.toggle('live', P.boost > 0 || P.driftT > 0.6);
+  for (const z of ['f', 'b', 'l', 'r']) { const d = P.dmg[z], el = $('dz-' + z), f = d < 0.05 ? '' : `hsl(${Math.round(46 - 42 * d)} 92% ${Math.round(58 - 6 * d)}%)`; if (el._f !== f) { el._f = f; el.style.fill = f; } }
   const wrong = P.wrongT > 1;
   $('warn').textContent = wrong ? 'Wrong way' : (P.stuckT > 3 ? (isTouch ? 'Stuck? Tap Reset' : 'Stuck? Press R to reset') : '');
   $('warn').hidden = !(wrong || P.stuckT > 3);
@@ -2315,7 +2393,7 @@ function selectStage(i, cb) {
   $('loading-text').textContent = 'Building ' + STAGES[i].name; $('loading').hidden = false;
   clearTimeout(pendingBuild);
   pendingBuild = setTimeout(() => {
-    try { buildWorld(i); } catch (e) { console.error(e); window.__bootError(e.message + ' (while building ' + STAGES[i].name + ')'); return; } race = newRace(); attractS = 0; updateCamera(0, true);
+    try { buildWorld(i); renderer.compile(scene, camera); } catch (e) { console.error(e); window.__bootError(e.message + ' (while building ' + STAGES[i].name + ')'); return; } race = newRace(); attractS = 0; updateCamera(0, true);
     $('loading').hidden = true; cb && cb();
   }, 40);
 }
@@ -2363,10 +2441,15 @@ function updateBridgeFade(dt) {
   bridgeOpacity = next;
   for (const m of bridgeMats) { m.opacity = bridgeOpacity; m.depthWrite = bridgeOpacity > 0.95; }
 }
+// Physics runs at a fixed 120 Hz; cars are drawn between the last two physics states so motion stays smooth at any refresh rate.
+let renderAlpha = 1;
+function savePrev() { for (const c of race.cars) { c.px = c.x; c.py = c.y; c.pz = c.z; c.pyaw = c.yaw; } for (const c of race.traffic) { c.px = c.x; c.py = c.y; c.pz = c.z; c.pyaw = c.yaw; } }
 function frame(t) {
   requestAnimationFrame(frame);
-  const now = t / 1000; const dt = Math.min(0.1, Math.max(0, now - lastT)); lastT = now;
+  const now = t / 1000, rawDt = Math.max(0, now - lastT), dt = Math.min(0.1, rawDt); lastT = now;
   if (!world || !race) return;
+  renderAlpha = 1;
+  perfSample(rawDt);
   if (state === 'countdown') {
     readInput(dt); countdown -= dt;
     const n = Math.ceil(countdown - 0.2);
@@ -2378,8 +2461,9 @@ function frame(t) {
     if (!race.player.finished) readInput(dt);
     let simDt = dt; if (slowmo > 0) { slowmo -= dt; simDt = dt * 0.35; }
     accumulator += simDt; let n = 0;
-    while (accumulator >= STEP && n < 12) { raceStep(race, STEP, world.W); accumulator -= STEP; n++; }
+    while (accumulator >= STEP && n < 12) { savePrev(); raceStep(race, STEP, world.W); accumulator -= STEP; n++; }
     if (n === 12) accumulator = 0;
+    renderAlpha = accumulator / STEP;
     handleEvents(); applyBarrierChanges();
     AudioSys.update(race.player, 'drive');
     if (goTimer > 0) { goTimer -= dt; if (goTimer <= 0) $('countdown').hidden = true; }
@@ -2409,6 +2493,7 @@ function wireUI() {
   $('pause-btn').addEventListener('click', togglePause);
   $('reset-btn').addEventListener('click', () => { if (state === 'racing' && !race.player.finished) respawn(race.player, world.W); });
   $('mute-btn').addEventListener('click', () => { AudioSys.init(); AudioSys.toggle(); });
+  $('gfx-btn').addEventListener('click', () => { if (renderer) cycleQuality(); });
 }
 async function boot() {
   let step = 'setting up the menu';
