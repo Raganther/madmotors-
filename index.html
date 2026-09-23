@@ -72,7 +72,9 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 #best{font-size:15px;font-weight:600;color:var(--ink);background:rgba(255,255,255,.8);border-radius:8px;padding:2px 8px}
 .hud-btns{display:flex;gap:6px;pointer-events:auto}
 .hud-btns button{background:var(--panel);border:0;border-radius:10px;padding:7px 12px;font-weight:700;font-size:15px}
-#speed-block{position:absolute;left:50%;bottom:var(--bot);transform:translateX(-50%);text-align:center;background:var(--panel);border-radius:14px;padding:6px 18px 10px;min-width:150px}
+#speed-block{position:absolute;left:50%;bottom:var(--bot);transform:translateX(-50%);text-align:center;background:var(--panel);border-radius:14px;padding:6px 18px 10px 44px;min-width:170px}
+#dmg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:20px;height:34px}
+#dmg rect[id]{fill:rgba(255,255,255,.28);transition:fill .2s}
 #speed{font-family:var(--display);font-size:40px;line-height:1.05;font-variant-numeric:tabular-nums}
 .unit{font-size:14px;font-weight:600;color:var(--mist);margin-top:-2px}
 #boost{height:7px;border-radius:4px;background:rgba(255,255,255,.14);margin-top:6px;overflow:hidden}
@@ -121,7 +123,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   #pos-n{font-size:40px} #standings{font-size:15px;min-width:120px}
   #time{font-size:22px}
   #stage-name{display:none}
-  #speed-block{min-width:110px;padding:4px 12px 8px} #speed{font-size:30px}
+  #speed-block{min-width:130px;padding:4px 12px 8px 38px} #dmg{left:10px;width:17px;height:29px} #speed{font-size:30px}
   #touch button{width:70px;height:70px}
 }
 @media (max-height:520px){ #standings{display:none} #speed-block{bottom:var(--bot)} }
@@ -151,7 +153,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   <div id="pos-block"><div id="pos"><span id="pos-n">1</span><span id="pos-suf">st</span></div><div id="lap" hidden></div><ol id="standings"></ol></div>
   <div id="profile-wrap"><canvas id="profile" aria-label="Stage profile showing each car's position on the descent"></canvas><div id="stage-name"></div></div>
   <div id="time-block"><div id="time">0:00.00</div><div id="best"></div><div class="hud-btns"><button id="reset-btn" type="button">Reset</button><button id="pause-btn" type="button">Pause</button></div></div>
-  <div id="speed-block"><div id="speed">0</div><div class="unit">km/h</div><div id="boost"><div id="boost-fill"></div></div></div>
+  <div id="speed-block"><svg id="dmg" viewBox="0 0 24 40" role="img" aria-label="Car damage"><rect x="7" y="9" width="10" height="22" rx="2" fill="rgba(255,255,255,.12)"/><rect id="dz-f" x="4" y="0" width="16" height="7" rx="2"/><rect id="dz-b" x="4" y="33" width="16" height="7" rx="2"/><rect id="dz-l" x="0" y="9" width="5" height="22" rx="2"/><rect id="dz-r" x="19" y="9" width="5" height="22" rx="2"/></svg><div id="speed">0</div><div class="unit">km/h</div><div id="boost"><div id="boost-fill"></div></div></div>
   <div id="callout" hidden></div>
   <div id="countdown" hidden></div>
   <div id="warn" hidden></div>
@@ -714,7 +716,7 @@ function makeCar(W, idx, lat, def) {
     x: tr.xs[idx] + tr.rx[idx] * lat, z: tr.zs[idx] + tr.rz[idx] * lat, y: tr.H[idx], vx: 0, vy: 0, vz: 0, yaw: tr.th[idx],
     onGround: true, airT: 0, boost: 0, driftT: 0, lastGood: idx, progress: idx, finished: false, finishTime: 0, place: 0,
     offT: 0, ghost: 0, stuckT: 0, wrongT: 0, lap: 0, spin: 0, mod: 1, vf: 0, vr: 0, gx: 0, gz: 0, squash: 0, surface: tr.surface, respawns: 0,
-    inp: { throttle: 0, brake: 0, steer: 0, handbrake: 0 }, events: [],
+    inp: { throttle: 0, brake: 0, steer: 0, handbrake: 0 }, events: [], dmg: { f: 0, b: 0, l: 0, r: 0 }, wreckT: 0, wrecks: 0,
     isPlayer: !!def.player, name: def.name, def,
     ai: { lane: lat, cur: lat, skill: def.player ? 0.85 : def.skill, wT: 1 + Math.random() * 2, flick: def.player ? 0 : (def.flick || 0), driftK: def.driftK || 1 / 45, drift: { until: -1, t: 0, cool: 0, dir: 0 } }
   };
@@ -724,10 +726,26 @@ function makeCar(W, idx, lat, def) {
   return c;
 }
 
+// ---------- car damage ----------
+// Four zones (front, back, left, right) from 0 to 1. Arcade-mild: damage costs a little power and pulls the
+// steering; a zone reaching 1 wrecks the car, which stops, then respawns repaired a couple of seconds later.
+const DMG_K = 0.03, WRECK_T = 1.6;
+function damageCar(c, x, z, v, k, ix, iz) {
+  if (c.wreckT > 0 || c.ghost > 0) return;
+  const amt = Math.max(0, v - 4) * DMG_K * k; if (amt <= 0) return;
+  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), dx = x - c.x, dz = z - c.z;
+  const fwd = (dx * fx + dz * fz) / CAR_HL, rgt = (dx * -fz + dz * fx) / CAR_HW;
+  const zone = Math.abs(fwd) > Math.abs(rgt) ? (fwd > 0 ? 'f' : 'b') : (rgt > 0 ? 'r' : 'l');
+  c.dmg[zone] = Math.min(1, c.dmg[zone] + amt);
+  c.events.push({ t: 'dent', zone, amt, x, z, y: c.y, ix, iz, v });
+  if (c.dmg[zone] >= 1) { c.wreckT = WRECK_T; c.wrecks++; c.boost = 0; c.driftT = 0; c.events.push({ t: 'wreck' }); }
+}
+function carWear(c) { const d = c.dmg; return (d.f + d.b + d.l + d.r) / 4; }
+
 function respawn(c, W) {
   const tr = W.tr; const i = clamp(c.lastGood - 10, 4, tr.N - 10);
   const lat = c.isPlayer ? 0 : clamp(c.ai.lane, -3, 3);
-  c.x = tr.xs[i] + tr.rx[i] * lat; c.z = tr.zs[i] + tr.rz[i] * lat; c.y = tr.H[i]; c.yaw = tr.th[i];
+  c.x = tr.xs[i] + tr.rx[i] * lat; c.z = tr.zs[i] + tr.rz[i] * lat; c.y = tr.H[i]; c.yaw = tr.th[i]; c.strandT = 0;
   c.vx = tr.tx[i] * 8; c.vz = tr.tz[i] * 8; c.vy = 0; c.onGround = true; c.airT = 0; c.boost = 0; c.offT = 0; c.stuckT = 0; c.wrongT = 0;
   c.ghost = 2; c.driftT = 0; c.spin = 0; c.lastGood = i; c.pr = project(tr, c.x, c.z, i, 2, 2); c.ai.cur = lat;
   computeGrad(c, W); c.events.push({ t: 'respawn' }); c.respawns++;
@@ -736,6 +754,11 @@ function respawn(c, W) {
 function stepCar(c, dt, W, racing) {
   const tr = W.tr, inp = c.inp;
   if (c.ghost > 0) c.ghost -= dt;
+  if (c.wreckT > 0) {
+    c.wreckT -= dt; inp.throttle = 0; inp.brake = 0; inp.handbrake = 0; inp.steer = 0;
+    const f = Math.exp(-2.5 * dt); c.vx *= f; c.vz *= f;
+    if (c.wreckT <= 0) { c.wreckT = 0; respawn(c, W); c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.events.push({ t: 'repair' }); return; }
+  }
   let pr = c.pr;
   const al0 = Math.abs(pr.lat), side0 = pr.lat >= 0 ? 1 : -1, wallSide0 = wallAt(W, pr.i, side0);
   c.surface = (al0 < HALF + 0.4 || (wallSide0 && al0 < wallPos(W, pr.i, side0) + 1.2)) ? W.surf : 'grass';
@@ -743,8 +766,8 @@ function stepCar(c, dt, W, racing) {
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), rx = -fz, rz = fx;
   let vf = c.vx * fx + c.vz * fz, vr = c.vx * rx + c.vz * rz;
   if (c.onGround) {
-    let a = 0; const mod = c.mod;
-    if (inp.throttle > 0) a += inp.throttle * PHYS.ENGINE * S.engine * mod;
+    let a = 0; const mod = c.mod, wear = carWear(c);
+    if (inp.throttle > 0) a += inp.throttle * PHYS.ENGINE * S.engine * mod * (1 - 0.3 * wear);
     if (inp.brake > 0) { if (vf > 0.5) a -= inp.brake * PHYS.BRAKE; else if (vf > -12) a -= inp.brake * PHYS.REVERSE; }
     if (c.boost > 0) a += PHYS.BOOST;
     a -= PHYS.DRAG * vf * Math.abs(vf) + S.drag * vf;
@@ -758,7 +781,8 @@ function stepCar(c, dt, W, racing) {
     if (Math.abs(vf) > loss) vf -= Math.sign(vf) * loss; else vf = 0;
     const sp = Math.abs(vf);
     const rate = PHYS.STEER * clamp(sp / 5, 0, 1) / (1 + sp / 55) * (hb ? 1.6 : 1);
-    c.yaw -= inp.steer * rate * (vf >= 0 ? 1 : -1) * dt;
+    const pull = (c.dmg.r - c.dmg.l) * 0.12 * clamp(sp / 20, 0, 1);   // a bent corner drags the car toward it
+    c.yaw -= (inp.steer + pull) * rate * (vf >= 0 ? 1 : -1) * dt;
     c.vx = fx * vf + rx * vr; c.vz = fz * vf + rz * vr;
     computeGrad(c, W);
     c.vx -= PHYS.GS * c.gx * dt; c.vz -= PHYS.GS * c.gz * dt;
@@ -817,6 +841,7 @@ function stepCar(c, dt, W, racing) {
       const kk = w === 1 ? 0.82 : w === 3 ? 0.9 : W.bar.armco ? 0.72 : 0.87;
       c.vx *= kk; c.vz *= kk; c.spin += (Math.random() - 0.5) * Math.min(vn0, 20) * 0.03;
       c.events.push({ t: 'smash', v: vn0, w, x: c.x - nx * dir * ext, z: c.z - nz * dir * ext, y: c.y, nx: -nx * dir, nz: -nz * dir });
+      damageCar(c, c.x - nx * dir * ext, c.z - nz * dir * ext, vn0, w === 3 ? 0.3 : w === 1 ? 0.5 : W.bar.armco ? 1 : 0.6, nx * dir, nz * dir);
     } else if (dir) {
       c.x += nx * push * dir; c.z += nz * push * dir; c.wallContact = true;
       const vn = (c.vx * nx + c.vz * nz) * (-dir);
@@ -827,7 +852,7 @@ function stepCar(c, dt, W, racing) {
         const kk = 1 - 0.45 * headOn * headOn; c.vx *= kk; c.vz *= kk;
         { const along0 = c.vx * tr.tx[pr.i] + c.vz * tr.tz[pr.i]; c.spin += clamp(vn * 0.04, 0, 1.2) * Math.sign(along0 || 1) * (-side) * Math.sign(cf * tr.tx[pr.i] + cz * tr.tz[pr.i] || 1) * 0.5; }           // glancing hits barely cost anything, head-on hits do
         const wdx = nx * (-dir), wdz = nz * (-dir);
-        if (vn > 3) c.events.push({ t: 'hit', v: vn, w, x: c.x + wdx * ext, z: c.z + wdz * ext, y: c.y, nx: wdx, nz: wdz });
+        if (vn > 3) { c.events.push({ t: 'hit', v: vn, w, x: c.x + wdx * ext, z: c.z + wdz * ext, y: c.y, nx: wdx, nz: wdz }); damageCar(c, c.x + wdx * ext, c.z + wdz * ext, vn, w === 3 ? 0.4 : w === 1 ? 0.7 : 1, -wdx, -wdz); }
       }
       { const sp = Math.hypot(c.vx, c.vz); if (sp > 6) c.scrape = { x: c.x + nx * (-dir) * ext, z: c.z + nz * (-dir) * ext, y: c.y, w, sp, vx: c.vx, vz: c.vz }; }
       { const sp = Math.hypot(c.vx, c.vz); if (sp > 0.1) { const f = Math.max(0, 1 - 7 * dt / sp); c.vx *= f; c.vz *= f; } } // light rubbing friction while in contact
@@ -861,6 +886,7 @@ function stepCar(c, dt, W, racing) {
   }
   if (c.offT > 0.6) respawn(c, W);
   else if (!c.isPlayer && c.stuckT > 2.5) respawn(c, W);
+  else if (!c.isPlayer && racing && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road
   if (pr.i >= tr.N - 6) { c.vx *= 1 - 4 * dt; c.vz *= 1 - 4 * dt; }
 }
 
@@ -973,7 +999,7 @@ function collideCars(cars) {
         // a little rubbing friction along the contact so cars don't skate past each other
         const tx = -h.nz, tz = h.nx, vt = (vBx - vAx) * tx + (vBz - vAz) * tz, f = clamp(vt, -j * 0.3, j * 0.3) * 0.5;
         A.vx += tx * f; A.vz += tz * f; B.vx -= tx * f; B.vz -= tz * f;
-        if (-vrel > 4) A.events.push({ t: 'bump', v: -vrel, x: px, z: pz, y: (A.y + B.y) / 2, a: A, b: B, nx: h.nx, nz: h.nz });
+        if (-vrel > 4) { A.events.push({ t: 'bump', v: -vrel, x: px, z: pz, y: (A.y + B.y) / 2, a: A, b: B, nx: h.nx, nz: h.nz }); damageCar(A, px, pz, -vrel, 0.8, -h.nx, -h.nz); damageCar(B, px, pz, -vrel, 0.8, h.nx, h.nz); }
       }
       impulseDone = true;
     }
@@ -1436,7 +1462,7 @@ function updateProps(dt) {
     if (dirty) P.mesh.instanceMatrix.needsUpdate = true;
   }
 }
-function newRace() { const r = createRace(world.W, CAR_DEFS); clearProps(); resetBarrierVis(); return r; }
+function newRace() { const r = createRace(world.W, CAR_DEFS); clearProps(); resetBarrierVis(); carVis.forEach(repairCarVis); return r; }
 
 function addScenery(group, tr, terr, stage) {
   const rnd = mulberry32(stage.seed * 7 + 3), C = stage.colors;
@@ -1613,17 +1639,25 @@ function numberTex(n, bg, fg) {
 function makeCarMesh(def) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const L = c => new THREE.MeshLambertMaterial({ color: c });
-  const box = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(flat(new THREE.BoxGeometry(w, h, d)), L(c)); m.position.set(x, y, z); m.castShadow = true; body.add(m); return m; };
-  box(2.0, 0.34, 3.5, 0x2B2F3A, 0, 0.46, 0);
-  box(1.92, 0.48, 3.3, def.color, 0, 0.84, 0);
-  box(1.96, 0.28, 0.3, def.accent, 0, 0.62, 1.72);
-  box(1.56, 0.52, 1.55, 0x253450, 0, 1.33, -0.25);
-  box(1.6, 0.1, 1.35, def.color, 0, 1.63, -0.3);
-  box(0.42, 0.02, 3.32, def.accent, 0, 1.09, 0);
-  box(1.92, 0.08, 0.46, def.accent, 0, 1.38, -1.55);
-  box(0.08, 0.3, 0.12, 0x2B2F3A, -0.6, 1.2, -1.55); box(0.08, 0.3, 0.12, 0x2B2F3A, 0.6, 1.2, -1.55);
+  const dentable = [];
+  const box = (w, h, d, c, x, y, z, seg) => {
+    const g = flat(seg ? new THREE.BoxGeometry(w, h, d, seg[0], seg[1], seg[2]) : new THREE.BoxGeometry(w, h, d));
+    const m = new THREE.Mesh(g, L(c)); m.position.set(x, y, z); m.castShadow = true; body.add(m);
+    m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims: [w, h, d], color: c };
+    return m;
+  };
+  const dent = m => { m.userData.orig = Float32Array.from(m.geometry.attributes.position.array); dentable.push(m); return m; };
+  dent(box(2.0, 0.34, 3.5, 0x2B2F3A, 0, 0.46, 0, [3, 1, 5]));
+  dent(box(1.92, 0.48, 3.3, def.color, 0, 0.84, 0, [3, 2, 5]));
+  const bumper = box(1.96, 0.28, 0.3, def.accent, 0, 0.62, 1.72);
+  const cabin = dent(box(1.56, 0.52, 1.55, 0x253450, 0, 1.33, -0.25, [2, 1, 2]));
+  dent(box(1.6, 0.1, 1.35, def.color, 0, 1.63, -0.3, [2, 1, 2]));
+  dent(box(0.42, 0.02, 3.32, def.accent, 0, 1.09, 0, [1, 1, 5]));
+  const wing = box(1.92, 0.08, 0.46, def.accent, 0, 1.38, -1.55);
+  const struts = [box(0.08, 0.3, 0.12, 0x2B2F3A, -0.6, 1.2, -1.55), box(0.08, 0.3, 0.12, 0x2B2F3A, 0.6, 1.2, -1.55)];
   const hl = new THREE.MeshBasicMaterial({ color: 0xFFF6C8 }), tl = new THREE.MeshBasicMaterial({ color: 0xFF4A3A });
-  for (const s of [-1, 1]) { const a = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.06), hl); a.position.set(s * 0.62, 0.9, 1.66); body.add(a); const b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.14, 0.06), tl); b.position.set(s * 0.64, 0.9, -1.66); body.add(b); }
+  const heads = [], tails = [];
+  for (const s of [-1, 1]) { const a = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.06), hl); a.position.set(s * 0.62, 0.9, 1.66); body.add(a); heads.push(a); const b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.14, 0.06), tl); b.position.set(s * 0.64, 0.9, -1.66); body.add(b); tails.push(b); }
   const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.95), new THREE.MeshLambertMaterial({ map: numberTex(def.num, '#FFFFFF', '#1C2340'), transparent: true }));
   plate.rotation.x = -Math.PI / 2; plate.position.set(0, 1.69, -0.3); body.add(plate);
   const wheelG = flat(new THREE.CylinderGeometry(0.42, 0.42, 0.36, 10).rotateZ(Math.PI / 2)), wheelM = L(0x1E1E22), hubM = L(0xC9CCD4);
@@ -1636,7 +1670,77 @@ function makeCarMesh(def) {
     wheels.push(spin); if (sz > 0) steer.push(pivot);
   }
   scene.add(root);
-  return { root, body, wheels, steer, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0 };
+  return { root, body, wheels, steer, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
+    dentable, bumper, wing, struts, heads, tails, cabin, glassM: cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
+}
+// ---------- car damage visuals ----------
+let crackTex = null;
+function getCrackTex() {
+  if (crackTex) return crackTex;
+  crackTex = canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = '#253450'; g.fillRect(0, 0, w, h);
+    const rnd = mulberry32(99); g.strokeStyle = 'rgba(225,240,255,0.85)'; g.lineWidth = 1.6;
+    for (let k = 0; k < 3; k++) {
+      const cx = 30 + rnd() * 68, cy = 30 + rnd() * 68;
+      for (let r = 0; r < 7; r++) { let x = cx, y = cy, a = rnd() * TAU; g.beginPath(); g.moveTo(x, y); for (let q = 0; q < 5; q++) { a += (rnd() - 0.5) * 0.9; x += Math.cos(a) * 11; y += Math.sin(a) * 11; g.lineTo(x, y); } g.stroke(); }
+      g.beginPath(); g.arc(cx, cy, 6 + rnd() * 6, 0, TAU); g.stroke();
+    }
+  });
+  return crackTex;
+}
+// push the bodywork in around a contact point (car-local coords), deterministic per vertex so shared corners stay welded
+function dentMesh(v, lx, ly, lz, ix, iz, depth, radius) {
+  for (const m of v.dentable) {
+    const pos = m.geometry.attributes.position, a = pos.array, o = m.userData.orig, mp = m.position;
+    for (let k = 0; k < a.length; k += 3) {
+      const vx = a[k] + mp.x, vy = a[k + 1] + mp.y, vz = a[k + 2] + mp.z;
+      const d = Math.hypot(vx - lx, (vy - ly) * 0.8, vz - lz); if (d >= radius) continue;
+      const f = (1 - d / radius) ** 2, j = Math.sin(o[k] * 12.9898 + o[k + 1] * 78.233 + o[k + 2] * 37.719) * 43758.5453, n = (j - Math.floor(j)) - 0.5;
+      a[k] += ix * depth * f * (0.8 + n * 0.5); a[k + 2] += iz * depth * f * (0.8 + n * 0.5); a[k + 1] -= depth * f * (0.25 + n * 0.3);
+      const ex = a[k] - o[k], ey = a[k + 1] - o[k + 1], ez = a[k + 2] - o[k + 2], el = Math.hypot(ex, ey, ez);
+      if (el > 0.42) { const s = 0.42 / el; a[k] = o[k] + ex * s; a[k + 1] = o[k + 1] + ey * s; a[k + 2] = o[k + 2] + ez * s; }
+    }
+    pos.needsUpdate = true; m.geometry.computeVertexNormals();
+  }
+}
+function toCarLocal(c, x, z) { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), dx = x - c.x, dz = z - c.z; return [dx * fz - dz * fx, dx * fx + dz * fz]; }
+function detachPart(c, v, m, dims, color) {
+  if (!m.visible) return;
+  m.updateWorldMatrix(true, false); m.matrixWorld.decompose(_p, _q, _s);
+  const r = () => Math.random() - 0.5;
+  spawnProp('box', _p.clone(), _q.clone(), dims, color, c.vx * 0.55 + r() * 5, 3 + Math.random() * 4, c.vz * 0.55 + r() * 5, 9, 'metal');
+  m.visible = false;
+}
+function updateCarDamageVis(c, v) {
+  const d = c.dmg, P = v.parts;
+  if (d.f > 0.25 && P.bumper < 1) { P.bumper = 1; v.bumper.rotation.x = 0.35; v.bumper.position.y -= 0.12; v.bumper.rotation.z = (Math.random() - 0.5) * 0.4; }
+  if (d.f > 0.55 && P.bumper < 2) { P.bumper = 2; detachPart(c, v, v.bumper, [1.96, 0.28, 0.3], c.def.accent); }
+  if (d.b > 0.3 && P.wing < 1) { P.wing = 1; v.wing.rotation.z = (Math.random() < 0.5 ? -1 : 1) * 0.3; v.wing.position.y -= 0.08; }
+  if (d.b > 0.6 && P.wing < 2) { P.wing = 2; detachPart(c, v, v.wing, [1.92, 0.08, 0.46], c.def.accent); v.struts.forEach(m => detachPart(c, v, m, [0.08, 0.3, 0.12], 0x2B2F3A)); }
+  if (d.f > 0.35 && !P.heads) { P.heads = 1; v.heads.forEach(m => m.visible = false); const [x, y, z] = [c.x + Math.sin(c.yaw) * 1.7, c.y, c.z + Math.cos(c.yaw) * 1.7]; glassBits(x, y - 0.4, z, 5, c.pr.i); }
+  if (d.b > 0.35 && !P.tails) { P.tails = 1; v.tails.forEach(m => m.visible = false); }
+  if ((d.f > 0.4 || carWear(c) > 0.35) && !P.crack) { P.crack = 1; if (!v.crackM) v.crackM = new THREE.MeshLambertMaterial({ map: getCrackTex() }); v.cabin.material = v.crackM; }
+}
+function repairCarVis(v) {
+  for (const m of v.dentable) { m.geometry.attributes.position.array.set(m.userData.orig); m.geometry.attributes.position.needsUpdate = true; m.geometry.computeVertexNormals(); }
+  for (const m of [v.bumper, v.wing, ...v.struts]) { const h = m.userData.home; m.position.copy(h.p); m.rotation.copy(h.r); m.visible = true; }
+  v.heads.forEach(m => m.visible = true); v.tails.forEach(m => m.visible = true); v.cabin.material = v.glassM;
+  v.parts = { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 }; v.wreckFx = 0;
+}
+function dentFx(c, e) {
+  const v = carVis[race.cars.indexOf(c)]; if (!v) return;
+  const [lx, lz] = toCarLocal(c, e.x, e.z), [ix, iz] = (() => { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); return [e.ix * fz - e.iz * fx, e.ix * fx + e.iz * fz]; })();
+  dentMesh(v, lx, 0.8, lz, ix, iz, clamp(e.amt * 1.4, 0.04, 0.35), 0.8 + clamp(e.v * 0.03, 0, 0.7));
+  updateCarDamageVis(c, v);
+}
+function wreckFx(c, isPlayer, near) {
+  const v = carVis[race.cars.indexOf(c)];
+  sparks(c.x, c.y, c.z, 30); shockwave(c.x, c.y, c.z, 7, 0xFFB03A);
+  for (let k = 0; k < 26; k++) emit(c.x + (Math.random() - 0.5) * 2, c.y + 0.8, c.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 7, 2 + Math.random() * 4, (Math.random() - 0.5) * 7, 1 + Math.random(), 1.4 + Math.random(), k % 3 ? 0x3A3A3A : 0xFF8A2E, -1);
+  if (v) { detachPart(c, v, v.bumper, [1.96, 0.28, 0.3], c.def.accent); detachPart(c, v, v.wing, [1.92, 0.08, 0.46], c.def.accent); v.wreckFx = 1; }
+  c.smokeT = WRECK_T;
+  if (isPlayer) { shake = Math.min(1.6, shake + 1.2); slowmo = Math.max(slowmo, 0.3); callout('Wrecked!'); }
+  if (isPlayer || near) AudioSys.crash('car', isPlayer ? 1 : 0.5);
 }
 let marker;
 function initCars() {
@@ -1737,6 +1841,9 @@ function effectsForCar(c, v, dt) {
       if (Math.random() < 0.08) { const [lo, hi] = fx.size, sz = lo + Math.random() * (hi - lo); debris(s.x, s.y + 0.5, s.z, -s.vx * 0.2 + (Math.random() - 0.5) * 4, 2 + Math.random() * 3, -s.vz * 0.2 + (Math.random() - 0.5) * 4, fx.cols[0], sz, sz * 0.6, sz, 1.4, c.pr.i); }
     }
   }
+  const wear = carWear(c);
+  if (c.wreckT > 0 && Math.random() < 0.8) emit(c.x + fx * 1.3 + (Math.random() - 0.5), c.y + 1.1, c.z + fz * 1.3 + (Math.random() - 0.5), (Math.random() - 0.5) * 2, 3 + Math.random() * 3, (Math.random() - 0.5) * 2, 0.35 + Math.random() * 0.3, 0.9, Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -3);
+  if (wear > 0.35 && Math.random() < (wear - 0.25) * 1.3) emit(c.x + fx * 1.4 + (Math.random() - 0.5) * 0.6, c.y + 1.0, c.z + fz * 1.4 + (Math.random() - 0.5) * 0.6, -c.vx * 0.15 + (Math.random() - 0.5), 1.5 + Math.random() * 1.5, -c.vz * 0.15 + (Math.random() - 0.5), 0.8 + Math.random() * 0.6, 0.8 + wear, wear > 0.7 ? 0x3C3C3C : 0x9A9A9A, -1.5);
   if (c.smokeT > 0) { c.smokeT -= dt; if (Math.random() < 0.5) emit(c.x + (Math.random() - 0.5), c.y + 1.2, c.z + (Math.random() - 0.5), -c.vx * 0.1 + (Math.random() - 0.5), 2 + Math.random() * 2, -c.vz * 0.1 + (Math.random() - 0.5), 0.9 + Math.random() * 0.6, 1.1 + Math.random() * 0.8, Math.random() < 0.5 ? 0x4A4A4A : 0x6E6E6E, -1.5); }
   if (c.boost > 0 && Math.random() < 0.7) emit(c.x - fx * 1.9, c.y + 0.6, c.z - fz * 1.9, -fx * 6 + (Math.random() - 0.5), 0.5, -fz * 6 + (Math.random() - 0.5), 0.25, 0.7, Math.random() < 0.5 ? 0xFFC72C : 0xFF7A2E, 0);
 }
@@ -2002,6 +2109,7 @@ function updateHUD(dt) {
   $('speed').textContent = Math.round(Math.hypot(P.vx, P.vz) * 4.1);
   const charge = P.boost > 0 ? 1 : clamp(P.driftT / 1.6, 0, 1);
   $('boost-fill').style.width = (charge * 100).toFixed(0) + '%'; $('boost-fill').classList.toggle('live', P.boost > 0 || P.driftT > 0.6);
+  for (const z of ['f', 'b', 'l', 'r']) { const d = P.dmg[z]; $('dz-' + z).style.fill = d < 0.05 ? '' : `hsl(${Math.round(46 - 42 * d)} 92% ${Math.round(58 - 6 * d)}%)`; }
   const wrong = P.wrongT > 1;
   $('warn').textContent = wrong ? 'Wrong way' : (P.stuckT > 3 ? (isTouch ? 'Stuck? Tap Reset' : 'Stuck? Press R to reset') : '');
   $('warn').hidden = !(wrong || P.stuckT > 3);
@@ -2022,6 +2130,9 @@ function handleEvents() {
         case 'bigair': if (c.isPlayer) { callout('Big air!'); AudioSys.whoosh(); } break;
         case 'drift': if (c.isPlayer) { callout(e.amt > 1.6 ? 'Mega drift!' : 'Drift boost!'); AudioSys.whoosh(); } else if (near) AudioSys.whoosh(0.35); break;
         case 'respawn': if (c.isPlayer) callout('Back on track'); break;
+        case 'dent': dentFx(c, e); break;
+        case 'wreck': wreckFx(c, c.isPlayer, near); break;
+        case 'repair': { const v = carVis[race.cars.indexOf(c)]; if (v) repairCarVis(v); break; }
         case 'lap': if (c.isPlayer) { callout(e.n === world.tr.laps ? 'Final lap!' : 'Lap ' + e.n); AudioSys.beep(660, 0.2); } break;
         case 'finish':
           if (c.isPlayer) {
