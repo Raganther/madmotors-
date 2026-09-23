@@ -234,26 +234,26 @@ const SURF = {
 };
 
 const STAGES = [
-  { name: 'Summit Meadow', traffic: { on: 3, with: 1 }, blurb: 'Open pasture and fast sweepers', seed: 101, surface: 'tarmac', grade: 0.16, hillAmp: 16, jumps: 2,
+  { name: 'Summit Meadow', light: { sun: 0xFFF0D8, sunI: 0.98, sky: 0xE6F2FF, ground: 0x6B7A4A, hemiI: 0.6, cloud: 0.26, grade: [1.03, 1.0, 0.97], sat: 1.12 }, traffic: { on: 3, with: 1 }, blurb: 'Open pasture and fast sweepers', seed: 101, surface: 'tarmac', grade: 0.16, hillAmp: 16, jumps: 2,
     plan: [['st', 55], ['sw', 230], ['sb', 1], ['sw', 200], ['sb', 2], ['sw', 160], ['st', 95]],
     colors: { grassA: 0x9BCB5F, grassB: 0x74AE4A, rock: 0xA7A499, dirt: 0xB5946A, road: 0x575B64, sky: 0xBFE3F2, round: [0x5E9C45, 0x74B04E, 0x4F8A3F, 0x86B84F], pine: [0x3E7447, 0x4A8250, 0x356A40] },
     trees: { density: 0.0032, pine: 0.3 }, rocks: 0.0005, bushes: 0.004, village: false },
-  { name: 'Pine Forest', traffic: { on: 3, with: 1 }, blurb: 'Tight switchbacks under the trees', seed: 211, surface: 'tarmac', grade: 0.17, hillAmp: 20, jumps: 2,
+  { name: 'Pine Forest', light: { sun: 0xFFD3A2, sunI: 1.02, sky: 0xCFE0F0, ground: 0x5A5A3A, hemiI: 0.55, cloud: 0.2, grade: [1.08, 1.0, 0.9], sat: 1.1 }, traffic: { on: 3, with: 1 }, blurb: 'Tight switchbacks under the trees', seed: 211, surface: 'tarmac', grade: 0.17, hillAmp: 20, jumps: 2,
     plan: [['st', 55], ['sw', 200], ['sb', 2], ['sw', 180], ['sb', 2], ['sw', 150], ['st', 95]],
     colors: { grassA: 0x6E9E4B, grassB: 0x4F8040, rock: 0x8E8C84, dirt: 0x8F7352, road: 0x50545C, sky: 0xB3D8E3, round: [0x4F8A3F, 0x5E9A45], pine: [0x2F6A3E, 0x3A7646, 0x285E38, 0x44804C] },
     trees: { density: 0.0085, pine: 0.92 }, rocks: 0.0008, bushes: 0.003, village: false },
-  { name: 'Quarry Run', traffic: { on: 2, with: 1 }, blurb: 'Loose gravel and big jumps', seed: 307, surface: 'gravel', grade: 0.19, hillAmp: 22, jumps: 3,
+  { name: 'Quarry Run', light: { sun: 0xFFF6E6, sunI: 1.05, sky: 0xF0F4FF, ground: 0x8A7A5A, hemiI: 0.58, cloud: 0.18, grade: [1.04, 1.0, 0.95], sat: 1.05 }, traffic: { on: 2, with: 1 }, blurb: 'Loose gravel and big jumps', seed: 307, surface: 'gravel', grade: 0.19, hillAmp: 22, jumps: 3,
     plan: [['st', 55], ['sw', 260], ['sb', 2], ['sw', 240], ['sb', 1], ['sw', 180], ['st', 95]],
     colors: { grassA: 0xC9B083, grassB: 0xAE9A6A, rock: 0xA39A8C, dirt: 0xBFA276, road: 0xC4A57A, sky: 0xD3E5EC, round: [0x8A9A4E, 0x7C8C46], pine: [0x4F7A45, 0x5A8450] },
     trees: { density: 0.0014, pine: 0.5 }, rocks: 0.004, bushes: 0.002, village: false },
-  { name: 'Village Descent', traffic: { on: 3, with: 2 }, blurb: 'Hairpins down into the valley town', seed: 401, surface: 'tarmac', grade: 0.16, hillAmp: 15, jumps: 1,
+  { name: 'Village Descent', light: { sun: 0xFFDDB2, sunI: 0.98, sky: 0xDDE8F8, ground: 0x6A7A4A, hemiI: 0.58, cloud: 0.28, grade: [1.06, 0.99, 0.93], sat: 1.12 }, traffic: { on: 3, with: 2 }, blurb: 'Hairpins down into the valley town', seed: 401, surface: 'tarmac', grade: 0.16, hillAmp: 15, jumps: 1,
     plan: [['st', 55], ['sw', 180], ['sb', 3], ['sw', 160], ['sb', 2], ['sw', 140], ['st', 95]],
     colors: { grassA: 0x8CC063, grassB: 0x6CA24C, rock: 0x9C988C, dirt: 0xA88A62, road: 0x4E525A, sky: 0xC6E4F0, round: [0x6DAA4A, 0x83B84E, 0xC8A042, 0x5E9A45], pine: [0x3E7447, 0x4A8250] },
     trees: { density: 0.0036, pine: 0.35 }, rocks: 0.0004, bushes: 0.004, village: true },
-  { name: 'Mountain Loop', traffic: { on: 0, with: 2 }, blurb: 'A summit climb and a bridge over the track', type: 'loop', laps: 3, L: 220, W: 300, seed: 505, surface: 'tarmac', hillAmp: 11, jumps: 1,
+  { name: 'Mountain Loop', light: { sun: 0xFFFFFA, sunI: 1.0, sky: 0xE0F0FF, ground: 0x6B7A5A, hemiI: 0.62, cloud: 0.3, grade: [0.99, 1.0, 1.03], sat: 1.1 }, traffic: { on: 0, with: 2 }, blurb: 'A summit climb and a bridge over the track', type: 'loop', laps: 3, L: 220, W: 300, seed: 505, surface: 'tarmac', hillAmp: 11, jumps: 1,
     colors: { grassA: 0x97C85C, grassB: 0x6FA848, rock: 0xA29E92, dirt: 0xB0916A, road: 0x53575F, sky: 0xB9DEEE, round: [0x5E9C45, 0x74B04E, 0x86B84F], pine: [0x3E7447, 0x4A8250, 0x356A40] },
     trees: { density: 0.0034, pine: 0.55 }, rocks: 0.0012, bushes: 0.004, village: false, alpine: { rock: [18, 34], snow: [34, 42], treeLine: 26 } },
-  { name: 'Mountain Pass', traffic: { on: 0, with: 2 }, blurb: 'Switchbacks, cliff ledges and a tunnel', type: 'pass', laps: 2, seed: 777, surface: 'tarmac', hillAmp: 14, jumps: 1, carve: 38, armco: true,
+  { name: 'Mountain Pass', light: { sun: 0xFFE9D2, sunI: 0.98, sky: 0xD6E6FF, ground: 0x5A6A5A, hemiI: 0.6, cloud: 0.3, grade: [1.0, 1.0, 1.04], sat: 1.08 }, traffic: { on: 0, with: 2 }, blurb: 'Switchbacks, cliff ledges and a tunnel', type: 'pass', laps: 2, seed: 777, surface: 'tarmac', hillAmp: 14, jumps: 1, carve: 38, armco: true,
     colors: { grassA: 0x8FBF5A, grassB: 0x6B9F47, rock: 0x9C978C, dirt: 0xA88B66, road: 0x4F535B, sky: 0xAFD6EA, round: [0x5E9C45, 0x74B04E], pine: [0x2F6A3E, 0x3A7646, 0x285E38, 0x44804C] },
     trees: { density: 0.0045, pine: 0.85 }, rocks: 0.003, bushes: 0.002, village: false, alpine: { rock: [55, 95], snow: [105, 135], treeLine: 80 } }
 ];
@@ -1181,17 +1181,48 @@ function addInstanced(group, geo, mat, items, opts = {}) {
   return out;
 }
 const CUT = { car: { value: new THREE.Vector3() }, dir: { value: new THREE.Vector3(1, 1.3, 1).normalize() }, r: { value: 0 } };
-function withCutaway(mat, solidInside) {
+// world effects shared by the scenery shaders: time for wind and the drifting cloud-shadow texture
+const FX = { time: { value: 0 }, cloud: { value: null }, cloudAmt: { value: 0.3 }, wind: { value: new THREE.Vector2(3.2, 1.6) } };
+function makeCloudTex() {
+  // tileable value noise: a few octaves on wrapping grids
+  const N = 128, data = new Float32Array(N * N), rnd = mulberry32(4242);
+  for (const [G, amp] of [[4, 0.55], [8, 0.28], [16, 0.12], [32, 0.05]]) {
+    const g = new Float32Array(G * G).map(() => rnd());
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const fx = x / N * G, fy = y / N * G, x0 = fx | 0, y0 = fy | 0, u = smoothstep(0, 1, fx - x0), v = smoothstep(0, 1, fy - y0);
+      const at = (i, j) => g[((j % G) * G) + (i % G)];
+      data[y * N + x] += amp * lerp(lerp(at(x0, y0), at(x0 + 1, y0), u), lerp(at(x0, y0 + 1), at(x0 + 1, y0 + 1), u), v);
+    }
+  }
+  const t = canvasTex(N, N, (g2) => { const img = g2.createImageData(N, N); for (let i = 0; i < N * N; i++) { const v = clamp((data[i] - 0.5) * 3.2 + 0.5, 0, 1) * 255; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; } g2.putImageData(img, 0, 0); });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+// opts: cut (see-through window over the player, default on), cloud (drifting cloud shadows), sway (foliage in the wind)
+function withCutaway(mat, solidInside, opts = {}) {
+  const cut = opts.cut !== false, cloud = !!opts.cloud, sway = opts.sway || 0;
   if (solidInside) mat.side = THREE.DoubleSide;
   mat.onBeforeCompile = sh => {
     sh.uniforms.uCutCar = CUT.car; sh.uniforms.uCutDir = CUT.dir; sh.uniforms.uCutR = CUT.r;
-    sh.vertexShader = 'varying vec3 vCutW;\n' + sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
+    sh.uniforms.uTime = FX.time; sh.uniforms.uCloud = FX.cloud; sh.uniforms.uCloudAmt = FX.cloudAmt; sh.uniforms.uWind = FX.wind;
+    let vs = 'varying vec3 vCutW;\nuniform float uTime;\n' + sh.vertexShader;
+    if (sway) vs = vs.replace('#include <begin_vertex>', `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+        vec2 swO = instanceMatrix[3].xz;
+      #else
+        vec2 swO = vec2(0.0);
+      #endif
+      float swH = max(0.0, position.y - 0.8);
+      float swP = uTime * 1.6 + swO.x * 0.11 + swO.y * 0.07;
+      transformed.x += (sin(swP) + 0.35 * sin(swP * 2.3)) * swH * ${(0.035 * sway).toFixed(4)};
+      transformed.z += cos(swP * 0.8) * swH * ${(0.025 * sway).toFixed(4)};`);
+    sh.vertexShader = vs.replace('#include <project_vertex>', `#include <project_vertex>
       vec4 cutP = vec4(transformed, 1.0);
       #ifdef USE_INSTANCING
         cutP = instanceMatrix * cutP;
       #endif
       vCutW = (modelMatrix * cutP).xyz;`);
-    sh.fragmentShader = 'uniform vec3 uCutCar;\nuniform vec3 uCutDir;\nuniform float uCutR;\nvarying vec3 vCutW;\n' + sh.fragmentShader.replace('void main() {', `void main() {
+    let fs = 'uniform vec3 uCutCar;\nuniform vec3 uCutDir;\nuniform float uCutR;\nuniform float uTime;\nuniform sampler2D uCloud;\nuniform float uCloudAmt;\nuniform vec2 uWind;\nvarying vec3 vCutW;\n' + sh.fragmentShader;
+    if (cut) fs = fs.replace('void main() {', `void main() {
       if (uCutR > 0.0) {
         vec3 cv = vCutW - uCutCar; float ct = dot(cv, uCutDir);
         if (ct > 1.5 && vCutW.y > uCutCar.y + 1.4) {
@@ -1200,9 +1231,13 @@ function withCutaway(mat, solidInside) {
           if (cp < uCutR - 0.7 + n * 0.7) discard;
         }
       }`);
-    if (solidInside) sh.fragmentShader = sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n  if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.23, 0.21, 0.19);');
+    if (cloud) fs = fs.replace('#include <fog_fragment>', `float cld = texture2D(uCloud, (vCutW.xz + uWind * uTime) / 260.0).r;
+      gl_FragColor.rgb *= 1.0 - uCloudAmt * smoothstep(0.42, 0.72, cld);
+      #include <fog_fragment>`);
+    if (solidInside) fs = fs.replace('#include <color_fragment>', '#include <color_fragment>\n  if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.23, 0.21, 0.19);');
+    sh.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => solidInside ? 'cutaway-solid' : 'cutaway';
+  mat.customProgramCacheKey = () => 'wfx' + (solidInside ? 's' : '') + (cut ? 'c' : '') + (cloud ? 'k' : '') + sway;
   return mat;
 }
 function canvasTex(w, h, draw) { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d'), w, h); const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return t; }
@@ -1228,13 +1263,13 @@ function chevronTex(right) {
 // ---------- graphics quality ----------
 // Auto scales the render resolution with the frame rate; the fixed levels trade sharpness and shadow detail for speed.
 const QUALITY = {
-  auto: { label: 'Auto', pr: 2, shadow: 1536, dyn: true },
-  high: { label: 'High', pr: 2, shadow: 2048 },
-  medium: { label: 'Medium', pr: 1.25, shadow: 1536 },
-  low: { label: 'Low', pr: 0.85, shadow: 1024 }
+  auto: { label: 'Auto', pr: 2, shadow: 1536, dyn: true, post: true },
+  high: { label: 'High', pr: 2, shadow: 2048, post: true },
+  medium: { label: 'Medium', pr: 1.25, shadow: 1536, post: false },
+  low: { label: 'Low', pr: 0.85, shadow: 1024, post: false }
 };
 const Q_ORDER = ['auto', 'high', 'medium', 'low'];
-let quality = 'auto', dynPR = Math.min(devicePixelRatio || 1, isTouchDevice() ? 1.25 : 1.5), perfAcc = 0, perfN = 0, perfGood = 0, perfCool = 0;
+let autoPost = !isTouchDevice(), quality = 'auto', dynPR = Math.min(devicePixelRatio || 1, isTouchDevice() ? 1.25 : 1.5), perfAcc = 0, perfN = 0, perfGood = 0, perfCool = 0;
 try { const q = localStorage.getItem('downhill-rush-quality'); if (QUALITY[q]) quality = q; } catch (e) { }
 function isTouchDevice() { return matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window; }
 function applyQuality() {
@@ -1257,9 +1292,61 @@ function perfSample(dt) {
   const avg = perfAcc / perfN; perfAcc = 0; perfN = 0;
   if (perfCool > 0) return;
   const maxPR = Math.min(devicePixelRatio || 1, 2);
-  if (avg > 1 / 50 && dynPR > 0.6) { dynPR = Math.max(0.6, dynPR - 0.15); perfGood = 0; perfCool = 1.5; applyQuality(); }
+  if (avg > 1 / 50 && autoPost) { autoPost = false; perfGood = 0; perfCool = 1.5; }      // the screen effect goes first
+  else if (avg > 1 / 50 && dynPR > 0.6) { dynPR = Math.max(0.6, dynPR - 0.15); perfGood = 0; perfCool = 1.5; applyQuality(); }
   else if (avg < 1 / 57) { if (++perfGood >= 3 && dynPR < maxPR) { dynPR = Math.min(maxPR, dynPR + 0.1); perfGood = 0; perfCool = 1.5; applyQuality(); } }
   else perfGood = 0;
+}
+
+// ---------- screen effects: tilt-shift miniature focus, colour grade, vignette ----------
+let post = null; const grade = { rgb: new THREE.Vector3(1, 1, 1), sat: 1.1 };
+function setGrade(Lt) { grade.rgb.set(...Lt.grade); grade.sat = Lt.sat; }
+function postWanted() { const Q = QUALITY[quality]; return Q.post && (!Q.dyn || autoPost); }
+function initPost() {
+  const opts = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat };
+  const gl2 = renderer.capabilities.isWebGL2, rt = gl2 ? new THREE.WebGLMultisampleRenderTarget(4, 4, opts) : new THREE.WebGLRenderTarget(4, 4, opts);
+  if (gl2) rt.samples = 4;
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { tDiffuse: { value: rt.texture }, uRes: { value: new THREE.Vector2(4, 4) }, uGrade: { value: grade.rgb }, uSat: { value: 1.1 }, uBlur: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uRes; uniform vec3 uGrade; uniform float uSat; uniform float uBlur; varying vec2 vUv;
+      void main() {
+        // blur grows away from a horizontal focus band a little below centre, where the car sits
+        float band = smoothstep(0.16, 0.48, abs(vUv.y - 0.44));
+        vec2 px = uBlur * band * 3.2 / uRes;
+        vec3 c = texture2D(tDiffuse, vUv).rgb;
+        if (band > 0.01) {
+          vec3 acc = c;
+          acc += texture2D(tDiffuse, vUv + px * vec2( 1.0,  0.0)).rgb; acc += texture2D(tDiffuse, vUv + px * vec2(-1.0,  0.0)).rgb;
+          acc += texture2D(tDiffuse, vUv + px * vec2( 0.0,  1.0)).rgb; acc += texture2D(tDiffuse, vUv + px * vec2( 0.0, -1.0)).rgb;
+          acc += texture2D(tDiffuse, vUv + px * vec2( 0.7,  0.7)).rgb; acc += texture2D(tDiffuse, vUv + px * vec2(-0.7,  0.7)).rgb;
+          acc += texture2D(tDiffuse, vUv + px * vec2( 0.7, -0.7)).rgb; acc += texture2D(tDiffuse, vUv + px * vec2(-0.7, -0.7)).rgb;
+          acc += texture2D(tDiffuse, vUv + px * vec2( 1.9,  0.5)).rgb; acc += texture2D(tDiffuse, vUv + px * vec2(-1.9, -0.5)).rgb;
+          acc += texture2D(tDiffuse, vUv + px * vec2( 0.5, -1.9)).rgb; acc += texture2D(tDiffuse, vUv + px * vec2(-0.5,  1.9)).rgb;
+          c = acc / 13.0;
+        }
+        c *= uGrade;
+        float l = dot(c, vec3(0.299, 0.587, 0.114));
+        c = mix(vec3(l), c, uSat);
+        c = (c - 0.5) * 1.06 + 0.5;
+        vec2 d = (vUv - vec2(0.5, 0.47)) * vec2(1.0, 1.25);
+        c *= 1.0 - 0.22 * smoothstep(0.18, 0.62, length(d));
+        gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+      }`,
+    depthTest: false, depthWrite: false
+  });
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat); quad.frustumCulled = false;
+  const pscene = new THREE.Scene(); pscene.add(quad);
+  post = { rt, mat, pscene, pcam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), size: new THREE.Vector2() };
+}
+function renderFrame() {
+  if (!postWanted()) { renderer.render(scene, camera); return; }
+  if (!post) initPost();
+  renderer.getDrawingBufferSize(post.size);
+  if (post.rt.width !== post.size.x || post.rt.height !== post.size.y) { post.rt.setSize(post.size.x, post.size.y); post.mat.uniforms.uRes.value.copy(post.size); }
+  post.mat.uniforms.uSat.value = grade.sat; post.mat.uniforms.uBlur.value = renderer.getPixelRatio();
+  renderer.setRenderTarget(post.rt); renderer.render(scene, camera);
+  renderer.setRenderTarget(null); renderer.render(post.pscene, post.pcam);
 }
 
 // ---------- renderer ----------
@@ -1294,6 +1381,7 @@ function initRenderer() {
   sun.shadow.mapSize.set(1536, 1536); const sc = sun.shadow.camera; sc.left = -75; sc.right = 75; sc.top = 75; sc.bottom = -75; sc.near = 1; sc.far = 260;
   sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04; scene.add(sun); scene.add(sun.target);
   addEventListener('resize', () => renderer.setSize(innerWidth, innerHeight));
+  FX.cloud.value = makeCloudTex();
   applyQuality();
   // the cracked-windscreen material only appears mid-race; keep one in the scene so its shader is compiled up front
   const warm = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01), new THREE.MeshLambertMaterial({ map: getCrackTex() })); warm.visible = false; scene.add(warm);
@@ -1351,9 +1439,10 @@ function makeTerrainMesh(terr, tr, stage) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
   const fg = g.toNonIndexed(); g.dispose(); fg.computeVertexNormals();          // per-face normals keep the faceted look with cheap Lambert lighting
-  return chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true), 60, true);
+  return chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true, { cloud: true }), 60, true);
 }
 
+const ROAD_STRIPS = [-HALF + 1.1, -3.7, -2.3, -1.2, 1.2, 2.3, 3.7, HALF - 1.1];
 function makeRoadMesh(tr, stage) {
   const C = stage.colors, N = tr.loopN || tr.N, loop = !!tr.loopN;
   const mainPos = [], mainCol = [], brPos = [], brCol = [];
@@ -1386,9 +1475,19 @@ function makeRoadMesh(tr, stage) {
       if ((s === 0 || s === 6) && tr.bridge[i]) c = concrete; else if ((s === 1 || s === 5) && tr.bridge[i]) c = concrete;
       else if (s === 0 || s === 6) c = skirt; else if (s === 1 || s === 5) c = dirt;
       else if (s === 2 || s === 4) { const kerb = s === 2 ? tr.kerbL[i] : tr.kerbR[i]; c = kerb ? (((i >> 1) & 1) ? red : white) : road; }
+      else if (tr.jump[i]) c = ((i >> 1) & 1) ? yel : blk;
       else {
-        if (tr.jump[i]) c = ((i >> 1) & 1) ? yel : blk;
-        else { tmp.copy(road).multiplyScalar(1 + tr.noise.n2(i * 0.15, 3.3) * 0.08); c = tmp.clone(); }
+        // the driving surface in strips: darker worn wheel tracks in each lane plus the odd repair patch
+        const base = 1 + tr.noise.n2(i * 0.15, 3.3) * 0.08;
+        for (let q = 0; q < ROAD_STRIPS.length - 1; q++) {
+          const pa = ROAD_STRIPS[q], pb = ROAD_STRIPS[q + 1];
+          let k = base * (q === 1 || q === 5 ? 0.9 : q === 3 ? 1.02 : 1);
+          const pn = tr.noise.n2(i * 0.045 + q * 0.7, 9.1 + q * 0.3); if (pn > 0.62) k *= tr.surface === 'tarmac' ? 0.86 : 1.08;
+          tmp.copy(road).multiplyScalar(k);
+          const qa = P(i, pa, tr.H[i] + 0.05), qb = P(i, pb, tr.H[i] + 0.05), qc = P(j, pa, tr.H[j] + 0.05), qd = P(j, pb, tr.H[j] + 0.05);
+          quad(...qa, ...qb, ...qc, ...qd, tmp);
+        }
+        continue;
       }
       // quad corners: a=(i,oa) b=(i,ob) c=(j,oa) d=(j,ob) ; orient so normal faces up
       const a = P(i, oa, yf(i, s)), b = P(i, ob, yf(i, s + 1)), cc = P(j, oa, yf(j, s)), d = P(j, ob, yf(j, s + 1));
@@ -1410,7 +1509,7 @@ function makeRoadMesh(tr, stage) {
     }
   }
   const mk = (P, C, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m; };
-  const mainM = mk(mainPos, mainCol, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
+  const mainM = mk(mainPos, mainCol, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), false, { cut: false, cloud: true })), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
   const bridge = brPos.length ? mk(brPos, brCol, bridgeMat({ vertexColors: true, side: THREE.DoubleSide })) : null;
   if (bridge) bridge.castShadow = true;
   return { main, bridge };
@@ -1660,12 +1759,12 @@ function addScenery(group, tr, terr, stage) {
     if (rnd() < 0.4) continue; const lat = side * (WALL + 2 + rnd() * 3), x = tr.xs[i] + tr.rx[i] * lat, z = tr.zs[i] + tr.rz[i] * lat;
     addFan(x, z, Math.atan2(tr.xs[i] - x, tr.zs[i] - z));
   }
-  const L = () => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }));
+  const L = (o) => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, Object.assign({ cloud: true }, o));
   addInstanced(group, flat(new THREE.CylinderGeometry(0.2, 0.28, 1.6, 5).translate(0, 0.8, 0)), L(), trunks, { cast: true });
-  addInstanced(group, merge([flat(new THREE.ConeGeometry(1.7, 3.2, 7).translate(0, 2.6, 0)), flat(new THREE.ConeGeometry(1.2, 2.4, 7).translate(0, 4.2, 0))]), L(), pines, { cast: true });
-  addInstanced(group, flat(new THREE.IcosahedronGeometry(1.7, 0).translate(0, 3.1, 0)), L(), rounds, { cast: true });
+  addInstanced(group, merge([flat(new THREE.ConeGeometry(1.7, 3.2, 7).translate(0, 2.6, 0)), flat(new THREE.ConeGeometry(1.2, 2.4, 7).translate(0, 4.2, 0))]), L({ sway: 1 }), pines, { cast: true });
+  addInstanced(group, flat(new THREE.IcosahedronGeometry(1.7, 0).translate(0, 3.1, 0)), L({ sway: 1 }), rounds, { cast: true });
   addInstanced(group, flat(new THREE.DodecahedronGeometry(1, 0)), L(), rocks, { cast: true, receive: true });
-  addInstanced(group, flat(new THREE.IcosahedronGeometry(1, 0)), L(), bushes, { cast: true });
+  addInstanced(group, flat(new THREE.IcosahedronGeometry(1, 0)), L({ sway: 2.2 }), bushes, { cast: true });
   addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), L(), houseW, { cast: true, receive: true });
   addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), L(), houseR, { cast: true });
   const fans = addInstanced(group, flat(new THREE.BoxGeometry(0.62, 1.2, 0.42)), L(), bodies, { cast: true })
@@ -1757,6 +1856,7 @@ function buildWorld(idx) {
   const stage = STAGES[idx], tr = TRACKS[idx], terr = buildTerrain(tr, stage);
   const group = new THREE.Group(); scene.add(group);
   scene.background.set(stage.colors.sky); scene.fog.color.set(stage.colors.sky);
+  const Lt = stage.light; sun.color.setHex(Lt.sun); sun.intensity = Lt.sunI; hemi.color.setHex(Lt.sky); hemi.groundColor.setHex(Lt.ground); hemi.intensity = Lt.hemiI; FX.cloudAmt.value = Lt.cloud; setGrade(Lt);
   group.add(makeTerrainMesh(terr, tr, stage));
   bridgeMats = [];
   const roads = makeRoadMesh(tr, stage); group.add(roads.main); if (roads.bridge) group.add(roads.bridge);
@@ -1775,9 +1875,25 @@ function buildWorld(idx) {
 function numberTex(n, bg, fg) {
   return canvasTex(128, 128, (g, w, h) => { g.fillStyle = bg; g.beginPath(); g.arc(64, 64, 60, 0, TAU); g.fill(); g.fillStyle = fg; g.font = '64px Bungee, Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 70); });
 }
+// glossy materials for car bodies: cheap Phong highlights read as paint and glass at this camera distance
+function paintMat(c) { return new THREE.MeshPhongMaterial({ color: c, specular: 0x404040, shininess: 60 }); }
+function glassMat() { return new THREE.MeshPhongMaterial({ color: 0x253450, specular: 0xA8B4D0, shininess: 110 }); }
+let glowTex = null, blobTex = null;
+function radialTex(stops) { return canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); stops.forEach(([o, c]) => gr.addColorStop(o, c)); g.fillStyle = gr; g.fillRect(0, 0, w, h); }); }
+// brake-light glow sprites and a soft contact shadow under the body
+function addCarExtras(v, tails, hw, hl) {
+  if (!glowTex) glowTex = radialTex([[0, 'rgba(255,255,255,1)'], [0.35, 'rgba(255,255,255,0.45)'], [1, 'rgba(255,255,255,0)']]);
+  if (!blobTex) blobTex = radialTex([[0, 'rgba(255,255,255,1)'], [0.55, 'rgba(255,255,255,0.7)'], [1, 'rgba(255,255,255,0)']]);
+  v.tailM = tails[0].material; v.glow = tails.map(t => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xFF3A22, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+    sp.scale.set(1.3, 1.3, 1); sp.position.copy(t.position); sp.position.z -= 0.12; sp.visible = false; t.parent.add(sp); return sp;
+  });
+  const blob = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2.7, hl * 2.5).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: blobTex, color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
+  blob.position.y = 0.05; blob.renderOrder = 1; v.root.add(blob); v.blob = blob;
+}
 function makeCarMesh(def) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
-  const L = c => new THREE.MeshLambertMaterial({ color: c });
+  const L = c => c === def.color || c === def.accent ? paintMat(c) : c === 0x253450 ? glassMat() : new THREE.MeshLambertMaterial({ color: c });
   const dentable = [];
   const box = (w, h, d, c, x, y, z, seg) => {
     const g = flat(seg ? new THREE.BoxGeometry(w, h, d, seg[0], seg[1], seg[2]) : new THREE.BoxGeometry(w, h, d));
@@ -1809,8 +1925,9 @@ function makeCarMesh(def) {
     wheels.push(spin); if (sz > 0) steer.push(pivot);
   }
   scene.add(root);
-  return { root, body, wheels, steer, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
+  const v = { root, body, wheels, steer, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
     dentable, bumper, wing, struts, heads, tails, cabin, glassM: cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
+  addCarExtras(v, tails, CAR_HW, CAR_HL); return v;
 }
 // ---------- car damage visuals ----------
 let crackTex = null;
@@ -1891,7 +2008,7 @@ const TRAFFIC_SHAPES = {
 };
 function makeTrafficMesh(kind) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
-  const paint = new THREE.MeshLambertMaterial({ color: 0xffffff }), dentable = [];
+  const paint = paintMat(0xffffff), dentable = [];
   const box = (w, h, d, c, x, y, z, seg, mat) => {
     const g = flat(seg ? new THREE.BoxGeometry(w, h, d, seg[0], seg[1], seg[2]) : new THREE.BoxGeometry(w, h, d));
     const m = new THREE.Mesh(g, mat || new THREE.MeshLambertMaterial({ color: c })); m.position.set(x, y, z); m.castShadow = true; body.add(m);
@@ -1899,23 +2016,23 @@ function makeTrafficMesh(kind) {
     return m;
   };
   const dent = m => { m.userData.orig = Float32Array.from(m.geometry.attributes.position.array); dentable.push(m); return m; };
-  const glass = 0x253450, trim = 0x8E939B, dark = 0x2B2F3A;
+  const glass = 0x253450, trim = 0x8E939B, dark = 0x2B2F3A, glassM = glassMat();
   let cabin, bumper, wing, hz, hy;
   if (kind === 'hatch') {
     dent(box(1.9, 0.3, 3.3, dark, 0, 0.45, 0, [3, 1, 5]));
     dent(box(1.84, 0.55, 3.2, 0, 0, 0.86, 0, [3, 2, 5], paint));
-    cabin = dent(box(1.6, 0.52, 1.9, glass, 0, 1.39, -0.3, [2, 1, 2]));
+    cabin = dent(box(1.6, 0.52, 1.9, glass, 0, 1.39, -0.3, [2, 1, 2], glassM));
     dent(box(1.64, 0.08, 1.7, 0, 0, 1.68, -0.35, [2, 1, 2], paint));
     bumper = box(1.9, 0.24, 0.2, trim, 0, 0.55, 1.68); wing = box(1.9, 0.24, 0.2, trim, 0, 0.55, -1.68); hz = 1.61; hy = 0.95;
   } else if (kind === 'van') {
     dent(box(2.06, 0.3, 4.4, dark, 0, 0.5, 0, [3, 1, 6]));
     dent(box(2.04, 1.55, 4.3, 0, 0, 1.4, -0.05, [3, 3, 6], paint));
-    cabin = box(1.9, 0.6, 0.08, glass, 0, 1.72, 2.12); box(2.06, 0.46, 0.9, glass, 0, 1.72, 1.5);
+    cabin = box(1.9, 0.6, 0.08, glass, 0, 1.72, 2.12, null, glassM); box(2.06, 0.46, 0.9, glass, 0, 1.72, 1.5, null, glassM);
     bumper = box(2.08, 0.26, 0.2, trim, 0, 0.6, 2.24); wing = box(2.08, 0.26, 0.2, trim, 0, 0.6, -2.24); hz = 2.13; hy = 1.0;
   } else {
     dent(box(2.3, 0.35, 6.1, dark, 0, 0.62, 0, [3, 1, 8]));
     dent(box(2.3, 1.5, 1.7, 0, 0, 1.55, 2.2, [3, 2, 2], paint));
-    cabin = box(2.1, 0.62, 0.08, glass, 0, 1.9, 3.06);
+    cabin = box(2.1, 0.62, 0.08, glass, 0, 1.9, 3.06, null, glassM);
     dent(box(2.42, 2.2, 4.3, 0xE8E6DF, 0, 2.0, -0.85, [3, 3, 6]));
     bumper = box(2.36, 0.3, 0.22, trim, 0, 0.62, 3.12); wing = box(2.36, 0.3, 0.22, trim, 0, 0.62, -3.1); hz = 3.07; hy = 1.05;
   }
@@ -1929,8 +2046,10 @@ function makeTrafficMesh(kind) {
     wheels.push(spin); if (sz > 1.5 || (kind === 'hatch' && sz > 0)) steer.push(pivot);
   }
   root.visible = false; scene.add(root);
-  return { root, body, wheels, steer, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0, wr: S.wr, paint, owner: null,
+  const K = TRAFFIC_KINDS.find(k => k.kind === kind);
+  const v = { root, body, wheels, steer, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0, wr: S.wr, paint, owner: null,
     dentable, bumper, wing, struts: [], heads, tails, cabin, glassM: cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
+  addCarExtras(v, tails, K.hw, K.hl); return v;
 }
 const trafficPool = { hatch: [], van: [], truck: [] };
 function syncTrafficVis() {
@@ -1965,6 +2084,9 @@ function drawCar(c, v, dt, now) {
   c.squash *= Math.exp(-dt * 7); v.body.scale.y = 1 - c.squash * 0.22; v.body.position.y = -c.squash * 0.08;
   v.spin += c.vf * dt / (v.wr || 0.42); v.wheels.forEach(w => w.rotation.x = v.spin);
   v.steer.forEach(p => p.rotation.y = -c.inp.steer * 0.42);
+  const braking = !v.parts.tails && ((c.inp.brake > 0.05 && c.vf > 0.5) || (c.inp.handbrake > 0 && Math.abs(c.vf) > 3));
+  if (v.braking !== braking) { v.braking = braking; v.tailM.color.setHex(braking ? 0xFF4A36 : 0x8E2016); v.glow.forEach(g => g.visible = braking); }
+  v.blob.visible = c.onGround;
   v.root.visible = c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
   if (state === 'racing') effectsForCar(c, v, dt);
 }
@@ -2448,7 +2570,7 @@ function frame(t) {
   requestAnimationFrame(frame);
   const now = t / 1000, rawDt = Math.max(0, now - lastT), dt = Math.min(0.1, rawDt); lastT = now;
   if (!world || !race) return;
-  renderAlpha = 1;
+  renderAlpha = 1; FX.time.value = now;
   perfSample(rawDt);
   if (state === 'countdown') {
     readInput(dt); countdown -= dt;
@@ -2476,7 +2598,7 @@ function frame(t) {
   if (race && state !== 'menu') { const P = race.player; CUT.car.value.set(P.x, P.y, P.z); CUT.r.value += ((state === 'paused' ? CUT.r.value : 8.5) - CUT.r.value) * Math.min(1, dt * 6); } else CUT.r.value = 0;
   if (state !== 'paused') { const fxDt = slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); updateParticles(fxDt); updateFans(now); updateCamera(dt, false); }
   updateHUD(dt);
-  if (!contextLost) renderer.render(scene, camera);
+  if (!contextLost) renderFrame();
 }
 
 function wireUI() {
