@@ -644,14 +644,58 @@ function project(tr, x, z, hint, back, fwd) {
   return { i, t, s: i + t, lat: dx * tr.rx[i] + dz * tr.rz[i], dist: Math.sqrt(best) };
 }
 function roadH(tr, s) { let i = Math.floor(s); if (i < 0) i = 0; if (i > tr.N - 2) i = tr.N - 2; const t = clamp(s - i, 0, 1); return tr.H[i] + (tr.H[i + 1] - tr.H[i]) * t; }
+// ---------- breakable barriers ----------
+// Barriers are split into pieces of BAR_P track samples per side. Tyres (1), fences (2) and hay (3) take
+// damage and give way; armco (fence on armco stages) bends and only breaks on huge hits. Bridge rails (4)
+// and tunnel walls (5) never break. Loop tracks key pieces by the base sample so damage carries over laps.
+const BAR_P = 3, BAR_HP = { 1: 15, 2: 9, 3: 6 }, ARMCO_HP = 30, ARMCO_BEND = 1.3;
+function makeBarriers(tr, armco) {
+  const NB = tr.loopN || tr.N, NP = Math.ceil(NB / BAR_P) + 1;
+  const F = () => new Float32Array(NP), U = () => new Uint8Array(NP);
+  return { NB, NP, armco: !!armco, dmg: [F(), F()], broken: [U(), U()], bend: [F(), F()], changes: [] };
+}
+function barPiece(W, i) { const b = W.tr.loopN ? i % W.tr.loopN : i; return (b / BAR_P) | 0; }
+function wallAt(W, i, side) {
+  const tr = W.tr, w = side > 0 ? tr.wallR[i] : tr.wallL[i];
+  if (!w || w > 3 || !W.bar) return w;
+  return W.bar.broken[side > 0 ? 1 : 0][barPiece(W, i)] ? 0 : w;
+}
+function wallPos(W, i, side) { return W.bar ? WALL + W.bar.bend[side > 0 ? 1 : 0][barPiece(W, i)] : WALL; }
+// A car hit the barrier at sample i with into-wall speed vn. Returns true when it gave way.
+function hitBarrier(W, i, side, vn, alongSgn, c) {
+  const tr = W.tr, B = W.bar, w = wallAt(W, i, side);
+  if (!B || !w || w > 3) return false;
+  const s = side > 0 ? 1 : 0, p = barPiece(W, i), wrapP = q => tr.loopN ? (q % (B.NP - 1) + (B.NP - 1)) % (B.NP - 1) : clamp(q, 0, B.NP - 1);
+  if (w === 2 && B.armco) {
+    if (vn > 5) {
+      const add = (vn - 5) * 0.06;
+      for (const [q, f] of [[p, 1], [p - 1, 0.5], [p + 1, 0.5]]) { const qq = wrapP(q); B.bend[s][qq] = Math.min(ARMCO_BEND, B.bend[s][qq] + add * f); }
+      B.changes.push({ t: 'bend', s, p });
+    }
+    if (vn < 20) return false;
+    B.dmg[s][p] += vn;
+    if (B.dmg[s][p] < ARMCO_HP) return false;
+  } else {
+    B.dmg[s][p] += Math.max(0, vn - 2.5);
+    if (B.dmg[s][p] < BAR_HP[w]) return false;
+  }
+  const out = [p]; if (vn > 8) out.push(wrapP(p + alongSgn));
+  for (const q of out) {
+    if (B.broken[s][q]) continue;
+    B.broken[s][q] = 1;
+    B.changes.push({ t: 'break', s, p: q, w, vx: c.vx, vz: c.vz, v: vn });
+  }
+  return true;
+}
+
 function groundAt(W, s, lat, x, z) {
   const al = Math.abs(lat), tr = W.tr;
   const bi = s < 0 ? 0 : s > tr.N - 2 ? tr.N - 2 : s | 0;
   if (tr.bridge[bi] || tr.tunnel[bi]) return al < WALL + 1.2 ? roadH(tr, s) : W.terr.at(x, z);
-  if (al >= HALF + 2 && !((lat >= 0 ? tr.wallR[bi] : tr.wallL[bi]) && al < WALL + 1.2)) return W.terr.at(x, z);
+  const side = lat >= 0 ? 1 : -1, hasWall = wallAt(W, bi, side) && al < wallPos(W, bi, side) + 1.2;
+  if (al >= HALF + 2 && !hasWall) return W.terr.at(x, z);
   const rh = roadH(W.tr, s);
-  if (al <= HALF) return rh;
-  if ((lat >= 0 ? tr.wallR[bi] : tr.wallL[bi]) && al < WALL + 1.2) return rh;
+  if (al <= HALF || hasWall) return rh;
   return lerp(rh, W.terr.at(x, z), (al - HALF) / 2);
 }
 function computeGrad(c, W) {
@@ -693,8 +737,8 @@ function stepCar(c, dt, W, racing) {
   const tr = W.tr, inp = c.inp;
   if (c.ghost > 0) c.ghost -= dt;
   let pr = c.pr;
-  const al0 = Math.abs(pr.lat), wallSide0 = pr.lat >= 0 ? tr.wallR[pr.i] : tr.wallL[pr.i];
-  c.surface = (al0 < HALF + 0.4 || (wallSide0 && al0 < WALL + 1.2)) ? W.surf : 'grass';
+  const al0 = Math.abs(pr.lat), side0 = pr.lat >= 0 ? 1 : -1, wallSide0 = wallAt(W, pr.i, side0);
+  c.surface = (al0 < HALF + 0.4 || (wallSide0 && al0 < wallPos(W, pr.i, side0) + 1.2)) ? W.surf : 'grass';
   const S = SURF[c.surface];
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), rx = -fz, rz = fx;
   let vf = c.vx * fx + c.vz * fz, vr = c.vx * rx + c.vz * rz;
@@ -727,7 +771,16 @@ function stepCar(c, dt, W, racing) {
   if (c.spin) { c.yaw += c.spin * dt; c.spin *= Math.exp(-(c.onGround ? 4.5 : 0.8) * dt); if (Math.abs(c.spin) < 0.02) c.spin = 0; }
   if (c.boost > 0) c.boost -= dt;
   c.x += c.vx * dt; c.z += c.vz * dt;
-  pr = project(tr, c.x, c.z, pr.i, 6, 10); c.pr = pr;
+  pr = project(tr, c.x, c.z, pr.i, 6, 10);
+  if (pr.dist > HALF + 12) {
+    // off the road (e.g. through a broken barrier): pick the road back up further along if it's closer
+    const q = tr.nearest(c.x, c.z);
+    if (q && q.d < pr.dist - 3) {
+      const cand = tr.loopN ? pr.i + ((q.i - pr.i % tr.loopN) % tr.loopN + tr.loopN) % tr.loopN : q.i;
+      if (cand > pr.i && cand - pr.i < 700 && cand < tr.N - 3 && Math.abs(tr.H[cand] - c.y) < 10) pr = project(tr, c.x, c.z, cand, 6, 10);
+    }
+  }
+  c.pr = pr;
   const g = groundAt(W, pr.s, pr.lat, c.x, c.z);
   if (c.onGround) {
     const want = Math.min(14, (g - c.y) / dt);
@@ -750,15 +803,21 @@ function stepCar(c, dt, W, racing) {
   // barriers
   c.wallContact = false; c.scrape = null;
   const lat = pr.lat, al = Math.abs(lat), side = lat >= 0 ? 1 : -1;
-  const w = side > 0 ? tr.wallR[pr.i] : tr.wallL[pr.i];
+  const w = wallAt(W, pr.i, side), WL = wallPos(W, pr.i, side);
   if (w && c.y < roadH(tr, pr.s) + 1.4) {
     const nx = tr.rx[pr.i] * side, nz = tr.rz[pr.i] * side;
     const cf = Math.sin(c.yaw), cz = Math.cos(c.yaw);
     const ext = CAR_HW * Math.abs(-cz * nx + cf * nz) + CAR_HL * Math.abs(cf * nx + cz * nz);   // half-size of the car along the wall normal
     let push = 0, dir = 0;
-    if (al <= WALL && al > WALL - ext) { push = al - (WALL - ext); dir = -1; }
-    else if (al > WALL && al < WALL + ext) { push = WALL + ext - al; dir = 1; }
-    if (dir) {
+    if (al <= WL && al > WL - ext) { push = al - (WL - ext); dir = -1; }
+    else if (al > WL && al < WL + ext) { push = WL + ext - al; dir = 1; }
+    const vn0 = dir ? (c.vx * nx + c.vz * nz) * (-dir) : 0;
+    if (dir && vn0 > 3 && hitBarrier(W, pr.i, side, vn0, Math.sign(c.vx * tr.tx[pr.i] + c.vz * tr.tz[pr.i]) || 1, c)) {
+      // smashed through: no bounce, just lose some speed
+      const kk = w === 1 ? 0.82 : w === 3 ? 0.9 : W.bar.armco ? 0.72 : 0.87;
+      c.vx *= kk; c.vz *= kk; c.spin += (Math.random() - 0.5) * Math.min(vn0, 20) * 0.03;
+      c.events.push({ t: 'smash', v: vn0, w, x: c.x - nx * dir * ext, z: c.z - nz * dir * ext, y: c.y, nx: -nx * dir, nz: -nz * dir });
+    } else if (dir) {
       c.x += nx * push * dir; c.z += nz * push * dir; c.wallContact = true;
       const vn = (c.vx * nx + c.vz * nz) * (-dir);
       if (vn > 0) {
@@ -787,8 +846,8 @@ function stepCar(c, dt, W, racing) {
   }
   c.progress = pr.s;
   if (c.onGround && al < HALF - 0.5) c.lastGood = pr.i;
-  if (pr.dist > 24) c.offT += dt; else c.offT = 0;
   const spd = Math.hypot(c.vx, c.vz);
+  if (pr.dist > 24) c.offT += dt * (spd > 8 && pr.dist < 70 ? 0.3 : 1); else c.offT = 0;   // a moving car gets time to cut across to the next bit of road
   if (racing && !c.finished && spd < 1.2) c.stuckT += dt; else c.stuckT = 0;
   if (c.isPlayer && racing && !c.finished) {
     const along = c.vx * tr.tx[pr.i] + c.vz * tr.tz[pr.i];
@@ -856,6 +915,7 @@ function aiControl(c, W, cars, dt) {
 
 function createRace(W, defs) {
   const grid = [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
+  W.bar = makeBarriers(W.tr, W.armco);
   const cars = defs.map((d, k) => makeCar(W, grid[k][0], grid[k][1], d));
   return { cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false };
 }
@@ -1217,34 +1277,166 @@ function addBridge(group, tr, terr) {
   addInstanced(group, box(), bridgeMat({ color: 0x9A9DA5 }), pillars, { cast: true, receive: true });
 }
 
+let barVis = null;
 function addBarriers(group, tr, terr, stage) {
-  const tyres = [], posts = [], rails = [], bales = [], NB = tr.loopN || tr.N;
+  const tyres = [], posts = [], rails = [], bales = [], NB = tr.loopN || tr.N, armco = !!(stage && stage.armco);
   for (let i = 0; i < NB; i++) for (const side of [-1, 1]) {
     const w = side < 0 ? tr.wallL[i] : tr.wallR[i]; if (!w) continue;
     const x = tr.xs[i] + tr.rx[i] * side * WALL, z = tr.zs[i] + tr.rz[i] * side * WALL, y = terr.at(x, z);
+    const base = { s: side > 0 ? 1 : 0, p: (i / BAR_P) | 0, nx: tr.rx[i] * side, nz: tr.rz[i] * side, tx: tr.tx[i], tz: tr.tz[i] };
     if (w === 1) {
       const stripe = ((i / 3) | 0) % 5 === 0;
-      tyres.push({ x, y: y + 0.21, z, color: 0x232323 });
-      tyres.push({ x, y: y + 0.63, z, color: stripe ? (((i / 15) | 0) % 2 ? 0xE0402F : 0xF4F4F0) : 0x2A2A2A });
+      tyres.push({ ...base, kind: 'tyre', x, y: y + 0.21, z, color: 0x232323 });
+      tyres.push({ ...base, kind: 'tyre', x, y: y + 0.63, z, color: stripe ? (((i / 15) | 0) % 2 ? 0xE0402F : 0xF4F4F0) : 0x2A2A2A });
     } else if (w === 2 && i % 3 === 0) {
-      const armco = stage && stage.armco;
-      posts.push({ x, y: y + 0.6, z, color: armco ? 0x8D939C : 0x8A5E3B });
+      posts.push({ ...base, kind: 'post', x, y: y + 0.6, z, color: armco ? 0x8D939C : 0x8A5E3B, dims: [0.2, 1.2, 0.2] });
       const j = tr.loopN ? (i + 3) % NB : i + 3;
       if (j < tr.N && (side < 0 ? tr.wallL[j] : tr.wallR[j]) === 2) {
         const x2 = tr.xs[j] + tr.rx[j] * side * WALL, z2 = tr.zs[j] + tr.rz[j] * side * WALL, y2 = terr.at(x2, z2);
         const len = Math.hypot(x2 - x, z2 - z), ry = Math.atan2(x2 - x, z2 - z), rxa = -Math.atan2(y2 - y, len);
-        if (armco) rails.push({ x: (x + x2) / 2, y: (y + y2) / 2 + 0.75, z: (z + z2) / 2, ry, rx: rxa, sx: 1.4, sy: 2.6, sz: len, color: 0xCDD2D9 });
-        else for (const hh of [0.55, 1.0]) rails.push({ x: (x + x2) / 2, y: (y + y2) / 2 + hh, z: (z + z2) / 2, ry, rx: rxa, sz: len, color: 0xC4935E });
+        const rail = { ...base, kind: 'rail', a: [x, y, z], b: [x2, y2, z2], pa: base.p, pb: (j / BAR_P) | 0, x: (x + x2) / 2, z: (z + z2) / 2, ry, rx: rxa, sz: len };
+        if (armco) rails.push({ ...rail, hh: 0.75, y: (y + y2) / 2 + 0.75, sx: 1.4, sy: 2.6, color: 0xCDD2D9, dims: [0.14, 0.364, len] });
+        else for (const hh of [0.55, 1.0]) rails.push({ ...rail, hh, y: (y + y2) / 2 + hh, color: 0xC4935E, dims: [0.1, 0.14, len] });
       }
     } else if (w === 3 && i % 2 === 0) {
-      bales.push({ x, y: y + 0.45, z, ry: tr.th[i], color: 0xE2C265 });
+      bales.push({ ...base, kind: 'bale', x, y: y + 0.45, z, ry: tr.th[i], color: 0xE2C265, dims: [1.0, 0.9, 1.5] });
     }
   }
-  addInstanced(group, flat(new THREE.CylinderGeometry(0.55, 0.55, 0.42, 10)), new THREE.MeshLambertMaterial({ color: 0xffffff }), tyres, { cast: true });
-  addInstanced(group, flat(new THREE.BoxGeometry(0.2, 1.2, 0.2)), new THREE.MeshLambertMaterial({ color: 0xffffff }), posts, { cast: true });
-  addInstanced(group, flat(new THREE.BoxGeometry(0.1, 0.14, 1)), new THREE.MeshLambertMaterial({ color: 0xffffff }), rails, { cast: true });
-  addInstanced(group, flat(new THREE.BoxGeometry(1.0, 0.9, 1.5)), new THREE.MeshLambertMaterial({ color: 0xffffff }), bales, { cast: true });
+  const map = new Map(), all = [];
+  const reg = chunks => {
+    for (const { mesh, list } of chunks) {
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      list.forEach((it, j) => { it.mesh = mesh; it.j = j; it.on = true; all.push(it); const k = it.s * 1e6 + it.p; let a = map.get(k); if (!a) map.set(k, a = []); a.push(it); });
+    }
+  };
+  reg(addInstanced(group, flat(new THREE.CylinderGeometry(0.55, 0.55, 0.42, 10)), new THREE.MeshLambertMaterial({ color: 0xffffff }), tyres, { cast: true }));
+  reg(addInstanced(group, flat(new THREE.BoxGeometry(0.2, 1.2, 0.2)), new THREE.MeshLambertMaterial({ color: 0xffffff }), posts, { cast: true }));
+  reg(addInstanced(group, flat(new THREE.BoxGeometry(0.1, 0.14, 1)), new THREE.MeshLambertMaterial({ color: 0xffffff }), rails, { cast: true }));
+  reg(addInstanced(group, flat(new THREE.BoxGeometry(1.0, 0.9, 1.5)), new THREE.MeshLambertMaterial({ color: 0xffffff }), bales, { cast: true }));
+  barVis = { map, all, armco, NPc: Math.ceil(NB / BAR_P), loop: !!tr.loopN };
 }
+// ---------- barrier damage visuals ----------
+const _up = new THREE.Vector3(0, 1, 0), _ax = new THREE.Vector3(), _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _mr = new THREE.Matrix4();
+function barWrap(q) { const n = barVis.NPc; return barVis.loop ? (q % n + n) % n : q; }
+function barItems(s, q) { return barVis.map.get(s * 1e6 + barWrap(q)) || []; }
+// the item's current transform (bent armco leans out, rails follow their posts)
+function barItemXform(it) {
+  const B = world.W.bar, bend = q => B ? B.bend[it.s][barWrap(q)] : 0;
+  if (it.kind === 'rail') {
+    const lean = (bb, hh) => { const th = bb * 0.55; return [bb * 0.5 + hh * Math.sin(th), hh * Math.cos(th)]; };
+    const [oa, ha] = lean(bend(it.pa), it.hh), [ob, hb] = lean(bend(it.pb), it.hh);
+    const ax = it.a[0] + it.nx * oa, ay = it.a[1] + ha, az = it.a[2] + it.nz * oa, bx = it.b[0] + it.nx * ob, by = it.b[1] + hb, bz = it.b[2] + it.nz * ob;
+    const len = Math.hypot(bx - ax, bz - az);
+    _e.set(-Math.atan2(by - ay, len), Math.atan2(bx - ax, bz - az), 0); _q.setFromEuler(_e);
+    _p.set((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2); _s.set(it.sx ?? 1, it.sy ?? 1, len);
+  } else if (it.kind === 'post') {
+    const bb = bend(it.p), th = bb * 0.55, off = bb * 0.5 + 0.6 * Math.sin(th);
+    _ax.set(it.tx, 0, it.tz); _q.setFromAxisAngle(_ax, (it.s ? 1 : -1) * th);
+    _p.set(it.x + it.nx * off, it.y - 0.6 + 0.6 * Math.cos(th), it.z + it.nz * off); _s.set(1, 1, 1);
+  } else {
+    _e.set(it.rx || 0, it.ry || 0, 0); _q.setFromEuler(_e); _p.set(it.x, it.y, it.z); _s.set(it.sx ?? 1, it.sy ?? 1, it.sz ?? 1);
+  }
+}
+function barRefresh(it) {
+  if (it.on) { barItemXform(it); _m.compose(_p, _q, _s); } else _m.makeScale(0, 0, 0);
+  it.mesh.setMatrixAt(it.j, _m); it.mesh.instanceMatrix.needsUpdate = true;
+}
+function resetBarrierVis() { if (!barVis) return; for (const it of barVis.all) { it.on = true; barRefresh(it); } }
+const PROP_SND = { tyre: 'rubber', post: 'wood', rail: 'wood', bale: 'hay' };
+function knockOff(it, ch) {
+  barItemXform(it); it.on = false; barRefresh(it);
+  const pos = _p.clone(), quat = _q.clone(), k = clamp(ch.v / 20, 0.3, 1.4), r = () => Math.random() - 0.5;
+  const out = 2 + Math.random() * 5 * k, carK = 0.35 + Math.random() * 0.5;
+  const vx = ch.vx * carK + it.nx * out + r() * 4, vz = ch.vz * carK + it.nz * out + r() * 4, vy = (2 + Math.random() * 6) * k;
+  const snd = barVis.armco && it.kind !== 'tyre' && it.kind !== 'bale' ? 'metal' : PROP_SND[it.kind];
+  if (it.kind === 'tyre') spawnProp('tyre', pos, quat, null, it.color, vx, vy, vz, 10 * k, snd);
+  else spawnProp('box', pos, quat, it.dims, it.color, vx, vy, vz, (it.kind === 'rail' ? 6 : 12) * k, snd);
+}
+function postStands(it) {
+  const B = world.W.bar, prev = barWrap(it.p - 1);
+  return !B.broken[it.s][barWrap(it.p)] || (!B.broken[it.s][prev] && barItems(it.s, prev).some(x => x.kind === 'rail'));
+}
+function applyBarrierChanges() {
+  const B = world.W.bar; if (!B || !B.changes.length) return;
+  for (const ch of B.changes) {
+    if (!barVis) continue;
+    if (ch.t === 'break') {
+      for (const it of barItems(ch.s, ch.p)) if (it.on && it.kind !== 'post') knockOff(it, ch);
+      for (const q of [ch.p, ch.p + 1]) for (const it of barItems(ch.s, q)) if (it.on && it.kind === 'post' && !postStands(it)) knockOff(it, ch);
+    }
+    for (let q = ch.p - 2; q <= ch.p + 2; q++) for (const it of barItems(ch.s, q)) if (it.on) barRefresh(it);
+  }
+  B.changes.length = 0;
+}
+
+// ---------- loose props (knocked-off tyres, posts, rails, bales) ----------
+const PROPS = { box: { max: 220 }, tyre: { max: 140 } };
+function initProps() {
+  for (const [k, geo] of [['box', flat(new THREE.BoxGeometry(1, 1, 1))], ['tyre', flat(new THREE.CylinderGeometry(0.55, 0.55, 0.42, 12))]]) {
+    const P = PROPS[k];
+    P.mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: 0xffffff }), P.max);
+    P.mesh.frustumCulled = false; P.mesh.castShadow = true; P.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    P.data = []; P.head = 0; _m.makeScale(0, 0, 0);
+    for (let i = 0; i < P.max; i++) { P.data.push({ on: false, q: new THREE.Quaternion(), w: new THREE.Vector3() }); P.mesh.setMatrixAt(i, _m); _c.set(0xffffff); P.mesh.setColorAt(i, _c); }
+    scene.add(P.mesh);
+  }
+}
+function spawnProp(kind, pos, quat, dims, color, vx, vy, vz, spin, snd) {
+  const P = PROPS[kind], i = P.head; P.head = (P.head + 1) % P.max; const d = P.data[i];
+  const [sx, sy, sz] = dims || [1, 1, 1];
+  Object.assign(d, { on: true, rest: false, x: pos.x, y: pos.y, z: pos.z, vx, vy, vz, sx, sy, sz, cool: 0.25, snd, hint: race ? race.player.pr.i : 0,
+    hx: kind === 'tyre' ? 0.55 : sx / 2, hy: kind === 'tyre' ? 0.21 : sy / 2, hz: kind === 'tyre' ? 0.55 : sz / 2 });
+  d.r = Math.max(d.hx, d.hy, d.hz); d.q.copy(quat); d.w.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(spin);
+  _c.set(color); P.mesh.setColorAt(i, _c); P.mesh.instanceColor.needsUpdate = true;
+}
+function clearProps() {
+  _m.makeScale(0, 0, 0);
+  for (const P of Object.values(PROPS)) { if (!P.mesh) continue; P.data.forEach((d, i) => { d.on = false; P.mesh.setMatrixAt(i, _m); }); P.mesh.instanceMatrix.needsUpdate = true; }
+}
+let propSndT = 0;
+function updateProps(dt) {
+  if (!world || !world.W.bar) return;
+  const W = world.W, tr = W.tr, cars = race ? race.cars : [];
+  propSndT -= dt;
+  for (const P of Object.values(PROPS)) {
+    let dirty = false;
+    for (let i = 0; i < P.max; i++) {
+      const d = P.data[i]; if (!d.on) continue;
+      if (d.cool > 0) d.cool -= dt;
+      else for (const c of cars) {          // cars bat loose props out of the way
+        const dx = d.x - c.x, dz = d.z - c.z, rr = 1.7 + d.r, sp = Math.hypot(c.vx, c.vz);
+        if (sp < 2 || dx * dx + dz * dz > rr * rr || Math.abs(d.y - c.y - 0.6) > 1.8) continue;
+        const dl = Math.hypot(dx, dz) || 1, k = 0.9 + Math.random() * 0.4;
+        d.vx = c.vx * k + dx / dl * (2 + sp * 0.2); d.vz = c.vz * k + dz / dl * (2 + sp * 0.2); d.vy = 2 + sp * (0.08 + Math.random() * 0.12);
+        d.w.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(3 + sp * 0.3);
+        d.rest = false; d.cool = 0.35; c.vx *= 0.99; c.vz *= 0.99;
+        if (c.isPlayer && sp > 6 && propSndT <= 0) { AudioSys.crash(d.snd, clamp(sp / 45, 0.08, 0.45)); propSndT = 0.08; }
+        break;
+      }
+      if (d.rest) continue;
+      dirty = true;
+      d.vy -= 30 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.z += d.vz * dt;
+      const wl = d.w.length(); if (wl > 1e-4) { _ax.copy(d.w).divideScalar(wl); _qa.setFromAxisAngle(_ax, wl * dt); d.q.premultiply(_qa); }
+      const pr = project(tr, d.x, d.z, d.hint, 30, 30); d.hint = pr.i;
+      _mr.makeRotationFromQuaternion(d.q); const e = _mr.elements;
+      const hy = Math.abs(e[1]) * d.hx + Math.abs(e[5]) * d.hy + Math.abs(e[9]) * d.hz;
+      const gy = groundAt(W, pr.s, pr.lat, d.x, d.z) + hy;
+      if (d.y <= gy) {
+        d.y = gy; if (d.vy < 0) d.vy = -d.vy * 0.3;
+        const f = Math.exp(-dt * 4); d.vx *= f; d.vz *= f; d.w.multiplyScalar(Math.exp(-dt * 5));
+        // settle flat: turn the most upright local axis toward straight up
+        let kb = 0; for (let a = 1; a < 3; a++) if (Math.abs(e[a * 4 + 1]) > Math.abs(e[kb * 4 + 1])) kb = a;
+        const sg = e[kb * 4 + 1] >= 0 ? 1 : -1; _ax.set(e[kb * 4] * sg, e[kb * 4 + 1] * sg, e[kb * 4 + 2] * sg);
+        _qa.setFromUnitVectors(_ax, _up); _qb.identity().slerp(_qa, Math.min(1, dt * 6)); d.q.premultiply(_qb);
+        if (Math.abs(d.vy) < 1.5 && Math.hypot(d.vx, d.vz) < 0.6 && d.w.length() < 0.6) { d.rest = true; d.vy = 0; }
+      }
+      if (d.y < -2000) { d.on = false; _m.makeScale(0, 0, 0); P.mesh.setMatrixAt(i, _m); continue; }
+      _p.set(d.x, d.y, d.z); _s.set(d.sx, d.sy, d.sz); _m.compose(_p, d.q, _s); P.mesh.setMatrixAt(i, _m);
+    }
+    if (dirty) P.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+function newRace() { const r = createRace(world.W, CAR_DEFS); clearProps(); resetBarrierVis(); return r; }
 
 function addScenery(group, tr, terr, stage) {
   const rnd = mulberry32(stage.seed * 7 + 3), C = stage.colors;
@@ -1410,7 +1602,7 @@ function buildWorld(idx) {
   addBridge(group, tr, terr);
   addTunnel(group, tr, terr);
   addSigns(group, tr, terr);
-  world = { idx, stage, tr, terr, group, W: { tr, terr, surf: stage.surface } };
+  world = { idx, stage, tr, terr, group, W: { tr, terr, surf: stage.surface, armco: !!stage.armco } };
   clearSkids();
 }
 
@@ -1824,6 +2016,7 @@ function handleEvents() {
       const near = Math.hypot(c.x - race.player.x, c.z - race.player.z) < 40;
       switch (e.t) {
         case 'hit': impactFx(c, e, c.isPlayer, near); break;
+        case 'smash': impactFx(c, e, c.isPlayer, near); if (c.isPlayer && e.v > 9 && calloutTimer <= 0) callout('Smash!'); break;
         case 'bump': carCrashFx(e, e.a.isPlayer || e.b.isPlayer, near); break;
         case 'land': if (e.air > 0.25) dustRing(c, 12, c.surface === 'tarmac' ? 0xDADADA : 0xD8C29A); if (c.isPlayer && e.air > 0.2) AudioSys.thud(e.imp / 22); break;
         case 'bigair': if (c.isPlayer) { callout('Big air!'); AudioSys.whoosh(); } break;
@@ -1865,14 +2058,14 @@ function selectStage(i, cb) {
   $('loading-text').textContent = 'Building ' + STAGES[i].name; $('loading').hidden = false;
   clearTimeout(pendingBuild);
   pendingBuild = setTimeout(() => {
-    try { buildWorld(i); } catch (e) { console.error(e); window.__bootError(e.message + ' (while building ' + STAGES[i].name + ')'); return; } race = createRace(world.W, CAR_DEFS); attractS = 0; updateCamera(0, true);
+    try { buildWorld(i); } catch (e) { console.error(e); window.__bootError(e.message + ' (while building ' + STAGES[i].name + ')'); return; } race = newRace(); attractS = 0; updateCamera(0, true);
     $('loading').hidden = true; cb && cb();
   }, 40);
 }
 function startRace(idx) {
   AudioSys.init();
   selectStage(idx, () => {
-    race = createRace(world.W, CAR_DEFS); clearSkids(); clearDebris(); shake = 0; slowmo = 0;
+    race = newRace(); clearSkids(); clearDebris(); shake = 0; slowmo = 0;
     state = 'countdown'; countdown = 3.2; lastBeep = 4; goTimer = 0; resultsShown = false; newBest = false; standingsKey = '';
     $('menu').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
     $('stage-name').textContent = `Stage ${idx + 1}: ${STAGES[idx].name}`;
@@ -1883,7 +2076,7 @@ function startRace(idx) {
 }
 function toMenu() {
   state = 'menu'; $('hud').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('touch').hidden = true; $('menu').hidden = false; $('countdown').hidden = true;
-  race = createRace(world.W, CAR_DEFS); clearSkids(); AudioSys.update(null, 'off'); updateCamera(0, true); $('race-btn').focus();
+  race = newRace(); clearSkids(); AudioSys.update(null, 'off'); updateCamera(0, true); $('race-btn').focus();
 }
 function togglePause() {
   if (state === 'countdown' || state === 'racing') { if (resultsShown) return; pausedFrom = state; state = 'paused'; $('pause').hidden = false; AudioSys.update(null, 'off'); $('resume-btn').focus(); }
@@ -1930,7 +2123,7 @@ function frame(t) {
     accumulator += simDt; let n = 0;
     while (accumulator >= STEP && n < 12) { raceStep(race, STEP, world.W); accumulator -= STEP; n++; }
     if (n === 12) accumulator = 0;
-    handleEvents();
+    handleEvents(); applyBarrierChanges();
     AudioSys.update(race.player, 'drive');
     if (goTimer > 0) { goTimer -= dt; if (goTimer <= 0) $('countdown').hidden = true; }
     if (race.player.finished && !resultsShown && race.time - race.player.finishTime > 1.6) showResults();
@@ -1940,7 +2133,7 @@ function frame(t) {
   if (hintTimer > 0 && state !== 'paused') { hintTimer -= dt; $('hint').hidden = hintTimer <= 0; } else if (hintTimer <= 0) $('hint').hidden = true;
   updateBridgeFade(dt);
   if (race && state !== 'menu') { const P = race.player; CUT.car.value.set(P.x, P.y, P.z); CUT.r.value += ((state === 'paused' ? CUT.r.value : 8.5) - CUT.r.value) * Math.min(1, dt * 6); } else CUT.r.value = 0;
-  if (state !== 'paused') { const fxDt = slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); updateParticles(fxDt); updateFans(now); updateCamera(dt, false); }
+  if (state !== 'paused') { const fxDt = slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); updateParticles(fxDt); updateFans(now); updateCamera(dt, false); }
   updateHUD(dt);
   if (!contextLost) renderer.render(scene, camera);
 }
@@ -1965,7 +2158,7 @@ async function boot() {
   try {
     wireUI(); buildStageList();
     $('race-btn').textContent = 'Race ' + STAGES[0].name;
-    step = 'starting WebGL'; initRenderer(); initParticles(); initSkids(); initDebris(); initRings();
+    step = 'starting WebGL'; initRenderer(); initParticles(); initSkids(); initDebris(); initRings(); initProps();
     step = 'loading fonts';
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
     step = 'building the cars'; initCars();
