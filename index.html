@@ -234,26 +234,26 @@ const SURF = {
 };
 
 const STAGES = [
-  { name: 'Summit Meadow', blurb: 'Open pasture and fast sweepers', seed: 101, surface: 'tarmac', grade: 0.16, hillAmp: 16, jumps: 2,
+  { name: 'Summit Meadow', traffic: { on: 3, with: 1 }, blurb: 'Open pasture and fast sweepers', seed: 101, surface: 'tarmac', grade: 0.16, hillAmp: 16, jumps: 2,
     plan: [['st', 55], ['sw', 230], ['sb', 1], ['sw', 200], ['sb', 2], ['sw', 160], ['st', 95]],
     colors: { grassA: 0x9BCB5F, grassB: 0x74AE4A, rock: 0xA7A499, dirt: 0xB5946A, road: 0x575B64, sky: 0xBFE3F2, round: [0x5E9C45, 0x74B04E, 0x4F8A3F, 0x86B84F], pine: [0x3E7447, 0x4A8250, 0x356A40] },
     trees: { density: 0.0032, pine: 0.3 }, rocks: 0.0005, bushes: 0.004, village: false },
-  { name: 'Pine Forest', blurb: 'Tight switchbacks under the trees', seed: 211, surface: 'tarmac', grade: 0.17, hillAmp: 20, jumps: 2,
+  { name: 'Pine Forest', traffic: { on: 3, with: 1 }, blurb: 'Tight switchbacks under the trees', seed: 211, surface: 'tarmac', grade: 0.17, hillAmp: 20, jumps: 2,
     plan: [['st', 55], ['sw', 200], ['sb', 2], ['sw', 180], ['sb', 2], ['sw', 150], ['st', 95]],
     colors: { grassA: 0x6E9E4B, grassB: 0x4F8040, rock: 0x8E8C84, dirt: 0x8F7352, road: 0x50545C, sky: 0xB3D8E3, round: [0x4F8A3F, 0x5E9A45], pine: [0x2F6A3E, 0x3A7646, 0x285E38, 0x44804C] },
     trees: { density: 0.0085, pine: 0.92 }, rocks: 0.0008, bushes: 0.003, village: false },
-  { name: 'Quarry Run', blurb: 'Loose gravel and big jumps', seed: 307, surface: 'gravel', grade: 0.19, hillAmp: 22, jumps: 3,
+  { name: 'Quarry Run', traffic: { on: 2, with: 1 }, blurb: 'Loose gravel and big jumps', seed: 307, surface: 'gravel', grade: 0.19, hillAmp: 22, jumps: 3,
     plan: [['st', 55], ['sw', 260], ['sb', 2], ['sw', 240], ['sb', 1], ['sw', 180], ['st', 95]],
     colors: { grassA: 0xC9B083, grassB: 0xAE9A6A, rock: 0xA39A8C, dirt: 0xBFA276, road: 0xC4A57A, sky: 0xD3E5EC, round: [0x8A9A4E, 0x7C8C46], pine: [0x4F7A45, 0x5A8450] },
     trees: { density: 0.0014, pine: 0.5 }, rocks: 0.004, bushes: 0.002, village: false },
-  { name: 'Village Descent', blurb: 'Hairpins down into the valley town', seed: 401, surface: 'tarmac', grade: 0.16, hillAmp: 15, jumps: 1,
+  { name: 'Village Descent', traffic: { on: 3, with: 2 }, blurb: 'Hairpins down into the valley town', seed: 401, surface: 'tarmac', grade: 0.16, hillAmp: 15, jumps: 1,
     plan: [['st', 55], ['sw', 180], ['sb', 3], ['sw', 160], ['sb', 2], ['sw', 140], ['st', 95]],
     colors: { grassA: 0x8CC063, grassB: 0x6CA24C, rock: 0x9C988C, dirt: 0xA88A62, road: 0x4E525A, sky: 0xC6E4F0, round: [0x6DAA4A, 0x83B84E, 0xC8A042, 0x5E9A45], pine: [0x3E7447, 0x4A8250] },
     trees: { density: 0.0036, pine: 0.35 }, rocks: 0.0004, bushes: 0.004, village: true },
-  { name: 'Mountain Loop', blurb: 'A summit climb and a bridge over the track', type: 'loop', laps: 3, L: 220, W: 300, seed: 505, surface: 'tarmac', hillAmp: 11, jumps: 1,
+  { name: 'Mountain Loop', traffic: { on: 0, with: 2 }, blurb: 'A summit climb and a bridge over the track', type: 'loop', laps: 3, L: 220, W: 300, seed: 505, surface: 'tarmac', hillAmp: 11, jumps: 1,
     colors: { grassA: 0x97C85C, grassB: 0x6FA848, rock: 0xA29E92, dirt: 0xB0916A, road: 0x53575F, sky: 0xB9DEEE, round: [0x5E9C45, 0x74B04E, 0x86B84F], pine: [0x3E7447, 0x4A8250, 0x356A40] },
     trees: { density: 0.0034, pine: 0.55 }, rocks: 0.0012, bushes: 0.004, village: false, alpine: { rock: [18, 34], snow: [34, 42], treeLine: 26 } },
-  { name: 'Mountain Pass', blurb: 'Switchbacks, cliff ledges and a tunnel', type: 'pass', laps: 2, seed: 777, surface: 'tarmac', hillAmp: 14, jumps: 1, carve: 38, armco: true,
+  { name: 'Mountain Pass', traffic: { on: 0, with: 2 }, blurb: 'Switchbacks, cliff ledges and a tunnel', type: 'pass', laps: 2, seed: 777, surface: 'tarmac', hillAmp: 14, jumps: 1, carve: 38, armco: true,
     colors: { grassA: 0x8FBF5A, grassB: 0x6B9F47, rock: 0x9C978C, dirt: 0xA88B66, road: 0x4F535B, sky: 0xAFD6EA, round: [0x5E9C45, 0x74B04E], pine: [0x2F6A3E, 0x3A7646, 0x285E38, 0x44804C] },
     trees: { density: 0.0045, pine: 0.85 }, rocks: 0.003, bushes: 0.002, village: false, alpine: { rock: [55, 95], snow: [105, 135], treeLine: 80 } }
 ];
@@ -717,6 +717,7 @@ function makeCar(W, idx, lat, def) {
     onGround: true, airT: 0, boost: 0, driftT: 0, lastGood: idx, progress: idx, finished: false, finishTime: 0, place: 0,
     offT: 0, ghost: 0, stuckT: 0, wrongT: 0, lap: 0, spin: 0, mod: 1, vf: 0, vr: 0, gx: 0, gz: 0, squash: 0, surface: tr.surface, respawns: 0,
     inp: { throttle: 0, brake: 0, steer: 0, handbrake: 0 }, events: [], dmg: { f: 0, b: 0, l: 0, r: 0 }, wreckT: 0, wrecks: 0,
+    hw: def.hw || CAR_HW, hl: def.hl || CAR_HL, im: def.im || 1, traffic: !!def.traffic,
     isPlayer: !!def.player, name: def.name, def,
     ai: { lane: lat, cur: lat, skill: def.player ? 0.85 : def.skill, wT: 1 + Math.random() * 2, flick: def.player ? 0 : (def.flick || 0), driftK: def.driftK || 1 / 45, drift: { until: -1, t: 0, cool: 0, dir: 0 } }
   };
@@ -734,15 +735,16 @@ function damageCar(c, x, z, v, k, ix, iz) {
   if (c.wreckT > 0 || c.ghost > 0) return;
   const amt = Math.max(0, v - 4) * DMG_K * k; if (amt <= 0) return;
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), dx = x - c.x, dz = z - c.z;
-  const fwd = (dx * fx + dz * fz) / CAR_HL, rgt = (dx * -fz + dz * fx) / CAR_HW;
+  const fwd = (dx * fx + dz * fz) / c.hl, rgt = (dx * -fz + dz * fx) / c.hw;
   const zone = Math.abs(fwd) > Math.abs(rgt) ? (fwd > 0 ? 'f' : 'b') : (rgt > 0 ? 'r' : 'l');
   c.dmg[zone] = Math.min(1, c.dmg[zone] + amt);
   c.events.push({ t: 'dent', zone, amt, x, z, y: c.y, ix, iz, v });
-  if (c.dmg[zone] >= 1) { c.wreckT = WRECK_T; c.wrecks++; c.boost = 0; c.driftT = 0; c.events.push({ t: 'wreck' }); }
+  if (c.dmg[zone] >= 1) { c.wreckT = c.traffic ? 1e9 : WRECK_T; c.wrecks++; c.boost = 0; c.driftT = 0; c.events.push({ t: 'wreck' }); }
 }
 function carWear(c) { const d = c.dmg; return (d.f + d.b + d.l + d.r) / 4; }
 
 function respawn(c, W) {
+  if (c.traffic) { c.dead = true; return; }
   const tr = W.tr; const i = clamp(c.lastGood - 10, 4, tr.N - 10);
   const lat = c.isPlayer ? 0 : clamp(c.ai.lane, -3, 3);
   c.x = tr.xs[i] + tr.rx[i] * lat; c.z = tr.zs[i] + tr.rz[i] * lat; c.y = tr.H[i]; c.yaw = tr.th[i]; c.strandT = 0;
@@ -831,7 +833,7 @@ function stepCar(c, dt, W, racing) {
   if (w && c.y < roadH(tr, pr.s) + 1.4) {
     const nx = tr.rx[pr.i] * side, nz = tr.rz[pr.i] * side;
     const cf = Math.sin(c.yaw), cz = Math.cos(c.yaw);
-    const ext = CAR_HW * Math.abs(-cz * nx + cf * nz) + CAR_HL * Math.abs(cf * nx + cz * nz);   // half-size of the car along the wall normal
+    const ext = c.hw * Math.abs(-cz * nx + cf * nz) + c.hl * Math.abs(cf * nx + cz * nz);   // half-size of the car along the wall normal
     let push = 0, dir = 0;
     if (al <= WL && al > WL - ext) { push = al - (WL - ext); dir = -1; }
     else if (al > WL && al < WL + ext) { push = WL + ext - al; dir = 1; }
@@ -885,7 +887,7 @@ function stepCar(c, dt, W, racing) {
     c.yaw = Math.atan2(tr.tx[i] * fwd, tr.tz[i] * fwd); c.vx = tr.tx[i] * fwd * 6; c.vz = tr.tz[i] * fwd * 6; c.wallStuck = 0;
   }
   if (c.offT > 0.6) respawn(c, W);
-  else if (!c.isPlayer && c.stuckT > 2.5) respawn(c, W);
+  else if (!c.isPlayer && !c.traffic && c.stuckT > 2.5) respawn(c, W);
   else if (!c.isPlayer && racing && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road
   if (pr.i >= tr.N - 6) { c.vx *= 1 - 4 * dt; c.vz *= 1 - 4 * dt; }
 }
@@ -896,14 +898,21 @@ function aiControl(c, W, cars, dt) {
   ai.wT -= dt; if (ai.wT <= 0) { ai.wT = 2 + Math.random() * 3; ai.lane = (Math.random() * 2 - 1) * 2.2; }
   const ka = tr.ks[Math.min(N - 1, i + Math.round(8 + sp * 0.45))];
   let lane = ai.lane * 0.6 - clamp(ka * 95, -1, 1) * 3.3;
-  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); let minLane = -HALF;
   for (const o of cars) {
-    if (o === c || o.ghost > 0 || Math.abs(o.y - c.y) > 3) continue;
+    if (o === c || o.ghost > 0) continue;
+    const oa = o.vx * tr.tx[o.pr.i] + o.vz * tr.tz[o.pr.i];
+    if (oa < -2) {                                        // oncoming: measured along the road so it's seen round corners and down the hill
+      const ds = o.pr.s - pr.s, closing = sp - oa;
+      if (ds > -2 && ds < 14 + closing * 1.2 && Math.abs((o.y - tr.H[o.pr.i]) - (c.y - tr.H[i])) < 3) minLane = Math.max(minLane, o.pr.lat + 3.9);
+      continue;
+    }
+    if (Math.abs(o.y - c.y) > 3) continue;
     const dx = o.x - c.x, dz = o.z - c.z, ahead = dx * fx + dz * fz;
-    if (ahead > 0 && ahead < 11) { const dl = o.pr.lat - pr.lat; if (Math.abs(dl) < 2.8) lane += (dl >= 0 ? -1 : 1) * 3.2; }
+    if (ahead > 0 && ahead < 11 + Math.max(0, (c.vx - o.vx) * fx + (c.vz - o.vz) * fz) * 0.9) { const dl = o.pr.lat - pr.lat; if (Math.abs(dl) < 2.8) lane += (dl >= 0 ? -1 : 1) * 3.2; }
   }
-  lane = clamp(lane, -HALF + 1.7, HALF - 1.7);
-  ai.cur += (lane - ai.cur) * Math.min(1, dt * 1.8);
+  lane = clamp(Math.max(lane, minLane), -HALF + 1.7, HALF - 1.2);
+  ai.cur += (lane - ai.cur) * Math.min(1, dt * (minLane > -HALF ? 3 : 1.8));
   const L = Math.min(N - 1, i + Math.round(7 + sp * 0.38));
   const tx = tr.xs[L] + tr.rx[L] * ai.cur, tz = tr.zs[L] + tr.rz[L] * ai.cur;
   const dx = tx - c.x, dz = tz - c.z; const lx = -dx * fz + dz * fx, lz = dx * fx + dz * fz;
@@ -916,6 +925,7 @@ function aiControl(c, W, cars, dt) {
   else { c.inp.brake = 0; c.inp.throttle = sp < target - 1.5 ? 1 : 0.35; }
   c.inp.handbrake = 0;
   const dr = ai.drift;
+  if (minLane > -HALF) { dr.until = -1; if (Math.abs(tr.ks[i]) > 1 / 60) { c.inp.throttle = Math.min(c.inp.throttle, 0.3); } return; }   // no drifting into oncoming traffic
   if (!ai.flick) return;
   dr.cool -= dt;
   if (dr.until < 0 && dr.cool <= 0 && sp > 15 && c.onGround && c.surface !== 'grass' && Math.abs(pr.lat) < HALF - 1) {
@@ -939,16 +949,84 @@ function aiControl(c, W, cars, dt) {
   }
 }
 
+// ---------- traffic ----------
+// Civilian vehicles: oncoming (driving back up the hill in the other lane) and slow same-way cars to pass.
+// They spawn ahead of the player and are removed once well behind; wrecked ones stay where they stopped.
+const TRAFFIC_KINDS = [
+  { kind: 'hatch', hw: 0.95, hl: 1.7, im: 1, w: 5 },
+  { kind: 'van', hw: 1.05, hl: 2.25, im: 0.65, w: 3 },
+  { kind: 'truck', hw: 1.2, hl: 3.1, im: 0.4, w: 2 }
+];
+const TRAFFIC_COLORS = [0xF2F2EE, 0x9CB4C9, 0x5E6B7A, 0xC9B79C, 0x7A9A6E, 0xB84A4A, 0x3E5C8C, 0xE6D38A];
+const LANE = 2.9;
+function trafficControl(c, W, cars, dt) {
+  const tr = W.tr, N = tr.N, i = c.pr.i, dir = c.tdir, sp = Math.hypot(c.vx, c.vz), fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+  let lane = dir * LANE, target = Math.min(c.cruise, tr.vmax[i] * 0.55);
+  if (c.hornT > 0) c.hornT -= dt;
+  const ca = (c.vx * tr.tx[i] + c.vz * tr.tz[i]) * dir;
+  for (const o of cars) {
+    if (o === c || o.ghost > 0) continue;
+    const ahead = (o.pr.s - c.pr.s) * dir; if (ahead <= 0 || ahead > 70) continue;
+    if (Math.abs((o.y - tr.H[o.pr.i]) - (c.y - tr.H[i])) > 3) continue;
+    const oa = (o.vx * tr.tx[o.pr.i] + o.vz * tr.tz[o.pr.i]) * dir, closing = ca - oa, dl = o.pr.lat - c.pr.lat;
+    if (Math.hypot(o.vx, o.vz) < 3) {                      // stopped or wrecked: steer round it
+      if (ahead < 28 && Math.abs(dl) < 3.2) { lane = clamp(o.pr.lat + (o.pr.lat * dir > 0 ? -3.6 : 3.6) * dir, -HALF + 1.4, HALF - 1.4); target = Math.min(target, 7); }
+    } else if (oa > 0) { if (ahead < 14 + sp * 0.6 && Math.abs(dl) < 2.8) target = Math.min(target, Math.max(0, oa - 2)); }
+    else if (ahead < 16 + closing * 1.3) {                 // something coming at us: tuck in to the edge and slow down
+      lane = dir * (HALF - 1.3); target = Math.min(target, 7);
+      if (!o.traffic && closing > 18 && ahead < 40 && !(c.hornT > 0)) { c.hornT = 3; c.events.push({ t: 'horn' }); }
+    }
+  }
+  c.laneCur += (lane - c.laneCur) * Math.min(1, dt * (Math.abs(lane) > LANE + 0.5 ? 3.5 : 1.5));
+  const L = clamp(i + dir * Math.round(6 + sp * 0.35), 0, N - 1);
+  const tx = tr.xs[L] + tr.rx[L] * c.laneCur, tz = tr.zs[L] + tr.rz[L] * c.laneCur;
+  const dx = tx - c.x, dz = tz - c.z, lx = -dx * fz + dz * fx, lz = dx * fx + dz * fz;
+  c.inp.steer = clamp(Math.atan2(lx, lz) * 2.4, -1, 1); c.inp.handbrake = 0;
+  const vf = c.vx * fx + c.vz * fz;
+  if (vf > target + 1) { c.inp.throttle = 0; c.inp.brake = clamp((vf - target) / 6, 0.2, 1); }
+  else { c.inp.brake = 0; c.inp.throttle = vf < target - 1 ? 0.8 : 0.3; }
+}
+function spawnTraffic(R, W, idx, dir, rnd) {
+  const tr = W.tr; let tot = 0; for (const k of TRAFFIC_KINDS) tot += k.w;
+  let pick = rnd() * tot, K = TRAFFIC_KINDS[0]; for (const k of TRAFFIC_KINDS) { pick -= k.w; if (pick <= 0) { K = k; break; } }
+  if (dir > 0 && K.kind === 'truck') K = TRAFFIC_KINDS[1];      // same-way traffic is cars and vans, trucks come the other way
+  const def = { name: K.kind, traffic: true, kind: K.kind, accent: 0x8E939B, hw: K.hw, hl: K.hl, im: K.im, color: TRAFFIC_COLORS[(rnd() * TRAFFIC_COLORS.length) | 0], skill: 0.5 };
+  const c = makeCar(W, idx, dir * LANE, def);
+  if (dir < 0) c.yaw = wrapAngle(c.yaw + Math.PI);
+  c.tdir = dir; c.cruise = dir < 0 ? 15 + rnd() * 5 : 10 + rnd() * 4; c.laneCur = dir * LANE; c.hornT = 0;
+  const sp = Math.min(c.cruise, tr.vmax[idx] * 0.55); c.vx = Math.sin(c.yaw) * sp; c.vz = Math.cos(c.yaw) * sp;
+  R.traffic.push(c);
+}
+function updateTraffic(R, W, dt) {
+  const cfg = W.traffic, tr = W.tr, P = R.player;
+  if (!cfg || R.phase !== 'racing') return;
+  const pi = P.pr.i;
+  for (const c of R.traffic) if (c.pr.i < pi - 110 || c.pr.i > pi + 480) c.dead = true;
+  R.traffic = R.traffic.filter(c => !c.dead);
+  R.trafT -= dt; if (R.trafT > 0) return; R.trafT = 0.5;
+  const rnd = R.rnd, lastI = tr.finishIdx - 30;
+  for (const dir of [-1, 1]) {
+    const want = dir < 0 ? cfg.on : cfg.with; if (!want) continue;
+    if (R.traffic.filter(c => c.tdir === dir).length >= want) continue;
+    const idx = Math.round(pi + (dir < 0 ? 200 + rnd() * 160 : 130 + rnd() * 160));
+    if (idx > lastI || idx < tr.startIdx + 40) continue;
+    let ok = !tr.jump[idx] && !tr.tunnel[idx] && !tr.bridge[idx];
+    for (const o of R.traffic) if (Math.abs(o.pr.i - idx) < 60) ok = false;
+    for (const o of R.cars) if (Math.abs(o.pr.i - idx) < 50) ok = false;
+    if (ok) spawnTraffic(R, W, idx, dir, rnd);
+  }
+}
+
 function createRace(W, defs) {
   const grid = [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
   W.bar = makeBarriers(W.tr, W.armco);
   const cars = defs.map((d, k) => makeCar(W, grid[k][0], grid[k][1], d));
-  return { cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false };
+  return { cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false, traffic: [], trafT: 1.5, rnd: mulberry32((W.tr.seed || 1) * 31 + 7) };
 }
 
 function carCorners(c) {
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), rx = -fz, rz = fx, out = [];
-  for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) out.push([c.x + fx * CAR_HL * a + rx * CAR_HW * b, c.z + fz * CAR_HL * a + rz * CAR_HW * b]);
+  for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) out.push([c.x + fx * c.hl * a + rx * c.hw * b, c.z + fz * c.hl * a + rz * c.hw * b]);
   return out;
 }
 function carSAT(A, B) {
@@ -956,8 +1034,8 @@ function carSAT(A, B) {
   const ar = [-af[1], af[0]], br = [-bf[1], bf[0]], dx = B.x - A.x, dz = B.z - A.z;
   let best = Infinity, nx = 0, nz = 0;
   for (const n of [af, ar, bf, br]) {
-    const ra = CAR_HW * Math.abs(ar[0] * n[0] + ar[1] * n[1]) + CAR_HL * Math.abs(af[0] * n[0] + af[1] * n[1]);
-    const rb = CAR_HW * Math.abs(br[0] * n[0] + br[1] * n[1]) + CAR_HL * Math.abs(bf[0] * n[0] + bf[1] * n[1]);
+    const ra = A.hw * Math.abs(ar[0] * n[0] + ar[1] * n[1]) + A.hl * Math.abs(af[0] * n[0] + af[1] * n[1]);
+    const rb = B.hw * Math.abs(br[0] * n[0] + br[1] * n[1]) + B.hl * Math.abs(bf[0] * n[0] + bf[1] * n[1]);
     const d = dx * n[0] + dz * n[1], o = ra + rb - Math.abs(d);
     if (o <= 0) return null;
     if (o < best) { best = o; const s = d < 0 ? -1 : 1; nx = n[0] * s; nz = n[1] * s; }
@@ -969,13 +1047,13 @@ function collideCars(cars) {
   for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) {
     const A = cars[a], B = cars[b];
     if (A.ghost > 0 || B.ghost > 0 || Math.abs(A.y - B.y) > 2) continue;
-    if ((B.x - A.x) ** 2 + (B.z - A.z) ** 2 > 20) continue;                         // cheap distance reject
+    if ((B.x - A.x) ** 2 + (B.z - A.z) ** 2 > (A.hl + B.hl + 1) ** 2) continue;                         // cheap distance reject
     let hit = null, impulseDone = false;
     for (let it = 0; it < 3; it++) {
       const h = carSAT(A, B); if (!h) break; hit = h;
       // push apart along the contact normal (split evenly)
-      const push = h.depth * 0.5 + 0.005;
-      A.x -= h.nx * push; A.z -= h.nz * push; B.x += h.nx * push; B.z += h.nz * push;
+      const push = h.depth + 0.01, sa = A.im / (A.im + B.im), sb = 1 - sa;   // heavier vehicles get shoved less
+      A.x -= h.nx * push * sa; A.z -= h.nz * push * sa; B.x += h.nx * push * sb; B.z += h.nz * push * sb;
       if (impulseDone) continue;
       // contact point: deepest corner of each car into the other, averaged
       // contact point: average of the touching corners (a flat bumper-to-bumper hit uses the middle of the face)
@@ -993,13 +1071,13 @@ function collideCars(cars) {
       const vrel = (vBx - vAx) * h.nx + (vBz - vAz) * h.nz;
       if (vrel < 0) {
         const cA = rAz * h.nx - rAx * h.nz, cB = rBz * h.nx - rBx * h.nz, e = 0.25;
-        const j = -(1 + e) * vrel / (2 + cA * cA / CAR_I + cB * cB / CAR_I);
-        A.vx -= j * h.nx; A.vz -= j * h.nz; B.vx += j * h.nx; B.vz += j * h.nz;
-        A.spin = clamp(A.spin - j * cA / CAR_I, -4, 4); B.spin = clamp(B.spin + j * cB / CAR_I, -4, 4);
+        const j = -(1 + e) * vrel / (A.im + B.im + cA * cA * A.im / CAR_I + cB * cB * B.im / CAR_I);
+        A.vx -= j * h.nx * A.im; A.vz -= j * h.nz * A.im; B.vx += j * h.nx * B.im; B.vz += j * h.nz * B.im;
+        A.spin = clamp(A.spin - j * cA * A.im / CAR_I, -4, 4); B.spin = clamp(B.spin + j * cB * B.im / CAR_I, -4, 4);
         // a little rubbing friction along the contact so cars don't skate past each other
         const tx = -h.nz, tz = h.nx, vt = (vBx - vAx) * tx + (vBz - vAz) * tz, f = clamp(vt, -j * 0.3, j * 0.3) * 0.5;
-        A.vx += tx * f; A.vz += tz * f; B.vx -= tx * f; B.vz -= tz * f;
-        if (-vrel > 4) { A.events.push({ t: 'bump', v: -vrel, x: px, z: pz, y: (A.y + B.y) / 2, a: A, b: B, nx: h.nx, nz: h.nz }); damageCar(A, px, pz, -vrel, 0.8, -h.nx, -h.nz); damageCar(B, px, pz, -vrel, 0.8, h.nx, h.nz); }
+        A.vx += tx * f * A.im; A.vz += tz * f * A.im; B.vx -= tx * f * B.im; B.vz -= tz * f * B.im;
+        if (-vrel > 4) { A.events.push({ t: 'bump', v: -vrel, x: px, z: pz, y: (A.y + B.y) / 2, a: A, b: B, nx: h.nx, nz: h.nz }); damageCar(A, px, pz, -vrel, 1.6 / (1 + Math.sqrt(B.im)), -h.nx, -h.nz); damageCar(B, px, pz, -vrel, 1.6 / (1 + Math.sqrt(A.im)), h.nx, h.nz); }
       }
       impulseDone = true;
     }
@@ -1009,9 +1087,9 @@ function collideCars(cars) {
 function raceStep(R, dt, W) {
   const racing = R.phase === 'racing';
   if (racing) R.time += dt;
-  const P = R.player, tr = W.tr;
+  const P = R.player, tr = W.tr, all = R.traffic.length ? R.cars.concat(R.traffic) : R.cars;
   for (const c of R.cars) {
-    if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, R.cars, dt);
+    if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt);
     if (c.finished && c.progress > tr.finishIdx + 18) { c.inp.throttle = 0; c.inp.brake = 0.7; c.inp.handbrake = 0; }
     c.mod = c.isPlayer ? 1 : clamp(1 + (P.progress - c.progress) / 1400, 0.93, 1.08);
     stepCar(c, dt, W, racing);
@@ -1029,7 +1107,9 @@ function raceStep(R, dt, W) {
     }
     if (racing && !c.finished && c.progress >= tr.finishIdx) { c.finished = true; c.finishTime = R.time; c.place = ++R.nFinished; c.events.push({ t: 'finish' }); }
   }
-  collideCars(R.cars); collideCars(R.cars);
+  for (const c of R.traffic) { if (c.wreckT <= 0) trafficControl(c, W, all, dt); stepCar(c, dt, W, racing); }
+  updateTraffic(R, W, dt);
+  collideCars(all); collideCars(all);
 }
 
 function ranking(R) {
@@ -1422,7 +1502,7 @@ function clearProps() {
 let propSndT = 0;
 function updateProps(dt) {
   if (!world || !world.W.bar) return;
-  const W = world.W, tr = W.tr, cars = race ? race.cars : [];
+  const W = world.W, tr = W.tr, cars = race ? race.cars.concat(race.traffic) : [];
   propSndT -= dt;
   for (const P of Object.values(PROPS)) {
     let dirty = false;
@@ -1628,7 +1708,7 @@ function buildWorld(idx) {
   addBridge(group, tr, terr);
   addTunnel(group, tr, terr);
   addSigns(group, tr, terr);
-  world = { idx, stage, tr, terr, group, W: { tr, terr, surf: stage.surface, armco: !!stage.armco } };
+  world = { idx, stage, tr, terr, group, W: { tr, terr, surf: stage.surface, armco: !!stage.armco, traffic: stage.traffic } };
   clearSkids();
 }
 
@@ -1704,8 +1784,9 @@ function dentMesh(v, lx, ly, lz, ix, iz, depth, radius) {
   }
 }
 function toCarLocal(c, x, z) { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), dx = x - c.x, dz = z - c.z; return [dx * fz - dz * fx, dx * fx + dz * fz]; }
-function detachPart(c, v, m, dims, color) {
+function detachPart(c, v, m) {
   if (!m.visible) return;
+  const { dims, color } = m.userData.home;
   m.updateWorldMatrix(true, false); m.matrixWorld.decompose(_p, _q, _s);
   const r = () => Math.random() - 0.5;
   spawnProp('box', _p.clone(), _q.clone(), dims, color, c.vx * 0.55 + r() * 5, 3 + Math.random() * 4, c.vz * 0.55 + r() * 5, 9, 'metal');
@@ -1714,9 +1795,9 @@ function detachPart(c, v, m, dims, color) {
 function updateCarDamageVis(c, v) {
   const d = c.dmg, P = v.parts;
   if (d.f > 0.25 && P.bumper < 1) { P.bumper = 1; v.bumper.rotation.x = 0.35; v.bumper.position.y -= 0.12; v.bumper.rotation.z = (Math.random() - 0.5) * 0.4; }
-  if (d.f > 0.55 && P.bumper < 2) { P.bumper = 2; detachPart(c, v, v.bumper, [1.96, 0.28, 0.3], c.def.accent); }
+  if (d.f > 0.55 && P.bumper < 2) { P.bumper = 2; detachPart(c, v, v.bumper); }
   if (d.b > 0.3 && P.wing < 1) { P.wing = 1; v.wing.rotation.z = (Math.random() < 0.5 ? -1 : 1) * 0.3; v.wing.position.y -= 0.08; }
-  if (d.b > 0.6 && P.wing < 2) { P.wing = 2; detachPart(c, v, v.wing, [1.92, 0.08, 0.46], c.def.accent); v.struts.forEach(m => detachPart(c, v, m, [0.08, 0.3, 0.12], 0x2B2F3A)); }
+  if (d.b > 0.6 && P.wing < 2) { P.wing = 2; detachPart(c, v, v.wing); v.struts.forEach(m => detachPart(c, v, m)); }
   if (d.f > 0.35 && !P.heads) { P.heads = 1; v.heads.forEach(m => m.visible = false); const [x, y, z] = [c.x + Math.sin(c.yaw) * 1.7, c.y, c.z + Math.cos(c.yaw) * 1.7]; glassBits(x, y - 0.4, z, 5, c.pr.i); }
   if (d.b > 0.35 && !P.tails) { P.tails = 1; v.tails.forEach(m => m.visible = false); }
   if ((d.f > 0.4 || carWear(c) > 0.35) && !P.crack) { P.crack = 1; if (!v.crackM) v.crackM = new THREE.MeshLambertMaterial({ map: getCrackTex() }); v.cabin.material = v.crackM; }
@@ -1727,46 +1808,109 @@ function repairCarVis(v) {
   v.heads.forEach(m => m.visible = true); v.tails.forEach(m => m.visible = true); v.cabin.material = v.glassM;
   v.parts = { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 }; v.wreckFx = 0;
 }
+function visOf(c) { return c.traffic ? c.vis : carVis[race.cars.indexOf(c)]; }
 function dentFx(c, e) {
-  const v = carVis[race.cars.indexOf(c)]; if (!v) return;
+  const v = visOf(c); if (!v) return;
   const [lx, lz] = toCarLocal(c, e.x, e.z), [ix, iz] = (() => { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); return [e.ix * fz - e.iz * fx, e.ix * fx + e.iz * fz]; })();
   dentMesh(v, lx, 0.8, lz, ix, iz, clamp(e.amt * 1.4, 0.04, 0.35), 0.8 + clamp(e.v * 0.03, 0, 0.7));
   updateCarDamageVis(c, v);
 }
 function wreckFx(c, isPlayer, near) {
-  const v = carVis[race.cars.indexOf(c)];
+  const v = visOf(c);
   sparks(c.x, c.y, c.z, 30); shockwave(c.x, c.y, c.z, 7, 0xFFB03A);
   for (let k = 0; k < 26; k++) emit(c.x + (Math.random() - 0.5) * 2, c.y + 0.8, c.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 7, 2 + Math.random() * 4, (Math.random() - 0.5) * 7, 1 + Math.random(), 1.4 + Math.random(), k % 3 ? 0x3A3A3A : 0xFF8A2E, -1);
-  if (v) { detachPart(c, v, v.bumper, [1.96, 0.28, 0.3], c.def.accent); detachPart(c, v, v.wing, [1.92, 0.08, 0.46], c.def.accent); v.wreckFx = 1; }
+  if (v) { detachPart(c, v, v.bumper); detachPart(c, v, v.wing); v.wreckFx = 1; }
   c.smokeT = WRECK_T;
   if (isPlayer) { shake = Math.min(1.6, shake + 1.2); slowmo = Math.max(slowmo, 0.3); callout('Wrecked!'); }
   if (isPlayer || near) AudioSys.crash('car', isPlayer ? 1 : 0.5);
 }
+// civilian vehicles: same part names as the race cars so damage visuals work on them too
+const TRAFFIC_SHAPES = {
+  hatch: { wheels: [[0.95, 1.1], [-0.95, 1.1], [0.95, -1.1], [-0.95, -1.1]], wr: 0.4 },
+  van: { wheels: [[1.02, 1.5], [-1.02, 1.5], [1.02, -1.5], [-1.02, -1.5]], wr: 0.44 },
+  truck: { wheels: [[1.12, 2.2], [-1.12, 2.2], [1.12, -1.3], [-1.12, -1.3], [1.12, -2.35], [-1.12, -2.35]], wr: 0.52 }
+};
+function makeTrafficMesh(kind) {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const paint = new THREE.MeshLambertMaterial({ color: 0xffffff }), dentable = [];
+  const box = (w, h, d, c, x, y, z, seg, mat) => {
+    const g = flat(seg ? new THREE.BoxGeometry(w, h, d, seg[0], seg[1], seg[2]) : new THREE.BoxGeometry(w, h, d));
+    const m = new THREE.Mesh(g, mat || new THREE.MeshLambertMaterial({ color: c })); m.position.set(x, y, z); m.castShadow = true; body.add(m);
+    m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims: [w, h, d], color: c };
+    return m;
+  };
+  const dent = m => { m.userData.orig = Float32Array.from(m.geometry.attributes.position.array); dentable.push(m); return m; };
+  const glass = 0x253450, trim = 0x8E939B, dark = 0x2B2F3A;
+  let cabin, bumper, wing, hz, hy;
+  if (kind === 'hatch') {
+    dent(box(1.9, 0.3, 3.3, dark, 0, 0.45, 0, [3, 1, 5]));
+    dent(box(1.84, 0.55, 3.2, 0, 0, 0.86, 0, [3, 2, 5], paint));
+    cabin = dent(box(1.6, 0.52, 1.9, glass, 0, 1.39, -0.3, [2, 1, 2]));
+    dent(box(1.64, 0.08, 1.7, 0, 0, 1.68, -0.35, [2, 1, 2], paint));
+    bumper = box(1.9, 0.24, 0.2, trim, 0, 0.55, 1.68); wing = box(1.9, 0.24, 0.2, trim, 0, 0.55, -1.68); hz = 1.61; hy = 0.95;
+  } else if (kind === 'van') {
+    dent(box(2.06, 0.3, 4.4, dark, 0, 0.5, 0, [3, 1, 6]));
+    dent(box(2.04, 1.55, 4.3, 0, 0, 1.4, -0.05, [3, 3, 6], paint));
+    cabin = box(1.9, 0.6, 0.08, glass, 0, 1.72, 2.12); box(2.06, 0.46, 0.9, glass, 0, 1.72, 1.5);
+    bumper = box(2.08, 0.26, 0.2, trim, 0, 0.6, 2.24); wing = box(2.08, 0.26, 0.2, trim, 0, 0.6, -2.24); hz = 2.13; hy = 1.0;
+  } else {
+    dent(box(2.3, 0.35, 6.1, dark, 0, 0.62, 0, [3, 1, 8]));
+    dent(box(2.3, 1.5, 1.7, 0, 0, 1.55, 2.2, [3, 2, 2], paint));
+    cabin = box(2.1, 0.62, 0.08, glass, 0, 1.9, 3.06);
+    dent(box(2.42, 2.2, 4.3, 0xE8E6DF, 0, 2.0, -0.85, [3, 3, 6]));
+    bumper = box(2.36, 0.3, 0.22, trim, 0, 0.62, 3.12); wing = box(2.36, 0.3, 0.22, trim, 0, 0.62, -3.1); hz = 3.07; hy = 1.05;
+  }
+  const hl = new THREE.MeshBasicMaterial({ color: 0xFFF6C8 }), tl = new THREE.MeshBasicMaterial({ color: 0xFF4A3A }), heads = [], tails = [];
+  for (const sx of [-1, 1]) { const a = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.16, 0.06), hl); a.position.set(sx * 0.66, hy, hz); body.add(a); heads.push(a); const b2 = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.06), tl); b2.position.set(sx * 0.7, hy, -hz); body.add(b2); tails.push(b2); }
+  const S = TRAFFIC_SHAPES[kind], wheelG = flat(new THREE.CylinderGeometry(S.wr, S.wr, 0.36, 10).rotateZ(Math.PI / 2)), wheelM = new THREE.MeshLambertMaterial({ color: 0x1E1E22 });
+  const wheels = [], steer = [];
+  for (const [sx, sz] of S.wheels) {
+    const pivot = new THREE.Group(); pivot.position.set(sx, S.wr, sz); root.add(pivot);
+    const spin = new THREE.Group(); pivot.add(spin); const w = new THREE.Mesh(wheelG, wheelM); w.castShadow = true; spin.add(w);
+    wheels.push(spin); if (sz > 1.5 || (kind === 'hatch' && sz > 0)) steer.push(pivot);
+  }
+  root.visible = false; scene.add(root);
+  return { root, body, wheels, steer, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0, wr: S.wr, paint, owner: null,
+    dentable, bumper, wing, struts: [], heads, tails, cabin, glassM: cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
+}
+const trafficPool = { hatch: [], van: [], truck: [] };
+function syncTrafficVis() {
+  const live = race ? race.traffic : [];
+  for (const pool of Object.values(trafficPool)) for (const v of pool) if (v.owner && (v.owner.dead || !live.includes(v.owner))) { v.owner.vis = null; v.owner = null; v.root.visible = false; }
+  for (const c of live) {
+    if (c.vis) continue;
+    const v = trafficPool[c.def.kind].find(x => !x.owner); if (!v) continue;
+    v.owner = c; c.vis = v; repairCarVis(v); v.paint.color.set(c.def.color); v.root.visible = true; v.n.set(0, 1, 0); v.wobble = 0;
+  }
+}
 let marker;
 function initCars() {
   CAR_DEFS.forEach(d => carVis.push(makeCarMesh(d)));
+  for (const k of Object.keys(trafficPool)) for (let i = 0; i < 5; i++) trafficPool[k].push(makeTrafficMesh(k));
   marker = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.1, 4).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: 0xFFC72C }));
   scene.add(marker);
 }
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _mb = new THREE.Matrix4();
+function drawCar(c, v, dt, now) {
+  v.root.position.set(c.x, c.y, c.z);
+  if (c.onGround) { _v1.set(-c.gx, 1, -c.gz).normalize(); v.n.lerp(_v1, 1 - Math.exp(-dt * 14)).normalize(); }
+  _v2.set(Math.sin(c.yaw), 0, Math.cos(c.yaw));
+  _v3.crossVectors(v.n, _v2).normalize(); _v2.crossVectors(_v3, v.n);
+  _mb.makeBasis(_v3, v.n, _v2); v.root.quaternion.setFromRotationMatrix(_mb);
+  v.wobble = (v.wobble || 0) * Math.exp(-dt * 4.5); v.wobT = (v.wobT || 0) + dt;
+  v.body.rotation.z = clamp(c.vr * 0.016, -0.18, 0.18) + Math.sin(v.wobT * 32) * v.wobble;
+  v.body.rotation.x = (c.onGround ? -clamp((c.acc || 0) * 0.003, -0.07, 0.07) : clamp(-c.vy * 0.012, -0.3, 0.3)) + Math.cos(v.wobT * 27) * v.wobble * 0.6;
+  c.squash *= Math.exp(-dt * 7); v.body.scale.y = 1 - c.squash * 0.22; v.body.position.y = -c.squash * 0.08;
+  v.spin += c.vf * dt / (v.wr || 0.42); v.wheels.forEach(w => w.rotation.x = v.spin);
+  v.steer.forEach(p => p.rotation.y = -c.inp.steer * 0.42);
+  v.root.visible = c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
+  if (state === 'racing') effectsForCar(c, v, dt);
+}
 function updateCarVisuals(dt, now) {
   if (!race) return;
-  race.cars.forEach((c, k) => {
-    const v = carVis[k];
-    v.root.position.set(c.x, c.y, c.z);
-    if (c.onGround) { _v1.set(-c.gx, 1, -c.gz).normalize(); v.n.lerp(_v1, 1 - Math.exp(-dt * 14)).normalize(); }
-    _v2.set(Math.sin(c.yaw), 0, Math.cos(c.yaw));
-    _v3.crossVectors(v.n, _v2).normalize(); _v2.crossVectors(_v3, v.n);
-    _mb.makeBasis(_v3, v.n, _v2); v.root.quaternion.setFromRotationMatrix(_mb);
-    v.wobble = (v.wobble || 0) * Math.exp(-dt * 4.5); v.wobT = (v.wobT || 0) + dt;
-    v.body.rotation.z = clamp(c.vr * 0.016, -0.18, 0.18) + Math.sin(v.wobT * 32) * v.wobble;
-    v.body.rotation.x = (c.onGround ? -clamp((c.acc || 0) * 0.003, -0.07, 0.07) : clamp(-c.vy * 0.012, -0.3, 0.3)) + Math.cos(v.wobT * 27) * v.wobble * 0.6;
-    c.squash *= Math.exp(-dt * 7); v.body.scale.y = 1 - c.squash * 0.22; v.body.position.y = -c.squash * 0.08;
-    v.spin += c.vf * dt / 0.42; v.wheels.forEach(w => w.rotation.x = v.spin);
-    v.steer.forEach(p => p.rotation.y = -c.inp.steer * 0.42);
-    v.root.visible = c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
-    if (state === 'racing') effectsForCar(c, v, dt);
-  });
+  race.cars.forEach((c, k) => drawCar(c, carVis[k], dt, now));
+  syncTrafficVis();
+  for (const c of race.traffic) if (c.vis) drawCar(c, c.vis, dt, now);
   const P = race.player;
   marker.position.set(P.x, P.y + 3.6 + Math.sin(now * 4) * 0.25, P.z); marker.rotation.y = now * 1.5;
   marker.visible = state !== 'menu';
@@ -1931,7 +2075,7 @@ function impactFx(c, e, isPlayer, near) {
   if (fx.sparks) sparks(e.x, e.y, e.z, Math.round(v * 0.9 * fx.sparks));
   for (let k = 0; k < 6 + v * 0.4; k++) emit(e.x, e.y + 0.5, e.z, (Math.random() - 0.5) * 6 - e.nx * 2, 1 + Math.random() * 3, (Math.random() - 0.5) * 6 - e.nz * 2, 0.6 + Math.random() * 0.5, 1 + Math.random(), fx.dust, 1);
   shockwave(e.x, e.y, e.z, 2 + mag * 4, fx.sparks > 1 ? 0xFFE08A : 0xFFFFFF);
-  const vis = carVis[race.cars.indexOf(c)]; if (vis) vis.wobble = Math.min(0.3, (vis.wobble || 0) + mag * 0.12);
+  const vis = visOf(c); if (vis) vis.wobble = Math.min(0.3, (vis.wobble || 0) + mag * 0.12);
   if (v > 14) c.smokeT = Math.max(c.smokeT || 0, 1.8);
   if (isPlayer) { shake = Math.min(1.4, shake + mag * 0.7); if (v > 15) slowmo = Math.max(slowmo, 0.22); }
   if (isPlayer || near) AudioSys.crash(fx.snd, clamp(v / 18, 0.1, 1) * (isPlayer ? 1 : 0.45));
@@ -1943,7 +2087,7 @@ function carCrashFx(e, playerInvolved, near) {
   if (v > 10) glassBits(e.x, e.y, e.z, 4 + Math.round(v * 0.2), hint);
   sparks(e.x, e.y, e.z, Math.round(6 + v * 0.8));
   shockwave(e.x, e.y, e.z, 2 + mag * 3.5, 0xFFFFFF);
-  for (const car of [A, B]) { const vis = carVis[race.cars.indexOf(car)]; if (vis) vis.wobble = Math.min(0.3, (vis.wobble || 0) + mag * 0.14); if (v > 13) car.smokeT = Math.max(car.smokeT || 0, 1.4); }
+  for (const car of [A, B]) { const vis = visOf(car); if (vis) vis.wobble = Math.min(0.3, (vis.wobble || 0) + mag * 0.14); if (v > 13) car.smokeT = Math.max(car.smokeT || 0, 1.4); }
   if (playerInvolved) { shake = Math.min(1.4, shake + mag * 0.8); if (v > 13) slowmo = Math.max(slowmo, 0.2); }
   if (playerInvolved || near) AudioSys.crash('car', clamp(v / 16, 0.15, 1) * (playerInvolved ? 1 : 0.45));
 }
@@ -2003,6 +2147,7 @@ const AudioSys = {
     else if (kind === 'car') { this.burst(0.45 * v, 'bandpass', 1100, 0.22); this.tone(260, 0.25, 0.1 * v, 'square', 0.55); if (v > 0.6) this.burst(0.2 * v, 'highpass', 5000, 0.25); }
     else { this.burst(0.35 * v, 'bandpass', 500, 0.2); }
   },
+  horn(pitch) { if (!this.ctx) return; for (const f of [392, 494]) this.tone(f * pitch, 0.45, 0.07, 'square', 0.98); },
   toggle() { this.on = !this.on; if (this.master) this.master.gain.value = this.on ? 0.5 : 0; $('mute-btn').textContent = this.on ? 'Sound on' : 'Sound off'; }
 };
 
@@ -2119,7 +2264,7 @@ function callout(text) { const el = $('callout'); el.textContent = text; el.clas
 
 // ---------- flow ----------
 function handleEvents() {
-  for (const c of race.cars) {
+  for (const c of race.traffic.length ? race.cars.concat(race.traffic) : race.cars) {
     for (const e of c.events) {
       const near = Math.hypot(c.x - race.player.x, c.z - race.player.z) < 40;
       switch (e.t) {
@@ -2132,7 +2277,8 @@ function handleEvents() {
         case 'respawn': if (c.isPlayer) callout('Back on track'); break;
         case 'dent': dentFx(c, e); break;
         case 'wreck': wreckFx(c, c.isPlayer, near); break;
-        case 'repair': { const v = carVis[race.cars.indexOf(c)]; if (v) repairCarVis(v); break; }
+        case 'repair': { const v = visOf(c); if (v) repairCarVis(v); break; }
+        case 'horn': if (Math.hypot(c.x - race.player.x, c.z - race.player.z) < 70) AudioSys.horn(c.def.kind === 'truck' ? 0.75 : 1); break;
         case 'lap': if (c.isPlayer) { callout(e.n === world.tr.laps ? 'Final lap!' : 'Lap ' + e.n); AudioSys.beep(660, 0.2); } break;
         case 'finish':
           if (c.isPlayer) {
