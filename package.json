@@ -1,0 +1,27 @@
+{
+  "name": "downhill-rush",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Top-down alpine racer: breakable barriers, car damage, traffic, trains and a gorge circuit.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "vite build && node tests/e2e/smoke.mjs",
+    "golden": "node tools/make-golden.mjs"
+  },
+  "dependencies": {
+    "three": "0.128.0"
+  },
+  "devDependencies": {
+    "@babel/parser": "^8.0.6",
+    "@babel/traverse": "^8.0.6",
+    "playwright": "^1.56.1",
+    "vite": "^5.4.21",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^2.1.9"
+  }
+}
