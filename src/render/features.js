@@ -14,6 +14,7 @@ import { addTown } from './world/town.js';
 import { addGallery } from './world/gallery.js';
 import { initRockVis, updateRocks } from './rocks.js';
 import { makeTrafficMesh } from './vehicles.js';
+import { initHazardVis, updateHazardVis } from './hazards.js';
 
 const railways = {
   name: 'railways',
@@ -38,5 +39,7 @@ const town = {
 const gallery = { name: 'gallery', build(group, tr) { addGallery(group, tr); } };
 const rockfall = { name: 'rockfall', init: initRockVis, update(dt, now, fxDt) { updateRocks(fxDt); } };
 
-export const RENDER_FEATURES = [railways, town, gallery, rockfall];
+const hazards = { name: 'hazards', init: initHazardVis, update(dt, now) { updateHazardVis(dt, now); } };
+
+export const RENDER_FEATURES = [railways, town, gallery, rockfall, hazards];
 export const featureHook = (hook, ...args) => { for (const f of RENDER_FEATURES) if (f[hook]) f[hook](...args); };

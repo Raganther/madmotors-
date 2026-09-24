@@ -39,6 +39,9 @@ export function effectsForCar(c, v, dt) {
     v.grindAcc = (v.grindAcc || 0) + g.v * 1.6 * dt;
     while (v.grindAcc > 1) { v.grindAcc -= 1; spark(g.x, g.y + 0.6, g.z, -g.tx * dir * g.v * 0.5 + (Math.random() - 0.5) * 4, 1.5 + Math.random() * 4, -g.tz * dir * g.v * 0.5 + (Math.random() - 0.5) * 4); }
   }
+  // slipstream: pale wind lines streaming past a car that's being towed
+  if (c.draft > 0.3 && sp > 15) { v.draftAcc = (v.draftAcc || 0) + c.draft * 22 * dt;
+    while (v.draftAcc > 1) { v.draftAcc -= 1; const s = Math.random() < 0.5 ? 1 : -1; emit(c.x + fx * 1.8 - fz * 1.1 * s, c.y + 0.5 + Math.random() * 0.8, c.z + fz * 1.8 + fx * 1.1 * s, c.vx * 0.55, 0, c.vz * 0.55, 0.3, 0.35, 0xF2F6FF, 0); } }
   const wear = carWear(c);
   if (c.wreckT > 0 && Math.random() < 0.8) emit(c.x + fx * 1.3 + (Math.random() - 0.5), c.y + 1.1, c.z + fz * 1.3 + (Math.random() - 0.5), (Math.random() - 0.5) * 2, 3 + Math.random() * 3, (Math.random() - 0.5) * 2, 0.35 + Math.random() * 0.3, 0.9, Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -3);
   if (wear > 0.35 && Math.random() < (wear - 0.25) * 1.3) emit(c.x + fx * 1.4 + (Math.random() - 0.5) * 0.6, c.y + 1.0, c.z + fz * 1.4 + (Math.random() - 0.5) * 0.6, -c.vx * 0.15 + (Math.random() - 0.5), 1.5 + Math.random() * 1.5, -c.vz * 0.15 + (Math.random() - 0.5), 0.8 + Math.random() * 0.6, 0.8 + wear, wear > 0.7 ? 0x3C3C3C : 0x9A9A9A, -1.5);

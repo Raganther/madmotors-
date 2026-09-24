@@ -2,7 +2,7 @@ import { HALF } from '../constants.js';
 import { closedCrossingAhead } from '../features/trains.js';
 import { clamp } from '../math.js';
 
-export function aiControl(c, W, cars, dt) {
+export function aiControl(c, W, cars, dt, hazards) {
   const tr = W.tr, pr = c.pr, i = pr.i, N = tr.N, ai = c.ai;
   const sp = Math.hypot(c.vx, c.vz);
   ai.wT -= dt; if (ai.wT <= 0) { ai.wT = 2 + Math.random() * 3; ai.lane = (Math.random() * 2 - 1) * 2.2; }
@@ -21,6 +21,18 @@ export function aiControl(c, W, cars, dt) {
     const dx = o.x - c.x, dz = o.z - c.z, ahead = dx * fx + dz * fz;
     if (ahead > 0 && ahead < 11 + Math.max(0, (c.vx - o.vx) * fx + (c.vz - o.vz) * fz) * 0.9) { const dl = o.pr.lat - pr.lat; if (Math.abs(dl) < 2.8) lane += (dl >= 0 ? -1 : 1) * 3.2; }
   }
+  // leader hazards: steer for the clear side of an oil slick, or between the cows; better drivers see them sooner
+  let hzSlow = 99;
+  if (hazards) for (const h of hazards) {
+    const ahead = h.i - i; if (ahead < 2 || ahead > 22 + ai.skill * 26) continue;
+    if (h.kind === 'oil') { if (Math.abs(h.lat - lane) < h.r + 1.3) lane = h.lat > 0 ? h.lat - h.r - 1.5 : h.lat + h.r + 1.5; continue; }
+    hzSlow = Math.min(hzSlow, 20 + ahead * 0.4);
+    for (const cow of h.cows) {
+      if (cow.hit) continue;
+      const cl = (cow.x - tr.xs[cow.i]) * tr.rx[cow.i] + (cow.z - tr.zs[cow.i]) * tr.rz[cow.i] + cow.dir * 1.2;   // where it will be
+      if (Math.abs(cl - lane) < 2.3) lane += (lane >= cl ? 1 : -1) * (2.4 - Math.abs(cl - lane));
+    }
+  }
   lane = clamp(Math.max(lane, minLane), -HALF + 1.7, HALF - 1.2);
   ai.cur += (lane - ai.cur) * Math.min(1, dt * (minLane > -HALF ? 3 : 1.8));
   const L = Math.min(N - 1, i + Math.round(7 + sp * 0.38));
@@ -31,6 +43,7 @@ export function aiControl(c, W, cars, dt) {
   let target = 99; const look = Math.min(N - 2, i + Math.round(sp * 1.7 + 18));
   for (let j = i; j <= look; j++) { const vm = tr.vmax[j] * skill; const v = Math.sqrt(vm * vm + 56 * (j - i)); if (v < target) target = v; }
   if (Math.abs(pr.lat) > HALF + 0.5) target = Math.min(target, 16);
+  target = Math.min(target, hzSlow);
   { const dsx = closedCrossingAhead(W, i); if (dsx > 6 && dsx < 120) target = Math.min(target, Math.max(0, (dsx - 16) * 0.7)); }   // wait at lowered barriers
   if (sp > target + 1.2) { c.inp.throttle = 0; c.inp.brake = clamp((sp - target) / 5, 0.25, 1); }
   else { c.inp.brake = 0; c.inp.throttle = sp < target - 1.5 ? 1 : 0.35; }

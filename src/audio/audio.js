@@ -55,6 +55,7 @@ export const AudioSys = {
     if (!this.trainG) { const s = this.ctx.createBufferSource(); s.buffer = this.noise; s.loop = true; const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 140; this.trainG = this.ctx.createGain(); this.trainG.gain.value = 0; s.connect(f); f.connect(this.trainG); this.trainG.connect(this.master); s.start(); }
     this.set(this.trainG.gain, level * level * 0.6);
   },
+  moo(v) { if (!this.ctx) return; this.tone(150, 0.55, 0.1 * v, 'sawtooth', 0.72); this.tone(152, 0.5, 0.06 * v, 'triangle', 0.7); },
   horn(pitch) { if (!this.ctx) return; for (const f of [392, 494]) this.tone(f * pitch, 0.45, 0.07, 'square', 0.98); },
   toggle() { this.on = !this.on; if (this.master) this.master.gain.value = this.on ? 0.5 : 0; $('mute-btn').textContent = this.on ? 'Sound on' : 'Sound off'; }
 };

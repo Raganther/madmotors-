@@ -2,7 +2,7 @@
 // seconds wins (or the most crown time when the leader reaches the finish). The camera frames the leader, zooming out
 // to keep the pack in shot:
 // - the crown only changes hands on a clear pass (STEAL_GAP metres ahead, or STEAL_EDGE ahead for STEAL_HOLD seconds);
-// - a streak multiplies crown time: x1.5 after 5 s in the lead, x2 after 10 s, so an overtake is a big swing;
+// - no streak bonus (it made runaways worse); a leader who pulls clear meets leader hazards instead (features/hazards.js);
 // - a car left off the screen at full zoom blows up, hands BOOM_TAKE seconds of its crown time to the crown holder and
 //   respawns rolling behind or beside the leader (never in front, so a blow-up can't hand you the crown).
 // Nothing ever stops or regroups. Deterministic: its own seeded generator, never R.rnd, so the race features' random
@@ -13,7 +13,7 @@ import { screenOffset } from '../sim/view.js';
 import { mulberry32 } from '../math.js';
 
 export const SD = { TARGET: 60, ZMIN: 18, ZMAX: 26, FIT: 5, OFF_SLACK: 2, OFF_TIME: 1.0, BOOM: 1.2, GRACE: 1.5, ROLL: 14, LOOK: 0.3,
-  STEAL_GAP: 4.5, STEAL_EDGE: 1.5, STEAL_HOLD: 0.4, BOOM_TAKE: 2, STREAK: [[10, 2], [5, 1.5]] };
+  STEAL_GAP: 4.5, STEAL_EDGE: 1.5, STEAL_HOLD: 0.4, BOOM_TAKE: 2, STREAK: [] };   // no streak bonus: it fed runaways
 
 /** View half-extents (metres) for a zoom level: `scale` is the half-extent of the screen's short side. */
 export function sdExtents(scale, aspect) { return aspect >= 1 ? { hw: scale * aspect, hh: scale } : { hw: scale, hh: scale / aspect }; }

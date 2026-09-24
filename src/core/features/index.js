@@ -9,5 +9,6 @@ import { feature as traffic } from './traffic.js';
 import { feature as trains } from './trains.js';
 import { feature as parked } from './parked.js';
 import { feature as rockfall } from './rockfall.js';
+import { feature as hazards } from './hazards.js';
 
-export const FEATURES = [traffic, trains, parked, rockfall];
+export const FEATURES = [traffic, trains, parked, rockfall, hazards];

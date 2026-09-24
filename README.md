@@ -6,11 +6,15 @@ single self-contained HTML file.
 
 Two modes: **Race** (first to the line) and **Showdown**, King of the Hill, Micro Machines style: the camera
 follows the leader and zooms out to keep the pack in shot. The leader wears the crown and banks crown time while
-holding it (x1.5 after 5 s in the lead, x2 after 10 s); the crown only changes hands on a clear pass. A car left off
+holding it; the crown only changes hands on a clear pass. A car left off
 the screen at full zoom blows up, pays the holder 2 s of its crown time and respawns behind or beside the leader.
 Nothing ever stops; first to 60 s of crown time wins (or the most crown time at the finish).
 The Showdown rules live in `src/core/modes/showdown.js`; `src/core/sim/view.js` uses the camera's exact screen
 axes so what you see is what's judged.
+
+Catch-up, in both modes: a car tucked in 3-20 m behind another gets a slipstream tow (`PHYS.DRAFT`), and once a
+leader pulls clear (35 m, or 8 s holding the crown) leader hazards appear ~3 s ahead of it (`core/features/hazards.js`):
+cows ambling across or an oil slick on one side, always behind a warning sign, always with a gap, 6-9 s apart.
 
 Road cars (traffic and parked) are fragile: a racer hitting one at over 11 m/s (`SMASH_V` in `core/sim/collide.js`)
 destroys it, launching the scorched shell into a tumble while the racer ploughs through with a little boost.

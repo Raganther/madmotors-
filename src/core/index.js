@@ -17,6 +17,7 @@ export * from './features/traffic.js';
 export * from './features/trains.js';
 export * from './features/parked.js';
 export * from './features/rockfall.js';
+export * from './features/hazards.js';
 export { STAGES } from '../data/stages/index.js';
 export { FEATURES } from './features/index.js';
 export * from './sim/view.js';

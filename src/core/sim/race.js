@@ -23,8 +23,18 @@ export function raceStep(R, dt, W) {
   if (racing) R.time += dt;
   const P = R.player, tr = W.tr, all = R.cars.concat(...FEATURES.filter(f => f.vehicles).map(f => f.vehicles(R)));
   const lead = R.sd && sdLeader(R);
+  // slipstream: a racer tucked in 3-20 m behind another (roughly in line, both at speed) gets a tow, strongest up close
   for (const c of R.cars) {
-    if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt);
+    let want = 0; const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), sp = Math.hypot(c.vx, c.vz);
+    if (sp > 15 && !c.finished && c.onGround) for (const o of R.cars) {
+      if (o === c || Math.abs(o.y - c.y) > 2 || !(o.wreckT <= 0)) continue;
+      const dx = o.x - c.x, dz = o.z - c.z, ahead = dx * fx + dz * fz, side = Math.abs(dx * fz - dz * fx);
+      if (ahead > 3 && ahead < 20 && side < 2.2) want = Math.max(want, 1 - (ahead - 3) / 17);
+    }
+    c.draft = (c.draft || 0) + (want - (c.draft || 0)) * Math.min(1, dt * 4);
+  }
+  for (const c of R.cars) {
+    if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt, R.hazards);
     if (c.finished && c.progress > tr.finishIdx + 18) { c.inp.throttle = 0; c.inp.brake = c.vf > 0.5 ? 0.7 : 0; c.inp.handbrake = c.vf > 0.5 ? 0 : 1; }   // pull up and stay put (no creeping backwards)
     c.mod = lead ? clamp(1 + (lead.progress - c.progress) / 300, 1, 1.08)                // Showdown: everyone chasing the leader gets a tow
       : c.isPlayer ? 1 : clamp(1 + (P.progress - c.progress) / 1400, 0.93, 1.08);

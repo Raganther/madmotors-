@@ -95,16 +95,13 @@ describe('showdown matches (King of the Hill)', () => {
   };
   const stepUntil = (R, W, done, n = 400) => { for (let k = 0; k < n && !done(); k++) M.raceStep(R, 1 / 120, W); };
 
-  it('the leader banks crown time, faster on a streak', () => {
+  it('the leader banks crown time at a flat rate (no streak bonus)', () => {
     const { R, W } = setup();
     const h = R.sd.holder; expect(h).toBeGreaterThanOrEqual(0);
-    expect(M.sdMult(0)).toBe(1); expect(M.sdMult(5)).toBe(1.5); expect(M.sdMult(10)).toBe(2);
-    R.sd.streak = 0; const c0 = R.sd.crown[h];
+    expect(M.sdMult(0)).toBe(1); expect(M.sdMult(12)).toBe(1);
+    R.sd.streak = 12; const c0 = R.sd.crown[h];
     M.raceStep(R, 1 / 120, W);
     if (R.sd.holder === h) expect(R.sd.crown[h] - c0).toBeCloseTo(1 / 120, 6);
-    R.sd.streak = 12; const c1 = R.sd.crown[R.sd.holder], h2 = R.sd.holder;
-    M.raceStep(R, 1 / 120, W);
-    if (R.sd.holder === h2) expect(R.sd.crown[h2] - c1).toBeCloseTo(2 / 120, 6);
   });
 
   it('side by side the crown stays put; a clear pass steals it and resets the streak', () => {

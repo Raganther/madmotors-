@@ -9,6 +9,7 @@ import { STAGES } from '../data/stages/index.js';
 import { updateCamera } from '../render/camera.js';
 import { clearDebris } from '../render/effects/debris.js';
 import { clearSparks } from '../render/effects/sparks.js';
+import { emit } from '../render/effects/particles.js';
 import { carCrashFx, dustRing, impactFx, sparks } from '../render/effects/impacts.js';
 import { clearProps } from '../render/effects/props.js';
 import { shockwave } from '../render/effects/rings.js';
@@ -52,6 +53,10 @@ export function handleEvents() {
         case 'respawn': if (c.isPlayer) callout('Back on track'); break;
         case 'dent': dentFx(c, e); break;
         case 'wreck': if (!c.destroyed) wreckFx(c, c.isPlayer, near); break;
+        case 'hazard': { const d = e.i - race.player.pr.i; if (d > 0 && d < 260) callout(e.kind === 'cows' ? 'Cows on the road!' : 'Oil ahead!'); break; }
+        case 'cowhit': dustRing(e, 14, 0xC9B79C, 6, 1.3); for (let k = 0; k < 8; k++) emit(e.x, e.y + 1, e.z, (Math.random() - 0.5) * 6, 3 + Math.random() * 4, (Math.random() - 0.5) * 6, 0.9, 0.5, k % 2 ? 0xF4F1EA : 0x22201E, 12);
+          if (c.isPlayer || near) AudioSys.moo(c.isPlayer ? 1 : 0.5); if (c.isPlayer) { callout('Moo!'); G.shake = Math.min(1.2, G.shake + 0.6); AudioSys.thud(0.6); } break;
+        case 'oil': for (let k = 0; k < 10; k++) emit(e.x, e.y + 0.2, e.z, (Math.random() - 0.5) * 5, 1 + Math.random() * 2, (Math.random() - 0.5) * 5, 0.6, 0.5, 0x151218, 10); if (c.isPlayer) callout('Oil slick!'); break;
         case 'destroyed': takedownFx(c, e, e.by.isPlayer, near); break;
         case 'takedown': if (c.isPlayer) { callout(e.kind === 'truck' ? 'Truck takedown!' : 'Takedown!'); AudioSys.whoosh(); } break;
         case 'rockhit': sparks(e.x, e.y, e.z, 14); if (c.isPlayer || near) AudioSys.crash('metal', clamp(e.v / 20, 0.2, 0.9) * (c.isPlayer ? 1 : 0.5)); if (c.isPlayer) G.shake = Math.min(1.4, G.shake + 0.8); break;
@@ -157,7 +162,7 @@ export function togglePause() {
 export function refreshBest() { STAGES.forEach((s, i) => { const el = $('best-' + i); if (el) el.textContent = best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet'; }); }
 const MODE_DESC = {
   race: 'Beat three rivals to the line.',
-  showdown: 'King of the Hill: the leader wears the crown and banks crown time, faster on a long streak. Pass clearly to steal it. Fall off the screen and you blow up, paying the holder 2 s. First to 60 s of crown time wins.'
+  showdown: 'King of the Hill: the leader wears the crown and banks crown time. Pass clearly to steal it; slipstream helps, and a runaway leader meets cows and oil. Fall off the screen and you blow up, paying the holder 2 s. First to 60 s of crown time wins.'
 };
 export function setMode(m) {
   G.mode = m; saveMode(m);
