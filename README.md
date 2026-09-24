@@ -103,6 +103,8 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | boost | `boost` | boost pads across the road |
 | ferry | `ferry` | a barge carries the cars across water between two docks (moves in `features/ferry.js`) |
 | falls | `falls` | scenery waterfall arcing over the road off a cliff on the far side |
+| drawbridge | `drawbridge: <s>` | a bascule bridge that rises every so often: jump it while it's low, wait while it's up (cycle in `features/drawbridge.js`) |
+| mill | `mill`, `logs` | sawmill shed and log stacks; log piles along the road (scenery) |
 
 A core element can declare `tags`, `stageKeys`, per-sample `channels`, a `section()` hook, build phases (`heights`,
 `walls`, `wallsLate`, `wallsLast`), `track()` to add fields to the built track, and `markers()` saying where it is (see
@@ -144,7 +146,7 @@ heights meet, and a car belongs to whichever road it's clearly on. Try `?sandbox
 1. Copy a file in `src/data/stages/` (e.g. `ravenrock-gorge.js` for a section-built circuit, `summit-meadow.js`
    for a generated downhill) and add it to `src/data/stages/index.js`.
 2. For `type: 'gorge'` circuits, describe the road as `segs` (straights and arcs in screen axes), tagging sections
-   with track elements (table above). Optional `river` and `rails` add the river and railways. See `src/core/types.js`.
+   with track elements (table above). Optional `river` (with `logs: n` drifting down it) and `rails` add the river and railways. See `src/core/types.js`.
 3. Iterate with `npm run layout -- <n>`, `npm run terrain -- <n>` and `npm run sandbox -- <n>` until the plan closes cleanly and nothing
    overlaps by accident, then play it with `npm run dev`.
 4. `npm run golden` to record the new stage, then `npm run check`.

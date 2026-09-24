@@ -6,7 +6,7 @@ import { runs } from './jump.js';
 // thing to drive on is the barge deck.
 export const FERRY = { LEN: 24, HALF: 6.3, SPEED: 8, DWELL: 2, WAIT: 6, LEAVE_B: 1.5, APPROACH: 160 };
 export const element = {
-  name: 'ferry',
+  name: 'ferry', hollow: true,
   about: 'a barge carries the cars across the water between two docks',
   tags: { ferry: 'this section is the water crossing (the barge shuttles along it)' },
   channels: { ferry: tg => tg.ferry ? 1 : 0 },

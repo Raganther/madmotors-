@@ -1,6 +1,7 @@
 import { HALF } from '../constants.js';
 import { closedCrossingAhead } from '../features/trains.js';
 import { ferryTarget } from '../features/ferry.js';
+import { drawTarget } from '../features/drawbridge.js';
 import { clamp } from '../math.js';
 
 /** Before each fork pick a route, the branch or the main road, at random (stage.branches[k].share = the branch's
@@ -68,7 +69,7 @@ export function aiControl(c, W, cars, dt, hazards) {
   else { const look = Math.min(N - 2, i + Math.round(sp * 1.7 + 18)); for (let j = i; j <= look; j++) { const vm = tr.vmax[j] * skill; const v = Math.sqrt(vm * vm + 56 * (j - i)); if (v < target) target = v; } }
   if (Math.abs(pr.lat) > HALF + 0.5) target = Math.min(target, 16);
   target = Math.min(target, hzSlow);
-  target = Math.min(target, ferryTarget(W, c));                                  // queue for the barge, stop at the front of its deck
+  target = Math.min(target, ferryTarget(W, c), drawTarget(W, c));                                  // queue for the barge, stop at the front of its deck
   { const dsx = closedCrossingAhead(W, i); if (dsx > 6 && dsx < 120) target = Math.min(target, Math.max(0, (dsx - 16) * 0.7)); }   // wait at lowered barriers
   if (sp > target + 1.2) { c.inp.throttle = 0; c.inp.brake = clamp((sp - target) / 5, 0.25, 1); }
   else { c.inp.brake = 0; c.inp.throttle = sp < target - 1.5 ? 1 : 0.35; }

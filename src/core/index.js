@@ -21,6 +21,8 @@ export { rockStep } from './features/rockfall.js';
 export { HZ, hzLeader } from './features/hazards.js';
 export { ferryDeckAt, ferryTarget } from './features/ferry.js';
 export { FERRY } from './elements/ferry.js';
+export { DRAW } from './elements/drawbridge.js';
+export { drawState } from './features/drawbridge.js';
 export { STAGES } from '../data/stages/index.js';
 export { FEATURES } from './features/index.js';
 export * from './sim/view.js';

@@ -62,6 +62,11 @@ export function handleEvents() {
         case 'ferry-board': callout('All aboard!'); AudioSys.bell(); break;
         case 'ferry-depart': { const pi = race.cars.indexOf(race.player); AudioSys.horn(0.55); if (e.aboard.includes(pi)) callout('Ferry departing!'); else if (e.left.includes(pi)) callout('Missed the ferry!'); break; }
         case 'ferry-arrive': if (race.ferries.some(f => f.pOn)) { callout('Go go go!'); AudioSys.bell(); } break;
+        case 'draw-warn': case 'draw-rise': {                                           // the drawbridge ahead is going up
+          const tr = G.world.tr, N0 = tr.loopN || tr.N, d = ((e.i - race.player.pr.s % N0) % N0 + N0) % N0;
+          if (e.t === 'draw-warn' && d < 300) callout('Bridge going up!'); else if (e.t === 'draw-rise' && d < 110) callout('Jump it!');
+          break;
+        }
         case 'splash': dustRing(c, 18, 0xE6F2FF, 7, 1.4); if (c.isPlayer) callout('Splash!'); break;
         case 'destroyed': takedownFx(c, e, e.by.isPlayer, near); break;
         case 'takedown': if (c.isPlayer) { callout(e.kind === 'truck' ? 'Truck takedown!' : 'Takedown!'); AudioSys.whoosh(); } break;

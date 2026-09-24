@@ -7,16 +7,17 @@ export default { name: 'Thunder Falls', blurb: 'Corkscrews, a gorge jump, a barg
   light: { sun: 0xFFE2BE, sunI: 1.0, sky: 0xD4E6F5, ground: 0x4F5A42, hemiI: 0.58, cloud: 0.26, grade: [1.03, 1.0, 0.97], sat: 1.08, haze: { color: 0xA9C4D8, top: -10, range: 30, amt: 0.45 } },
   colors: { grassA: 0x6E9E4B, grassB: 0x4F8040, rock: 0x8A887F, dirt: 0x8F7352, road: 0x50545C, sky: 0xB3D8E3, round: [0x4F8A3F, 0x5E9A45], pine: [0x2F6A3E, 0x3A7646, 0x285E38, 0x44804C] },
   trees: { density: 0.006, pine: 0.9 }, rocks: 0.0016, bushes: 0.002, village: false,
-  river: { pts: [[-500, -228], [-150, -240], [60, -235], [300, -238], [600, -230]], level: -34, width: 34 },
+  river: { pts: [[-500, -228], [-150, -240], [60, -235], [300, -238], [600, -230]], level: -34, width: 34, logs: 9 },
   segs: (() => {
     const yard = { far: 2, rampF: 20, near: 1, rampN: 20 }, bank = { far: 8, rampF: 14, near: -6, rampN: 14 }, lip = { far: -30, rampF: 4, near: -30, rampN: 4 };
     return [
-      ['s', 80, 20, yard],                                                       // sawmill yard: start / finish
+      ['s', 80, 20, { ...yard, mill: true }],                                    // sawmill yard: start / finish
       ['a', 12, -90, 20, yard], ['s', 25, 19, bank],                             // right-angle right
-      ['a', 22, 40, 18, bank], ['a', 22, -80, 17, bank], ['a', 22, 40, 16, bank], // chicane
+      ['a', 22, 40, 18, { ...bank, logs: true }], ['a', 22, -80, 17, { ...bank, logs: true }], ['a', 22, 40, 16, { ...bank, logs: true }], // chicane between the log piles
       ['s', 20, 16, bank], ['a', 12, 90, 16, bank],                              // right-angle left
       ['s', 20, 16, bank], ['s', 45, 16, { bridge: true }],                      // corkscrew 1: over the bridge...
-      ['a', 26, 270, 3, bank], ['s', 70, 1, bank],                               // ...round and down, and under it
+      ['a', 26, 270, 3, bank], ['s', 40, 1, bank],                               // ...round and down, and under it
+      ['s', 24, 1, { drawbridge: 5, far: -10, rampF: 3, near: -10, rampN: 3 }], ['s', 6, 1, bank],   // THE DRAWBRIDGE over the mill race
       ['s', 30, 1, { ...bank, boost: true }], ['s', 20, 1, { ...lip, kick: 3, boost: true }],
       ['s', 30, -5, { gap: true, far: -40, rampF: 3, near: -40, rampN: 3 }],    // THE GAP: over the river gorge
       ['s', 40, -6, { far: -12, rampF: 6, near: -12, rampN: 6 }],
@@ -33,7 +34,7 @@ export default { name: 'Thunder Falls', blurb: 'Corkscrews, a gorge jump, a barg
   })(),
   branches: (() => {
     const shore = { far: 12, rampF: 10, near: -4, rampN: 12 }, cliff = { far: 26, rampF: 8, near: -4, rampN: 12 }, woods = { far: 6, rampF: 14, near: 3, rampN: 14 };
-    return [{ from: 23, to: 32, name: 'low road', share: 0.45, segs: [
+    return [{ from: 25, to: 34, name: 'low road', share: 0.45, segs: [
       ['a', 30, 90, -24, shore], ['s', { toA: -25 }, -28, { ...shore, boost: true }], // off the dock, over a hump beside the S-bend, down to the river
       ['s', 40, -24, { ...cliff, falls: true, boost: true }],                     // under the waterfall
       ['a', 30, -90, -19, woods], ['s', 30, -14, { ...woods, boost: true }], ['s', { toB: -20.18 }, 6, woods],   // boost up through the woods

@@ -16,16 +16,18 @@ import { addGallery } from './gallery.js';
 import { initRockVis, updateRocks } from '../rocks.js';
 import { makeTrafficMesh } from '../vehicles.js';
 import { addBridge } from './bridge.js';
-import { addRiver } from './river.js';
+import { addRiver, addRiverLogs, updateRiverLogs } from './river.js';
 import { addTunnel } from './tunnel.js';
 import { addArches } from './arch.js';
 import { addBoostPads, updateBoostPads } from './boost.js';
 import { addFerryDocks, newFerryRace, updateFerryVis } from './ferry.js';
 import { initHazardVis, updateHazardVis } from '../hazards.js';
 import { addFalls, updateFalls } from './falls.js';
+import { addDrawbridges, updateDrawbridges } from './drawbridge.js';
+import { addMill } from './mill.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
-const river = { name: 'river', build(group, tr) { addRiver(group, tr); } };
+const river = { name: 'river', build(group, tr) { addRiver(group, tr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
 const railways = {
   name: 'rails',
   build(group, tr) { addRails(group, tr); addCrossings(group, tr); },
@@ -56,5 +58,9 @@ const rockfall = { name: 'rockfall', init: initRockVis, update(dt, now, fxDt) { 
 const hazards = { name: 'hazards', init: initHazardVis, update(dt, now) { updateHazardVis(dt, now); } };
 const falls = { name: 'falls', build(group, tr, terr) { addFalls(group, tr, terr); }, update(dt, now) { updateFalls(dt, now); } };
 
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls];
+const drawbridge = { name: 'drawbridge', build(group, tr) { addDrawbridges(group, tr); }, update(dt, now) { updateDrawbridges(dt, now); } };
+
+const mill = { name: 'mill', build(group, tr, terr) { addMill(group, tr, terr); } };
+
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

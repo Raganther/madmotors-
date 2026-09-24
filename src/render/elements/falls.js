@@ -1,13 +1,16 @@
 import * as THREE from 'three';
 import { canvasTex, radialTex } from '../geometry.js';
+import { AudioSys } from '../../audio/audio.js';
+import { clamp } from '../../core/math.js';
+import { race } from '../../ui/flow.js';
 
 // waterfall ('falls' section tag): a curtain of water leaping off the cliff lip on the up-screen side, arcing high over
 // the road and crashing down on the bank on the camera side, fed by a stream along the cliff top, with spray where it
 // lands. The streaks scroll down the curtain (update); it's see-through, so a car underneath stays visible.
 const FALL = { W: 16, LIP: 17, TOP: 26, DROP: 0.0413, SPREAD: 0.22 };
-let tex = null, mists = [];
+let tex = null, mists = [], spots = [];
 export function addFalls(group, tr, terr) {
-  mists = []; if (!tr.falls || !tr.falls.length) return;
+  mists = []; AudioSys.roar(0); spots = (tr.falls || []).map(f => [tr.xs[f.i], tr.zs[f.i]]); if (!spots.length) return;
   if (!tex) {
     tex = canvasTex(64, 256, (g, w, h) => {
       g.fillStyle = 'rgba(150,200,235,0.5)'; g.fillRect(0, 0, w, h);
@@ -56,5 +59,6 @@ export function addFalls(group, tr, terr) {
 export function updateFalls(dt, now) {
   if (!mists.length) return;
   tex.offset.y += dt * 1.8;
+  const P = race && race.player; if (P) AudioSys.roar(clamp(1 - Math.min(...spots.map(([x, z]) => Math.hypot(P.x - x, P.z - z))) / 110, 0, 1));   // the roar, louder as you get close
   for (const s of mists) { const k = s.userData.k; s.material.opacity = (k === 7 ? 0.3 : 0.45) + 0.15 * Math.sin(now * 2.3 + k * 1.7); s.position.y = s.userData.y0 + 0.6 * Math.sin(now * 1.1 + k); }
 }

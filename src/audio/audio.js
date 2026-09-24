@@ -23,7 +23,7 @@ export const AudioSys = {
   set(p, v) { if (this.ctx) p.setTargetAtTime(v, this.ctx.currentTime, 0.05); },
   update(c, mode) {
     if (!this.ctx) return;
-    if (!c || mode === 'off') { if (this.trainG) this.set(this.trainG.gain, 0); this.set(this.engG.gain, 0); this.set(this.skidG.gain, 0); this.set(this.rumbG.gain, 0); this.set(this.scrG.gain, 0); return; }
+    if (!c || mode === 'off') { if (this.trainG) this.set(this.trainG.gain, 0); if (this.roarG) this.set(this.roarG.gain, 0); this.set(this.engG.gain, 0); this.set(this.skidG.gain, 0); this.set(this.rumbG.gain, 0); this.set(this.scrG.gain, 0); return; }
     const thr = c.inp.throttle;
     if (mode === 'rev') { const f = 55 + thr * 110; this.set(this.o1.frequency, f); this.set(this.o2.frequency, f / 2); this.set(this.engF.frequency, 500 + thr * 900); this.set(this.engG.gain, 0.08 + thr * 0.06); return; }
     const sp = Math.max(0, c.vf), edges = [0, 11, 19, 27, 35, 44, 60]; let gi = 0; while (gi < edges.length - 2 && sp > edges[gi + 1]) gi++;
@@ -54,6 +54,12 @@ export const AudioSys = {
     if (!this.ctx) return;
     if (!this.trainG) { const s = this.ctx.createBufferSource(); s.buffer = this.noise; s.loop = true; const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 140; this.trainG = this.ctx.createGain(); this.trainG.gain.value = 0; s.connect(f); f.connect(this.trainG); this.trainG.connect(this.master); s.start(); }
     this.set(this.trainG.gain, level * level * 0.6);
+  },
+  // a waterfall's roar, by how close the player is (0..1)
+  roar(level) {
+    if (!this.ctx) return;
+    if (!this.roarG) { const s = this.ctx.createBufferSource(); s.buffer = this.noise; s.loop = true; const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 650; this.roarG = this.ctx.createGain(); this.roarG.gain.value = 0; s.connect(f); f.connect(this.roarG); this.roarG.connect(this.master); s.start(); }
+    this.set(this.roarG.gain, level * level * 0.32);
   },
   moo(v) { if (!this.ctx) return; this.tone(150, 0.55, 0.1 * v, 'sawtooth', 0.72); this.tone(152, 0.5, 0.06 * v, 'triangle', 0.7); },
   horn(pitch) { if (!this.ctx) return; for (const f of [392, 494]) this.tone(f * pitch, 0.45, 0.07, 'square', 0.98); },

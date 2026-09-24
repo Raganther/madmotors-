@@ -2,6 +2,7 @@ import { HALF, WALL } from '../constants.js';
 import { clamp, lerp } from '../math.js';
 import { wallAt, wallPos } from '../sim/barriers.js';
 import { ferryDeckAt } from '../features/ferry.js';
+import { drawDeckAt } from '../features/drawbridge.js';
 
 export function project(tr, x, z, hint, back, fwd) {
   if (tr.nx) return projectG(tr, x, z, hint, back, fwd);
@@ -30,6 +31,7 @@ export function groundAt(W, s, lat, x, z) {
   const bi = s < 0 ? 0 : s > tr.N - 2 ? tr.N - 2 : s | 0;
   if (tr.bridge[bi] || tr.tunnel[bi]) return al < WALL + 1.2 ? roadH(tr, s) : W.terr.at(x, z);
   if (tr.gap && tr.gap[tr.bi(bi)]) return W.terr.at(x, z);            // a gap: nothing but the drop
+  if (tr.drawbridge && tr.drawbridge[tr.bi(bi)]) { const d = drawDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // a leaf, or the mill race
   if (tr.ferry && tr.ferry[tr.bi(bi)]) { const d = ferryDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // the barge deck, or the water
   const side = lat >= 0 ? 1 : -1, hasWall = wallAt(W, bi, side) && al < wallPos(W, bi, side) + 1.2;
   if (al >= HALF + 2 && !hasWall) return W.terr.at(x, z);

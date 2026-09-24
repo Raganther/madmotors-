@@ -4,7 +4,7 @@ import { baseRuns, runs } from './jump.js';
 // with `boost` pads on the run-up, and land the far side a little lower. A car that drops in respawns on the far
 // side (sim/car.js). The terrain under it ignores the road (like a bridge), so the ground falls away into the void.
 export const element = {
-  name: 'gap',
+  name: 'gap', hollow: true,
   about: 'a void to jump over; fall in and you respawn on the far side',
   tags: { gap: 'this section is a void (no road, no ground)' },
   channels: { gap: tg => tg.gap ? 1 : 0 },

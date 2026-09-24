@@ -9,6 +9,7 @@
 //   walls(ctx)                     after the base barriers (curves, drops); wallsLate after hairpins; wallsLast at the end
 //   track(ctx, out)                fields to put on the built track
 //   markers(tr) -> [{ i, label }]  where it is, for the layout map, the sandbox report and the debug overlay
+//   hollow                         nothing under the road (gap, ferry...): the ground drops away beneath its samples
 //   onBranch                       true if it can be used on a branch (stage.branches; see core/track/route.js)
 // Its visuals live in render/elements (the same name). Order matters: it fixes the order the track is built in.
 import { element as ground } from './ground.js';
@@ -25,8 +26,10 @@ import { element as gap } from './gap.js';
 import { element as boost } from './boost.js';
 import { element as ferry } from './ferry.js';
 import { element as falls } from './falls.js';
+import { element as drawbridge } from './drawbridge.js';
+import { element as mill } from './mill.js';
 
-export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls];
+export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill];
 export const elementPhase = (phase, ...args) => { for (const e of ELEMENTS) if (e[phase]) e[phase](...args); };
 
 // stage options that belong to the stage itself rather than to an element

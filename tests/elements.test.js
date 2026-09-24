@@ -26,7 +26,7 @@ describe('element registry and stage validation', () => {
 });
 
 // what each sandbox must contain, by element name
-const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'] };
+const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'] };
 describe('sandboxes', () => {
   it('there is a sandbox listed here for each one defined', () => expect(Object.keys(SANDBOXES).sort()).toEqual(Object.keys(EXPECT).sort()));
   for (const [name, stage] of Object.entries(SANDBOXES)) it(`${name}: builds, closes, has its elements, and four AI cars lap it cleanly`, () => {
@@ -137,5 +137,42 @@ describe('branches (stage.branches: the road splits and joins again)', () => {
     const br = st.branches[0], bad = segs => M.buildTrack({ ...st, branches: [{ ...br, segs }] });
     expect(() => bad(br.segs.slice(0, -1))).toThrow(/branch 0 ends .* from where it should rejoin/);
     expect(() => bad([...br.segs.slice(0, 2), ['s', 56, -4, { bridge: true }], ...br.segs.slice(3)])).toThrow(/"bridge" can't be used on a branch/);
+  });
+});
+
+describe('drawbridge', () => {
+  const st = SANDBOXES.drawbridge, D = M.DRAW;
+  const race = phase => {
+    const tr = M.buildTrack(st); tr.drawbridges[0].phase = phase;
+    seedRandom(5); const W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true };
+    const R = M.createRace(W, DEFS); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9; return { tr, W, R };
+  };
+  it('cycles down, warning, rising, up, lowering on race time; the leaves are a ramp with a gap between their tips', () => {
+    const d = { phase: 0 };
+    expect(M.drawState(d, 1)).toEqual({ ang: 0, st: 'down' });
+    expect(M.drawState(d, D.DOWN + 1).st).toBe('warn');
+    expect(M.drawState(d, D.DOWN + D.WARN + D.RISE / 2).ang).toBeCloseTo(D.AMAX / 2);
+    expect(M.drawState(d, D.DOWN + D.WARN + D.RISE + 1)).toEqual({ ang: D.AMAX, st: 'up' });
+    expect(M.drawState(d, D.CYCLE + 1).st).toBe('down');
+    const { W } = race(0), b = W.draws[0], a = 20 * Math.PI / 180; b.ang = a;
+    expect(M.groundAt(W, b.a + 5, 0, 0, 0)).toBeCloseTo(b.h + 5 * Math.tan(a));      // up the near leaf
+    expect(M.groundAt(W, b.b - 5, 0, 0, 0)).toBeCloseTo(b.h + 5 * Math.tan(a));      // down the far one
+    const m = (b.a + b.b) / 2; expect(M.groundAt(W, m, 0, W.tr.xs[m], W.tr.zs[m])).toBeLessThan(b.h - 5);   // between the tips: the drop
+  });
+  it('rising as the pack arrives at speed: they jump it and land; arriving when it is up: they wait at the gate. Nobody falls in', () => {
+    for (const [phase, want] of [[4, 'jump'], [15, 'wait']]) {
+      const { tr, W, R } = race(phase), d = tr.drawbridges[0], N0 = tr.loopN; let jumped = 0, waited = 0, t = 0;
+      while (t < 45) {
+        M.raceStep(R, 1 / 120, W); t += 1 / 120;
+        for (const c of R.cars) {
+          const u = c.pr.s % N0 - d.a;
+          if (u > 0 && u < d.b - d.a && !c.onGround && W.draws[0].ang > 0.1) jumped++;
+          if (u > -8 && u < 0 && Math.hypot(c.vx, c.vz) < 1 && W.draws[0].ang > M.DRAW.AJUMP) waited++;
+          c.events.length = 0;
+        }
+      }
+      expect(want === 'jump' ? jumped : waited).toBeGreaterThan(0);
+      expect(R.cars.reduce((n, c) => n + c.respawns, 0)).toBe(0);
+    }
   });
 });

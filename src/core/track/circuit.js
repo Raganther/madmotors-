@@ -119,7 +119,7 @@ export function genCircuit(stage) {
   const { A, B, hs, ch } = main;
   while (A.length > 2 && Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) < 0.6) { A.pop(); B.pop(); hs.pop(); for (const k in ch) ch[k].pop(); }
   const [xs, zs] = toXZ(A, B);
-  const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width } : null;
+  const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width, logs: stage.river.logs || 0 } : null;
   // branches: an alternative route that leaves the main road where main section `from` starts and rejoins it where
   // main section `to` starts. Its own sections must end exactly there, heading the same way.
   const alts = (stage.branches || []).map((br, n) => {
@@ -223,7 +223,8 @@ export function finishLoop(stage, g, seed) {
   const sbs = NA ? sideBySide(ctx) : null;                          // where a branch runs beside the main road
   const rails = ctx.rails;
   const idwX = [], idwZ = [], idwH = [];
-  const void0 = i => bridge0[i] || (ch.gap && ch.gap[i]) || (ch.ferry && ch.ferry[i]);   // decks, gaps and ferry crossings don't shape the ground under them
+  const hollow = ELEMENTS.filter(e => e.hollow).map(e => ch[e.name]);             // gaps, ferry crossings, drawbridges: nothing under the road
+  const void0 = i => bridge0[i] || hollow.some(h => h[i]);                         // decks and hollows don't shape the ground under them
   for (let i = 0; i < NB; i += 6) if (!void0(i)) { idwX.push(xs0[i]); idwZ.push(zs0[i]); idwH.push(H0[i]); }
   let tunMid = -1; { const ti = []; for (let i = 0; i < N0; i++) if (tunnel0[i]) ti.push(i); if (ti.length) tunMid = ti[Math.floor(ti.length / 2)]; }
   const toAB = (x, z) => [(x - z) / Math.SQRT2, -(x + z) / Math.SQRT2];
@@ -346,7 +347,7 @@ export function finishLoop(stage, g, seed) {
     loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, gridS: gorge ? 4 : 3, edge: gorge ? HALF + 4 : HALF + 15, ...route, twin };
   if (NA) { const L0 = q => q && (q.i = u0(q.i), q); out.nearest = (x, z) => L0(nearest(x, z)); out.nearestT = (x, z) => L0(nearestT(x, z)); out.nearestTun = (x, z) => L0(nearestTun(x, z)); }
   elementPhase('track', ctx, out);                                 // each element's fields (town, gallery, rails, ...)
-  // samples with nothing under the road line (gaps, ferry crossings): the terrain doesn't flatten into them
-  out.voidMask = (ch.gap && ch.gap.some(v => v)) || (ch.ferry && ch.ferry.some(v => v)) ? Uint8Array.from(ch.gap, (v, i) => v || ch.ferry[i]) : null;
+  // samples with nothing under the road line (hollow elements): the terrain doesn't flatten into them
+  out.voidMask = hollow.some(h => h.some(v => v)) ? Uint8Array.from(ch.gap, (v, i) => hollow.some(h => h[i]) ? 1 : 0) : null;
   return out;
 }
