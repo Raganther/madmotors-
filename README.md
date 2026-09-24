@@ -5,7 +5,8 @@ crossings, rockfall and a gorge circuit with viaducts. Three.js (r128), plain Ja
 single self-contained HTML file.
 
 Two modes: **Race** (first to the line) and **Showdown** (Micro Machines-style: the camera follows the leader;
-drop off the screen and the leader takes one of your lights; everyone regroups at the leader; take all 8 to win).
+drop off the screen and you blow up, the leader takes one of your lights and you rejoin rolling behind it; only a
+breakaway, where the leader drops everyone at once, stops play for a rolling regroup; first to 10 lights wins).
 The Showdown rules live in `src/core/modes/showdown.js`; `src/core/sim/view.js` uses the camera's exact screen
 axes so what you see is what's judged.
 

@@ -28,7 +28,7 @@ export function updateCamera(dt, snap) {
   const k = snap ? 1 : 1 - Math.exp(-dt * (G.state === 'menu' ? 2.5 : 5));
   camT.x += (tx - camT.x) * k; camT.y += (ty - camT.y) * k; camT.z += (tz - camT.z) * k;
   const aspect = innerWidth / innerHeight; let vh = 44 + clamp(sp, 0, 45) * 0.3;
-  if (race && G.state !== 'menu' && race.sd) vh = 50;                // fixed zoom so the edge of the screen is predictable
+  if (race && G.state !== 'menu' && race.sd) vh = 56;                // fixed zoom so the edge of the screen is predictable
   else if (race && G.state !== 'menu') {
     // pull out where the ground falls away in front of the camera (ledges, bridges), pull in through town streets
     const c = race.player, tr = G.world.tr, drop = c.y - G.world.terr.at(c.x + 16, c.z + 16);

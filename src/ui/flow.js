@@ -52,8 +52,6 @@ export function handleEvents() {
         case 'lap': if (c.isPlayer) { callout(e.n === G.world.tr.laps ? 'Final lap!' : 'Lap ' + e.n); AudioSys.beep(660, 0.2); } break;
         case 'sd-round': sdRound(e); break;
         case 'sd-out': callout(c.isPlayer ? 'You\'re out!' : c.name + ' is out!'); break;
-        case 'sd-hold': G.goTimer = 0; break;
-        case 'sd-go': $('countdown').textContent = 'Go!'; $('countdown').hidden = false; G.goTimer = 0.6; AudioSys.beep(880, 0.2); break;
         case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? 'You win the Showdown!' : w.name + ' wins the Showdown'); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
         case 'finish':
           if (c.isPlayer) {
@@ -67,11 +65,15 @@ export function handleEvents() {
     c.events.length = 0;
   }
 }
-// a round of Showdown: the leader took a light from each car that dropped off the screen
+// a round of Showdown: the leader took a light from each car that dropped off the screen (blown up, or left behind in a breakaway)
 function sdRound(e) {
   const P = race.player, pi = race.cars.indexOf(P), w = race.cars[e.winner], n = e.losers.length;
-  if (e.winner === pi) { callout(n > 1 ? `You take ${n} lights!` : 'You take a light!'); AudioSys.tone(660, 0.12, 0.08, 'triangle', 1.5); }
-  else { callout(`${w.name} takes a light!`); if (e.losers.includes(pi)) AudioSys.tone(520, 0.3, 0.08, 'triangle', 0.5); }
+  if (e.boom) {
+    const lost = e.losers.includes(pi);
+    callout(lost ? 'Boom! You lose a light' : e.winner === pi ? (n > 1 ? `Boom! You take ${n} lights` : 'Boom! You take a light') : `${race.cars[e.losers[0]].name} blew up!`);
+    if (lost) AudioSys.tone(520, 0.3, 0.08, 'triangle', 0.5); else if (e.winner === pi) AudioSys.tone(660, 0.12, 0.08, 'triangle', 1.5);
+  } else if (e.winner === pi) { callout(n > 1 ? `Breakaway! +${n} lights` : 'Breakaway! +1 light'); AudioSys.tone(660, 0.12, 0.08, 'triangle', 1.5); }
+  else { callout(`${w.name} breaks away!`); if (e.losers.includes(pi)) AudioSys.tone(520, 0.3, 0.08, 'triangle', 0.5); }
 }
 export function showResults() {
   if (race.sd) return showShowdownResults();
@@ -138,7 +140,7 @@ export function togglePause() {
 export function refreshBest() { STAGES.forEach((s, i) => { const el = $('best-' + i); if (el) el.textContent = best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet'; }); }
 const MODE_DESC = {
   race: 'Beat three rivals to the line.',
-  showdown: 'Head to head: the camera follows the leader. Drop off the screen and the leader takes one of your lights. Everyone starts with 4; take all 8 to win.'
+  showdown: 'Head to head: the camera follows the leader. Fall off the screen and you blow up, handing the leader one of your lights. Everyone starts with 4; first to 10 wins.'
 };
 export function setMode(m) {
   G.mode = m; saveMode(m);

@@ -1,6 +1,6 @@
 import './debug.js';
 import { G } from './game.js';
-import { $ } from './ui/dom.js';
+import { $, isTouch } from './ui/dom.js';
 import { loadMode } from './ui/storage.js';
 import { AudioSys } from './audio/audio.js';
 import { STEP } from './core/constants.js';
@@ -80,6 +80,7 @@ export async function boot() {
   let step = 'setting up the menu';
   try {
     wireUI(); buildStageList(); setMode(loadMode());
+    if (isTouch) { document.documentElement.classList.add('touch'); $('time-block').insertBefore($('speed-block'), $('time-block').querySelector('.hud-btns')); }   // keep the speedo clear of the thumb controls
     $('race-btn').textContent = 'Race ' + STAGES[0].name;
     step = 'starting WebGL'; initRenderer(); initParticles(); initSkids(); initDebris(); initRings(); initProps();
     step = 'loading fonts';

@@ -1,5 +1,6 @@
 import { G } from '../game.js';
 import { screenOffset } from '../core/sim/view.js';
+import { SD } from '../core/modes/showdown.js';
 import { TAU, clamp } from '../core/math.js';
 import { ranking } from '../core/sim/race.js';
 import { roadH } from '../core/track/query.js';
@@ -79,11 +80,9 @@ function updateShowdownHUD(sd, P) {
   if (key !== G.sdKey) {
     G.sdKey = key;
     const hex = c => '#' + c.def.color.toString(16).padStart(6, '0');
-    $('sd-rows').innerHTML = race.cars.map((c, k) => `<li class="${c.isPlayer ? 'me' : ''} ${c.out ? 'out' : ''}"><span class="chip" style="background:${hex(c)}"></span>${c.name}<span class="sd-l">${
-      Array.from({ length: 8 }, (_, j) => j < sd.lights[k] ? `<i style="background:${hex(c)};box-shadow:0 0 6px ${hex(c)}"></i>` : '<i></i>').join('')}</span></li>`).join('');
+    $('sd-rows').innerHTML = race.cars.map((c, k) => `<li class="${c.isPlayer ? 'me' : ''} ${c.out ? 'out' : ''}"><span class="chip" style="background:${hex(c)}"></span><span class="nm">${c.name}</span><span class="nm-s">${c.name.slice(0, 3)}</span><span class="sd-l">${
+      Array.from({ length: SD.WIN }, (_, j) => j < sd.lights[k] ? `<i style="background:${hex(c)};box-shadow:0 0 6px ${hex(c)}"></i>` : '<i></i>').join('')}</span></li>`).join('');
   }
-  // regroup countdown
-  if (sd.phase === 'hold') { const n = Math.max(1, Math.ceil(sd.timer / 0.5)); $('countdown').hidden = false; setTxt('countdown', String(n)); }
   // glow on the screen edge you're about to drop off
   const edge = $('edge').children, v = race.view;
   if (sd.focus && v && !P.out && sd.phase === 'run') {
