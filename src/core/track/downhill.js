@@ -1,4 +1,5 @@
 import { SURF } from '../constants.js';
+import { autoJumps } from '../elements/jump.js';
 import { TAU, clamp, makeNoise, mulberry32, smoothArr, wrapAngle } from '../math.js';
 
 export function genPath(stage, seed) {
@@ -60,18 +61,7 @@ export function finishTrack(stage, g, seed) {
   const finishIdx = N - 75;
 
   // jumps on straight-ish sections
-  let placed = 0, lastJ = -1e9;
-  for (let i = 170; i < finishIdx - 160 && placed < stage.jumps; i += 5) {
-    if (i - lastJ < 360) continue;
-    let ok = true;
-    for (let j = i - 15; j <= i + 60; j++) if (Math.abs(ks[j]) > 1 / 110) { ok = false; break; }
-    if (!ok) continue;
-    const RH = 2.6;
-    for (let q = 0; q <= 17; q++) H[i + q] += RH * Math.pow(q / 17, 1.7);
-    H[i + 18] += RH * 0.62; H[i + 19] += RH * 0.28;
-    for (let q = 0; q < 20; q++) jump[i + q] = 1;
-    lastJ = i; placed++;
-  }
+  autoJumps(H, jump, { from: 170, to: finishIdx - 160, count: stage.jumps, gap: 360, rh: 2.6, ok: i => { for (let j = i - 15; j <= i + 60; j++) if (Math.abs(ks[j]) > 1 / 110) return false; return true; } });
 
   // barriers and kerbs
   for (let i = 0; i < N; i++) {

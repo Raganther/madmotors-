@@ -18,7 +18,7 @@ import { camera, renderer, scene } from '../render/renderer.js';
 import { carVis, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
 import { TRACKS, buildWorld } from '../render/world/index.js';
-import { featureHook } from '../render/features.js';
+import { elementHook } from '../render/elements/index.js';
 import { $, isTouch } from './dom.js';
 import { fmt, ordinal } from './format.js';
 import { callout, drawProfile } from './hud.js';
@@ -31,7 +31,7 @@ export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
   const r = createRace(G.world.W, CAR_DEFS, { mode: G.mode }); clearProps(); resetBarrierVis(); carVis.forEach(repairCarVis);
-  featureHook('newRace', r);
+  elementHook('newRace', r);
   return r;
 }
 // ---------- flow ----------

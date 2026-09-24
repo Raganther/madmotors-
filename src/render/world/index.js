@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { featureHook } from '../features.js';
+import { elementHook } from '../elements/index.js';
 import { G } from '../../game.js';
 import { buildTrack } from '../../core/track/build.js';
 import { buildTerrain } from '../../core/track/terrain.js';
@@ -9,9 +9,7 @@ import { disposeGroup } from '../geometry.js';
 import { FX } from '../materials.js';
 import { hemi, scene, setGrade, sun } from '../renderer.js';
 import { addBarriers } from './barriers.js';
-import { addBridge } from './bridges.js';
-import { addArches, addGantry, addSigns, addTunnel } from './landmarks.js';
-import { addRiver } from './river.js';
+import { addGantry, addSigns } from './landmarks.js';
 import { makeRoadMesh } from './road.js';
 import { addScenery } from './scenery.js';
 import { makeTerrainMesh } from './terrain.js';
@@ -44,11 +42,7 @@ export function buildWorld(idx) {
   G.fanChunks = addScenery(group, tr, terr, stage);
   if (tr.loopN) addGantry(group, tr, terr, tr.startIdx, 'START / FINISH');
   else { addGantry(group, tr, terr, tr.startIdx, 'START'); addGantry(group, tr, terr, tr.finishIdx, 'FINISH'); }
-  addBridge(group, tr, terr, stage);
-  addRiver(group, tr);
-  featureHook('build', group, tr, terr, stage);
-  addTunnel(group, tr, terr);
-  addArches(group, tr, terr, stage);
+  elementHook('build', group, tr, terr, stage);                 // bridges, river, railways, town, gallery, tunnel, arches
   addSigns(group, tr, terr);
   G.world = { idx, stage, tr, terr, group, cover: coverMap(tr), W: { tr, terr, surf: stage.surface, armco: !!stage.armco, traffic: stage.traffic } };
   clearSkids();

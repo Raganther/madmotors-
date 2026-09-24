@@ -6,7 +6,7 @@ import { genCircuit } from '../src/core/track/circuit.js';
 it('Red Mesa Canyon: closes, five placed jumps, no straight over 90 m or backwards, under 2.1 km a lap', () => {
   const st = M.STAGES.find(s => s.name === 'Red Mesa Canyon'), g = genCircuit(st), tr = M.buildTrack(st);
   expect(g.closeGap).toBeLessThan(1.5);
-  expect(g.kicks.length).toBe(5);
+  expect(tr.kicks.length).toBe(5);
   for (const sg of st.segs) if (sg[0] === 's' && typeof sg[1] === 'number') expect(sg[1]).toBeLessThanOrEqual(90);
   expect(tr.loopN).toBeLessThan(2100);
   // no section may come out backwards ({toA}/{toB} straights depend on everything before them)

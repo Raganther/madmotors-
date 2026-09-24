@@ -3,7 +3,7 @@ import { HALF } from '../../core/constants.js';
 import { clamp, lerp } from '../../core/math.js';
 import { chunkMesh } from '../geometry.js';
 import { withCutaway } from '../materials.js';
-import { bridgeMat } from './bridges.js';
+import { bridgeMat } from '../elements/bridge.js';
 
 export const ROAD_STRIPS = [-HALF + 1.1, -3.7, -2.3, -1.2, 1.2, 2.3, 3.7, HALF - 1.1];
 export function makeRoadMesh(tr, stage) {

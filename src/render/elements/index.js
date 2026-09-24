@@ -1,23 +1,30 @@
-// Visual side of the race features (see core/features/index.js). Each entry may define:
+// Visual side of the track elements (core/elements) and race features (core/features), one entry per piece, in the
+// order the world is built. Each entry may define:
 //   init()                           once at boot
 //   build(group, tr, terr, stage)    when a stage's world is built
 //   newRace(r)                       when a race (re)starts, after the core has created it
 //   update(dt, now, fxDt)            every frame while not paused
 import * as THREE from 'three';
-import { G } from '../game.js';
-import { disposeGroup } from './geometry.js';
-import { scene } from './renderer.js';
-import { addRails } from './world/rails.js';
-import { addCrossings, crossVis, updateCrossings } from './crossings.js';
-import { initTrainsVis, updateTrainsVis } from './trains.js';
-import { addTown } from './world/town.js';
-import { addGallery } from './world/gallery.js';
-import { initRockVis, updateRocks } from './rocks.js';
-import { makeTrafficMesh } from './vehicles.js';
-import { initHazardVis, updateHazardVis } from './hazards.js';
+import { G } from '../../game.js';
+import { disposeGroup } from '../geometry.js';
+import { scene } from '../renderer.js';
+import { addRails } from './rails.js';
+import { addCrossings, crossVis, updateCrossings } from '../crossings.js';
+import { initTrainsVis, updateTrainsVis } from '../trains.js';
+import { addTown } from './town.js';
+import { addGallery } from './gallery.js';
+import { initRockVis, updateRocks } from '../rocks.js';
+import { makeTrafficMesh } from '../vehicles.js';
+import { addBridge } from './bridge.js';
+import { addRiver } from './river.js';
+import { addTunnel } from './tunnel.js';
+import { addArches } from './arch.js';
+import { initHazardVis, updateHazardVis } from '../hazards.js';
 
+const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
+const river = { name: 'river', build(group, tr) { addRiver(group, tr); } };
 const railways = {
-  name: 'railways',
+  name: 'rails',
   build(group, tr) { addRails(group, tr); addCrossings(group, tr); },
   newRace(r) {
     const w = G.world;
@@ -37,9 +44,11 @@ const town = {
   }
 };
 const gallery = { name: 'gallery', build(group, tr) { addGallery(group, tr); } };
+const tunnel = { name: 'tunnel', build(group, tr, terr) { addTunnel(group, tr, terr); } };
+const arch = { name: 'arch', build(group, tr, terr, stage) { addArches(group, tr, terr, stage); } };
 const rockfall = { name: 'rockfall', init: initRockVis, update(dt, now, fxDt) { updateRocks(fxDt); } };
 
 const hazards = { name: 'hazards', init: initHazardVis, update(dt, now) { updateHazardVis(dt, now); } };
 
-export const RENDER_FEATURES = [railways, town, gallery, rockfall, hazards];
-export const featureHook = (hook, ...args) => { for (const f of RENDER_FEATURES) if (f[hook]) f[hook](...args); };
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, rockfall, hazards];
+export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

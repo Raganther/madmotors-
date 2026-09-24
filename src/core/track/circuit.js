@@ -1,6 +1,7 @@
 import { HALF, SURF } from '../constants.js';
 import { TAU, lerp, makeNoise, mulberry32, smoothWrap, smoothstep, wrapAngle } from '../math.js';
-import { makeRailLine, railAt, railProject } from './rails.js';
+import { railAt } from './rails.js';
+import { ELEMENTS, elementPhase } from '../elements/index.js';
 
 export function loopHeight(t) {
   if (t < Math.PI) { const s = t / Math.PI; return 9 * smoothstep(0.5, 1, s) + 3.5 * Math.sin(4 * Math.PI * s) * Math.sin(Math.PI * s); }
@@ -84,18 +85,13 @@ export function genPass(stage) {
 }
 export function genCircuit(stage) {
   let a = 0, b = 0, phi = stage.startHeading || 0, h = 0;
-  const A = [], B = [], hs = [], tunnel = [], bridge = [], farH = [], nearH = [], rampF = [], rampN = [], jumpOK = [], townF = [], galleryF = [], rockF = [], kicks = [], arches = [];
-  const emit = (hh, tg) => {
-    A.push(a); B.push(b); hs.push(hh); tunnel.push(tg.tunnel ? 1 : 0); bridge.push(tg.bridge ? 1 : 0); jumpOK.push(tg.jump ? 1 : 0);
-    farH.push(tg.far ?? 0); nearH.push(tg.near ?? 0); rampF.push(tg.rampF ?? 20); rampN.push(tg.rampN ?? 20);
-    townF.push(tg.town ? 1 : 0); galleryF.push(tg.gallery ? 1 : 0); rockF.push(tg.rockfall ? 1 : 0);
-  };
+  const A = [], B = [], hs = [], marks = {};
+  // per-sample channels recorded from each section's tags, as declared by the track elements
+  const chans = ELEMENTS.flatMap(e => Object.entries(e.channels || {})), ch = Object.fromEntries(chans.map(([k]) => [k, []]));
+  const emit = (hh, tg) => { A.push(a); B.push(b); hs.push(hh); for (const [k, f] of chans) ch[k].push(f(tg)); };
   emit(0, stage.segs[0][3] || {});
   for (const sg of stage.segs) {
-    const type = sg[0];
-    const tg0 = (type === 's' ? sg[3] : sg[4]) || {};
-    if (tg0.kick) kicks.push({ i: A.length, h: tg0.kick });   // placed jump at the start of this section
-    const i0 = A.length;
+    const type = sg[0], tg0 = (type === 's' ? sg[3] : sg[4]) || {}, i0 = A.length;
     if (type === 's') {
       let [, len, eh, tg = {}] = sg;
       if (typeof len === 'object') len = len.toA !== undefined ? (len.toA - a) / Math.cos(phi) : (len.toB - b) / Math.sin(phi);
@@ -108,13 +104,13 @@ export function genCircuit(stage) {
       for (let q = 1; q <= n; q++) { phi += dphi / 2; a += Math.cos(phi) * chord; b += Math.sin(phi) * chord; phi += dphi / 2; emit(lerp(h0, eh, q / n), tg); }
       h = eh;
     }
-    if (tg0.arch) arches.push(Math.round((i0 + A.length) / 2));   // rock arch over the middle of this section (scenery only)
+    for (const e of ELEMENTS) if (e.section) e.section(tg0, i0, A.length, marks);
   }
-  while (A.length > 2 && Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) < 0.6) { A.pop(); B.pop(); for (const arr of [hs, tunnel, bridge, farH, nearH, rampF, rampN, jumpOK, townF, galleryF, rockF]) arr.pop(); }
+  while (A.length > 2 && Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) < 0.6) { A.pop(); B.pop(); hs.pop(); for (const k in ch) ch[k].pop(); }
   const xs = [], zs = [];
   for (let i = 0; i < A.length; i++) { xs.push((A[i] - B[i]) / Math.SQRT2); zs.push(-(A[i] + B[i]) / Math.SQRT2); }
   const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width } : null;
-  return { xs, zs, hs, tunnel, bridge, smoothH: 10, profile: { farH, nearH, rampF, rampN, jumpOK, townF, galleryF, rockF }, kicks, arches, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
+  return { xs, zs, hs, ch, gorge: true, smoothH: 10, marks, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
 }
 export function buildLoop(stage) {
   if (stage.type === 'gorge') return finishLoop(stage, genCircuit(stage), stage.seed);
@@ -133,40 +129,17 @@ export function finishLoop(stage, g, seed) {
   const ks0 = smoothWrap(k0, 6);
   const hraw = Float32Array.from(g.hs);
   const H0 = smoothWrap(hraw, g.smoothH || 8);
-  const tunnel0 = U0();
-  for (let i = 0; i < N0; i++) { bridge0[i] = g.bridge[i]; tunnel0[i] = g.tunnel[i]; }
+  // per-sample channels: from the section tags on 'gorge' stages, generated (bridge/tunnel only) on the others
+  const U0f = src => { const u = U0(); if (src) for (let i = 0; i < N0; i++) u[i] = src[i]; return u; }, F0f = src => Float32Array.from(src);
+  const ch = {};
+  if (g.ch) for (const k in g.ch) ch[k] = ['far', 'near', 'rampF', 'rampN'].includes(k) ? F0f(g.ch[k]) : U0f(g.ch[k]);
+  else { ch.bridge = U0f(g.bridge); ch.tunnel = U0f(g.tunnel); for (const k of ['jump', 'town', 'gallery', 'rockfall']) ch[k] = U0(); }
+  const tunnel0 = ch.tunnel; for (let i = 0; i < N0; i++) bridge0[i] = ch.bridge[i];
   const noise = makeNoise(seed);
-  const startIdx = 36;
-  // railways: where a line meets the road at the same height is a level crossing
-  const rails = stage.rails ? { lines: stage.rails.map(makeRailLine), crossings: [] } : null;
-  if (rails) for (const L of rails.lines) {
-    let run = [];
-    const flush = () => { if (run.length) { const i = run[Math.floor(run.length / 2)], pj = railProject(L, xs0[i], zs0[i]); const C = { i, s: pj.s, line: L, closed: false }; L.crossings.push(C); rails.crossings.push(C); } run = []; };
-    for (let i = 0; i < N0; i++) {
-      const pj = railProject(L, xs0[i], zs0[i]), h = railAt(L, pj.s).h;
-      if (pj.d < 3 && Math.abs(H0[i] - h) < 2.5) run.push(i); else flush();
-    }
-    flush();
-  }
-  const nearCrossing = (j, r) => rails && rails.crossings.some(C => { const d = Math.abs(j - C.i); return Math.min(d, N0 - d) < r; });
-  // jump: straight section, away from the crossing and the start
-  let placed = 0;
-  for (let i = startIdx + 150; i < N0 - 80 && placed < stage.jumps; i += 5) {
-    let ok = true;
-    for (let j = i - 15; j <= i + 60; j++) if (Math.abs(ks0[w(j)]) > 1 / 110 || Math.hypot(xs0[w(j)], zs0[w(j)]) < 80 || tunnel0[w(j)] || bridge0[w(j)] || (g.profile && !g.profile.jumpOK[w(j)]) || nearCrossing(w(j), 80)) { ok = false; break; }
-    if (!ok) continue;
-    const RH = 2.4;
-    for (let q = 0; q <= 17; q++) H0[i + q] += RH * Math.pow(q / 17, 1.7);
-    H0[i + 18] += RH * 0.62; H0[i + 19] += RH * 0.28;
-    for (let q = 0; q < 20; q++) jump0[i + q] = 1;
-    placed++; i += 400;
-  }
-  // placed jumps ('kick' tags): same kicker profile, at the start of the tagged section
-  if (g.kicks) for (const { i, h: RH } of g.kicks) {
-    for (let q = 0; q <= 17; q++) H0[w(i + q)] += RH * Math.pow(q / 17, 1.7);
-    H0[w(i + 18)] += RH * 0.62; H0[w(i + 19)] += RH * 0.28;
-    for (let q = 0; q < 20; q++) jump0[w(i + q)] = 1;
-  }
+  const startIdx = 36, gorge = !!g.gorge;
+  const ctx = { stage, g, N0, w, xs0, zs0, th0, ks0, H0, ch, jump0, wallL0, wallR0, kerbL0, kerbR0, startIdx, gorge, marks: g.marks || {}, nearCrossing: () => false };
+  elementPhase('heights', ctx);                                    // level crossings, then jumps and kickers
+  const rails = ctx.rails;
   const idwX = [], idwZ = [], idwH = [];
   for (let i = 0; i < N0; i += 6) if (!bridge0[i]) { idwX.push(xs0[i]); idwZ.push(zs0[i]); idwH.push(H0[i]); }
   let tunMid = -1; { const ti = []; for (let i = 0; i < N0; i++) if (tunnel0[i]) ti.push(i); if (ti.length) tunMid = ti[Math.floor(ti.length / 2)]; }
@@ -190,8 +163,8 @@ export function finishLoop(stage, g, seed) {
     return v;
   };
   // gorge tracks: ground height comes from the nearest road section's profile (far = up-screen side, near = camera side)
-  const PF = g.profile ? { far: smoothWrap(Float32Array.from(g.profile.farH), 12), near: smoothWrap(Float32Array.from(g.profile.nearH), 12),
-    rF: smoothWrap(Float32Array.from(g.profile.rampF), 12), rN: smoothWrap(Float32Array.from(g.profile.rampN), 12),
+  const PF = gorge ? { far: smoothWrap(ch.far, 12), near: smoothWrap(ch.near, 12),
+    rF: smoothWrap(ch.rampF, 12), rN: smoothWrap(ch.rampN, 12),
     dot: Float32Array.from(th0, t => -Math.cos(t) * -Math.SQRT1_2 + Math.sin(t) * -Math.SQRT1_2) } : null;   // how much the road's right side faces up-screen
   // profile for one side of sample i (side = +1 right, -1 left): roads running up/down the screen blend far and near
   const sideProf = (i, side) => { const f = smoothstep(-0.45, 0.45, side * PF.dot[i]); return [lerp(PF.near[i], PF.far[i], f), lerp(PF.rN[i], PF.rF[i], f), f]; };
@@ -205,7 +178,7 @@ export function finishLoop(stage, g, seed) {
     const regional = k > 0 ? idw(x, z) + Math.max(0, up - 330) * 0.45 + 18 * Math.max(0, noise.fbm(x * 0.005 + 7, z * 0.005 - 3, 3) + 0.2) : 0;
     return lerp(nearV, regional, k) + 4 * noise.fbm(x * 0.012 + 2.2, z * 0.012 - 4.1, 3) * smoothstep(HALF + 3, HALF + 25, q.d);
   };
-  const base = g.profile ? profBase : (x, z) => idw(x, z) + shape(x, z) + 5 * noise.fbm(x * 0.006 + 2.2, z * 0.006 - 4.1, 2);
+  const base = gorge ? profBase : (x, z) => idw(x, z) + shape(x, z) + 5 * noise.fbm(x * 0.006 + 2.2, z * 0.006 - 4.1, 2);
   const carveW = g.pass ? (x, z) => 1 - smoothstep(380, 440, toAB(x, z)[1]) : null;
   for (let i = 0; i < N0; i++) {
     const a = Math.abs(ks0[i]);
@@ -237,8 +210,8 @@ export function finishLoop(stage, g, seed) {
     }
     if (i < 48) { if (!wallL0[i]) wallL0[i] = 2; if (!wallR0[i]) wallR0[i] = 2; }
   }
-  for (let i = 0; i < N0; i++) if (bridge0[i]) { for (let j = i - 2; j <= i + 2; j++) { wallL0[w(j)] = 4; wallR0[w(j)] = 4; } kerbL0[i] = kerbR0[i] = 0; }
-  for (let i = 0; i < N0; i++) if (tunnel0[i]) { wallL0[i] = 5; wallR0[i] = 5; kerbL0[i] = kerbR0[i] = 0; }
+  ctx.PF = PF;
+  elementPhase('walls', ctx);                                      // bridge rails, tunnel walls
   const hairpins = [];
   for (let i = 0; i < N0; i++) if (Math.abs(ks0[i]) > 1 / 40) {
     let j = i; while (j < N0 - 1 && Math.abs(ks0[j]) > 1 / 40) j++;
@@ -248,15 +221,8 @@ export function finishLoop(stage, g, seed) {
   const lm = SURF[stage.surface].latMax * 0.8;
   for (let i = 0; i < N0; i++) { let m = 1e-4; for (let j = i - 2; j <= i + 2; j++) m = Math.max(m, Math.abs(ks0[w(j)])); vmax0[i] = Math.min(70, Math.sqrt(lm / m)); }
 
-  // town: bollards along the pavement edge on both sides; gallery: a solid parapet on the valley side
-  const town0 = U0(), gallery0 = U0(), rock0 = U0();
-  if (PF) for (let i = 0; i < N0; i++) {
-    town0[i] = g.profile.townF[i]; gallery0[i] = g.profile.galleryF[i]; rock0[i] = g.profile.rockF[i];
-    if (town0[i]) { wallL0[i] = 7; wallR0[i] = 7; kerbL0[i] = kerbR0[i] = 0; }
-    if (gallery0[i]) { if (PF.dot[i] > 0) wallL0[i] = 5; else wallR0[i] = 5; }
-  }
-  // gaps in the barriers where a railway crosses
-  if (rails) for (const C of rails.crossings) for (let j = C.i - 9; j <= C.i + 9; j++) { wallL0[w(j)] = 0; wallR0[w(j)] = 0; kerbL0[w(j)] = 0; kerbR0[w(j)] = 0; }
+  elementPhase('wallsLate', ctx);                                  // town bollards, gallery parapet
+  elementPhase('wallsLast', ctx);                                  // gaps where railways cross
   // unroll laps into a straight run of samples so every lap is just "further along"
   const laps = stage.laps, N = N0 * laps + startIdx + 110;
   const F = () => new Float32Array(N), U = () => new Uint8Array(N);
@@ -289,7 +255,9 @@ export function finishLoop(stage, g, seed) {
     let a = s0; while (a > 0 && !deep(a)) a -= 2; let b = s1; while (b < L.len && !deep(b)) b += 2;
     L.visA = Math.max(0, a); L.visB = Math.min(L.len, b);
   }
-  return { N, xs, zs, th, tx, tz, rx, rz, k, ks, H, jump, wallL, wallR, kerbL, kerbR, vmax, hairpins, finishIdx: startIdx + laps * N0, startIdx, noise, base, nearest, nearestT,
-    minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge, tunnel, nearestTun, carve: stage.carve || 0, carveW, margin: g.pass ? 230 : g.profile ? 120 : 95,
-    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, rails, town: PF ? town0 : null, gallery: PF ? gallery0 : null, rockfall: PF && rock0.some(v => v) ? rock0 : null, rockGap: stage.rockGap || 1, arches: g.arches || [], gridS: g.profile ? 4 : 3, edge: g.profile ? HALF + 4 : HALF + 15 };
+  const out = { N, xs, zs, th, tx, tz, rx, rz, k, ks, H, jump, wallL, wallR, kerbL, kerbR, vmax, hairpins, finishIdx: startIdx + laps * N0, startIdx, noise, base, nearest, nearestT,
+    minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge, tunnel, nearestTun, carve: stage.carve || 0, carveW, margin: g.pass ? 230 : gorge ? 120 : 95,
+    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, gridS: gorge ? 4 : 3, edge: gorge ? HALF + 4 : HALF + 15 };
+  elementPhase('track', ctx, out);                                 // each element's fields (town, gallery, rails, ...)
+  return out;
 }

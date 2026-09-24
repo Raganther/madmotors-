@@ -17,7 +17,7 @@ import { initSkids } from './render/effects/skids.js';
 import { CUT, FX } from './render/materials.js';
 import { contextLost, cycleQuality, initRenderer, perfSample, renderFrame, renderer } from './render/renderer.js';
 import { initCars, updateCarVisuals } from './render/vehicles.js';
-import { featureHook } from './render/features.js';
+import { elementHook } from './render/elements/index.js';
 import { applyBarrierChanges } from './render/world/barriers.js';
 import { updateFans } from './render/world/scenery.js';
 import { setMode, buildStageList, handleEvents, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
@@ -54,7 +54,7 @@ export function frame(t) {
   if (G.calloutTimer > 0) { G.calloutTimer -= dt; if (G.calloutTimer <= 0) $('callout').hidden = true; }
   if (G.hintTimer > 0 && G.state !== 'paused') { G.hintTimer -= dt; $('hint').hidden = G.hintTimer <= 0; } else if (G.hintTimer <= 0) $('hint').hidden = true;
   if (race && G.state !== 'menu') { const P = race.player; CUT.car.value.set(P.x, P.y, P.z); const cov = G.world.cover[P.pr.i % G.world.cover.length] ? 8.5 : 0; CUT.r.value += ((G.state === 'paused' ? CUT.r.value : cov) - CUT.r.value) * Math.min(1, dt * 6); } else CUT.r.value = 0;
-  if (G.state !== 'paused') { const fxDt = G.slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); featureHook('update', dt, now, fxDt); updateParticles(fxDt); updateSparks(fxDt); updateFans(now); updateCamera(dt, false); }
+  if (G.state !== 'paused') { const fxDt = G.slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); elementHook('update', dt, now, fxDt); updateParticles(fxDt); updateSparks(fxDt); updateFans(now); updateCamera(dt, false); }
   updateHUD(dt);
   if (!contextLost) renderFrame();
 }
@@ -86,7 +86,7 @@ export async function boot() {
     step = 'starting WebGL'; initRenderer(); initParticles(); initSparks(); initSkids(); initDebris(); initRings(); initProps();
     step = 'loading fonts';
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
-    step = 'building the cars'; initCars(); featureHook('init');
+    step = 'building the cars'; initCars(); elementHook('init');
     step = 'building the first stage';
     selectStage(0);
     requestAnimationFrame(frame);
