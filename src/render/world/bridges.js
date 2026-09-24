@@ -1,12 +1,9 @@
 import * as THREE from 'three';
-import { G } from '../../game.js';
 import { HALF, WALL } from '../../core/constants.js';
 import { railProject } from '../../core/track/rails.js';
 import { addInstanced, flat } from '../geometry.js';
-import { race } from '../../ui/flow.js';
 
-G.bridgeMats = [];
-export function bridgeMat(opts) { const m = new THREE.MeshLambertMaterial(Object.assign({ transparent: true, opacity: 1 }, opts)); G.bridgeMats.push(m); return m; }
+export function bridgeMat(opts) { return new THREE.MeshLambertMaterial(opts); }
 export function addBridge(group, tr, terr, stage) {
   if (stage && stage.viaduct) return addViaduct(group, tr, terr);
   const N = tr.loopN || tr.N, deck = [], rails = [], stripes = [], pillars = [];
@@ -71,15 +68,4 @@ export function addViaduct(group, tr, terr) {
   addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1)), bridgeMat({ color: 0xBDB4A4 }), walls, { cast: true });
   addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1)), bridgeMat({ color: 0xffffff }), piers, { cast: true, receive: true });
   addInstanced(group, archGeo.clone(), bridgeMat({ color: 0xffffff, side: THREE.DoubleSide }), arches, { cast: true });
-}
-export let bridgeOpacity = 1;
-export function updateBridgeFade(dt) {
-  if (!G.bridgeMats.length) return;
-  const tr = G.world.tr, P = race && G.state !== 'menu' ? race.player : null;
-  if (!tr.bridgeList) { tr.bridgeList = []; for (let i = 0; i < (tr.loopN || tr.N); i += 2) if (tr.bridge[i]) tr.bridgeList.push(i); }
-  const under = P && tr.bridgeList.some(i => (tr.xs[i] - P.x) ** 2 + (tr.zs[i] - P.z) ** 2 < 18 * 18 && tr.H[i] > P.y + 3);
-  const target = under ? 0.3 : 1; const next = bridgeOpacity + (target - bridgeOpacity) * (1 - Math.exp(-dt * 8));
-  if (Math.abs(next - bridgeOpacity) < 0.001 && next === target) return;
-  bridgeOpacity = next;
-  for (const m of G.bridgeMats) { m.opacity = bridgeOpacity; m.depthWrite = bridgeOpacity > 0.95; }
 }

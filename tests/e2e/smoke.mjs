@@ -24,10 +24,13 @@ for (let i = 0; i < n; i++) {
     const d = window.__dr; window.requestAnimationFrame = () => 0;
     d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
     d.step(6);
-    return { stage: d.G.world.stage.name, t: d.race.time.toFixed(1), progress: Math.round(d.race.player.progress) };
+    // see-through scenery only inside long covered stretches: off on open road, on inside a tunnel
+    const cov = d.G.world.cover, N = cov.length, open = cov.findIndex(v => !v), tun = cov.findIndex(v => v);
+    return { stage: d.G.world.stage.name, t: d.race.time.toFixed(1), progress: Math.round(d.race.player.progress), cov: cov[d.race.player.pr.i % N], open, tun, N };
   });
   await page.screenshot({ path: path.join(outDir, `stage${i + 1}.png`) });
-  console.log(`stage ${i + 1} ${info.stage}: raced ${info.t}s, player progress ${info.progress}`);
+  console.log(`stage ${i + 1} ${info.stage}: raced ${info.t}s, player progress ${info.progress}, covered stretch ${info.tun < 0 ? 'none' : 'from ' + info.tun}`);
+  if (info.open < 0) errors.push('see-through is on along the whole of ' + info.stage);
   // the real loop was stubbed out for this stage; reload for the next one
   await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 }
@@ -48,6 +51,20 @@ for (const i of [0, 6, 7]) {
   if (!info.rounds || !info.panel) errors.push('showdown did not score a round / show its panel on ' + info.stage);
 }
 await page.evaluate(() => window.__dr.flow.setMode('race'));
+// the see-through window opens only inside long tunnels: check it live (real frame loop) in and out of the Mountain Pass tunnel
+{
+  await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
+  const put = async (idx, inTunnel) => {
+    await page.evaluate(([idx, inTunnel]) => { const d = window.__dr, tr = d.G.world.tr, cov = d.G.world.cover; let i = cov.findIndex(v => inTunnel ? v : false); if (!inTunnel) i = 60;
+      if (inTunnel) i += 30; const P = d.race.player; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
+      P.x = tr.xs[i]; P.z = tr.zs[i]; P.y = tr.H[i]; P.yaw = tr.th[i]; P.vx = P.vz = 0; P.pr = d.core.project(tr, P.x, P.z, i, 3, 3); P.lastGood = i; }, [idx, inTunnel]);
+    await page.waitForTimeout(1500); return page.evaluate(() => window.__dr.CUT.r.value);
+  };
+  await page.evaluate(() => window.__dr.flow.startRace(5)); await page.waitForFunction(() => window.__dr.G.world.idx === 5 && window.__dr.race, null, { timeout: 30000 });
+  const inside = await put(5, true), outside = await put(5, false);
+  console.log(`see-through: ${inside.toFixed(2)} inside the Mountain Pass tunnel, ${outside.toFixed(2)} on open road`);
+  if (!(inside > 4) || !(outside < 1)) errors.push(`see-through window wrong: ${inside} in tunnel, ${outside} outside`);
+}
 // Touch controls on a landscape phone, two thumbs at once: drag the wheel, hold the pedal, slide down to drift, left to brake
 {
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
@@ -67,13 +84,16 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   const expect = async (name, pred, arg = null, timeout = 3000) => { const ok = await tp.waitForFunction(pred, arg, { timeout }).then(() => true, () => false); checks.push([name, ok]); };
   // point-to-steer: the car ends up facing (on screen) the way the thumb points from the wheel's centre
   const facing = ([ax, ay]) => { const P = window.__dr.race.player, [sx, sy] = window.__dr.core.screenOffset(P.x + Math.sin(P.yaw), P.y, P.z + Math.cos(P.yaw), P); return (sx * ax + sy * ay) / (Math.hypot(sx, sy) * Math.hypot(ax, ay)) > 0.9; };
+  // ...or, while it is still turning (a barrier can hold it straight for a while), steering hard toward that direction
+  const steersToward = ([ax, ay]) => { const P = window.__dr.race.player, [gx, gz] = window.__dr.core.groundDir(ax, ay), err = window.__dr.core.wrapAngle(Math.atan2(gx, gz) - P.yaw);
+    return Math.abs(err) < 0.3 || (Math.sign(P.inp.steer) === -Math.sign(err) * (P.vf < -1 ? -1 : 1) && Math.abs(P.inp.steer) > 0.5); };
   const checks = [];
   await touch('touchStart', [[w.x, w.y], [p.x, p.y]]);
   await touch('touchMove', [[w.x + 50, w.y], [p.x, p.y]]);
   await expect('gas', () => { const r = window.__dr.race.player.inp; return r.throttle === 1 && !r.handbrake && !r.brake; });
   await expect('point right: car turns to face right', facing, [1, 0], 10000);
   await touch('touchMove', [[w.x - 35, w.y - 35], [p.x, p.y]]);
-  await expect('point up-left: car turns to face up-left', facing, [-1, 1], 10000);
+  await expect('point up-left: car steers toward up-left', steersToward, [-1, 1], 3000);
   await touch('touchMove', [[w.x - 35, w.y - 35], [p.x, p.y + 45]]);
   await expect('slide down drifts', () => { const r = window.__dr.race.player.inp; return r.throttle === 1 && r.handbrake === 1; });
   await touch('touchMove', [[w.x - 35, w.y - 35], [p.x - 45, p.y]]);

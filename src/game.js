@@ -2,7 +2,6 @@
 export const G = {
   shake: undefined,
   parkVis: undefined,
-  bridgeMats: undefined,
   fanChunks: undefined,
   world: undefined,
   glowTex: undefined,

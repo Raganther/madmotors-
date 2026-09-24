@@ -18,7 +18,6 @@ import { contextLost, cycleQuality, initRenderer, perfSample, renderFrame, rende
 import { initCars, updateCarVisuals } from './render/vehicles.js';
 import { featureHook } from './render/features.js';
 import { applyBarrierChanges } from './render/world/barriers.js';
-import { updateBridgeFade } from './render/world/bridges.js';
 import { updateFans } from './render/world/scenery.js';
 import { setMode, buildStageList, handleEvents, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
 import { updateHUD } from './ui/hud.js';
@@ -53,8 +52,7 @@ export function frame(t) {
   }
   if (G.calloutTimer > 0) { G.calloutTimer -= dt; if (G.calloutTimer <= 0) $('callout').hidden = true; }
   if (G.hintTimer > 0 && G.state !== 'paused') { G.hintTimer -= dt; $('hint').hidden = G.hintTimer <= 0; } else if (G.hintTimer <= 0) $('hint').hidden = true;
-  updateBridgeFade(dt);
-  if (race && G.state !== 'menu') { const P = race.player; CUT.car.value.set(P.x, P.y, P.z); CUT.r.value += ((G.state === 'paused' ? CUT.r.value : 8.5) - CUT.r.value) * Math.min(1, dt * 6); } else CUT.r.value = 0;
+  if (race && G.state !== 'menu') { const P = race.player; CUT.car.value.set(P.x, P.y, P.z); const cov = G.world.cover[P.pr.i % G.world.cover.length] ? 8.5 : 0; CUT.r.value += ((G.state === 'paused' ? CUT.r.value : cov) - CUT.r.value) * Math.min(1, dt * 6); } else CUT.r.value = 0;
   if (G.state !== 'paused') { const fxDt = G.slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); featureHook('update', dt, now, fxDt); updateParticles(fxDt); updateFans(now); updateCamera(dt, false); }
   updateHUD(dt);
   if (!contextLost) renderFrame();
