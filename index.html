@@ -260,7 +260,7 @@ const STAGES = [
     startHeading: Math.PI,
     light: { sun: 0xFFF1DE, sunI: 1.0, sky: 0xDCEBFF, ground: 0x5A6A5A, hemiI: 0.6, cloud: 0.26, grade: [1.0, 1.0, 1.03], sat: 1.1, haze: { color: 0x9DB8D2, top: 0, range: 45, amt: 0.5 } },
     colors: { grassA: 0x8DBD58, grassB: 0x68A046, rock: 0x9A958A, dirt: 0xA88B66, road: 0x4F535B, sky: 0xAFD6EA, round: [0x5E9C45, 0x74B04E], pine: [0x2F6A3E, 0x3A7646, 0x285E38, 0x44804C] },
-    trees: { density: 0.0027, pine: 0.85 }, rocks: 0.0012, bushes: 0.0012, village: true, alpine: { rock: [38, 80], snow: [88, 120], treeLine: 70 },
+    trees: { density: 0.0027, pine: 0.85 }, rocks: 0.0012, bushes: 0.0012, village: false, alpine: { rock: [38, 80], snow: [88, 120], treeLine: 70 },
     river: { pts: [[-900, 118], [-560, 134], [-250, 126], [0, 132], [260, 124], [700, 136]], level: -40, width: 20 },
     // valley line: level crossing just after the start, then under the road bridge before the finish
     // mountain line: out of the mountain, across the plateau, along behind its guard rail and back across into the mountain
@@ -269,8 +269,8 @@ const STAGES = [
       { id: 'mountain', pts: [[70, 620, 61.6], [-90, 392, 61.6], [-230, 392, 62.9], [-390, 620, 62.9]], round: 40, portals: true, speed: 24, cars: 2, body: 0x2F5FA8, coach: 0xF2C230, band: 0x1C2340 }
     ],
     segs: (() => {
-      const town = { far: -8, rampF: 40, near: 1, rampN: 30 }, leg = { far: 14, rampF: 10, near: -12, rampN: 14 };
-      const ledge = { far: 44, rampF: 5, near: -80, rampN: 20 }, plat = { far: 16, rampF: 40, near: -6, rampN: 30, jump: true };
+      const town = { far: -2, rampF: 40, near: 1, rampN: 30, town: true }, leg = { far: 14, rampF: 10, near: -12, rampN: 14 };
+      const ledge = { far: 44, rampF: 5, near: -80, rampN: 20, rockfall: true }, gallery = { far: 44, rampF: 5, near: -80, rampN: 20, gallery: true }, plat = { far: 16, rampF: 40, near: -6, rampN: 30, jump: true };
       const desc = { far: 12, rampF: 18, near: -14, rampN: 22 }, cross = { far: -26, rampF: 25, near: -17, rampN: 30 };
       return [
         ['s', 70, 0, town], ['a', 35, -90, 0, town], ['s', 18, 0, town],
@@ -279,7 +279,9 @@ const STAGES = [
         ['a', 22, -180, 16, leg], ['s', 170, 24, leg],
         ['a', 22, 180, 27, leg], ['s', 170, 35, leg],
         ['a', 22, -180, 38, leg],
-        ['s', 160, 42, ledge], ['a', 220, -14, 44, ledge], ['s', 300, 48, ledge], ['a', 30, 104, 50, ledge],   // cliff ledge
+        ['s', 160, 42, ledge], ['a', 220, -14, 44, ledge], ['s', 110, 45.5, ledge],                            // cliff ledge (rockfall)
+        ['s', 120, 47.1, gallery],                                                                              // rock gallery
+        ['s', 70, 48, ledge], ['a', 30, 104, 50, ledge],
         ['s', 105, 58, { tunnel: true, far: 30, near: 20 }],                        // summit tunnel
         ['a', 30, 90, 60, plat], ['s', { toA: -395 }, 64, plat],                     // plateau
         ['a', 35, 90, 62, desc], ['s', 90, 52, desc], ['a', 70, 30, 46, desc], ['a', 70, -30, 40, desc],
@@ -565,10 +567,11 @@ function trainLen(L) { return trainCars(L).reduce((a, b) => a + b + 1.5, -1.5); 
 
 function genCircuit(stage) {
   let a = 0, b = 0, phi = stage.startHeading || 0, h = 0;
-  const A = [], B = [], hs = [], tunnel = [], bridge = [], farH = [], nearH = [], rampF = [], rampN = [], jumpOK = [];
+  const A = [], B = [], hs = [], tunnel = [], bridge = [], farH = [], nearH = [], rampF = [], rampN = [], jumpOK = [], townF = [], galleryF = [], rockF = [];
   const emit = (hh, tg) => {
     A.push(a); B.push(b); hs.push(hh); tunnel.push(tg.tunnel ? 1 : 0); bridge.push(tg.bridge ? 1 : 0); jumpOK.push(tg.jump ? 1 : 0);
     farH.push(tg.far ?? 0); nearH.push(tg.near ?? 0); rampF.push(tg.rampF ?? 20); rampN.push(tg.rampN ?? 20);
+    townF.push(tg.town ? 1 : 0); galleryF.push(tg.gallery ? 1 : 0); rockF.push(tg.rockfall ? 1 : 0);
   };
   emit(0, stage.segs[0][3] || {});
   for (const sg of stage.segs) {
@@ -586,11 +589,11 @@ function genCircuit(stage) {
       h = eh;
     }
   }
-  while (A.length > 2 && Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) < 0.6) { A.pop(); B.pop(); for (const arr of [hs, tunnel, bridge, farH, nearH, rampF, rampN, jumpOK]) arr.pop(); }
+  while (A.length > 2 && Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) < 0.6) { A.pop(); B.pop(); for (const arr of [hs, tunnel, bridge, farH, nearH, rampF, rampN, jumpOK, townF, galleryF, rockF]) arr.pop(); }
   const xs = [], zs = [];
   for (let i = 0; i < A.length; i++) { xs.push((A[i] - B[i]) / Math.SQRT2); zs.push(-(A[i] + B[i]) / Math.SQRT2); }
   const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width } : null;
-  return { xs, zs, hs, tunnel, bridge, smoothH: 10, profile: { farH, nearH, rampF, rampN, jumpOK }, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
+  return { xs, zs, hs, tunnel, bridge, smoothH: 10, profile: { farH, nearH, rampF, rampN, jumpOK, townF, galleryF, rockF }, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
 }
 function buildLoop(stage) {
   if (stage.type === 'gorge') return finishLoop(stage, genCircuit(stage), stage.seed);
@@ -718,6 +721,13 @@ function finishLoop(stage, g, seed) {
   const lm = SURF[stage.surface].latMax * 0.8;
   for (let i = 0; i < N0; i++) { let m = 1e-4; for (let j = i - 2; j <= i + 2; j++) m = Math.max(m, Math.abs(ks0[w(j)])); vmax0[i] = Math.min(70, Math.sqrt(lm / m)); }
 
+  // town: bollards along the pavement edge on both sides; gallery: a solid parapet on the valley side
+  const town0 = U0(), gallery0 = U0(), rock0 = U0(), parkSpots = [];
+  if (PF) for (let i = 0; i < N0; i++) {
+    town0[i] = g.profile.townF[i]; gallery0[i] = g.profile.galleryF[i]; rock0[i] = g.profile.rockF[i];
+    if (town0[i]) { wallL0[i] = 7; wallR0[i] = 7; kerbL0[i] = kerbR0[i] = 0; }
+    if (gallery0[i]) { if (PF.dot[i] > 0) wallL0[i] = 5; else wallR0[i] = 5; }
+  }
   // gaps in the barriers where a railway crosses
   if (rails) for (const C of rails.crossings) for (let j = C.i - 9; j <= C.i + 9; j++) { wallL0[w(j)] = 0; wallR0[w(j)] = 0; kerbL0[w(j)] = 0; kerbR0[w(j)] = 0; }
   // unroll laps into a straight run of samples so every lap is just "further along"
@@ -754,7 +764,7 @@ function finishLoop(stage, g, seed) {
   }
   return { N, xs, zs, th, tx, tz, rx, rz, k, ks, H, jump, wallL, wallR, kerbL, kerbR, vmax, hairpins, finishIdx: startIdx + laps * N0, startIdx, noise, base, nearest, nearestT,
     minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge, tunnel, nearestTun, carve: stage.carve || 0, carveW, margin: g.pass ? 230 : g.profile ? 120 : 95,
-    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, rails, gridS: g.profile ? 4 : 3, edge: g.profile ? HALF + 4 : HALF + 15 };
+    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, rails, town: PF ? town0 : null, gallery: PF ? gallery0 : null, rockfall: PF && rock0.some(v => v) ? rock0 : null, gridS: g.profile ? 4 : 3, edge: g.profile ? HALF + 4 : HALF + 15 };
 }
 
 function riverDist(rv, x, z) {
@@ -1241,7 +1251,7 @@ function trainStep(R, W, dt) {
     C.closed = ahead < T.L.speed * TRAIN_WARN && ahead > -(T.len + 8);
   }
   // collisions: a train always wins
-  const cars = R.traffic.length ? R.cars.concat(R.traffic) : R.cars;
+  const cars = R.cars.concat(R.traffic, R.parked);
   for (const T of R.trains) {
     if (!T.active) continue;
     const boxes = trainBoxes(T), vx0 = Math.sin(boxes[0].yaw) * T.dir * T.L.speed, vz0 = Math.cos(boxes[0].yaw) * T.dir * T.L.speed;
@@ -1270,12 +1280,67 @@ function closedCrossingAhead(W, i) {
   return best;
 }
 
+// ---------- parked cars (town) ----------
+// Parked against the kerb on straight bits of town street, away from the grid and the level crossing.
+function makeParked(W, rnd) {
+  const tr = W.tr; if (!tr.town) return [];
+  const N0 = tr.loopN, out = []; let last = -1e9, side = 1;
+  for (let i = 60; i < N0 - 12; i++) {
+    if (!tr.town[i] || Math.abs(tr.ks[i]) > 1 / 200 || i - last < 34) continue;
+    if (tr.rails && tr.rails.crossings.some(C => Math.abs(C.i - i) < 16)) continue;
+    let straight = true; for (let j = i - 6; j <= i + 6; j++) if (!tr.town[(j + N0) % N0] || Math.abs(tr.ks[(j + N0) % N0]) > 1 / 200) straight = false;
+    if (!straight) continue;
+    const K = TRAFFIC_KINDS[rnd() < 0.7 ? 0 : 1];
+    const c = makeCar(W, i, side * (HALF - 1.25), { name: 'parked', traffic: true, parked: true, kind: K.kind, hw: K.hw, hl: K.hl, im: K.im * 1.2, color: TRAFFIC_COLORS[(rnd() * TRAFFIC_COLORS.length) | 0], accent: 0x8E939B, skill: 0.5 });
+    c.parked = true; out.push(c); last = i; side = -side;
+  }
+  return out;
+}
+// ---------- rockfall (cliff ledge) ----------
+// Boulders drop off the rock face above the ledge and bounce across the road toward the drop. Often timed to land
+// a few seconds ahead of the player while they are on the ledge.
+function rockStep(R, W, dt) {
+  const tr = W.tr; if (!tr.rockfall) return;
+  const N0 = tr.loopN, P = R.player, rnd = R.rnd, pi = P.pr.i % N0;
+  R.rockT -= dt;
+  if (R.phase === 'racing' && R.rockT <= 0 && R.rocks.length < 4) {
+    R.rockT = 1.2;
+    const sp = Math.max(15, Math.hypot(P.vx, P.vz)), j = Math.round(pi + sp * (2.2 + rnd() * 1.8));
+    const jj = j % N0;
+    if (tr.rockfall[jj] && tr.rockfall[pi] !== undefined && j - pi < 260) {
+      const far = (-Math.cos(tr.th[jj]) * -Math.SQRT1_2 + Math.sin(tr.th[jj]) * -Math.SQRT1_2) > 0 ? 1 : -1, lat = far * (WALL + 9);
+      const x = tr.xs[jj] + tr.rx[jj] * lat, z = tr.zs[jj] + tr.rz[jj] * lat, r = 1.5 + rnd() * 1.0, lv = -far * (8 + rnd() * 5), av = (rnd() - 0.5) * 6;
+      R.rocks.push({ x, z, y: W.terr.at(x, z) + r + 3, vx: tr.rx[jj] * lv + tr.tx[jj] * av, vz: tr.rz[jj] * lv + tr.tz[jj] * av, vy: 2, r, age: 0, hint: P.pr.i + (j - pi), fresh: true, id: (R.rockId = (R.rockId || 0) + 1) });
+      R.rockT = 3.5 + rnd() * 3;
+    }
+  }
+  const cars = R.cars.concat(R.traffic, R.parked);
+  for (let k = R.rocks.length - 1; k >= 0; k--) {
+    const o = R.rocks[k]; o.age += dt;
+    o.vy -= 30 * dt; o.x += o.vx * dt; o.y += o.vy * dt; o.z += o.vz * dt;
+    const pr = project(tr, o.x, o.z, o.hint, 20, 20); o.hint = pr.i;
+    const g = groundAt(W, pr.s, pr.lat, o.x, o.z) + o.r;
+    if (o.y < g) { o.y = g; if (o.vy < 0) { if (o.vy < -6) o.landed = true; o.vy = -o.vy * 0.35; } const f = Math.exp(-dt * 0.8); o.vx *= f; o.vz *= f; }
+    for (const c of cars) {
+      if (c.ghost > 0 || c.finished) continue;
+      const dx = c.x - o.x, dz = c.z - o.z, d = Math.hypot(dx, dz), rr = o.r + 1.3;
+      if (d > rr || Math.abs(c.y + 0.8 - o.y) > o.r + 1.2) continue;
+      const nx = dx / (d || 1), nz = dz / (d || 1), rel = Math.hypot(c.vx - o.vx, c.vz - o.vz);
+      c.x += nx * (rr - d); c.z += nz * (rr - d);
+      c.vx += nx * (4 + rel * 0.3) + o.vx * 0.3; c.vz += nz * (4 + rel * 0.3) + o.vz * 0.3; c.spin += (rnd() - 0.5) * 3;
+      o.vx -= nx * rel * 0.3; o.vz -= nz * rel * 0.3;
+      if (rel > 5) { c.events.push({ t: 'rockhit', x: o.x, z: o.z, y: c.y, v: rel }); damageCar(c, o.x, o.z, 10 + rel * 0.9, 1.2, -nx, -nz); }
+    }
+    if (o.age > 10 || o.y < tr.H[pr.i] - 30 || pr.dist > 70) R.rocks.splice(k, 1);
+  }
+}
+
 function createRace(W, defs) {
   const grid = [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
   W.bar = makeBarriers(W.tr, W.armco);
   const cars = defs.map((d, k) => makeCar(W, grid[k][0], grid[k][1], d));
   const rnd = mulberry32((W.tr.seed || 1) * 31 + 7);
-  return { cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false, traffic: [], trafT: 1.5, rnd, trains: makeTrains(W, rnd) };
+  return { cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false, traffic: [], trafT: 1.5, rnd, trains: makeTrains(W, rnd), parked: makeParked(W, rnd), rocks: [], rockT: 4 };
 }
 
 function carCorners(c) {
@@ -1341,7 +1406,7 @@ function collideCars(cars) {
 function raceStep(R, dt, W) {
   const racing = R.phase === 'racing';
   if (racing) R.time += dt;
-  const P = R.player, tr = W.tr, all = R.traffic.length ? R.cars.concat(R.traffic) : R.cars;
+  const P = R.player, tr = W.tr, all = R.traffic.length || R.parked.length ? R.cars.concat(R.traffic, R.parked) : R.cars;
   for (const c of R.cars) {
     if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt);
     if (c.finished && c.progress > tr.finishIdx + 18) { c.inp.throttle = 0; c.inp.brake = c.vf > 0.5 ? 0.7 : 0; c.inp.handbrake = c.vf > 0.5 ? 0 : 1; }   // pull up and stay put (no creeping backwards)
@@ -1362,9 +1427,12 @@ function raceStep(R, dt, W) {
     if (racing && !c.finished && c.progress >= tr.finishIdx) { c.finished = true; c.finishTime = R.time; c.place = ++R.nFinished; c.events.push({ t: 'finish' }); }
   }
   for (const c of R.traffic) { if (c.wreckT <= 0) trafficControl(c, W, all, dt); stepCar(c, dt, W, racing); }
+  for (const c of R.parked) { c.inp.throttle = 0; c.inp.brake = 0; c.inp.steer = 0; c.inp.handbrake = 1; stepCar(c, dt, W, racing); }
+  if (R.parked.some(c => c.dead)) R.parked = R.parked.filter(c => !c.dead);
   updateTraffic(R, W, dt);
   collideCars(all); collideCars(all);
   trainStep(R, W, dt);
+  rockStep(R, W, dt);
 }
 
 function ranking(R) {
@@ -1776,6 +1844,114 @@ function makeRoadMesh(tr, stage) {
 }
 let bridgeMats = [];
 function bridgeMat(opts) { const m = new THREE.MeshLambertMaterial(Object.assign({ transparent: true, opacity: 1 }, opts)); bridgeMats.push(m); return m; }
+// ---------- town: pavements, bollards, lamps and buildings along the town street ----------
+function addTown(group, tr, terr, stage) {
+  if (!tr.town) return;
+  const N0 = tr.loopN, rnd = mulberry32(stage.seed * 13 + 1), pave = [], bollards = [], lamps = [], lampHeads = [], walls = [], roofs = [], bands = [], awnings = [], spires = [];
+  const onRoad = (x, z, m) => { const q = tr.nearest(x, z); return q && q.d < m; };
+  const nearRail = (x, z, m) => tr.rails && tr.rails.lines.some(L => { const pj = railProject(L, x, z); return pj.d < m && pj.s > L.visA && pj.s < L.visB; });
+  for (let i = 0; i < N0; i++) {
+    if (!tr.town[i]) continue;
+    const j = (i + 1) % N0, H = tr.H[i];
+    for (const side of [-1, 1]) {
+      // pavement strip from the road edge out past the bollards
+      const P = (k, o) => [tr.xs[k] + tr.rx[k] * side * o, tr.H[k] + 0.14, tr.zs[k] + tr.rz[k] * side * o];
+      if (!nearRail(tr.xs[i] + tr.rx[i] * side * 8, tr.zs[i] + tr.rz[i] * side * 8, 3)) {
+        const a = P(i, HALF + 0.1), b = P(i, WALL + 2.2), c = P(j, HALF + 0.1), d = P(j, WALL + 2.2);
+        pave.push(...a, ...c, ...b, ...b, ...c, ...d);
+      }
+      const bx = tr.xs[i] + tr.rx[i] * side * (WALL + 0.1), bz = tr.zs[i] + tr.rz[i] * side * (WALL + 0.1);
+      if ((tr.wallL[i] === 7 || tr.wallR[i] === 7) && i % 3 === 0 && !nearRail(bx, bz, 4)) bollards.push({ x: bx, y: H + 0.55, z: bz, color: 0x2B2F3A });
+      if (i % 16 === 8 && !nearRail(bx, bz, 5)) {
+        const lx = tr.xs[i] + tr.rx[i] * side * (WALL + 1.1), lz = tr.zs[i] + tr.rz[i] * side * (WALL + 1.1);
+        lamps.push({ x: lx, y: H + 2.3, z: lz, color: 0x2B2F3A }); lampHeads.push({ x: lx - tr.rx[i] * side * 0.5, y: H + 4.6, z: lz - tr.rz[i] * side * 0.5, color: 0xFFE7A8 });
+      }
+    }
+  }
+  // buildings: a row each side, fronts just behind the pavement; skipped where they would hit a road or the railway
+  const placed = [];
+  for (let i = 0; i < N0; i += 1) {
+    if (!tr.town[i] || i % 10) continue;
+    for (const side of [-1, 1]) {
+      if (rnd() < 0.12) continue;
+      const w = 7 + rnd() * 3, d = 7 + rnd() * 4, h = 4.5 + rnd() * 6, off = WALL + 2.6 + d / 2;
+      const x = tr.xs[i] + tr.rx[i] * side * off, z = tr.zs[i] + tr.rz[i] * side * off, ry = tr.th[i];
+      const cs = Math.cos(ry), sn = Math.sin(ry), corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([u, v]) => [x + cs * u * d / 2 + sn * v * w / 2, z - sn * u * d / 2 + cs * v * w / 2]);
+      if (corners.some(([cx, cz]) => onRoad(cx, cz, WALL + 1.8)) || nearRail(x, z, d / 2 + w / 2 + 4) || placed.some(p => Math.hypot(p[0] - x, p[1] - z) < 8.5)) continue;
+      placed.push([x, z]);
+      const y = terr.at(x, z) - 0.3, church = !stage._church && side > 0 && rnd() < 0.2;
+      const col = [0xF3EBDD, 0xE9D3B4, 0xDCE6EA, 0xF2D9C4, 0xE7E0CF, 0xD4C4A8][(rnd() * 6) | 0];
+      if (church) {
+        stage._church = true;
+        walls.push({ x, y, z, ry, sx: d, sy: 7, sz: w + 3, color: 0xE8E2D4 }); roofs.push({ x, y: y + 7, z, ry, sx: d * 1.1, sy: 3.4, sz: (w + 3) * 1.08, color: 0x6B4A3A });
+        const tx = x + tr.rx[i] * side * 0, tz = z;
+        walls.push({ x: tx + Math.sin(ry) * (w / 2 + 2), y, z: tz + Math.cos(ry) * (w / 2 + 2), ry, sx: 3.6, sy: 14, sz: 3.6, color: 0xE8E2D4 });
+        spires.push({ x: tx + Math.sin(ry) * (w / 2 + 2), y: y + 14, z: tz + Math.cos(ry) * (w / 2 + 2), ry, sx: 3.2, sy: 7, sz: 3.2, color: 0x4B5563 });
+        continue;
+      }
+      walls.push({ x, y, z, ry, sx: d, sy: h, sz: w, color: col });
+      bands.push({ x, y: y + Math.min(h - 1.4, 2.6), z, ry, sx: d + 0.08, sy: 0.9, sz: w - 1.2, color: 0x36414F });          // windows
+      if (h > 7.5) bands.push({ x, y: y + h - 1.9, z, ry, sx: d + 0.08, sy: 0.8, sz: w - 1.2, color: 0x36414F });
+      roofs.push({ x, y: y + h, z, ry, sx: d * 1.12, sy: 2.4 + rnd() * 1.4, sz: w * 1.1, color: [0xB5523B, 0xA3452F, 0x4B5563, 0x8C3B2E][(rnd() * 4) | 0] });
+      if (rnd() < 0.45) {   // shop awning over the pavement
+        const ax = x - tr.rx[i] * side * (d / 2 + 0.8), az = z - tr.rz[i] * side * (d / 2 + 0.8);
+        awnings.push({ x: ax, y: y + 3.1, z: az, ry, rz: side * 0.35, sx: 1.8, sy: 0.12, sz: w * 0.8, color: [0xE0402F, 0x2F7DE0, 0x2FB36B, 0xFFC72C][(rnd() * 4) | 0] });
+      }
+    }
+  }
+  delete stage._church;
+  const box = () => flat(new THREE.BoxGeometry(1, 1, 1)), Lm = () => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, { cloud: true });
+  addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), Lm(), walls, { cast: true, receive: true });
+  addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff })), bands, {});
+  addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), Lm(), roofs, { cast: true });
+  addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), Lm(), spires, { cast: true });
+  addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff })), awnings, { cast: true });
+  addInstanced(group, flat(new THREE.CylinderGeometry(0.16, 0.2, 1.1, 6)), new THREE.MeshLambertMaterial({ color: 0xffffff }), bollards, { cast: true });
+  addInstanced(group, flat(new THREE.CylinderGeometry(0.09, 0.12, 4.6, 5)), new THREE.MeshLambertMaterial({ color: 0xffffff }), lamps, { cast: true });
+  addInstanced(group, new THREE.BoxGeometry(0.5, 0.25, 0.5), new THREE.MeshBasicMaterial({ color: 0xffffff }), lampHeads, {});
+  if (pave.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pave, 3)); g.computeVertexNormals(); group.add(chunkMesh(g, withCutaway(new THREE.MeshLambertMaterial({ color: 0xB9B6AE, side: THREE.DoubleSide }), false, { cut: false, cloud: true }), 60, true)); }
+}
+// rock gallery: a roof over the ledge road carried on pillars along the valley side
+function addGallery(group, tr) {
+  if (!tr.gallery) return;
+  const N0 = tr.loopN, roof = [], pillars = [], parapet = [];
+  for (let i = 0; i < N0; i++) {
+    if (!tr.gallery[i]) continue;
+    const nearSide = (-Math.cos(tr.th[i]) * -Math.SQRT1_2 + Math.sin(tr.th[i]) * -Math.SQRT1_2) > 0 ? -1 : 1, H = tr.H[i];
+    const at = o => [tr.xs[i] + tr.rx[i] * nearSide * o, tr.zs[i] + tr.rz[i] * nearSide * o];
+    if (i % 2 === 0) { const [x, z] = at(-1.2); roof.push({ x, y: H + 7.6, z, ry: tr.th[i], sx: 2 * WALL + 6, sy: 1.1, sz: 2.1, color: 0x8F887C }); }
+    const [px, pz] = at(WALL + 0.9);
+    if (i % 8 === 0) pillars.push({ x: px, y: H + 3.6, z: pz, ry: tr.th[i], sx: 1.4, sy: 7.6, sz: 1.6, color: 0xA39C8F });
+    parapet.push({ x: px, y: H + 0.55, z: pz, ry: tr.th[i], sx: 0.9, sy: 1.1, sz: 1.05, color: 0xB5AC9C });
+  }
+  const box = () => flat(new THREE.BoxGeometry(1, 1, 1)), Lm = () => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }));
+  addInstanced(group, box(), Lm(), roof, { cast: true, receive: true });
+  addInstanced(group, box(), Lm(), pillars, { cast: true, receive: true });
+  addInstanced(group, box(), Lm(), parapet, { cast: true });
+}
+// boulders from the rockfall
+let rockVis = [];
+function initRockVis() {
+  rockVis = [];
+  const geo = flat(new THREE.DodecahedronGeometry(1, 0)), mat = new THREE.MeshLambertMaterial({ color: 0x8A857B });
+  for (let k = 0; k < 5; k++) { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.visible = false; scene.add(m); rockVis.push({ m, id: -1 }); }
+}
+function updateRocks(dt) {
+  if (!race || !race.rocks) { rockVis.forEach(v => v.m.visible = false); return; }
+  const P = race.player, used = new Set();
+  for (const o of race.rocks) {
+    let v = rockVis.find(v => v.id === o.id) || rockVis.find(v => v.id === -1 || !race.rocks.some(r => r.id === v.id)); if (!v) continue;
+    if (v.id !== o.id) { v.id = o.id; v.m.rotation.set(Math.random() * 6, Math.random() * 6, 0); }
+    used.add(v);
+    v.m.visible = true; v.m.position.set(o.x, o.y, o.z); v.m.scale.setScalar(o.r);
+    v.m.rotation.x += Math.hypot(o.vx, o.vz) * dt / o.r; v.m.rotation.z += o.vx * dt * 0.2;
+    const near = Math.hypot(o.x - P.x, o.z - P.z) < 70;
+    if (o.fresh) { o.fresh = false; if (near) { AudioSys.burst(0.35, 'lowpass', 160, 1.1); for (let k = 0; k < 10; k++) debris(o.x, o.y, o.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6, 0x8A857B, 0.3, 0.3, 0.3, 2.5, P.pr.i); } }
+    if (o.landed && !o.fxDone) { o.fxDone = true; if (near) { dustRing({ x: o.x, y: o.y - o.r, z: o.z }, 14, 0xB8B0A2); AudioSys.thud(0.8); if (Math.hypot(o.x - P.x, o.z - P.z) < 35) shake = Math.min(1.2, shake + 0.5); } }
+  }
+  rockVis.forEach(v => { if (!used.has(v)) { v.m.visible = false; v.id = -1; } });
+}
+
 // ---------- railway visuals ----------
 function railNearRoad(tr, x, z, h) { const q = tr.nearest(x, z); return q && q.d < HALF + 1.6 && Math.abs(tr.H[q.i] - h) < 3; }
 function addRails(group, tr) {
@@ -2121,7 +2297,7 @@ function clearProps() {
 let propSndT = 0;
 function updateProps(dt) {
   if (!world || !world.W.bar) return;
-  const W = world.W, tr = W.tr, cars = race ? race.cars.concat(race.traffic) : [];
+  const W = world.W, tr = W.tr, cars = race ? race.cars.concat(race.traffic, race.parked) : [];
   propSndT -= dt;
   for (const P of Object.values(PROPS)) {
     let dirty = false;
@@ -2161,25 +2337,30 @@ function updateProps(dt) {
     if (dirty) P.mesh.instanceMatrix.needsUpdate = true;
   }
 }
+let parkVis = [];
 function newRace() {
   const r = createRace(world.W, CAR_DEFS); clearProps(); resetBarrierVis(); carVis.forEach(repairCarVis);
   if (world.trainGroup) { world.group.remove(world.trainGroup); disposeGroup(world.trainGroup); }
   world.trainGroup = new THREE.Group(); world.group.add(world.trainGroup);
   const prev = race; race = r; initTrainsVis(world.trainGroup); race = prev;
   crossVis.forEach(v => { v.t = 0; v.gates.forEach(g => { g.broken = false; g.arm.visible = true; }); });
+  for (const v of parkVis) { scene.remove(v.root); disposeGroup(v.root); } parkVis = [];
+  for (const c of r.parked) { const v = makeTrafficMesh(c.def.kind); v.paint.color.set(c.def.color); v.root.visible = true; c.vis = v; parkVis.push(v); }
   return r;
 }
 
 function addScenery(group, tr, terr, stage) {
   const rnd = mulberry32(stage.seed * 7 + 3), C = stage.colors;
   const pick = a => a[Math.floor(rnd() * a.length)];
+  // anything standing high above a nearby road throws its shadow across the road: keep it back from the edge
+  const overhangs = (x, z, q) => { if (!q) return false; const up = terr.at(x, z) - tr.H[q.i]; return up > 4 && q.d < 12 + up * 0.75; };
   const slopeAt = (x, z) => Math.hypot(terr.at(x + 1.5, z) - terr.at(x - 1.5, z), terr.at(x, z + 1.5) - terr.at(x, z - 1.5)) / 3;
   const x0 = Math.min(-195, tr.minX - 90), x1 = Math.max(195, tr.maxX + 90), z0 = tr.minZ - 80, z1 = tr.maxZ + 110, area = (x1 - x0) * (z1 - z0);
   const trunks = [], pines = [], rounds = [], rocks = [], bushes = [], houseW = [], houseR = [];
   const nT = Math.round(area * stage.trees.density);
   for (let k = 0; k < nT; k++) {
     const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z);
-    if (q && q.d < HALF + 11) continue; if (slopeAt(x, z) > 0.8) continue; { const qt = tr.nearestTun(x, z); if (qt && qt.d < HALF + 16) continue; }
+    if (q && q.d < HALF + 11) continue; if (slopeAt(x, z) > 0.8 || overhangs(x, z, q)) continue; if (tr.town && q && tr.town[q.i % tr.loopN] && q.d < 32) continue; { const qt = tr.nearestTun(x, z); if (qt && qt.d < HALF + 16) continue; }
     const y = terr.at(x, z) - 0.2, s = 0.8 + rnd() * 0.7, ry = rnd() * TAU;
     trunks.push({ x, y, z, sx: s, sy: s, sz: s, color: 0x6B4A32 });
     const high = !!stage.alpine && y > stage.alpine.treeLine;
@@ -2189,12 +2370,13 @@ function addScenery(group, tr, terr, stage) {
   const nR = Math.round(area * stage.rocks);
   for (let k = 0; k < nR; k++) {
     const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z); if (q && q.d < HALF + 5) continue;
+    if (overhangs(x, z, q)) continue;
     const s = 0.8 + rnd() * 2.2; _c.set(C.rock).offsetHSL(0, 0, (rnd() - 0.5) * 0.12);
     rocks.push({ x, y: terr.at(x, z) - 0.2 * s, z, sx: s * (0.8 + rnd() * 0.6), sy: s * (0.5 + rnd() * 0.5), sz: s * (0.8 + rnd() * 0.6), ry: rnd() * TAU, rx: rnd() * 0.4, color: _c.getHex() });
   }
   const nB = Math.round(area * stage.bushes);
   for (let k = 0; k < nB; k++) {
-    const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z); if (q && q.d < HALF + 4) continue;
+    const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z); if (q && q.d < HALF + 4) continue; if (overhangs(x, z, q)) continue;
     if (stage.alpine && terr.at(x, z) > stage.alpine.treeLine) continue;
     const s = 0.6 + rnd() * 0.8; bushes.push({ x, y: terr.at(x, z) + 0.2 * s, z, sx: s, sy: s * 0.7, sz: s, ry: rnd() * TAU, color: pick(C.round) });
   }
@@ -2208,7 +2390,7 @@ function addScenery(group, tr, terr, stage) {
   };
   const vStart = stage.village ? Math.floor(tr.N * 0.45) : tr.loopN ? tr.startIdx - 110 : tr.finishIdx - 90;
   const vEnd = tr.loopN ? tr.startIdx + 60 : tr.N - 2;
-  for (let i = vStart; i < vEnd; i += stage.village ? 12 : 9) for (const side of [-1, 1]) if (rnd() < 0.75) tryHouse(i, side, HALF + 12, 9);
+  if (!tr.town) for (let i = vStart; i < vEnd; i += stage.village ? 12 : 9) for (const side of [-1, 1]) if (rnd() < 0.75) tryHouse(i, side, HALF + 12, 9);
   // spectators at hairpins and the start/finish
   const bodies = [], heads = [];
   const addFan = (x, z, face) => {
@@ -2224,7 +2406,7 @@ function addScenery(group, tr, terr, stage) {
   }
   for (const li of (tr.loopN ? [tr.startIdx] : [tr.startIdx, tr.finishIdx])) for (let i0 = li - 22; i0 < li + 20; i0 += 2) for (const side of [-1, 1]) {
     const i = tr.loopN ? (i0 % tr.loopN + tr.loopN) % tr.loopN : i0;
-    if (rnd() < 0.4) continue; const lat = side * (WALL + 2 + rnd() * 3), x = tr.xs[i] + tr.rx[i] * lat, z = tr.zs[i] + tr.rz[i] * lat;
+    if (rnd() < 0.4) continue; const lat = side * (tr.town ? WALL + 0.8 + rnd() * 1.2 : WALL + 2 + rnd() * 3), x = tr.xs[i] + tr.rx[i] * lat, z = tr.zs[i] + tr.rz[i] * lat;
     addFan(x, z, Math.atan2(tr.xs[i] - x, tr.zs[i] - z));
   }
   const L = (o) => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, Object.assign({ cloud: true }, o));
@@ -2337,6 +2519,8 @@ function buildWorld(idx) {
   addRiver(group, tr);
   addRails(group, tr);
   addCrossings(group, tr);
+  addTown(group, tr, terr, stage);
+  addGallery(group, tr);
   addTunnel(group, tr, terr);
   addSigns(group, tr, terr);
   world = { idx, stage, tr, terr, group, W: { tr, terr, surf: stage.surface, armco: !!stage.armco, traffic: stage.traffic } };
@@ -2568,6 +2752,8 @@ function updateCarVisuals(dt, now) {
   race.cars.forEach((c, k) => drawCar(c, carVis[k], dt, now));
   syncTrafficVis();
   for (const c of race.traffic) if (c.vis) drawCar(c, c.vis, dt, now);
+  for (const v of parkVis) v.root.visible = false;
+  for (const c of race.parked) if (c.vis) drawCar(c, c.vis, dt, now);
   const P = race.player;
   marker.position.set(P.dx ?? P.x, (P.dy ?? P.y) + 3.6 + Math.sin(now * 4) * 0.25, P.dz ?? P.z); marker.rotation.y = now * 1.5;
   marker.visible = state !== 'menu';
@@ -2706,6 +2892,7 @@ const WALL_FX = {
   3: { cols: [0xE2C265, 0xD4B050, 0xF0D98A], size: [0.12, 0.35], n: 1.8, sparks: 0, dust: 0xE8D48E, snd: 'hay' },
   4: { cols: [0xB9BBC0, 0xA7AAB1, 0xD5D8DE], size: [0.15, 0.45], n: 0.8, sparks: 1.2, dust: 0xC8CACE, snd: 'metal' },
   5: { cols: [0x6A6660, 0x5F5C57, 0x807B73], size: [0.15, 0.45], n: 0.8, sparks: 1.2, dust: 0x8E8A84, snd: 'metal' },
+  7: { cols: [0x2B2F3A, 0x44474F, 0xB9B6AE], size: [0.12, 0.35], n: 0.6, sparks: 1.0, dust: 0xB9B6AE, snd: 'metal' },
   6: { cols: [0x8E897E, 0x7A756B, 0xA39E92], size: [0.15, 0.5], n: 0.9, sparks: 1.0, dust: 0x9A958A, snd: 'metal' },
   armco: { cols: [0xCDD2D9, 0x8D939C, 0xB0B6BF], size: [0.1, 0.4], n: 0.7, sparks: 1.4, dust: 0xC0C4CA, snd: 'metal', splinter: true }
 };
@@ -2866,7 +3053,14 @@ function updateCamera(dt, snap) {
   }
   const k = snap ? 1 : 1 - Math.exp(-dt * (state === 'menu' ? 2.5 : 5));
   camT.x += (tx - camT.x) * k; camT.y += (ty - camT.y) * k; camT.z += (tz - camT.z) * k;
-  const aspect = innerWidth / innerHeight; let vh = 44 + clamp(sp, 0, 45) * 0.3; if (aspect < 1) vh *= 1.55; if (state === 'menu') vh = 58;
+  const aspect = innerWidth / innerHeight; let vh = 44 + clamp(sp, 0, 45) * 0.3;
+  if (race && state !== 'menu') {
+    // pull out where the ground falls away in front of the camera (ledges, bridges), pull in through town streets
+    const c = race.player, tr = world.tr, drop = c.y - world.terr.at(c.x + 16, c.z + 16);
+    vh += clamp((drop - 12) * 0.35, 0, 16);
+    if (tr.town && tr.town[c.pr.i % tr.loopN]) vh -= 6;
+  }
+  if (aspect < 1) vh *= 1.55; if (state === 'menu') vh = 58;
   viewH += (vh - viewH) * (snap ? 1 : 1 - Math.exp(-dt * 2));
   camera.left = -viewH * aspect / 2; camera.right = viewH * aspect / 2; camera.top = viewH / 2; camera.bottom = -viewH / 2; camera.updateProjectionMatrix();
   shake *= Math.exp(-dt * 7);
@@ -2945,7 +3139,7 @@ function callout(text) { const el = $('callout'); el.textContent = text; el.clas
 
 // ---------- flow ----------
 function handleEvents() {
-  for (const c of race.traffic.length ? race.cars.concat(race.traffic) : race.cars) {
+  for (const c of race.cars.concat(race.traffic, race.parked || [])) {
     for (const e of c.events) {
       const near = Math.hypot(c.x - race.player.x, c.z - race.player.z) < 40;
       switch (e.t) {
@@ -2958,6 +3152,7 @@ function handleEvents() {
         case 'respawn': if (c.isPlayer) callout('Back on track'); break;
         case 'dent': dentFx(c, e); break;
         case 'wreck': wreckFx(c, c.isPlayer, near); break;
+        case 'rockhit': sparks(e.x, e.y, e.z, 14); if (c.isPlayer || near) AudioSys.crash('metal', clamp(e.v / 20, 0.2, 0.9) * (c.isPlayer ? 1 : 0.5)); if (c.isPlayer) shake = Math.min(1.4, shake + 0.8); break;
         case 'trainhit': sparks(e.x, e.y, e.z, 45); shockwave(e.x, e.y, e.z, 9, 0xFFFFFF); if (c.isPlayer) { shake = 1.8; callout('Hit by a train!'); } if (c.isPlayer || near) AudioSys.crash('metal', c.isPlayer ? 1 : 0.5); break;
         case 'repair': { const v = visOf(c); if (v) repairCarVis(v); break; }
         case 'horn': if (Math.hypot(c.x - race.player.x, c.z - race.player.z) < 70) AudioSys.horn(c.def.kind === 'truck' ? 0.75 : 1); break;
@@ -3048,7 +3243,7 @@ function updateBridgeFade(dt) {
 }
 // Physics runs at a fixed 120 Hz; cars are drawn between the last two physics states so motion stays smooth at any refresh rate.
 let renderAlpha = 1;
-function savePrev() { for (const c of race.cars) { c.px = c.x; c.py = c.y; c.pz = c.z; c.pyaw = c.yaw; } for (const c of race.traffic) { c.px = c.x; c.py = c.y; c.pz = c.z; c.pyaw = c.yaw; } }
+function savePrev() { for (const list of [race.cars, race.traffic, race.parked]) for (const c of list) { c.px = c.x; c.py = c.y; c.pz = c.z; c.pyaw = c.yaw; } }
 function frame(t) {
   requestAnimationFrame(frame);
   const now = t / 1000, rawDt = Math.max(0, now - lastT), dt = Math.min(0.1, rawDt); lastT = now;
@@ -3079,7 +3274,7 @@ function frame(t) {
   if (hintTimer > 0 && state !== 'paused') { hintTimer -= dt; $('hint').hidden = hintTimer <= 0; } else if (hintTimer <= 0) $('hint').hidden = true;
   updateBridgeFade(dt);
   if (race && state !== 'menu') { const P = race.player; CUT.car.value.set(P.x, P.y, P.z); CUT.r.value += ((state === 'paused' ? CUT.r.value : 8.5) - CUT.r.value) * Math.min(1, dt * 6); } else CUT.r.value = 0;
-  if (state !== 'paused') { const fxDt = slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); updateTrainsVis(); updateCrossings(dt, now); updateParticles(fxDt); updateFans(now); updateCamera(dt, false); }
+  if (state !== 'paused') { const fxDt = slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); updateTrainsVis(); updateCrossings(dt, now); updateRocks(fxDt); updateParticles(fxDt); updateFans(now); updateCamera(dt, false); }
   updateHUD(dt);
   if (!contextLost) renderFrame();
 }
@@ -3108,7 +3303,7 @@ async function boot() {
     step = 'starting WebGL'; initRenderer(); initParticles(); initSkids(); initDebris(); initRings(); initProps();
     step = 'loading fonts';
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
-    step = 'building the cars'; initCars();
+    step = 'building the cars'; initCars(); initRockVis();
     step = 'building the first stage';
     selectStage(0);
     requestAnimationFrame(frame);
