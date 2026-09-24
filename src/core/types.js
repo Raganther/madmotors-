@@ -34,6 +34,7 @@
  * @property {number} [far] @property {number} [near] @property {number} [rampF] @property {number} [rampN]
  * @property {boolean} [bridge] @property {boolean} [tunnel] @property {boolean} [jump]
  * @property {boolean} [town] @property {boolean} [gallery] @property {boolean} [rockfall]
+ * @property {number} [kick]              kicker jump of this height (m) at the start of the section
  */
 
 /**

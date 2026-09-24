@@ -7,7 +7,7 @@ import { withCutaway } from '../materials.js';
 export function makeTerrainMesh(terr, tr, stage) {
   const { cols, rows, S, x0, z0, h, dist } = terr, n = cols * rows, C = stage.colors;
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
-  const cA = new THREE.Color(C.grassA), cB = new THREE.Color(C.grassB), cR = new THREE.Color(C.rock), cD = new THREE.Color(C.dirt), cS = new THREE.Color(0xE9EEF2), t = new THREE.Color();
+  const cA = new THREE.Color(C.grassA), cB = new THREE.Color(C.grassB), cR = new THREE.Color(C.rock), cD = new THREE.Color(C.dirt), cS = new THREE.Color(0xE9EEF2), cR2 = new THREE.Color(C.rock2 || C.rock), t = new THREE.Color();
   const rnd = mulberry32(stage.seed + 5);
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const i = r * cols + c, x = x0 + c * S, z = z0 + r * S, y = h[i];
@@ -16,10 +16,13 @@ export function makeTerrainMesh(terr, tr, stage) {
     const dz = (h[Math.min(rows - 1, r + 1) * cols + c] - h[Math.max(0, r - 1) * cols + c]) / (2 * S);
     const nv = tr.noise.fbm(x * 0.03 + 40, z * 0.03, 3) * 0.5 + 0.5;
     t.copy(cA).lerp(cB, clamp(nv * 1.5 - 0.25, 0, 1));
-    t.lerp(cR, smoothstep(0.5, 0.95, Math.hypot(dx, dz)));
+    const steep = smoothstep(0.5, 0.95, Math.hypot(dx, dz));
+    t.lerp(cR, steep);
     if (stage.alpine) {
       const al = stage.alpine;
       t.lerp(cR, smoothstep(al.rock[0], al.rock[1], y) * 0.7);
+      // mesa strata: alternate rock tones in horizontal bands, strongest on the cliff faces
+      if (stage.strata && C.rock2 && Math.floor((y + tr.noise.n2(x * 0.02, z * 0.02) * 0.8) / stage.strata) % 2) t.lerp(cR2, 0.65 * Math.max(steep, smoothstep(al.rock[0], al.rock[1], y)));
       const snow = smoothstep(0.15, 0.35, tr.noise.fbm(x * 0.06, z * 0.06, 2)) * smoothstep(al.snow[0], al.snow[1], y);
       if (snow > 0) t.lerp(cS, snow * 0.9);
     }

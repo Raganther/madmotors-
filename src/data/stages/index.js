@@ -6,5 +6,6 @@ import villageDescent from './village-descent.js';
 import mountainLoop from './mountain-loop.js';
 import mountainPass from './mountain-pass.js';
 import ravenrockGorge from './ravenrock-gorge.js';
+import redMesa from './red-mesa.js';
 
-export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge];
+export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa];

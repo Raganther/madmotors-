@@ -23,6 +23,14 @@ export function addScenery(group, tr, terr, stage) {
     if (high || rnd() < stage.trees.pine) pines.push({ x, y, z, sx: s, sy: s * (0.9 + rnd() * 0.4), sz: s, ry, color: pick(C.pine) });
     else rounds.push({ x, y, z, sx: s, sy: s * (0.85 + rnd() * 0.3), sz: s, ry, color: pick(C.round) });
   }
+  // saguaro cacti (desert stages)
+  const cacti = [];
+  for (let k = 0, nC = Math.round(area * (stage.cacti || 0)); k < nC; k++) {
+    const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z);
+    if (q && q.d < HALF + 8) continue; if (slopeAt(x, z) > 0.6 || overhangs(x, z, q)) continue;
+    const s = 0.7 + rnd() * 0.6; _c.set(0x5F7F3C).offsetHSL((rnd() - 0.5) * 0.04, 0, (rnd() - 0.5) * 0.08);
+    cacti.push({ x, y: terr.at(x, z) - 0.2, z, sx: s, sy: s * (0.85 + rnd() * 0.4), sz: s, ry: rnd() * TAU, color: _c.getHex() });
+  }
   const nR = Math.round(area * stage.rocks);
   for (let k = 0; k < nR; k++) {
     const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z); if (q && q.d < HALF + 5) continue;
@@ -69,6 +77,11 @@ export function addScenery(group, tr, terr, stage) {
   addInstanced(group, flat(new THREE.CylinderGeometry(0.2, 0.28, 1.6, 5).translate(0, 0.8, 0)), L(), trunks, { cast: true });
   addInstanced(group, merge([flat(new THREE.ConeGeometry(1.7, 3.2, 7).translate(0, 2.6, 0)), flat(new THREE.ConeGeometry(1.2, 2.4, 7).translate(0, 4.2, 0))]), L({ sway: 1 }), pines, { cast: true });
   addInstanced(group, flat(new THREE.IcosahedronGeometry(1.7, 0).translate(0, 3.1, 0)), L({ sway: 1 }), rounds, { cast: true });
+  if (cacti.length) {
+    const cyl = (r, h) => new THREE.CylinderGeometry(r, r, h, 6);
+    addInstanced(group, merge([flat(cyl(0.34, 3.6).translate(0, 1.8, 0)), flat(cyl(0.22, 0.9).rotateZ(Math.PI / 2).translate(0.55, 1.5, 0)), flat(cyl(0.22, 1.2).translate(0.95, 2.0, 0)),
+      flat(cyl(0.2, 0.7).rotateZ(Math.PI / 2).translate(-0.45, 2.1, 0)), flat(cyl(0.2, 1.0).translate(-0.75, 2.55, 0))]), L({ sway: 0.3 }), cacti, { cast: true });
+  }
   addInstanced(group, flat(new THREE.DodecahedronGeometry(1, 0)), L(), rocks, { cast: true, receive: true });
   addInstanced(group, flat(new THREE.IcosahedronGeometry(1, 0)), L({ sway: 2.2 }), bushes, { cast: true });
   addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), L(), houseW, { cast: true, receive: true });

@@ -84,7 +84,7 @@ export function genPass(stage) {
 }
 export function genCircuit(stage) {
   let a = 0, b = 0, phi = stage.startHeading || 0, h = 0;
-  const A = [], B = [], hs = [], tunnel = [], bridge = [], farH = [], nearH = [], rampF = [], rampN = [], jumpOK = [], townF = [], galleryF = [], rockF = [];
+  const A = [], B = [], hs = [], tunnel = [], bridge = [], farH = [], nearH = [], rampF = [], rampN = [], jumpOK = [], townF = [], galleryF = [], rockF = [], kicks = [];
   const emit = (hh, tg) => {
     A.push(a); B.push(b); hs.push(hh); tunnel.push(tg.tunnel ? 1 : 0); bridge.push(tg.bridge ? 1 : 0); jumpOK.push(tg.jump ? 1 : 0);
     farH.push(tg.far ?? 0); nearH.push(tg.near ?? 0); rampF.push(tg.rampF ?? 20); rampN.push(tg.rampN ?? 20);
@@ -93,6 +93,8 @@ export function genCircuit(stage) {
   emit(0, stage.segs[0][3] || {});
   for (const sg of stage.segs) {
     const type = sg[0];
+    const tg0 = (type === 's' ? sg[3] : sg[4]) || {};
+    if (tg0.kick) kicks.push({ i: A.length, h: tg0.kick });   // placed jump at the start of this section
     if (type === 's') {
       let [, len, eh, tg = {}] = sg;
       if (typeof len === 'object') len = len.toA !== undefined ? (len.toA - a) / Math.cos(phi) : (len.toB - b) / Math.sin(phi);
@@ -110,7 +112,7 @@ export function genCircuit(stage) {
   const xs = [], zs = [];
   for (let i = 0; i < A.length; i++) { xs.push((A[i] - B[i]) / Math.SQRT2); zs.push(-(A[i] + B[i]) / Math.SQRT2); }
   const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width } : null;
-  return { xs, zs, hs, tunnel, bridge, smoothH: 10, profile: { farH, nearH, rampF, rampN, jumpOK, townF, galleryF, rockF }, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
+  return { xs, zs, hs, tunnel, bridge, smoothH: 10, profile: { farH, nearH, rampF, rampN, jumpOK, townF, galleryF, rockF }, kicks, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
 }
 export function buildLoop(stage) {
   if (stage.type === 'gorge') return finishLoop(stage, genCircuit(stage), stage.seed);
@@ -156,6 +158,12 @@ export function finishLoop(stage, g, seed) {
     H0[i + 18] += RH * 0.62; H0[i + 19] += RH * 0.28;
     for (let q = 0; q < 20; q++) jump0[i + q] = 1;
     placed++; i += 400;
+  }
+  // placed jumps ('kick' tags): same kicker profile, at the start of the tagged section
+  if (g.kicks) for (const { i, h: RH } of g.kicks) {
+    for (let q = 0; q <= 17; q++) H0[w(i + q)] += RH * Math.pow(q / 17, 1.7);
+    H0[w(i + 18)] += RH * 0.62; H0[w(i + 19)] += RH * 0.28;
+    for (let q = 0; q < 20; q++) jump0[w(i + q)] = 1;
   }
   const idwX = [], idwZ = [], idwH = [];
   for (let i = 0; i < N0; i += 6) if (!bridge0[i]) { idwX.push(xs0[i]); idwZ.push(zs0[i]); idwH.push(H0[i]); }

@@ -32,7 +32,7 @@ for (let i = 0; i < n; i++) {
   await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 }
 // Showdown on a downhill stage and on the gorge: play until at least one round is scored (a tight pack can take a while)
-for (const i of [0, 6]) {
+for (const i of [0, 6, 7]) {
   await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
   await page.evaluate(i => { window.__dr.flow.setMode('showdown'); window.__dr.flow.startRace(i); }, i);
   await page.waitForFunction(i => window.__dr.G.world.idx === i && window.__dr.race && window.__dr.race.sd, i, { timeout: 30000 });

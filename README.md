@@ -73,7 +73,8 @@ tools/                  layout/terrain/benchmark tools
 1. Copy a file in `src/data/stages/` (e.g. `ravenrock-gorge.js` for a section-built circuit, `summit-meadow.js`
    for a generated downhill) and add it to `src/data/stages/index.js`.
 2. For `type: 'gorge'` circuits, describe the road as `segs` (straights and arcs in screen axes) with tags for the
-   ground either side (`far`/`near` + `rampF`/`rampN`), `bridge`, `tunnel`, `jump`, `town`, `gallery`, `rockfall`.
+   ground either side (`far`/`near` + `rampF`/`rampN`), `bridge`, `tunnel`, `jump`, `town`, `gallery`, `rockfall`,
+   and `kick: <m>` to put a kicker jump of that height at the start of a section (best on a crest before a descent).
    Optional `river` and `rails` add the river and railways. See `src/core/types.js`.
 3. Iterate with `npm run layout -- <n>` and `npm run terrain -- <n>` until the plan closes cleanly and nothing
    overlaps by accident, then play it with `npm run dev`.

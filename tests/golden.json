@@ -265,6 +265,44 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 9
+  },
+  "Red Mesa Canyon": {
+   "samples": 4397,
+   "loopN": 1417,
+   "terrain": [
+    125,
+    180,
+    70854.534
+   ],
+   "times": [
+    170.917,
+    170.675,
+    203.708,
+    169.833
+   ],
+   "respawns": [
+    1,
+    1,
+    2,
+    2
+   ],
+   "wrecks": [
+    1,
+    0,
+    2,
+    1
+   ],
+   "progress": [
+    4317.695,
+    4315.32,
+    4287.242,
+    4319.399
+   ],
+   "broken": 2,
+   "trafficSeen": 5,
+   "trainHits": 0,
+   "rockHits": 7,
+   "rocks": 6
   }
  },
  "walls": {
