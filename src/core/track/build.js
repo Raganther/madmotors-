@@ -1,6 +1,7 @@
 import { buildLoop } from './circuit.js';
 import { finishTrack, genPath, validPath } from './downhill.js';
 
+/** Build the road for a stage. @param {import('../types.js').Stage} stage @returns {import('../types.js').Track} */
 export function buildTrack(stage) {
   if (stage.type === 'loop' || stage.type === 'pass' || stage.type === 'gorge') return buildLoop(stage);
   let seed = stage.seed;

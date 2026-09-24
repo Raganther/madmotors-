@@ -13,7 +13,10 @@
     "e2e": "vite build && node tests/e2e/smoke.mjs",
     "golden": "node tools/make-golden.mjs",
     "lint": "eslint .",
-    "check": "eslint . && vitest run"
+    "check": "eslint . && vitest run",
+    "layout": "node tools/layout.mjs",
+    "terrain": "node tools/terrain.mjs",
+    "bench": "vite build && node tools/bench.mjs"
   },
   "dependencies": {
     "three": "0.128.0"

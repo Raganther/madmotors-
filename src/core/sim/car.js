@@ -38,6 +38,7 @@ export function respawn(c, W) {
   c.ghost = 2; c.driftT = 0; c.spin = 0; c.lastGood = i; c.pr = project(tr, c.x, c.z, i, 2, 2); c.ai.cur = lat;
   computeGrad(c, W); c.events.push({ t: 'respawn' }); c.respawns++;
 }
+/** Integrate one car for one step: engine, grip, gravity, ground, barriers. @param {import('../types.js').Car} c @param {number} dt @param {import('../types.js').World} W @param {boolean} racing */
 export function stepCar(c, dt, W, racing) {
   const tr = W.tr, inp = c.inp;
   if (c.ghost > 0) c.ghost -= dt;

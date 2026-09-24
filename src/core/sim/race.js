@@ -5,6 +5,7 @@ import { makeBarriers } from './barriers.js';
 import { makeCar, stepCar } from './car.js';
 import { collideCars } from './collide.js';
 
+/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @returns {import('../types.js').Race} */
 export function createRace(W, defs) {
   const grid = [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
   W.bar = makeBarriers(W.tr, W.armco);
@@ -13,6 +14,7 @@ export function createRace(W, defs) {
   for (const f of FEATURES) if (f.init) f.init(R, W);
   return R;
 }
+/** Advance the whole race by one fixed step (STEP = 1/120 s). @param {import('../types.js').Race} R @param {number} dt @param {import('../types.js').World} W */
 export function raceStep(R, dt, W) {
   const racing = R.phase === 'racing';
   if (racing) R.time += dt;
