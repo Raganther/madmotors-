@@ -28,7 +28,7 @@ export function updateCamera(dt, snap) {
   const k = snap ? 1 : 1 - Math.exp(-dt * (G.state === 'menu' ? 2.5 : 5));
   camT.x += (tx - camT.x) * k; camT.y += (ty - camT.y) * k; camT.z += (tz - camT.z) * k;
   const aspect = innerWidth / innerHeight; let vh = 44 + clamp(sp, 0, 45) * 0.3;
-  if (race && G.state !== 'menu' && race.sd) vh = 56;                // fixed zoom so the edge of the screen is predictable
+  if (race && G.state !== 'menu' && race.sd) race.aspect = aspect;   // Showdown: the core picks the zoom (to fit the pack) for this screen shape
   else if (race && G.state !== 'menu') {
     // pull out where the ground falls away in front of the camera (ledges, bridges), pull in through town streets
     const c = race.player, tr = G.world.tr, drop = c.y - G.world.terr.at(c.x + 16, c.z + 16);
@@ -36,8 +36,8 @@ export function updateCamera(dt, snap) {
     if (tr.town && tr.town[c.pr.i % tr.loopN]) vh -= 6;
   }
   if (aspect < 1) vh *= 1.55; if (G.state === 'menu') vh = 58;
-  G.viewH += (vh - G.viewH) * (snap ? 1 : 1 - Math.exp(-dt * 2));
-  if (race && race.sd) race.view = { hw: G.viewH * aspect / 2, hh: G.viewH / 2 };
+  if (race && G.state !== 'menu' && race.sd && race.sd.view) G.viewH = 2 * race.sd.view.hh;   // already eased by the core
+  else G.viewH += (vh - G.viewH) * (snap ? 1 : 1 - Math.exp(-dt * 2));
   camera.left = -G.viewH * aspect / 2; camera.right = G.viewH * aspect / 2; camera.top = G.viewH / 2; camera.bottom = -G.viewH / 2; camera.updateProjectionMatrix();
   G.shake *= Math.exp(-dt * 7);
   if (G.shake > 0.01 && !matchMedia('(prefers-reduced-motion: reduce)').matches) shakeOff.set((Math.random() - 0.5), (Math.random() - 0.5) * 0.6, (Math.random() - 0.5)).multiplyScalar(G.shake * 1.1); else shakeOff.set(0, 0, 0);

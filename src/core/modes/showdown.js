@@ -1,24 +1,29 @@
-// Showdown: Micro Machines-style head-to-head. The camera frames the leader and the race keeps flowing:
-// - a car left off the screen explodes, the leader takes one of its lights, and it respawns rolling just behind the leader;
+// Showdown: Micro Machines-style head-to-head. The camera frames the leader, zooming out to keep the pack in shot:
+// - once it's zoomed out as far as it goes, a car still left off the screen explodes, the leader takes one of its lights,
+//   and it respawns rolling somewhere around the leader (behind, beside or in front);
 // - only a breakaway (the leader drops every other car at once) stops play: the leader takes a light from each and everyone
 //   regroups at the leader's position with a rolling start.
-// Deterministic (no random numbers), so it never disturbs the race features' random sequence.
+// Nobody is knocked out: all four race until someone reaches WIN lights (or the finish decides it on lights).
+// Deterministic: its own seeded generator, never R.rnd, so the race features' random sequence is untouched.
 import { computeGrad } from '../sim/car.js';
 import { project } from '../track/query.js';
 import { screenOffset } from '../sim/view.js';
+import { mulberry32 } from '../math.js';
 
-export const SD = { START: 4, WIN: 10, OFF_SLACK: 3, OFF_TIME: 1.2, BOOM: 1.2, ANNOUNCE: 1.0, GRACE: 1.5, ROLL: 14, LOOK: 0.42 };
+export const SD = { START: 4, WIN: 10, ZMIN: 18, ZMAX: 26, FIT: 5, OFF_SLACK: 2, OFF_TIME: 1.0, BOOM: 1.2, ANNOUNCE: 1.0, GRACE: 1.5, ROLL: 14, LOOK: 0.3 };
 const GRID = [[0, -2.8], [0, 2.8], [-8, -2.8], [-8, 2.8]];
+
+/** View half-extents (metres) for a zoom level: `scale` is the half-extent of the screen's short side. */
+export function sdExtents(scale, aspect) { return aspect >= 1 ? { hw: scale * aspect, hh: scale } : { hw: scale, hh: scale / aspect }; }
 
 export function initShowdown(R) {
   R.sd = { lights: R.cars.map(() => SD.START), phase: 'run', timer: 0, grace: SD.GRACE, focus: null, snap: true, camSnap: true,
-    offT: R.cars.map(() => 0), boomT: R.cars.map(() => 0), winner: -1, rounds: 0 };
-  if (!R.view) R.view = { hw: 40, hh: 22 };
+    scale: SD.ZMIN, view: null, offT: R.cars.map(() => 0), boomT: R.cars.map(() => 0), winner: -1, rounds: 0, rng: mulberry32(R.cars.length * 7919 + 17), spawns: [] };
+  if (!R.aspect) R.aspect = 16 / 9;
+  R.sd.view = sdExtents(SD.ZMIN, R.aspect);
 }
-const active = R => R.cars.filter(c => !c.out);
-const racing = R => R.cars.filter((c, k) => !c.out && !(R.sd.boomT[k] > 0));   // in the match and not currently blown up
+const racing = R => R.cars.filter((c, k) => !(R.sd.boomT[k] > 0));   // not currently blown up
 export function sdLeader(R) { let best = null; for (const c of racing(R)) if (!best || c.progress > best.progress) best = c; return best; }
-
 /** Drop a car on road sample i (lateral offset lat), already rolling forward at SD.ROLL, briefly ghosted. */
 function place(c, W, i, lat) {
   const tr = W.tr;
@@ -31,10 +36,10 @@ function place(c, W, i, lat) {
 }
 /** Put every car still in the match on a 2x2 rolling grid at the leader's position, in running order. */
 export function regroup(R, W) {
-  const order = active(R).sort((a, b) => b.progress - a.progress), i = order[0].pr.i;
+  const order = R.cars.slice().sort((a, b) => b.progress - a.progress), i = order[0].pr.i;
   order.forEach((c, k) => place(c, W, Math.max(4, i + GRID[k % 4][0] - 8 * Math.floor(k / 4)), GRID[k % 4][1]));
   R.sd.boomT.fill(0); R.sd.offT.fill(0);
-  R.sd.snap = true; R.sd.camSnap = true;
+  R.sd.snap = true; R.sd.camSnap = true; R.sd.scale = SD.ZMIN;
 }
 function finish(R, winner) {
   const S = R.sd; S.phase = 'over'; S.winner = R.cars.indexOf(winner);
@@ -45,22 +50,31 @@ function mostLights(R) {
   R.cars.forEach((c, k) => { if (!best || S.lights[k] > S.lights[bi] || (S.lights[k] === S.lights[bi] && c.progress > best.progress)) { best = c; bi = k; } });
   return best;
 }
-/** Move lights from the losers to the leader; knock out anyone left on none. Returns true when the match is over. */
+/** The leader takes a light from each loser (a car on none just stays on none). Returns true when the match is over. */
 function score(R, L, losers, boom) {
   const S = R.sd, li = R.cars.indexOf(L);
-  S.lights[li] += losers.length; for (const k of losers) S.lights[k] -= 1;
+  S.lights[li] += losers.length; for (const k of losers) S.lights[k] = Math.max(0, S.lights[k] - 1);
   S.rounds++;
   L.events.push({ t: 'sd-round', winner: li, losers, boom });
-  for (const k of losers) if (S.lights[k] <= 0) { const c = R.cars[k]; c.out = true; c.ghost = Infinity; S.boomT[k] = 0; c.events.push({ t: 'sd-out' }); }
-  const left = active(R);
-  if (S.lights[li] >= SD.WIN || left.length <= 1 || R.player.out) { finish(R, S.lights[li] >= SD.WIN || left.length <= 1 ? L : mostLights(R)); return true; }
+  if (S.lights[li] >= SD.WIN) { finish(R, L); return true; }
   return false;
 }
-/** Respawn a blown-up car rolling just behind the leader, well inside the screen, beside whoever is there. */
+/** Respawn a blown-up car rolling somewhere around the leader: behind it, beside it or just in front. */
 function rejoin(R, W, c) {
-  const L = sdLeader(R), i = Math.max(4, L.pr.i - 14);
-  const near = racing(R).find(o => o !== c && Math.abs(o.pr.i - i) < 8), lat = near ? (near.ai.cur > 0 ? -2.8 : 2.8) : -Math.sign(L.ai.cur || 1) * 2.8;
-  place(c, W, i, lat);
+  const S = R.sd, L = sdLeader(R), i = L.pr.i, side = L.pr.lat > 0 ? -2.8 : 2.8, r = S.rng();
+  const slot = r < 0.4 ? 'behind' : r < 0.75 ? 'beside' : 'front';
+  const at = slot === 'behind' ? i - 12 : slot === 'beside' ? i : Math.min(i + 10, W.tr.finishIdx - 20);
+  place(c, W, Math.max(4, at), slot === 'beside' ? side : (S.rng() < 0.5 ? -2.8 : 2.8));
+  S.spawns.push(slot);
+}
+/** Ease the zoom towards whatever keeps every car in shot, between ZMIN and ZMAX. */
+function fitZoom(R, dt) {
+  const S = R.sd, a = R.aspect, ax = a >= 1 ? a : 1, ay = a >= 1 ? 1 : 1 / a;
+  let need = SD.ZMIN;
+  for (const c of racing(R)) { const [sx, sy] = screenOffset(c.x, c.y, c.z, S.focus); need = Math.max(need, (Math.abs(sx) + SD.FIT) / ax, (Math.abs(sy) + SD.FIT) / ay); }
+  need = Math.min(need, SD.ZMAX);
+  S.scale += (need - S.scale) * (1 - Math.exp(-dt * (need > S.scale ? 4 : 0.8)));
+  S.view = sdExtents(S.scale, a);
 }
 
 export function showdownStep(R, W, dt) {
@@ -70,18 +84,20 @@ export function showdownStep(R, W, dt) {
   const tx = L.x + L.vx * SD.LOOK, tz = L.z + L.vz * SD.LOOK;
   if (!S.focus || S.snap) { S.focus = { x: tx, y: L.y, z: tz }; S.snap = false; }
   else { const k = 1 - Math.exp(-dt * 5); S.focus.x += (tx - S.focus.x) * k; S.focus.y += (L.y - S.focus.y) * k; S.focus.z += (tz - S.focus.z) * k; }
+  fitZoom(R, dt);
   if (R.phase !== 'racing') return;
   if (L.progress >= W.tr.finishIdx) { finish(R, mostLights(R)); return; }
 
   if (S.phase === 'announce') { S.timer -= dt; if (S.timer <= 0) { regroup(R, W); S.phase = 'run'; S.grace = SD.GRACE; } return; }
 
   // blown-up cars come back once the smoke clears
-  R.cars.forEach((c, k) => { if (S.boomT[k] > 0 && !c.out && (S.boomT[k] -= dt) <= 0) { S.boomT[k] = 0; S.offT[k] = 0; rejoin(R, W, c); } });
+  R.cars.forEach((c, k) => { if (S.boomT[k] > 0 && (S.boomT[k] -= dt) <= 0) { S.boomT[k] = 0; S.offT[k] = 0; rejoin(R, W, c); } });
 
   S.grace -= dt; if (S.grace > 0) return;
-  const hw = R.view.hw + SD.OFF_SLACK, hh = R.view.hh + SD.OFF_SLACK, chasers = [];
+  // judged against the most zoomed-out view, so the camera always pulls back as far as it can before anyone blows up
+  const far = sdExtents(SD.ZMAX, R.aspect), hw = far.hw + SD.OFF_SLACK, hh = far.hh + SD.OFF_SLACK, chasers = [];
   R.cars.forEach((c, k) => {
-    if (c.out || c === L || S.boomT[k] > 0) { S.offT[k] = 0; return; }
+    if (c === L || S.boomT[k] > 0) { S.offT[k] = 0; return; }
     chasers.push(k);
     if (c.ghost > 0) { S.offT[k] = 0; return; }                               // just respawned: safe for a moment
     const [sx, sy] = screenOffset(c.x, c.y, c.z, S.focus);

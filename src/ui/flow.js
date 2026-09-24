@@ -51,7 +51,6 @@ export function handleEvents() {
         case 'horn': if (Math.hypot(c.x - race.player.x, c.z - race.player.z) < 70) AudioSys.horn(c.def.kind === 'truck' ? 0.75 : 1); break;
         case 'lap': if (c.isPlayer) { callout(e.n === G.world.tr.laps ? 'Final lap!' : 'Lap ' + e.n); AudioSys.beep(660, 0.2); } break;
         case 'sd-round': sdRound(e); break;
-        case 'sd-out': callout(c.isPlayer ? 'You\'re out!' : c.name + ' is out!'); break;
         case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? 'You win the Showdown!' : w.name + ' wins the Showdown'); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
         case 'finish':
           if (c.isPlayer) {
@@ -98,7 +97,7 @@ function showShowdownResults() {
 export function updateResultsTable() {
   if (race.sd) {
     const S = race.sd, order = race.cars.map((c, k) => ({ c, l: S.lights[k] })).sort((a, b) => b.l - a.l || b.c.progress - a.c.progress);
-    $('res-table').innerHTML = order.map(({ c, l }, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}</td><td class="rt">${c.out ? 'Out' : l + (l === 1 ? ' light' : ' lights')}</td></tr>`).join('');
+    $('res-table').innerHTML = order.map(({ c, l }, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}</td><td class="rt">${l + (l === 1 ? ' light' : ' lights')}</td></tr>`).join('');
     return;
   }
   const order = ranking(race);
@@ -140,7 +139,7 @@ export function togglePause() {
 export function refreshBest() { STAGES.forEach((s, i) => { const el = $('best-' + i); if (el) el.textContent = best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet'; }); }
 const MODE_DESC = {
   race: 'Beat three rivals to the line.',
-  showdown: 'Head to head: the camera follows the leader. Fall off the screen and you blow up, handing the leader one of your lights. Everyone starts with 4; first to 10 wins.'
+  showdown: 'Head to head: the camera follows the leader. The camera zooms out to keep up; fall too far behind and you blow up, handing the leader one of your lights. Everyone starts with 4; first to 10 wins.'
 };
 export function setMode(m) {
   G.mode = m; saveMode(m);

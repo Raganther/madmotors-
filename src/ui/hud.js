@@ -76,16 +76,16 @@ export function updateHUD(dt) {
   $('warn').hidden = !(wrong || P.stuckT > 3);
 }
 function updateShowdownHUD(sd, P) {
-  const key = sd.lights.join() + race.cars.map(c => c.out ? 1 : 0).join();
+  const key = sd.lights.join();
   if (key !== G.sdKey) {
     G.sdKey = key;
     const hex = c => '#' + c.def.color.toString(16).padStart(6, '0');
-    $('sd-rows').innerHTML = race.cars.map((c, k) => `<li class="${c.isPlayer ? 'me' : ''} ${c.out ? 'out' : ''}"><span class="chip" style="background:${hex(c)}"></span><span class="nm">${c.name}</span><span class="nm-s">${c.name.slice(0, 3)}</span><span class="sd-l">${
+    $('sd-rows').innerHTML = race.cars.map((c, k) => `<li class="${c.isPlayer ? 'me' : ''}"><span class="chip" style="background:${hex(c)}"></span><span class="nm">${c.name}</span><span class="nm-s">${c.name.slice(0, 3)}</span><span class="sd-l">${
       Array.from({ length: SD.WIN }, (_, j) => j < sd.lights[k] ? `<i style="background:${hex(c)};box-shadow:0 0 6px ${hex(c)}"></i>` : '<i></i>').join('')}</span></li>`).join('');
   }
   // glow on the screen edge you're about to drop off
-  const edge = $('edge').children, v = race.view;
-  if (sd.focus && v && !P.out && sd.phase === 'run') {
+  const edge = $('edge').children, v = sd.view;
+  if (sd.focus && v && sd.phase === 'run') {
     const [sx, sy] = screenOffset(P.x, P.y, P.z, sd.focus), a = t => clamp((t - 0.72) / 0.28, 0, 1);
     edge[0].style.opacity = a(-sx / v.hw); edge[1].style.opacity = a(sx / v.hw); edge[2].style.opacity = a(sy / v.hh); edge[3].style.opacity = a(-sy / v.hh);
   } else for (const e of edge) e.style.opacity = 0;

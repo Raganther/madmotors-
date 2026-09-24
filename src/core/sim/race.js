@@ -24,10 +24,9 @@ export function raceStep(R, dt, W) {
   const P = R.player, tr = W.tr, all = R.cars.concat(...FEATURES.filter(f => f.vehicles).map(f => f.vehicles(R)));
   const lead = R.sd && sdLeader(R);
   for (const c of R.cars) {
-    if (c.out) continue;                                                        // knocked out of a Showdown
     if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt);
     if (c.finished && c.progress > tr.finishIdx + 18) { c.inp.throttle = 0; c.inp.brake = c.vf > 0.5 ? 0.7 : 0; c.inp.handbrake = c.vf > 0.5 ? 0 : 1; }   // pull up and stay put (no creeping backwards)
-    c.mod = lead ? clamp(1 + (lead.progress - c.progress) / 250, 1, 1.12)                // Showdown: everyone chasing the leader gets a tow
+    c.mod = lead ? clamp(1 + (lead.progress - c.progress) / 300, 1, 1.08)                // Showdown: everyone chasing the leader gets a tow
       : c.isPlayer ? 1 : clamp(1 + (P.progress - c.progress) / 1400, 0.93, 1.08);
     stepCar(c, dt, W, racing);
     if (!c.finished) {
