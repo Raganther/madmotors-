@@ -62,7 +62,7 @@ src/
     modes/              game modes on top of a race (showdown)
   data/                 stages (one file each), sandboxes (a tiny loop per element), car/traffic definitions
   render/               three.js: renderer & quality, materials/shaders, world (terrain, road, barriers,
-                        scenery), elements/ (each element's and feature's visuals), vehicles, effects,
+                        scenery), elements/ (each element's and feature's visuals), vehicles (racer bodies: carmodels.js, one builder per `model` in data/cars.js), effects,
                         camera, overlay.js (debug overlay)
   audio/                Web Audio synth (engine, crashes, horns, bells)
   ui/                   HUD, menu/flow (countdown, pause, results), input, storage
