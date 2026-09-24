@@ -4,6 +4,11 @@ A top-down alpine racer in the spirit of *Ignition*: breakable barriers, car dam
 crossings, rockfall and a gorge circuit with viaducts. Three.js (r128), plain JavaScript, built with Vite into a
 single self-contained HTML file.
 
+Two modes: **Race** (first to the line) and **Showdown** (Micro Machines-style: the camera follows the leader;
+drop off the screen and the leader takes one of your lights; everyone regroups at the leader; take all 8 to win).
+The Showdown rules live in `src/core/modes/showdown.js`; `src/core/sim/view.js` uses the camera's exact screen
+axes so what you see is what's judged.
+
 ## Quick start
 
 ```bash
