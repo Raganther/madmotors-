@@ -101,6 +101,18 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await touch('touchEnd', []);
   await expect('release', () => { const r = window.__dr.race.player.inp; return !r.throttle && !r.brake && !r.handbrake && Math.abs(r.steer) < 0.05; });
   await tp.screenshot({ path: path.join(outDir, 'touch-landscape.png') });
+  // steering option: switch to the arrows with the Steering button, hold left, slide across to right without lifting
+  checks.push(['steering button shown on touch', await tp.evaluate(() => !document.getElementById('steer-btn').hidden)]);
+  await tp.evaluate(() => document.getElementById('steer-btn2').click());
+  checks.push(['arrows replace the wheel', await tp.evaluate(() => window.__dr.G.steer === 'arrows' && !document.getElementById('arrows').hidden && document.getElementById('wheel').hidden && localStorage.getItem('downhill-rush-steer') === 'arrows')]);
+  const al = await tp.evaluate(() => [...document.querySelectorAll('#arrows i')].map(e => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }));
+  await touch('touchStart', [al[0]]);
+  await expect('left arrow steers left', () => window.__dr.race.player.inp.steer < -0.5);
+  await touch('touchMove', [al[1]]);
+  await expect('slide to right arrow steers right', () => window.__dr.race.player.inp.steer > 0.5);
+  await tp.screenshot({ path: path.join(outDir, 'touch-arrows.png') });
+  await touch('touchEnd', []);
+  await expect('arrows released', () => Math.abs(window.__dr.race.player.inp.steer) < 0.05);
   for (const [name, ok] of checks) { console.log(`touch ${name}: ${ok ? 'ok' : 'FAILED'}`); if (!ok) errors.push('touch control check failed: ' + name); }
   await ctx.close();
 }

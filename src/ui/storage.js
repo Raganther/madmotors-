@@ -6,3 +6,6 @@ export function saveBest() { try { localStorage.setItem(BEST_KEY, JSON.stringify
 export const MODE_KEY = 'downhill-rush-mode';
 export function loadMode() { try { const m = localStorage.getItem(MODE_KEY); return m === 'showdown' ? 'showdown' : 'race'; } catch (e) { return 'race'; } }
 export function saveMode(m) { try { localStorage.setItem(MODE_KEY, m); } catch (e) { } }
+export const STEER_KEY = 'downhill-rush-steer';
+export function loadSteer() { try { return localStorage.getItem(STEER_KEY) === 'arrows' ? 'arrows' : 'wheel'; } catch (e) { return 'wheel'; } }
+export function saveSteer(m) { try { localStorage.setItem(STEER_KEY, m); } catch (e) { } }

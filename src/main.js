@@ -1,7 +1,7 @@
 import './debug.js';
 import { G } from './game.js';
 import { $, isTouch } from './ui/dom.js';
-import { loadMode } from './ui/storage.js';
+import { loadMode, loadSteer } from './ui/storage.js';
 import { AudioSys } from './audio/audio.js';
 import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
@@ -21,7 +21,7 @@ import { applyBarrierChanges } from './render/world/barriers.js';
 import { updateFans } from './render/world/scenery.js';
 import { setMode, buildStageList, handleEvents, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
 import { updateHUD } from './ui/hud.js';
-import { readInput } from './ui/input.js';
+import { readInput, setSteer } from './ui/input.js';
 
 export function frame(t) {
   requestAnimationFrame(frame);
@@ -73,11 +73,13 @@ export function wireUI() {
   $('mute-btn').addEventListener('click', () => { AudioSys.init(); AudioSys.toggle(); });
   document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('gfx-btn').addEventListener('click', () => { if (renderer) cycleQuality(); });
+  for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
 }
 export async function boot() {
   let step = 'setting up the menu';
   try {
     wireUI(); buildStageList(); setMode(loadMode());
+    setSteer(loadSteer()); for (const b of document.querySelectorAll('.steer-btn')) b.hidden = !isTouch;   // steering choice only matters with touch controls
     if (isTouch) { document.documentElement.classList.add('touch'); $('time-block').insertBefore($('speed-block'), $('time-block').querySelector('.hud-btns')); }   // keep the speedo clear of the thumb controls
     $('race-btn').textContent = 'Race ' + STAGES[0].name;
     step = 'starting WebGL'; initRenderer(); initParticles(); initSkids(); initDebris(); initRings(); initProps();

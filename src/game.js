@@ -24,5 +24,6 @@ export const G = {
   hintTimer: undefined,
 };
 G.mode = 'race';        // 'race' | 'showdown' (chosen in the menu)
+G.steer = 'wheel';      // touch steering: 'wheel' | 'arrows' (menu / pause setting)
 G.sdOverAt = 0;
 G.sdTick = 0;        // next Showdown danger tick (race time)

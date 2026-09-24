@@ -4,10 +4,11 @@ import { clamp, wrapAngle } from '../core/math.js';
 import { groundDir } from '../core/sim/view.js';
 import { respawn } from '../core/sim/car.js';
 import { $ } from './dom.js';
+import { saveSteer } from './storage.js';
 import { race, selected, startRace, togglePause } from './flow.js';
 
 // ---------- input ----------
-export const keys = {}, touch = { dir: null, wheel: false, gas: false, brake: false, hb: false };
+export const keys = {}, touch = { dir: null, wheel: false, left: false, right: false, gas: false, brake: false, hb: false };
 addEventListener('keydown', e => {
   keys[e.code] = true;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
@@ -34,13 +35,26 @@ function thumbZone(zone, move, end) {
 const wheel = $('wheel'), wheelG = $('wheel-g'), pedal = $('pedal'), DEAD = 14, SLIDE = 30;
 // wheel: point-to-steer. The yellow marker follows the finger around the wheel's centre and the car turns to face
 // that direction on screen (readInput), so "up" isn't special: point where you want to go.
+// arrows (the other steering option): left or right of the gap between them; slide across without lifting
+const arrows = $('arrows'), arrowEls = [...arrows.children];
+function steerArrows(e) {
+  const r = arrows.getBoundingClientRect(), d = e.clientX < r.left + r.width / 2 ? -1 : 1;
+  touch.left = d < 0; touch.right = d > 0; arrowEls.forEach(el => el.classList.toggle('on', +el.dataset.d === d));
+}
 thumbZone($('steer-zone'), (_x, _y, e) => {
+  if (G.steer === 'arrows') { steerArrows(e); return null; }
   const r = wheel.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
   touch.wheel = true; wheel.classList.add('on');
   if (Math.hypot(dx, dy) < DEAD) { touch.dir = null; return null; }   // thumb on the hub: hold straight
   touch.dir = [dx, -dy]; wheelG.setAttribute('transform', `rotate(${(Math.atan2(dx, -dy) * 180 / Math.PI).toFixed(1)})`);
   return null;
-}, () => { touch.dir = null; touch.wheel = false; wheel.classList.remove('on'); wheelG.removeAttribute('transform'); });
+}, () => { touch.dir = null; touch.wheel = touch.left = touch.right = false; wheel.classList.remove('on'); wheelG.removeAttribute('transform'); arrowEls.forEach(el => el.classList.remove('on')); });
+/** Touch steering: 'wheel' (point-to-steer) or 'arrows'. Remembered between visits. */
+export function setSteer(m) {
+  G.steer = m === 'arrows' ? 'arrows' : 'wheel'; saveSteer(G.steer);
+  wheel.hidden = G.steer !== 'wheel'; arrows.hidden = G.steer !== 'arrows';
+  for (const b of document.querySelectorAll('.steer-btn')) b.textContent = 'Steering: ' + (G.steer === 'wheel' ? 'Wheel' : 'Arrows');
+}
 // pedal: holding is gas; slide down to drift (gas stays on), slide left to brake/reverse. The anchor follows the finger
 // up and right, so the slides are always measured from the thumb's resting spot.
 thumbZone($('pedal-zone'), (dx, dy) => {
@@ -51,7 +65,7 @@ thumbZone($('pedal-zone'), (dx, dy) => {
 }, () => { touch.gas = touch.brake = touch.hb = false; pedal.className = ''; });
 export function readInput(dt) {
   const P = race.player, gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g) : null;
-  let st = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
+  let st = (keys.ArrowRight || keys.KeyD || touch.right ? 1 : 0) - (keys.ArrowLeft || keys.KeyA || touch.left ? 1 : 0);
   let thr = keys.ArrowUp || keys.KeyW || touch.gas ? 1 : 0, brk = keys.ArrowDown || keys.KeyS || touch.brake ? 1 : 0, hb = keys.Space || touch.hb ? 1 : 0;
   if (gp) {
     const ax = gp.axes[0] || 0; if (Math.abs(ax) > 0.15) st = ax;

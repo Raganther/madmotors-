@@ -14,6 +14,8 @@ axes so what you see is what's judged.
 On phones (portrait or landscape) the left thumb points a steering wheel: the car turns to face, on screen, the way
 the thumb points from the wheel's centre (`groundDir` in `core/sim/view.js`). The
 right thumb rests on Gas: slide it down to drift, left to brake/reverse, without lifting it (`src/ui/input.js`).
+"Steering: Wheel / Arrows" (menu and pause screen, touch devices only) swaps the wheel for left/right arrows;
+slide between them without lifting. The choice is remembered.
 
 ## Quick start
 
