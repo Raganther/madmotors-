@@ -11,3 +11,10 @@ export function screenOffset(x, y, z, f) {
   const ex = x - f.x, ey = y - f.y, ez = z - f.z;
   return [ex * RIGHT[0] + ey * RIGHT[1] + ez * RIGHT[2], ex * UP[0] + ey * UP[1] + ez * UP[2]];
 }
+
+// Inverse for directions on the ground: the world (x, z) heading that shows on screen along [right, up].
+const DET = RIGHT[0] * UP[2] - RIGHT[2] * UP[0];
+export function groundDir(sx, sy) {
+  const gx = (sx * UP[2] - sy * RIGHT[2]) / DET, gz = (sy * RIGHT[0] - sx * UP[0]) / DET, l = Math.hypot(gx, gz) || 1;
+  return [gx / l, gz / l];
+}

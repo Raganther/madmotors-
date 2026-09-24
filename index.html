@@ -153,7 +153,8 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   #speed-block{min-width:130px;padding:4px 12px 8px 38px} #dmg{left:10px;width:17px;height:29px} #speed{font-size:30px}
   :root{--wh:118px;--pd:86px}
 }
-.touch #speed-block{position:relative;left:auto;bottom:auto;transform:none;min-width:0;padding:3px 10px 6px 34px;border-radius:10px} .touch #speed{font-size:24px} .touch .unit{font-size:11px} .touch #boost{height:5px;margin-top:3px} .touch #dmg{left:9px;width:15px;height:26px}
+.touch #hint{white-space:normal;width:max-content;max-width:calc(100% - 32px);text-align:center}
+&position:relative;left:auto;bottom:auto;transform:none;min-width:0;padding:3px 10px 6px 34px;border-radius:10px} .touch #speed{font-size:24px} .touch .unit{font-size:11px} .touch #boost{height:5px;margin-top:3px} .touch #dmg{left:9px;width:15px;height:26px}
 /* landscape phones: short screens, so keep the HUD in a thin band along the top and the thumbs free below */
 @media (max-height:520px){
   :root{--wh:112px;--pd:84px}
@@ -213,7 +214,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 </div>
 
 <div id="touch" hidden>
-  <div id="steer-zone" class="tz"><div id="wheel" aria-label="Steering wheel: drag left or right"><svg viewBox="-50 -50 100 100" aria-hidden="true"><g id="wheel-g" fill="none" stroke="#fff" stroke-linecap="round"><circle r="40" stroke-width="9" stroke-opacity=".9"/><path d="M-36 4 L-10 6 M36 4 L10 6 M0 12 L0 37" stroke-width="8" stroke-opacity=".75"/><circle r="11" fill="rgba(255,255,255,.85)" stroke="none"/><path d="M-7 -41 L7 -41" stroke="#FFC72C" stroke-width="9"/></g></svg></div></div>
+  <div id="steer-zone" class="tz"><div id="wheel" aria-label="Steering wheel: point your thumb where you want to go"><svg viewBox="-50 -50 100 100" aria-hidden="true"><g id="wheel-g" fill="none" stroke="#fff" stroke-linecap="round"><circle r="40" stroke-width="9" stroke-opacity=".9"/><path d="M-36 4 L-10 6 M36 4 L10 6 M0 12 L0 37" stroke-width="8" stroke-opacity=".75"/><circle r="11" fill="rgba(255,255,255,.85)" stroke="none"/><path d="M-7 -41 L7 -41" stroke="#FFC72C" stroke-width="9"/></g></svg></div></div>
   <div id="pedal-zone" class="tz"><div id="pedal" aria-label="Gas: hold; slide down to drift, left to brake">Gas<i class="p-hb">▼ Drift</i><i class="p-brk">◀ Brake</i></div></div>
 </div>
 

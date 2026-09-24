@@ -11,7 +11,8 @@ breakaway, where the leader drops everyone at once, stops play for a rolling reg
 The Showdown rules live in `src/core/modes/showdown.js`; `src/core/sim/view.js` uses the camera's exact screen
 axes so what you see is what's judged.
 
-On phones (portrait or landscape) the left thumb drags a steering wheel (analog, full lock at about 56 px) and the
+On phones (portrait or landscape) the left thumb points a steering wheel: the car turns to face, on screen, the way
+the thumb points from the wheel's centre (`groundDir` in `core/sim/view.js`). The
 right thumb rests on Gas: slide it down to drift, left to brake/reverse, without lifting it (`src/ui/input.js`).
 
 ## Quick start

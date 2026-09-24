@@ -60,14 +60,19 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   const w = await box('wheel'), p = await box('pedal');
   const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
   // frames are slow under SwiftShader, so wait (up to 3 s) for the player's inputs to reach the expected state
-  const expect = async (name, pred) => { const ok = await tp.waitForFunction(pred, null, { timeout: 3000 }).then(() => true, () => false); checks.push([name, ok]); };
+  const expect = async (name, pred, arg = null, timeout = 3000) => { const ok = await tp.waitForFunction(pred, arg, { timeout }).then(() => true, () => false); checks.push([name, ok]); };
+  // point-to-steer: the car ends up facing (on screen) the way the thumb points from the wheel's centre
+  const facing = ([ax, ay]) => { const P = window.__dr.race.player, [sx, sy] = window.__dr.core.screenOffset(P.x + Math.sin(P.yaw), P.y, P.z + Math.cos(P.yaw), P); return (sx * ax + sy * ay) / (Math.hypot(sx, sy) * Math.hypot(ax, ay)) > 0.9; };
   const checks = [];
   await touch('touchStart', [[w.x, w.y], [p.x, p.y]]);
-  await touch('touchMove', [[w.x + 40, w.y], [p.x, p.y]]);
-  await expect('wheel right + gas', () => { const r = window.__dr.race.player.inp; return r.steer > 0.6 && r.throttle === 1 && !r.handbrake && !r.brake; });
-  await touch('touchMove', [[w.x - 50, w.y], [p.x, p.y + 45]]);
-  await expect('wheel left + slide down drifts', () => { const r = window.__dr.race.player.inp; return r.steer < -0.6 && r.throttle === 1 && r.handbrake === 1; });
-  await touch('touchMove', [[w.x - 50, w.y], [p.x - 45, p.y]]);
+  await touch('touchMove', [[w.x + 50, w.y], [p.x, p.y]]);
+  await expect('gas', () => { const r = window.__dr.race.player.inp; return r.throttle === 1 && !r.handbrake && !r.brake; });
+  await expect('point right: car turns to face right', facing, [1, 0], 10000);
+  await touch('touchMove', [[w.x - 35, w.y - 35], [p.x, p.y]]);
+  await expect('point up-left: car turns to face up-left', facing, [-1, 1], 10000);
+  await touch('touchMove', [[w.x - 35, w.y - 35], [p.x, p.y + 45]]);
+  await expect('slide down drifts', () => { const r = window.__dr.race.player.inp; return r.throttle === 1 && r.handbrake === 1; });
+  await touch('touchMove', [[w.x - 35, w.y - 35], [p.x - 45, p.y]]);
   await expect('slide left brakes', () => { const r = window.__dr.race.player.inp; return r.brake === 1 && r.throttle === 0 && !r.handbrake; });
   await touch('touchEnd', []);
   await expect('release', () => { const r = window.__dr.race.player.inp; return !r.throttle && !r.brake && !r.handbrake && Math.abs(r.steer) < 0.05; });

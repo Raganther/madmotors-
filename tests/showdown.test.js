@@ -20,6 +20,13 @@ it('screenOffset matches the three.js orthographic camera', () => {
     expect(sx).toBeCloseTo(v.x * hw, 6); expect(sy).toBeCloseTo(v.y * hh, 6);
   }
 });
+it('groundDir is the ground heading that shows on screen along a given direction (touch point-to-steer)', () => {
+  for (const [ax, ay] of [[1, 0], [0, 1], [-1, 1], [0.3, -0.8]]) {
+    const [gx, gz] = M.groundDir(ax, ay), [sx, sy] = M.screenOffset(gx, 0, gz, { x: 0, y: 0, z: 0 });
+    expect(Math.hypot(gx, gz)).toBeCloseTo(1, 9);
+    expect((sx * ax + sy * ay) / (Math.hypot(sx, sy) * Math.hypot(ax, ay))).toBeCloseTo(1, 9);
+  }
+});
 
 const offFar = (R, c) => { const e = M.sdExtents(SD.ZMAX, R.aspect), [sx, sy] = M.screenOffset(c.x, c.y, c.z, R.sd.focus); return Math.abs(sx) > e.hw || Math.abs(sy) > e.hh; };
 const inFar = (R, c) => { const e = M.sdExtents(SD.ZMAX, R.aspect), [sx, sy] = M.screenOffset(c.x, c.y, c.z, R.sd.focus); return Math.abs(sx) < e.hw && Math.abs(sy) < e.hh; };
