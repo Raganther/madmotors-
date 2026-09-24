@@ -1,6 +1,7 @@
 import './debug.js';
 import { G } from './game.js';
 import { $ } from './ui/dom.js';
+import { loadMode } from './ui/storage.js';
 import { AudioSys } from './audio/audio.js';
 import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
@@ -19,7 +20,7 @@ import { featureHook } from './render/features.js';
 import { applyBarrierChanges } from './render/world/barriers.js';
 import { updateBridgeFade } from './render/world/bridges.js';
 import { updateFans } from './render/world/scenery.js';
-import { buildStageList, handleEvents, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
+import { setMode, buildStageList, handleEvents, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
 import { updateHUD } from './ui/hud.js';
 import { readInput } from './ui/input.js';
 
@@ -47,6 +48,7 @@ export function frame(t) {
     AudioSys.update(race.player, 'drive');
     if (G.goTimer > 0) { G.goTimer -= dt; if (G.goTimer <= 0) $('countdown').hidden = true; }
     if (race.player.finished && !resultsShown && race.time - race.player.finishTime > 1.6) showResults();
+    if (race.sd && race.sd.phase === 'over' && !resultsShown && race.time - G.sdOverAt > 1.8) showResults();
     if (resultsShown) { G.resultsTick -= dt; if (G.resultsTick <= 0) { G.resultsTick = 0.5; updateResultsTable(); } }
   }
   if (G.calloutTimer > 0) { G.calloutTimer -= dt; if (G.calloutTimer <= 0) $('callout').hidden = true; }
@@ -71,12 +73,13 @@ export function wireUI() {
   $('pause-btn').addEventListener('click', togglePause);
   $('reset-btn').addEventListener('click', () => { if (G.state === 'racing' && !race.player.finished) respawn(race.player, G.world.W); });
   $('mute-btn').addEventListener('click', () => { AudioSys.init(); AudioSys.toggle(); });
+  document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('gfx-btn').addEventListener('click', () => { if (renderer) cycleQuality(); });
 }
 export async function boot() {
   let step = 'setting up the menu';
   try {
-    wireUI(); buildStageList();
+    wireUI(); buildStageList(); setMode(loadMode());
     $('race-btn').textContent = 'Race ' + STAGES[0].name;
     step = 'starting WebGL'; initRenderer(); initParticles(); initSkids(); initDebris(); initRings(); initProps();
     step = 'loading fonts';

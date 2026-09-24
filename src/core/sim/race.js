@@ -1,17 +1,20 @@
 import { FEATURES } from '../features/index.js';
+import { initShowdown, showdownStep } from '../modes/showdown.js';
 import { clamp, mulberry32 } from '../math.js';
 import { aiControl } from './ai.js';
 import { makeBarriers } from './barriers.js';
 import { makeCar, stepCar } from './car.js';
 import { collideCars } from './collide.js';
 
-/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @returns {import('../types.js').Race} */
-export function createRace(W, defs) {
+/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'}} [opts] @returns {import('../types.js').Race} */
+export function createRace(W, defs, opts = {}) {
   const grid = [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
   W.bar = makeBarriers(W.tr, W.armco);
   const cars = defs.map((d, k) => makeCar(W, grid[k][0], grid[k][1], d));
   const R = { cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false, rnd: mulberry32((W.tr.seed || 1) * 31 + 7) };
   for (const f of FEATURES) if (f.init) f.init(R, W);
+  R.mode = opts.mode || 'race';
+  if (R.mode === 'showdown') initShowdown(R);
   return R;
 }
 /** Advance the whole race by one fixed step (STEP = 1/120 s). @param {import('../types.js').Race} R @param {number} dt @param {import('../types.js').World} W */
@@ -20,8 +23,10 @@ export function raceStep(R, dt, W) {
   if (racing) R.time += dt;
   const P = R.player, tr = W.tr, all = R.cars.concat(...FEATURES.filter(f => f.vehicles).map(f => f.vehicles(R)));
   for (const c of R.cars) {
+    if (c.out) continue;                                                        // knocked out of a Showdown
     if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt);
     if (c.finished && c.progress > tr.finishIdx + 18) { c.inp.throttle = 0; c.inp.brake = c.vf > 0.5 ? 0.7 : 0; c.inp.handbrake = c.vf > 0.5 ? 0 : 1; }   // pull up and stay put (no creeping backwards)
+    if (c.hold > 0) { c.hold -= dt; c.inp.throttle = 0; c.inp.brake = 0; c.inp.steer = 0; c.inp.handbrake = 1; }   // held on the grid (Showdown regroup)
     c.mod = c.isPlayer ? 1 : clamp(1 + (P.progress - c.progress) / 1400, 0.93, 1.08);
     stepCar(c, dt, W, racing);
     if (!c.finished) {
@@ -36,12 +41,13 @@ export function raceStep(R, dt, W) {
       const ln = Math.floor((c.progress - tr.startIdx) / tr.loopN);
       if (ln > c.lap && ln < tr.laps) { c.lap = ln; c.events.push({ t: 'lap', n: ln + 1 }); }
     }
-    if (racing && !c.finished && c.progress >= tr.finishIdx) { c.finished = true; c.finishTime = R.time; c.place = ++R.nFinished; c.events.push({ t: 'finish' }); }
+    if (racing && !c.finished && !R.sd && c.progress >= tr.finishIdx) { c.finished = true; c.finishTime = R.time; c.place = ++R.nFinished; c.events.push({ t: 'finish' }); }
   }
   for (const f of FEATURES) if (f.move) f.move(R, W, dt, all, racing);
   for (const f of FEATURES) if (f.spawn) f.spawn(R, W, dt);
   collideCars(all); collideCars(all);
   for (const f of FEATURES) if (f.after) f.after(R, W, dt);
+  if (R.sd) showdownStep(R, W, dt);
 }
 export function ranking(R) {
   return R.cars.slice().sort((a, b) => {

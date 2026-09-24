@@ -1,4 +1,5 @@
 import { G } from '../game.js';
+import { screenOffset } from '../core/sim/view.js';
 import { TAU, clamp } from '../core/math.js';
 import { ranking } from '../core/sim/race.js';
 import { roadH } from '../core/track/query.js';
@@ -50,6 +51,10 @@ export function updateHUD(dt) {
   const P = race.player;
   if (G.profileTick <= 0) { G.profileTick = 0.05; drawProfile($('profile'), G.world.tr, race.cars, 4); }
   if (G.hudTick > 0) return; G.hudTick = 1 / 30;
+  const sd = race.sd;
+  $('sd-panel').hidden = !sd; $('hud').classList.toggle('sd', !!sd); $('pos').hidden = !!sd; $('standings').hidden = !!sd; $('best').hidden = !!sd;
+  if (sd) updateShowdownHUD(sd, P);
+  else $('edge').className = '';
   const order = ranking(race), place = order.indexOf(P) + 1;
   setTxt('pos-n', String(place)); setTxt('pos-suf', ordinal(place).slice(-2));
   const key = order.map(c => c.name).join();
@@ -58,7 +63,8 @@ export function updateHUD(dt) {
     $('standings').innerHTML = order.map((c, i) => `<li class="${c.isPlayer ? 'me' : ''}"><span class="st-p">${i + 1}</span><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}</li>`).join('');
   }
   setTxt('time', fmt(P.finished ? P.finishTime : race.time));
-  if (G.world.tr.loopN) { const L = G.world.tr.laps; $('lap').hidden = false; setTxt('lap', P.finished ? 'Finished' : (P.lap + 1 === L ? 'Final lap' : `Lap ${P.lap + 1} of ${L}`)); } else $('lap').hidden = true;
+  if (sd) { $('lap').hidden = true; setTxt('sd-title', G.world.tr.loopN ? `Showdown · Lap ${Math.min(G.world.tr.laps, P.lap + 1)} of ${G.world.tr.laps}` : 'Showdown'); }
+  else if (G.world.tr.loopN) { const L = G.world.tr.laps; $('lap').hidden = false; setTxt('lap', P.finished ? 'Finished' : (P.lap + 1 === L ? 'Final lap' : `Lap ${P.lap + 1} of ${L}`)); } else $('lap').hidden = true;
   const b = best[G.world.idx]; setTxt('best', b ? 'Best ' + fmt(b) : 'No best time yet');
   setTxt('speed', String(Math.round(Math.hypot(P.vx, P.vz) * 4.1)));
   const charge = P.boost > 0 ? 1 : clamp(P.driftT / 1.6, 0, 1);
@@ -67,6 +73,23 @@ export function updateHUD(dt) {
   const wrong = P.wrongT > 1;
   $('warn').textContent = wrong ? 'Wrong way' : (P.stuckT > 3 ? (isTouch ? 'Stuck? Tap Reset' : 'Stuck? Press R to reset') : '');
   $('warn').hidden = !(wrong || P.stuckT > 3);
+}
+function updateShowdownHUD(sd, P) {
+  const key = sd.lights.join() + race.cars.map(c => c.out ? 1 : 0).join();
+  if (key !== G.sdKey) {
+    G.sdKey = key;
+    const hex = c => '#' + c.def.color.toString(16).padStart(6, '0');
+    $('sd-rows').innerHTML = race.cars.map((c, k) => `<li class="${c.isPlayer ? 'me' : ''} ${c.out ? 'out' : ''}"><span class="chip" style="background:${hex(c)}"></span>${c.name}<span class="sd-l">${
+      Array.from({ length: 8 }, (_, j) => j < sd.lights[k] ? `<i style="background:${hex(c)};box-shadow:0 0 6px ${hex(c)}"></i>` : '<i></i>').join('')}</span></li>`).join('');
+  }
+  // regroup countdown
+  if (sd.phase === 'hold') { const n = Math.max(1, Math.ceil(sd.timer / 0.5)); $('countdown').hidden = false; setTxt('countdown', String(n)); }
+  // glow on the screen edge you're about to drop off
+  const edge = $('edge').children, v = race.view;
+  if (sd.focus && v && !P.out && sd.phase === 'run') {
+    const [sx, sy] = screenOffset(P.x, P.y, P.z, sd.focus), a = t => clamp((t - 0.72) / 0.28, 0, 1);
+    edge[0].style.opacity = a(-sx / v.hw); edge[1].style.opacity = a(sx / v.hw); edge[2].style.opacity = a(sy / v.hh); edge[3].style.opacity = a(-sy / v.hh);
+  } else for (const e of edge) e.style.opacity = 0;
 }
 G.calloutTimer = 0;
 export function callout(text) { const el = $('callout'); el.textContent = text; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); el.hidden = false; G.calloutTimer = 1.3; }

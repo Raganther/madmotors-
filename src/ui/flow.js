@@ -18,7 +18,7 @@ import { featureHook } from '../render/features.js';
 import { $, isTouch } from './dom.js';
 import { fmt, ordinal } from './format.js';
 import { callout, drawProfile } from './hud.js';
-import { best, saveBest } from './storage.js';
+import { best, saveBest, saveMode } from './storage.js';
 
 export let race = null, pausedFrom = null, selected = 0;
 G.world = null; G.state = 'menu';
@@ -26,7 +26,7 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const r = createRace(G.world.W, CAR_DEFS); clearProps(); resetBarrierVis(); carVis.forEach(repairCarVis);
+  const r = createRace(G.world.W, CAR_DEFS, { mode: G.mode }); clearProps(); resetBarrierVis(); carVis.forEach(repairCarVis);
   featureHook('newRace', r);
   return r;
 }
@@ -50,6 +50,11 @@ export function handleEvents() {
         case 'repair': { const v = visOf(c); if (v) repairCarVis(v); break; }
         case 'horn': if (Math.hypot(c.x - race.player.x, c.z - race.player.z) < 70) AudioSys.horn(c.def.kind === 'truck' ? 0.75 : 1); break;
         case 'lap': if (c.isPlayer) { callout(e.n === G.world.tr.laps ? 'Final lap!' : 'Lap ' + e.n); AudioSys.beep(660, 0.2); } break;
+        case 'sd-round': sdRound(e); break;
+        case 'sd-out': callout(c.isPlayer ? 'You\'re out!' : c.name + ' is out!'); break;
+        case 'sd-hold': G.goTimer = 0; break;
+        case 'sd-go': $('countdown').textContent = 'Go!'; $('countdown').hidden = false; G.goTimer = 0.6; AudioSys.beep(880, 0.2); break;
+        case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? 'You win the Showdown!' : w.name + ' wins the Showdown'); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
         case 'finish':
           if (c.isPlayer) {
             callout(ordinal(c.place) + ' place!'); AudioSys.beep(880, 0.35);
@@ -62,7 +67,14 @@ export function handleEvents() {
     c.events.length = 0;
   }
 }
+// a round of Showdown: the leader took a light from each car that dropped off the screen
+function sdRound(e) {
+  const P = race.player, pi = race.cars.indexOf(P), w = race.cars[e.winner], n = e.losers.length;
+  if (e.winner === pi) { callout(n > 1 ? `You take ${n} lights!` : 'You take a light!'); AudioSys.tone(660, 0.12, 0.08, 'triangle', 1.5); }
+  else { callout(`${w.name} takes a light!`); if (e.losers.includes(pi)) AudioSys.tone(520, 0.3, 0.08, 'triangle', 0.5); }
+}
 export function showResults() {
+  if (race.sd) return showShowdownResults();
   resultsShown = true; $('results').hidden = false; $('touch').hidden = true;
   const P = race.player;
   $('res-title').textContent = 'You finished ' + ordinal(P.place);
@@ -72,7 +84,21 @@ export function showResults() {
   updateResultsTable();
   $('next-btn').focus();
 }
+function showShowdownResults() {
+  resultsShown = true; $('results').hidden = false; $('touch').hidden = true;
+  const won = race.cars[race.sd.winner] === race.player;
+  $('res-title').textContent = won ? 'You won the Showdown' : race.cars[race.sd.winner].name + ' won the Showdown';
+  $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name}, ${race.sd.rounds} rounds`;
+  $('res-best').textContent = 'Showdown: take lights by leaving rivals off the screen';
+  $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
+  updateResultsTable(); $('next-btn').focus();
+}
 export function updateResultsTable() {
+  if (race.sd) {
+    const S = race.sd, order = race.cars.map((c, k) => ({ c, l: S.lights[k] })).sort((a, b) => b.l - a.l || b.c.progress - a.c.progress);
+    $('res-table').innerHTML = order.map(({ c, l }, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}</td><td class="rt">${c.out ? 'Out' : l + (l === 1 ? ' light' : ' lights')}</td></tr>`).join('');
+    return;
+  }
   const order = ranking(race);
   $('res-table').innerHTML = order.map((c, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}</td><td class="rt">${c.finished ? fmt(c.finishTime) : 'Still racing'}</td></tr>`).join('');
 }
@@ -80,7 +106,7 @@ export let pendingBuild = null;
 export function selectStage(i, cb) {
   selected = i;
   document.querySelectorAll('.stage').forEach((b, k) => b.setAttribute('aria-pressed', k === i ? 'true' : 'false'));
-  $('race-btn').textContent = 'Race ' + STAGES[i].name;
+  $('race-btn').textContent = (G.mode === 'showdown' ? 'Showdown: ' : 'Race ') + STAGES[i].name;
   if (G.world && G.world.idx === i) { cb && cb(); return; }
   $('loading-text').textContent = 'Building ' + STAGES[i].name; $('loading').hidden = false;
   clearTimeout(pendingBuild);
@@ -93,7 +119,7 @@ export function startRace(idx) {
   AudioSys.init();
   selectStage(idx, () => {
     race = newRace(); clearSkids(); clearDebris(); G.shake = 0; G.slowmo = 0;
-    G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = '';
+    G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; $('edge').className = '';
     $('menu').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
     $('stage-name').textContent = `Stage ${idx + 1}: ${STAGES[idx].name}`;
     racesStarted++; G.hintTimer = racesStarted <= 2 ? 7 : 0;
@@ -110,6 +136,16 @@ export function togglePause() {
   else if (G.state === 'paused') { G.state = pausedFrom; $('pause').hidden = true; G.lastT = performance.now() / 1000; }
 }
 export function refreshBest() { STAGES.forEach((s, i) => { const el = $('best-' + i); if (el) el.textContent = best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet'; }); }
+const MODE_DESC = {
+  race: 'Beat three rivals to the line.',
+  showdown: 'Head to head: the camera follows the leader. Drop off the screen and the leader takes one of your lights. Everyone starts with 4; take all 8 to win.'
+};
+export function setMode(m) {
+  G.mode = m; saveMode(m);
+  document.querySelectorAll('.mode-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false'));
+  $('mode-desc').textContent = MODE_DESC[m];
+  $('race-btn').textContent = (m === 'showdown' ? 'Showdown: ' : 'Race ') + STAGES[selected].name;
+}
 export function buildStageList() {
   const ol = $('stage-list'); ol.innerHTML = '';
   STAGES.forEach((s, i) => {

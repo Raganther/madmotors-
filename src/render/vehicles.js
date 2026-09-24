@@ -210,7 +210,7 @@ export function drawCar(c, v, dt, now) {
   const braking = !v.parts.tails && ((c.inp.brake > 0.05 && c.vf > 0.5) || (c.inp.handbrake > 0 && Math.abs(c.vf) > 3));
   if (v.braking !== braking) { v.braking = braking; v.tailM.color.setHex(braking ? 0xFF4A36 : 0x8E2016); v.glow.forEach(g => g.visible = braking); }
   v.blob.visible = c.onGround;
-  v.root.visible = c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
+  v.root.visible = c.out ? false : c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
   if (G.state === 'racing') effectsForCar(c, v, dt);
 }
 export function updateCarVisuals(dt, now) {

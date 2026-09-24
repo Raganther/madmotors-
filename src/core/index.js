@@ -19,3 +19,5 @@ export * from './features/parked.js';
 export * from './features/rockfall.js';
 export { STAGES } from '../data/stages/index.js';
 export { FEATURES } from './features/index.js';
+export * from './sim/view.js';
+export * from './modes/showdown.js';

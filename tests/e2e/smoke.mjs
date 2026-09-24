@@ -31,6 +31,23 @@ for (let i = 0; i < n; i++) {
   // the real loop was stubbed out for this stage; reload for the next one
   await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 }
+// Showdown on a downhill stage and on the gorge: play until at least one round is scored
+for (const i of [0, 6]) {
+  await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
+  await page.evaluate(i => { window.__dr.flow.setMode('showdown'); window.__dr.flow.startRace(i); }, i);
+  await page.waitForFunction(i => window.__dr.G.world.idx === i && window.__dr.race && window.__dr.race.sd, i, { timeout: 30000 });
+  const info = await page.evaluate(() => {
+    const d = window.__dr; window.requestAnimationFrame = () => 0;
+    d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
+    for (let k = 0; k < 90 && d.race.sd.rounds === 0 && d.race.sd.phase !== 'over'; k++) d.step(0.5);
+    d.step(0.2);
+    return { stage: d.G.world.stage.name, rounds: d.race.sd.rounds, phase: d.race.sd.phase, lights: d.race.sd.lights.join('/'), panel: !document.getElementById('sd-panel').hidden, view: d.race.view };
+  });
+  await page.screenshot({ path: path.join(outDir, `showdown${i + 1}.png`) });
+  console.log(`showdown ${info.stage}: ${info.rounds} round(s), phase ${info.phase}, lights ${info.lights}, panel ${info.panel}, view ${info.view.hw.toFixed(1)}x${info.view.hh.toFixed(1)}`);
+  if (!info.rounds || !info.panel) errors.push('showdown did not score a round / show its panel on ' + info.stage);
+}
+await page.evaluate(() => window.__dr.flow.setMode('race'));
 await browser.close();
 if (errors.length) { console.error('ERRORS:\n' + errors.join('\n')); process.exit(1); }
 console.log('smoke test passed');

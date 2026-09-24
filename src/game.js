@@ -24,3 +24,5 @@ export const G = {
   calloutTimer: undefined,
   hintTimer: undefined,
 };
+G.mode = 'race';        // 'race' | 'showdown' (chosen in the menu)
+G.sdOverAt = 0;

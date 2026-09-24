@@ -6,3 +6,6 @@ export const SURF = {
   grass: { engine: 0.6, latMax: 15, grip: 5, drag: 0.35 }
 };
 export const STEP = 1 / 120;
+// Direction from the ground towards the (orthographic) camera. The renderer builds its camera from this, and
+// Showdown mode uses it to decide what is on screen, so both always agree.
+export const CAM_DIR = (() => { const l = Math.hypot(1, 1.3, 1); return [1 / l, 1.3 / l, 1 / l]; })();
