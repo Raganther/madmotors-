@@ -36,7 +36,7 @@
  * @property {boolean} [town] @property {boolean} [gallery] @property {boolean} [rockfall]
  * @property {number} [kick]              kicker jump of this height (m) at the start of the section
  * @property {boolean} [arch]             scenery rock arch over the middle of the section
- * @property {boolean} [gap]              a void to jump; @property {boolean} [boost]  boost pads (see core/elements)
+ * @property {boolean} [gap]              a void to jump; @property {boolean} [boost]  boost pads; @property {boolean} [ferry]  barge crossing (see core/elements)
  */
 
 /**

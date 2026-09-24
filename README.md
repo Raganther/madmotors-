@@ -101,6 +101,7 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | arch | `arch` | scenery rock arch |
 | gap | `gap` | a void to jump (fall in and you respawn on the far side) |
 | boost | `boost` | boost pads across the road |
+| ferry | `ferry` | a barge carries the cars across water between two docks (moves in `features/ferry.js`) |
 
 A core element can declare `tags`, `stageKeys`, per-sample `channels`, a `section()` hook, build phases (`heights`,
 `walls`, `wallsLate`, `wallsLast`), `track()` to add fields to the built track, and `markers()` saying where it is (see

@@ -22,8 +22,9 @@ import { element as rockfall } from './rockfall.js';
 import { element as arch } from './arch.js';
 import { element as gap } from './gap.js';
 import { element as boost } from './boost.js';
+import { element as ferry } from './ferry.js';
 
-export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost];
+export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry];
 export const elementPhase = (phase, ...args) => { for (const e of ELEMENTS) if (e[phase]) e[phase](...args); };
 
 // stage options that belong to the stage itself rather than to an element

@@ -84,12 +84,13 @@ export function genPass(stage) {
   return { xs, zs, hs, tunnel: T, bridge: new Array(A.length).fill(0), smoothH: 12, pass: true };
 }
 export function genCircuit(stage) {
-  let a = 0, b = 0, phi = stage.startHeading || 0, h = 0;
+  const last = stage.segs[stage.segs.length - 1], h0 = last[0] === 's' ? last[2] : last[3];   // a lap starts at the height it closes at
+  let a = 0, b = 0, phi = stage.startHeading || 0, h = h0;
   const A = [], B = [], hs = [], marks = {};
   // per-sample channels recorded from each section's tags, as declared by the track elements
   const chans = ELEMENTS.flatMap(e => Object.entries(e.channels || {})), ch = Object.fromEntries(chans.map(([k]) => [k, []]));
   const emit = (hh, tg) => { A.push(a); B.push(b); hs.push(hh); for (const [k, f] of chans) ch[k].push(f(tg)); };
-  emit(0, stage.segs[0][3] || {});
+  emit(h0, stage.segs[0][3] || {});
   for (const sg of stage.segs) {
     const type = sg[0], tg0 = (type === 's' ? sg[3] : sg[4]) || {}, i0 = A.length;
     if (type === 's') {
@@ -143,7 +144,7 @@ export function finishLoop(stage, g, seed) {
   elementPhase('heights', ctx);                                    // level crossings, then jumps and kickers
   const rails = ctx.rails;
   const idwX = [], idwZ = [], idwH = [];
-  const void0 = i => bridge0[i] || (ch.gap && ch.gap[i]);   // decks and gaps don't shape the ground under them
+  const void0 = i => bridge0[i] || (ch.gap && ch.gap[i]) || (ch.ferry && ch.ferry[i]);   // decks, gaps and ferry crossings don't shape the ground under them
   for (let i = 0; i < N0; i += 6) if (!void0(i)) { idwX.push(xs0[i]); idwZ.push(zs0[i]); idwH.push(H0[i]); }
   let tunMid = -1; { const ti = []; for (let i = 0; i < N0; i++) if (tunnel0[i]) ti.push(i); if (ti.length) tunMid = ti[Math.floor(ti.length / 2)]; }
   const toAB = (x, z) => [(x - z) / Math.SQRT2, -(x + z) / Math.SQRT2];
@@ -262,5 +263,7 @@ export function finishLoop(stage, g, seed) {
     minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge, tunnel, nearestTun, carve: stage.carve || 0, carveW, margin: g.pass ? 230 : gorge ? 120 : 95,
     loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, gridS: gorge ? 4 : 3, edge: gorge ? HALF + 4 : HALF + 15 };
   elementPhase('track', ctx, out);                                 // each element's fields (town, gallery, rails, ...)
+  // samples with nothing under the road line (gaps, ferry crossings): the terrain doesn't flatten into them
+  out.voidMask = (ch.gap && ch.gap.some(v => v)) || (ch.ferry && ch.ferry.some(v => v)) ? Uint8Array.from(ch.gap, (v, i) => v || ch.ferry[i]) : null;
   return out;
 }

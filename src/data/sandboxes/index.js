@@ -47,6 +47,11 @@ export const SANDBOXES = {
       ['s', 28, -2, { gap: true, far: -40, near: -40, rampF: 3, rampN: 3 }], ['s', 40, -3, { far: -12, near: -12, rampF: 6, rampN: 6 }], ['s', 20, 0]],
     top: [flat(60)], left: [flat(20)]
   }, { river: { pts: [[100, 94], [300, 94]], level: -30, width: 14 } }),
+  ferry: loop('ferry', 'a barge across a river: queue at the gate, ride over, drive off', {
+    bottom: [flat(150)],
+    right: [['s', 30, 0], ['s', 20, -8, { far: -4, near: -4 }], ['s', 50, -8, { ferry: true, far: -16, rampF: 3, near: -16, rampN: 3 }], ['s', 20, -8, { far: -4, near: -4 }], ['s', 30, 0]],
+    top: [flat(60)], left: [flat(20)]
+  }, { river: { pts: [[80, 125], [300, 125]], level: -11, width: 40 } }),
   rails: loop('rails', 'a level crossing with trains', {
     bottom: [flat(120)], right: [flat(60)], top: [flat(80)], left: [flat(20)]
   }, { rails: [{ id: 'line', pts: [[60, -80, 0], [60, 80, 0]], speed: 26, cars: 3, body: ravenrock.rails[0].body, coach: ravenrock.rails[0].coach, band: ravenrock.rails[0].band }] })

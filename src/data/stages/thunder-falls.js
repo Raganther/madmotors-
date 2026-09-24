@@ -1,11 +1,11 @@
 // Stage: Thunder Falls. A logging-river canyon built from track elements: right-angle turns and a chicane out of the
 // sawmill yard, two corkscrews that dive under their own bridges, boost pads into a jump over the river gorge
-// (`gap`), and a low bridge back across the river.
-export default { name: 'Thunder Falls', blurb: 'Corkscrews, chicanes and a jump over the river gorge', type: 'gorge', laps: 2, seed: 5151, surface: 'tarmac', hillAmp: 4, jumps: 0, armco: true,
+// (`gap`), and a barge (`ferry`) back across the river: everyone waits for it and rides over together.
+export default { name: 'Thunder Falls', blurb: 'Corkscrews, a jump over the gorge and a barge back across the river', type: 'gorge', laps: 2, seed: 5151, surface: 'tarmac', hillAmp: 4, jumps: 0, armco: true,
   light: { sun: 0xFFE2BE, sunI: 1.0, sky: 0xD4E6F5, ground: 0x4F5A42, hemiI: 0.58, cloud: 0.26, grade: [1.03, 1.0, 0.97], sat: 1.08, haze: { color: 0xA9C4D8, top: -10, range: 30, amt: 0.45 } },
   colors: { grassA: 0x6E9E4B, grassB: 0x4F8040, rock: 0x8A887F, dirt: 0x8F7352, road: 0x50545C, sky: 0xB3D8E3, round: [0x4F8A3F, 0x5E9A45], pine: [0x2F6A3E, 0x3A7646, 0x285E38, 0x44804C] },
   trees: { density: 0.006, pine: 0.9 }, rocks: 0.0016, bushes: 0.002, village: false,
-  river: { pts: [[-500, -228], [-150, -240], [60, -233], [300, -238], [600, -230]], level: -34, width: 16 },
+  river: { pts: [[-500, -228], [-150, -240], [60, -235], [300, -238], [600, -230]], level: -34, width: 34 },
   segs: (() => {
     const yard = { far: 2, rampF: 20, near: 1, rampN: 20 }, bank = { far: 8, rampF: 14, near: -6, rampN: 14 }, lip = { far: -30, rampF: 4, near: -30, rampN: 4 };
     return [
@@ -19,10 +19,12 @@ export default { name: 'Thunder Falls', blurb: 'Corkscrews, chicanes and a jump 
       ['s', 30, -5, { gap: true, far: -40, rampF: 3, near: -40, rampN: 3 }],    // THE GAP: over the river gorge
       ['s', 40, -6, { far: -12, rampF: 6, near: -12, rampN: 6 }],
       ['a', 12, -90, -6, bank], ['s', 90, -6, bank],                             // right-angle right
-      ['s', 45, -6, { bridge: true }], ['a', 26, 270, -18, bank],               // corkscrew 2: round and down, and under it
-      ['s', 40, -18, bank], ['s', 60, -17, { bridge: true }],                    // low bridge back over the river
-      ['a', 55, 28, -12, bank], ['a', 55, -28, -6, bank],                         // climb out of the gorge: an S-bend...
-      ['s', 20, -3, { ...bank, kick: 2.2 }], ['s', { toB: -100 }, 8, bank],     // ...and a crest kicker
+      ['s', 45, -6, { bridge: true }], ['a', 26, 270, -22, bank],               // corkscrew 2: round and down, and under it
+      ['s', 65, -31, { far: 6, rampF: 10, near: -2, rampN: 8 }],                  // down the slipway to the river
+      ['s', 56, -31, { ferry: true, far: -14, rampF: 3, near: -14, rampN: 3 }],  // THE BARGE across the river
+      ['s', 12, -31, { far: 2, rampF: 8, near: 0, rampN: 8 }],
+      ['a', 55, 28, -22, bank], ['a', 55, -28, -12, bank],                        // climb out of the gorge: an S-bend...
+      ['s', 20, -8, { ...bank, kick: 2.2 }], ['s', { toB: -100 }, 8, bank],     // ...and a crest kicker
       ['a', 25, 90, 10, bank], ['s', { toA: -40 }, 12, bank], ['a', 25, -90, 14, yard],
       ['s', { toB: -25 }, 18, yard], ['a', 25, -90, 20, yard], ['s', { toA: 0 }, 20, yard]
     ];

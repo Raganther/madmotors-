@@ -4,6 +4,7 @@ import M from './core-under-test.js';
 import { SANDBOXES } from '../src/data/sandboxes/index.js';
 import { genCircuit } from '../src/core/track/circuit.js';
 import { seedRandom } from './scenarios.js';
+const FERRYLEN = M.FERRY.LEN;
 
 const DEFS = [{ name: 'a', skill: 0.95, flick: 0.38, driftK: 1 / 62 }, { name: 'b', skill: 0.99, flick: 0.22, driftK: 1 / 38 }, { name: 'p', player: true }, { name: 'c', skill: 0.92, flick: 0.28, driftK: 1 / 50 }];
 
@@ -25,7 +26,7 @@ describe('element registry and stage validation', () => {
 });
 
 // what each sandbox must contain, by element name
-const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'] };
+const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'] };
 describe('sandboxes', () => {
   it('there is a sandbox listed here for each one defined', () => expect(Object.keys(SANDBOXES).sort()).toEqual(Object.keys(EXPECT).sort()));
   for (const [name, stage] of Object.entries(SANDBOXES)) it(`${name}: builds, closes, has its elements, and four AI cars lap it cleanly`, () => {
@@ -62,6 +63,40 @@ describe('gap and boost pads', () => {
     const { tr, W, R, c } = setup(); let i0 = -1; for (let i = 0; i < tr.loopN; i++) if (tr.boostPad[i]) { i0 = i; break; }
     put(tr, c, i0 - 4, 20); for (let n = 0; n < 60; n++) { c.inp.throttle = 1; M.raceStep(R, 1 / 120, W); }
     expect(c.boost).toBeGreaterThan(0.3);
+  });
+});
+
+describe('ferry (barge)', () => {
+  const setup = () => { seedRandom(3); const st = SANDBOXES.ferry, tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true }; return { tr, W }; };
+  it('everyone boards, it waits for them to stop, crosses with them aboard, and they drive off at the far dock', () => {
+    const { tr, W } = setup(), R = M.createRace(W, DEFS); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9;
+    const f = W.ferries[0]; let depart = null, arrive = false, t = 0;
+    while (t < 40 && !arrive) {
+      M.raceStep(R, 1 / 120, W); t += 1 / 120;
+      for (const e of R.player.events) { if (e.t === 'ferry-depart' && !depart) depart = { aboard: e.aboard, speeds: R.cars.map(c => Math.hypot(c.vx, c.vz)) }; if (e.t === 'ferry-arrive') arrive = true; }
+      for (const c of R.cars) c.events.length = 0;
+    }
+    expect(depart.aboard.length).toBe(4);
+    for (const v of depart.speeds) expect(v).toBeLessThan(2.5);                 // pulled up before it left
+    expect(arrive).toBe(true);
+    for (const c of R.cars) expect(c.pr.s % tr.loopN).toBeGreaterThan(f.b - FERRYLEN);   // rode across
+    for (let n = 0; n < 600; n++) M.raceStep(R, 1 / 120, W);
+    for (const c of R.cars) expect(c.pr.s % tr.loopN).toBeGreaterThan(f.b + 5);          // and drove off
+    expect(R.cars.every(c => c.respawns === 0)).toBe(true);
+  });
+  it('a car that misses it waits at the shut gate (never past the edge) and catches the next trip', () => {
+    const { tr, W } = setup(), R = M.createRace(W, [{ name: 'a', skill: 0.95 }, { name: 'p', player: true }]); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9;
+    const f = W.ferries[0], P = R.player; let moved = false, t = 0, rode = false, closest = 99;
+    while (t < 40 && !rode) {
+      if (f.phase === 'toB' && !moved) { moved = true; const i = f.a - 60; P.x = tr.xs[i]; P.z = tr.zs[i]; P.y = tr.H[i]; P.yaw = tr.th[i]; P.pr = M.project(tr, P.x, P.z, i, 3, 3); P.progress = i; P.lastGood = i; P.vx = tr.tx[i] * 20; P.vz = tr.tz[i] * 20; P.onGround = true; }
+      M.raceStep(R, 1 / 120, W); t += 1 / 120;
+      const pb = P.pr.s % tr.loopN; if (moved && f.phase !== 'A' && pb < f.a + 2 && pb > f.a - 8) closest = Math.min(closest, f.a - pb);
+      if (moved && f.trips === 2 && pb > f.b) rode = true;
+      for (const c of R.cars) c.events.length = 0;
+    }
+    expect(closest).toBeGreaterThan(0);                                            // held at the gate
+    expect(rode).toBe(true);                                                        // over on the second trip
+    expect(P.respawns).toBe(0);
   });
 });
 
