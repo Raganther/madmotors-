@@ -57,14 +57,17 @@ src/
     math.js constants.js types.js
     track/              road generation (downhill, circuit, gorge), terrain, rails, road queries
     sim/                car physics, AI, barriers, damage, collisions, race loop
-    features/           optional race systems plugged into the race loop: traffic, trains, parked, rockfall
-  data/                 stages (one file each) and car/traffic definitions
-  render/               three.js: renderer & quality, materials/shaders, world builders, vehicles,
-                        trains, crossings, rocks, effects, camera, features.js (visual hooks)
+    elements/           TRACK ELEMENTS: one module per reusable piece of road (bridge, tunnel, kick, town, ...)
+    features/           race systems plugged into the race loop: traffic, trains, parked, rockfall, hazards
+    modes/              game modes on top of a race (showdown)
+  data/                 stages (one file each), sandboxes (a tiny loop per element), car/traffic definitions
+  render/               three.js: renderer & quality, materials/shaders, world (terrain, road, barriers,
+                        scenery), elements/ (each element's and feature's visuals), vehicles, effects,
+                        camera, overlay.js (debug overlay)
   audio/                Web Audio synth (engine, crashes, horns, bells)
   ui/                   HUD, menu/flow (countdown, pause, results), input, storage
 tests/                  golden simulation tests, scenarios, browser smoke test
-tools/                  layout/terrain/benchmark tools
+tools/                  layout / terrain / sandbox / benchmark tools
 ```
 
 ### Rules that keep it maintainable
@@ -78,16 +81,56 @@ tools/                  layout/terrain/benchmark tools
    Feature order in `core/features/index.js` fixes the order random numbers are drawn in: add new features at the end.
 4. **Physics runs at a fixed 120 Hz** (`STEP`); cars are drawn interpolated between steps (`G.renderAlpha`).
 
+## Track elements (solve once, use anywhere)
+
+Every reusable piece of a stage is a **track element**: one module in `src/core/elements/` for what it does to the
+road and the race, and an entry with the same name in `src/render/elements/` for how it looks. A stage only *uses*
+elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setting stage options (`rails`, `rockGap`).
+
+| element | section tags / stage options | what it does |
+|---|---|---|
+| ground | `far` `near` `rampF` `rampN` | terrain either side (drops, cliffs, rock faces, guard rails) |
+| rails | `rails` | railway lines; level crossings where they meet the road |
+| jump | `jump`, `jumps` | automatic jumps on long straights |
+| kick | `kick: <m>` | a kicker jump at the start of the section |
+| bridge | `bridge`, `viaduct` | road on a deck; steel bridge or stone viaduct |
+| tunnel | `tunnel` | bored tunnel (the see-through window opens in long ones) |
+| town | `town` | street with bollards, houses, parked cars |
+| gallery | `gallery` | roofed rock gallery on a ledge |
+| rockfall | `rockfall`, `rockGap` | boulders fall across the road |
+| arch | `arch` | scenery rock arch |
+
+A core element can declare `tags`, `stageKeys`, per-sample `channels`, a `section()` hook, build phases (`heights`,
+`walls`, `wallsLate`, `wallsLast`), `track()` to add fields to the built track, and `markers()` saying where it is (see
+the header of `src/core/elements/index.js`). `buildTrack` validates every stage against the registry, so a misspelt
+tag or option fails with the list of valid ones, and a section that comes out backwards fails with its index.
+
+### Debugging an element
+
+- **Sandbox:** `src/data/sandboxes/` has a tiny loop per element. Play one with `?sandbox=<name>` (it's added as the
+  last stage), or run `npm run sandbox -- <name>` (or `all`): four AI cars lap it and it reports lap times, air time,
+  and any wrecks, respawns or hazard hits next to the element that caused them, plus a layout map.
+- **Overlay:** press the backquote key (`` ` ``), or open with `?debug`. It shows the centre line coloured by element,
+  barrier types as coloured ticks, every element's marker labelled in the world, and a live readout of your car
+  (sample, lateral offset, surface, air, slipstream, oil, barriers here, next element ahead).
+- **Layout map:** `npm run layout -- <n|sandbox:name>` labels every element's markers.
+
+## Adding a track element
+
+1. `src/core/elements/<name>.js`: declare its tags/options and whichever hooks it needs; add it to `ELEMENTS` in
+   `src/core/elements/index.js` (order = build order: add new ones at the end unless it must run earlier).
+2. If it moves or acts during a race (a barge, a drawbridge), add a race feature in `src/core/features/` too.
+3. `src/render/elements/<name>.js` for its visuals and an entry in `RENDER_ELEMENTS` (`build`, `newRace`, `update`).
+4. A sandbox in `src/data/sandboxes/index.js` and its expected markers in `tests/elements.test.js`.
+5. `npm run sandbox -- <name>`, play `?sandbox=<name>&debug`, then `npm run check`.
+
 ## Adding a stage
 
 1. Copy a file in `src/data/stages/` (e.g. `ravenrock-gorge.js` for a section-built circuit, `summit-meadow.js`
    for a generated downhill) and add it to `src/data/stages/index.js`.
-2. For `type: 'gorge'` circuits, describe the road as `segs` (straights and arcs in screen axes) with tags for the
-   ground either side (`far`/`near` + `rampF`/`rampN`), `bridge`, `tunnel`, `jump`, `town`, `gallery`, `rockfall`,
-   `kick: <m>` to put a kicker jump of that height at the start of a section (best on a crest before a descent),
-   and `arch` for a scenery rock arch over the middle of a section. Stage `rockGap` spaces out falling rocks.
-   Optional `river` and `rails` add the river and railways. See `src/core/types.js`.
-3. Iterate with `npm run layout -- <n>` and `npm run terrain -- <n>` until the plan closes cleanly and nothing
+2. For `type: 'gorge'` circuits, describe the road as `segs` (straights and arcs in screen axes), tagging sections
+   with track elements (table above). Optional `river` and `rails` add the river and railways. See `src/core/types.js`.
+3. Iterate with `npm run layout -- <n>`, `npm run terrain -- <n>` and `npm run sandbox -- <n>` until the plan closes cleanly and nothing
    overlaps by accident, then play it with `npm run dev`.
 4. `npm run golden` to record the new stage, then `npm run check`.
 

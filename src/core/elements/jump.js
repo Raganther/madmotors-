@@ -8,11 +8,12 @@ export function placeKicker(H, jump, i, rh, w = k => k) {
 }
 /** Place up to `count` kickers, trying every 5th sample in [from, to), at least `gap` apart, where ok(i) allows. */
 export function autoJumps(H, jump, { from, to, count, gap, rh, ok }) {
-  let placed = 0, last = -1e9;
-  for (let i = from; i < to && placed < count; i += 5) {
+  const at = []; let last = -1e9;
+  for (let i = from; i < to && at.length < count; i += 5) {
     if (i - last < gap || !ok(i)) continue;
-    placeKicker(H, jump, i, rh); last = i; placed++;
+    placeKicker(H, jump, i, rh); last = i; at.push(i);
   }
+  return at;
 }
 export const element = {
   name: 'jump',
@@ -23,12 +24,13 @@ export const element = {
   heights(ctx) {
     const { stage, N0, w, xs0, zs0, ks0, H0, jump0, ch, startIdx, gorge } = ctx;
     // straight, away from the start, tunnels, bridges and level crossings
-    autoJumps(H0, jump0, { from: startIdx + 150, to: N0 - 80, count: stage.jumps, gap: 405, rh: 2.4, ok: i => {
+    ctx.marks.autoJumps = autoJumps(H0, jump0, { from: startIdx + 150, to: N0 - 80, count: stage.jumps, gap: 405, rh: 2.4, ok: i => {
       for (let j = i - 15; j <= i + 60; j++) if (Math.abs(ks0[w(j)]) > 1 / 110 || Math.hypot(xs0[w(j)], zs0[w(j)]) < 80 || ch.tunnel[w(j)] || ch.bridge[w(j)] || (gorge && !ch.jump[w(j)]) || ctx.nearCrossing(w(j), 80)) return false;
       return true;
     } });
   },
-  markers: tr => runs(tr.jump, tr.loopN || tr.N).map(([a]) => ({ i: a, label: 'jump' }))
+  track(ctx, out) { out.autoJumps = ctx.marks.autoJumps || []; },
+  markers: tr => (tr.autoJumps || []).map(i => ({ i, label: 'jump' }))
 };
 /** Runs of non-zero samples in a per-sample array: [[start, end], ...] (end exclusive). */
 export function runs(arr, N) {

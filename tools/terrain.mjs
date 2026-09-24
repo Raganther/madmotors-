@@ -1,11 +1,11 @@
 // Shaded relief map of a stage's generated terrain with the road drawn on (white = bridge), river in blue.
 //   node tools/terrain.mjs [stage]           -> tools/out/terrain-<stage>.png
 import fs from 'node:fs';
-import { STAGES, buildTrack, buildTerrain } from '../src/core/index.js';
-import { stageFromArg } from './stage-arg.js';
+import { buildTrack, buildTerrain } from '../src/core/index.js';
+import { stageArg } from './stage-arg.js';
 import { encodePNG } from './png.js';
 
-const si = stageFromArg(process.argv[2]), st = STAGES[si];
+const { stage: st, id: sid } = stageArg(process.argv[2]);
 let t0 = Date.now(); const tr = buildTrack(st), t1 = Date.now(), terr = buildTerrain(tr, st), t2 = Date.now();
 const { cols: W, rows: H, h } = terr; let mn = Infinity, mx = -Infinity; for (const v of h) { mn = Math.min(mn, v); mx = Math.max(mx, v); }
 console.log(`${st.name}: track ${t1 - t0} ms, terrain ${t2 - t1} ms, grid ${W}x${H}, height ${mn.toFixed(0)}..${mx.toFixed(0)} m`);
@@ -20,4 +20,4 @@ for (let i = 0; i < (tr.loopN || tr.N); i++) {
   const k = (r * W + c) * 3, v = tr.bridge[i] ? 255 : 25; rgb[k] = rgb[k + 1] = rgb[k + 2] = v;
 }
 fs.mkdirSync('tools/out', { recursive: true });
-const out = `tools/out/terrain-${si + 1}.png`; fs.writeFileSync(out, encodePNG(rgb, W, H, 3)); console.log('wrote', out);
+const out = `tools/out/terrain-${sid}.png`; fs.writeFileSync(out, encodePNG(rgb, W, H, 3)); console.log('wrote', out);

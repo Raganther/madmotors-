@@ -51,6 +51,16 @@ for (const i of [0, 6, 7]) {
   if (info.holder < 0 || !info.panel || info.rows !== 4) errors.push('showdown crown / panel missing on ' + info.stage);
 }
 await page.evaluate(() => window.__dr.flow.setMode('race'));
+// an element sandbox with the debug overlay: ?sandbox=<name>&debug loads it as the last stage and shows the readout
+for (const sb of ['tunnel', 'town']) {
+  await page.goto('file://' + file + `?sandbox=${sb}&debug`); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
+  const info = await page.evaluate(() => { const d = window.__dr; d.flow.startRace(d.core.STAGES.length - 1); return null; });
+  await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.stage.name.startsWith('Sandbox'), null, { timeout: 30000 });
+  await page.waitForTimeout(800);
+  const r = await page.evaluate(() => ({ stage: window.__dr.G.world.stage.name, panel: (document.getElementById('dbg-panel') || {}).textContent || '' }));
+  console.log(`sandbox ${r.stage}: overlay ${r.panel.split('\n')[0]}`);
+  if (!r.panel.includes('Sandbox')) errors.push('debug overlay missing on sandbox ' + sb);
+}
 // the see-through window opens only inside long tunnels: check it live (real frame loop) in and out of the Mountain Pass tunnel
 {
   await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });

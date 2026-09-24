@@ -95,6 +95,7 @@ export function genCircuit(stage) {
     if (type === 's') {
       let [, len, eh, tg = {}] = sg;
       if (typeof len === 'object') len = len.toA !== undefined ? (len.toA - a) / Math.cos(phi) : (len.toB - b) / Math.sin(phi);
+      if (!(len > 0.5)) throw new Error(`${stage.name}: section ${stage.segs.indexOf(sg)} ${JSON.stringify(sg.slice(0, 2))} comes out ${len.toFixed(1)} m long: the sections before it overshoot`);
       const n = Math.max(1, Math.round(len)), h0 = h, st = len / n;
       for (let q = 1; q <= n; q++) { a += Math.cos(phi) * st; b += Math.sin(phi) * st; emit(lerp(h0, eh, q / n), tg); }
       h = eh;

@@ -61,7 +61,7 @@ export function finishTrack(stage, g, seed) {
   const finishIdx = N - 75;
 
   // jumps on straight-ish sections
-  autoJumps(H, jump, { from: 170, to: finishIdx - 160, count: stage.jumps, gap: 360, rh: 2.6, ok: i => { for (let j = i - 15; j <= i + 60; j++) if (Math.abs(ks[j]) > 1 / 110) return false; return true; } });
+  const autoAt = autoJumps(H, jump, { from: 170, to: finishIdx - 160, count: stage.jumps, gap: 360, rh: 2.6, ok: i => { for (let j = i - 15; j <= i + 60; j++) if (Math.abs(ks[j]) > 1 / 110) return false; return true; } });
 
   // barriers and kerbs
   for (let i = 0; i < N; i++) {
@@ -109,5 +109,5 @@ export function finishTrack(stage, g, seed) {
   }
   let minX = Infinity, maxX = -Infinity; for (let i = 0; i < N; i++) { minX = Math.min(minX, xs[i]); maxX = Math.max(maxX, xs[i]); }
   return { N, xs, zs, th, tx, tz, rx, rz, k, ks, H, jump, wallL, wallR, kerbL, kerbR, vmax, hairpins, finishIdx, startIdx: 36, noise, base, nearest, nearestT: nearest,
-    minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge: new Uint8Array(N), tunnel: new Uint8Array(N), nearestTun: () => null, carve: 0, carveW: null, margin: 95, loopN: 0, laps: 1 };
+    minZ, maxZ, minX, maxX, surface: stage.surface, seed, autoJumps: autoAt, bridge: new Uint8Array(N), tunnel: new Uint8Array(N), nearestTun: () => null, carve: 0, carveW: null, margin: 95, loopN: 0, laps: 1 };
 }

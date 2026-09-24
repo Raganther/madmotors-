@@ -7,6 +7,8 @@ import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
 import { raceStep } from './core/sim/race.js';
 import { STAGES } from './data/stages/index.js';
+import { SANDBOXES } from './data/sandboxes/index.js';
+import { toggleOverlay, updateOverlay } from './render/overlay.js';
 import { updateCamera } from './render/camera.js';
 import { initDebris, updateDebris } from './render/effects/debris.js';
 import { initParticles, updateParticles } from './render/effects/particles.js';
@@ -55,7 +57,7 @@ export function frame(t) {
   if (G.hintTimer > 0 && G.state !== 'paused') { G.hintTimer -= dt; $('hint').hidden = G.hintTimer <= 0; } else if (G.hintTimer <= 0) $('hint').hidden = true;
   if (race && G.state !== 'menu') { const P = race.player; CUT.car.value.set(P.x, P.y, P.z); const cov = G.world.cover[P.pr.i % G.world.cover.length] ? 8.5 : 0; CUT.r.value += ((G.state === 'paused' ? CUT.r.value : cov) - CUT.r.value) * Math.min(1, dt * 6); } else CUT.r.value = 0;
   if (G.state !== 'paused') { const fxDt = G.slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); elementHook('update', dt, now, fxDt); updateParticles(fxDt); updateSparks(fxDt); updateFans(now); updateCamera(dt, false); }
-  updateHUD(dt);
+  updateHUD(dt); updateOverlay();
   if (!contextLost) renderFrame();
 }
 export function wireUI() {
@@ -79,6 +81,10 @@ export function wireUI() {
 export async function boot() {
   let step = 'setting up the menu';
   try {
+    // ?sandbox=<name>: append that element sandbox (data/sandboxes) as the last stage and select it
+    const sbName = new URLSearchParams(location.search).get('sandbox');
+    if (sbName) { if (!SANDBOXES[sbName]) throw new Error(`no sandbox "${sbName}"; try ${Object.keys(SANDBOXES).join(', ')}`); STAGES.push(SANDBOXES[sbName]); }
+    if (new URLSearchParams(location.search).has('debug')) toggleOverlay(true);
     wireUI(); buildStageList(); setMode(loadMode());
     setSteer(loadSteer()); for (const b of document.querySelectorAll('.steer-btn')) b.hidden = !isTouch;   // steering choice only matters with touch controls
     if (isTouch) { document.documentElement.classList.add('touch'); $('time-block').insertBefore($('speed-block'), $('time-block').querySelector('.hud-btns')); }   // keep the speedo clear of the thumb controls
@@ -88,7 +94,7 @@ export async function boot() {
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
     step = 'building the cars'; initCars(); elementHook('init');
     step = 'building the first stage';
-    selectStage(0);
+    selectStage(sbName ? STAGES.length - 1 : 0);
     requestAnimationFrame(frame);
   } catch (e) {
     console.error(e); window.__bootError((e && e.message ? e.message : String(e)) + ' (while ' + step + ')');

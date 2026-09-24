@@ -4,6 +4,7 @@ import { clamp, wrapAngle } from '../core/math.js';
 import { groundDir } from '../core/sim/view.js';
 import { respawn } from '../core/sim/car.js';
 import { $ } from './dom.js';
+import { toggleOverlay } from '../render/overlay.js';
 import { saveSteer } from './storage.js';
 import { race, selected, startRace, togglePause } from './flow.js';
 
@@ -16,6 +17,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyR' && G.state === 'racing' && race && !race.player.finished) respawn(race.player, G.world.W);
   if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
   if (e.code === 'KeyM') AudioSys.toggle();
+  if (e.code === 'Backquote') toggleOverlay();                              // debug overlay (render/overlay.js)
   if (e.code === 'Enter' && G.state === 'menu' && $('loading').hidden && document.activeElement === document.body) startRace(selected);
 });
 addEventListener('keyup', e => { keys[e.code] = false; });

@@ -2,13 +2,14 @@
 // Also reports places where two different parts of the road pass close to each other (and how far apart in height).
 //   node tools/layout.mjs [stage]            -> tools/out/layout-<stage>.svg
 import fs from 'node:fs';
-import { STAGES, buildTrack, railAt } from '../src/core/index.js';
-import { stageFromArg } from './stage-arg.js';
+import { buildTrack, railAt, trackMarkers } from '../src/core/index.js';
+import { stageArg } from './stage-arg.js';
 
-const si = stageFromArg(process.argv[2]), st = STAGES[si], tr = buildTrack(st), N = tr.loopN || tr.N;
+const { stage: st, id: sid } = stageArg(process.argv[2]), tr = buildTrack(st), N = tr.loopN || tr.N;
 const X = [], Z = []; for (let i = 0; i < N; i++) { X.push(tr.xs[i]); Z.push(tr.zs[i]); }
 // screen axes: a = right, b = up (the game camera looks from +x+z)
 const A = X.map((x, i) => (x - Z[i]) / Math.SQRT2), B = X.map((x, i) => -(x + Z[i]) / Math.SQRT2);
+for (const m of trackMarkers(tr)) console.log(`  ${m.element.padEnd(9)} at ${String(m.i).padStart(5)}  ${m.label}`);
 console.log(`${st.name}: ${N} samples per lap${tr.loopN ? `, ${tr.laps} laps` : ''}, height ${Math.min(...tr.H.slice(0, N)).toFixed(0)}..${Math.max(...tr.H.slice(0, N)).toFixed(0)} m`);
 const seen = new Set();
 for (let i = 0; i < N; i += 3) for (let j = i + 90; j < N; j += 3) {
@@ -28,6 +29,8 @@ for (let i = 0; i < N; i++) {
   svg += `<line x1="${px(A[i])}" y1="${py(B[i])}" x2="${px(A[j])}" y2="${py(B[j])}" stroke="${col}" stroke-width="${tr.bridge[i] ? 7 : 5}"/>`;
 }
 for (let i = 0; i < N; i += 100) svg += `<text x="${px(A[i]) + 6}" y="${py(B[i]) - 6}" fill="#fff" font-size="12">${i} h${tr.H[i].toFixed(0)}</text>`;
+// every element's markers (tunnel, bridge, kick, crossing...), labelled
+for (const m of trackMarkers(tr)) { const i = m.i % N; svg += `<circle cx="${px(A[i])}" cy="${py(B[i])}" r="4" fill="#ffd34a"/><text x="${px(A[i]) + 6}" y="${py(B[i]) + 14}" fill="#ffd34a" font-size="11">${m.label}</text>`; }
 svg += `<circle cx="${px(A[tr.startIdx])}" cy="${py(B[tr.startIdx])}" r="6" fill="#ff0"/><text x="12" y="22" fill="#fff" font-size="15">${st.name}</text></svg>`;
 fs.mkdirSync('tools/out', { recursive: true });
-const out = `tools/out/layout-${si + 1}.svg`; fs.writeFileSync(out, svg); console.log('wrote', out);
+const out = `tools/out/layout-${sid}.svg`; fs.writeFileSync(out, svg); console.log('wrote', out);

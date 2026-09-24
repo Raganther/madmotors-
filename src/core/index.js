@@ -13,11 +13,12 @@ export * from './sim/damage.js';
 export * from './sim/ai.js';
 export * from './sim/collide.js';
 export * from './sim/race.js';
-export * from './features/traffic.js';
-export * from './features/trains.js';
-export * from './features/parked.js';
-export * from './features/rockfall.js';
-export * from './features/hazards.js';
+// (each feature module also exports its registry entry as `feature`; that's reached through FEATURES)
+export { LANE, trafficControl, spawnTraffic, updateTraffic } from './features/traffic.js';
+export { TRAIN_WARN, makeTrains, dispatchTrain, trainBoxes, trainStep, closedCrossingAhead } from './features/trains.js';
+export { makeParked } from './features/parked.js';
+export { rockStep } from './features/rockfall.js';
+export { HZ, hzLeader } from './features/hazards.js';
 export { STAGES } from '../data/stages/index.js';
 export { FEATURES } from './features/index.js';
 export * from './sim/view.js';

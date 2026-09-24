@@ -17,7 +17,7 @@ import { clearSkids } from '../render/effects/skids.js';
 import { camera, renderer, scene } from '../render/renderer.js';
 import { carVis, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
-import { TRACKS, buildWorld } from '../render/world/index.js';
+import { buildWorld, trackOf } from '../render/world/index.js';
 import { elementHook } from '../render/elements/index.js';
 import { $, isTouch } from './dom.js';
 import { fmt, ordinal } from './format.js';
@@ -180,7 +180,7 @@ export function buildStageList() {
     li.appendChild(b); ol.appendChild(li);
   });
   refreshBest();
-  requestAnimationFrame(() => document.querySelectorAll('.st-prof').forEach((cv, i) => drawProfile(cv, TRACKS[i], null, 2)));
+  requestAnimationFrame(() => document.querySelectorAll('.st-prof').forEach((cv, i) => drawProfile(cv, trackOf(i), null, 2)));
 }
 // Physics runs at a fixed 120 Hz; cars are drawn between the last two physics states so motion stays smooth at any refresh rate.
 G.renderAlpha = 1;

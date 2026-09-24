@@ -16,7 +16,9 @@ import { makeTerrainMesh } from './terrain.js';
 
 // ==CORE END==
 // ===== App: rendering, audio, input, UI =====
-export const TRACKS = STAGES.map(s => buildTrack(s));
+const TRACKS = [];
+/** The built road for stage idx, built on first use (sandbox stages can be appended to STAGES at boot). */
+export const trackOf = idx => TRACKS[idx] || (TRACKS[idx] = buildTrack(STAGES[idx]));
 // Where the scenery goes see-through over the player: only long covered stretches (tunnels, the rock gallery)
 // of 40 m or more, plus 12 m either side of the portals. Bridges, arches, houses and short cuttings stay solid.
 function coverMap(tr) {
@@ -31,7 +33,7 @@ function coverMap(tr) {
 }
 export function buildWorld(idx) {
   if (G.world) { scene.remove(G.world.group); disposeGroup(G.world.group); }
-  const stage = STAGES[idx], tr = TRACKS[idx], terr = buildTerrain(tr, stage);
+  const stage = STAGES[idx], tr = trackOf(idx), terr = buildTerrain(tr, stage);
   const group = new THREE.Group(); scene.add(group);
   scene.background.set(stage.colors.sky); scene.fog.color.set(stage.colors.sky);
   const Lt = stage.light; sun.color.setHex(Lt.sun); sun.intensity = Lt.sunI; hemi.color.setHex(Lt.sky); hemi.groundColor.setHex(Lt.ground); hemi.intensity = Lt.hemiI; FX.cloudAmt.value = Lt.cloud; setGrade(Lt);
