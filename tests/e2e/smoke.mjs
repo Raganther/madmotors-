@@ -31,7 +31,7 @@ for (let i = 0; i < n; i++) {
   // the real loop was stubbed out for this stage; reload for the next one
   await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 }
-// Showdown on a downhill stage and on the gorge: play until at least one round is scored
+// Showdown on a downhill stage and on the gorge: play until at least one round is scored (a tight pack can take a while)
 for (const i of [0, 6]) {
   await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
   await page.evaluate(i => { window.__dr.flow.setMode('showdown'); window.__dr.flow.startRace(i); }, i);
@@ -39,7 +39,7 @@ for (const i of [0, 6]) {
   const info = await page.evaluate(() => {
     const d = window.__dr; window.requestAnimationFrame = () => 0;
     d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
-    for (let k = 0; k < 90 && d.race.sd.rounds === 0 && d.race.sd.phase !== 'over'; k++) d.step(0.5);
+    for (let k = 0; k < 300 && d.race.sd.rounds === 0 && d.race.sd.phase !== 'over'; k++) d.step(0.5);
     d.step(0.2);
     return { stage: d.G.world.stage.name, rounds: d.race.sd.rounds, phase: d.race.sd.phase, lights: d.race.sd.lights.join('/'), panel: !document.getElementById('sd-panel').hidden, view: d.race.sd.view };
   });
@@ -48,6 +48,33 @@ for (const i of [0, 6]) {
   if (!info.rounds || !info.panel) errors.push('showdown did not score a round / show its panel on ' + info.stage);
 }
 await page.evaluate(() => window.__dr.flow.setMode('race'));
+// Touch controls on a landscape phone, two thumbs at once: drag the wheel, hold the pedal, slide down to drift, left to brake
+{
+  const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+  const tp = await ctx.newPage(); tp.on('pageerror', e => errors.push(e.message));
+  await tp.goto('file://' + file); await tp.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
+  await tp.evaluate(() => window.__dr.flow.startRace(0));
+  await tp.waitForFunction(() => window.__dr.race && !document.getElementById('touch').hidden, null, { timeout: 30000 });
+  await tp.evaluate(() => { window.__dr.G.state = 'racing'; window.__dr.race.phase = 'racing'; });
+  const cdp = await ctx.newCDPSession(tp), box = id => tp.evaluate(id => { const r = document.getElementById(id).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, id);
+  const w = await box('wheel'), p = await box('pedal');
+  const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
+  // frames are slow under SwiftShader, so wait (up to 3 s) for the player's inputs to reach the expected state
+  const expect = async (name, pred) => { const ok = await tp.waitForFunction(pred, null, { timeout: 3000 }).then(() => true, () => false); checks.push([name, ok]); };
+  const checks = [];
+  await touch('touchStart', [[w.x, w.y], [p.x, p.y]]);
+  await touch('touchMove', [[w.x + 40, w.y], [p.x, p.y]]);
+  await expect('wheel right + gas', () => { const r = window.__dr.race.player.inp; return r.steer > 0.6 && r.throttle === 1 && !r.handbrake && !r.brake; });
+  await touch('touchMove', [[w.x - 50, w.y], [p.x, p.y + 45]]);
+  await expect('wheel left + slide down drifts', () => { const r = window.__dr.race.player.inp; return r.steer < -0.6 && r.throttle === 1 && r.handbrake === 1; });
+  await touch('touchMove', [[w.x - 50, w.y], [p.x - 45, p.y]]);
+  await expect('slide left brakes', () => { const r = window.__dr.race.player.inp; return r.brake === 1 && r.throttle === 0 && !r.handbrake; });
+  await touch('touchEnd', []);
+  await expect('release', () => { const r = window.__dr.race.player.inp; return !r.throttle && !r.brake && !r.handbrake && Math.abs(r.steer) < 0.05; });
+  await tp.screenshot({ path: path.join(outDir, 'touch-landscape.png') });
+  for (const [name, ok] of checks) { console.log(`touch ${name}: ${ok ? 'ok' : 'FAILED'}`); if (!ok) errors.push('touch control check failed: ' + name); }
+  await ctx.close();
+}
 await browser.close();
 if (errors.length) { console.error('ERRORS:\n' + errors.join('\n')); process.exit(1); }
 console.log('smoke test passed');

@@ -106,15 +106,21 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 #warn{position:absolute;left:50%;top:18%;transform:translateX(-50%);background:var(--red);color:#fff;font-weight:700;font-size:20px;border-radius:10px;padding:6px 14px}
 #hint{position:absolute;left:50%;bottom:calc(var(--bot) + 104px);transform:translateX(-50%);background:rgba(255,255,255,.9);color:var(--ink);font-weight:600;font-size:17px;border-radius:10px;padding:7px 14px;white-space:nowrap}
 
-/* touch */
+/* touch: a steering wheel under the left thumb, a one-thumb pedal under the right (slide down = drift, left = brake) */
 #touch{position:fixed;inset:auto 0 0 0;height:0;pointer-events:none}
-#touch .tc{position:fixed;bottom:var(--bot);display:flex;gap:12px;pointer-events:auto;align-items:flex-end}
-#touch .tc-l{left:var(--lft)} #touch .tc-r{right:var(--rgt)}
-#touch button{width:82px;height:82px;border-radius:20px;border:0;background:rgba(28,35,64,.62);color:#fff;font-weight:700;font-size:18px;touch-action:none}
-#touch button.on{background:rgba(255,199,44,.9);color:var(--ink)}
-#touch .tc-col{display:flex;flex-direction:column;gap:12px}
-#touch .small{height:56px}
-#touch .arrow{font-size:30px}
+#touch .tz{position:fixed;bottom:0;width:46%;height:50%;pointer-events:auto;touch-action:none}
+#steer-zone{left:0} #pedal-zone{right:0}
+#wheel{position:absolute;left:var(--lft);bottom:var(--bot);width:var(--wh,132px);height:var(--wh,132px);border-radius:50%;background:rgba(28,35,64,.45);transition:background .15s}
+#wheel svg{width:100%;height:100%;display:block}
+#wheel.on{background:rgba(28,35,64,.62)}
+#pedal{position:absolute;right:var(--rgt);bottom:var(--bot);width:var(--pd,96px);height:var(--pd,96px);border-radius:22px;background:rgba(28,35,64,.62);color:#fff;font-weight:700;font-size:19px;display:grid;place-items:center;padding-bottom:10px;box-sizing:border-box;transition:background .1s,transform .1s}
+#pedal.on{background:rgba(255,199,44,.9);color:var(--ink)}
+#pedal.hb{background:#FF7A2E;color:#fff;transform:translateY(8px)}
+#pedal.brk{background:var(--red);color:#fff;transform:translateX(-8px)}
+#pedal i{position:absolute;font-style:normal;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(28,35,64,.8);white-space:nowrap;opacity:.85}
+#pedal .p-hb{bottom:6px;left:50%;transform:translateX(-50%);font-size:11px}
+#pedal .p-brk{right:calc(100% + 6px);top:50%;transform:translateY(-50%)}
+#pedal.hb .p-hb,#pedal.brk .p-brk{color:var(--yellow);opacity:1}
 
 /* overlays */
 .overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(28,35,64,.35);padding:16px}
@@ -145,10 +151,27 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   #time{font-size:22px}
   #stage-name{display:none}
   #speed-block{min-width:130px;padding:4px 12px 8px 38px} #dmg{left:10px;width:17px;height:29px} #speed{font-size:30px}
-  #touch button{width:70px;height:70px}
+  :root{--wh:118px;--pd:86px}
 }
 .touch #speed-block{position:relative;left:auto;bottom:auto;transform:none;min-width:0;padding:3px 10px 6px 34px;border-radius:10px} .touch #speed{font-size:24px} .touch .unit{font-size:11px} .touch #boost{height:5px;margin-top:3px} .touch #dmg{left:9px;width:15px;height:26px}
-@media (max-height:520px){ #standings{display:none} #speed-block{bottom:var(--bot)} }
+/* landscape phones: short screens, so keep the HUD in a thin band along the top and the thumbs free below */
+@media (max-height:520px){
+  :root{--wh:112px;--pd:84px}
+  #pos-n{font-size:32px} #pos-suf{font-size:15px} #pos{padding:1px 9px 3px;border-radius:9px} #lap{font-size:13px;padding:4px 8px}
+  #standings{font-size:11px;min-width:0;padding:3px 7px;margin-top:4px} #standings li{gap:5px;padding:0}
+  #profile{width:28vw;height:30px} #profile-wrap{padding:4px 8px} #stage-name{display:none}
+  #time{font-size:20px;padding:5px 9px} #best{font-size:12px;padding:1px 6px} #time-block{gap:4px}
+  .hud-btns button{padding:5px 9px;font-size:13px}
+  #speed-block{bottom:var(--bot)}
+  #hint{font-size:14px;bottom:calc(var(--bot) + 8px)}
+  /* menu in two columns: stages scroll on the left, title, mode and Race stay in reach on the right */
+  .menu-inner{width:min(780px,calc(100% - 24px));height:calc(100% - 24px);box-sizing:border-box;margin:var(--top) auto var(--bot) var(--lft);padding:12px 14px;display:grid;grid-template-columns:1fr 250px;grid-template-rows:auto auto auto 1fr auto;gap:8px 16px;overflow:hidden}
+  .title{grid-column:2;grid-row:1;font-size:32px} .lede,.keys{display:none}
+  .stages{grid-column:1;grid-row:1/-1;overflow-y:auto;min-height:0;touch-action:pan-y;gap:6px}
+  .stage{padding:6px 10px;grid-template-columns:30px 1fr 84px} .st-num{font-size:22px} .st-name{font-size:16px} .st-meta{font-size:13px} .st-prof{width:84px;height:28px}
+  .modes,.mode-desc,#race-btn,.menu-foot{grid-column:2} .mode-desc{font-size:13px;margin:0} #race-btn{align-self:end}
+  .card{max-height:100%;overflow-y:auto;box-sizing:border-box;padding:14px 18px 12px;gap:8px} #res-table{font-size:15px}
+}
 @media (prefers-reduced-motion: reduce){ #callout.pop{animation:none;opacity:1} }
 </style>
 </head>
@@ -190,8 +213,8 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 </div>
 
 <div id="touch" hidden>
-  <div class="tc tc-l"><button data-k="left" class="arrow" aria-label="Steer left">◀</button><button data-k="right" class="arrow" aria-label="Steer right">▶</button></div>
-  <div class="tc tc-r"><button data-k="brake">Brake</button><div class="tc-col"><button data-k="hb" class="small">Drift</button><button data-k="gas">Gas</button></div></div>
+  <div id="steer-zone" class="tz"><div id="wheel" aria-label="Steering wheel: drag left or right"><svg viewBox="-50 -50 100 100" aria-hidden="true"><g id="wheel-g" fill="none" stroke="#fff" stroke-linecap="round"><circle r="40" stroke-width="9" stroke-opacity=".9"/><path d="M-36 4 L-10 6 M36 4 L10 6 M0 12 L0 37" stroke-width="8" stroke-opacity=".75"/><circle r="11" fill="rgba(255,255,255,.85)" stroke="none"/><path d="M-7 -41 L7 -41" stroke="#FFC72C" stroke-width="9"/></g></svg></div></div>
+  <div id="pedal-zone" class="tz"><div id="pedal" aria-label="Gas: hold; slide down to drift, left to brake">Gas<i class="p-hb">▼ Drift</i><i class="p-brk">◀ Brake</i></div></div>
 </div>
 
 <div id="pause" class="overlay" hidden>
