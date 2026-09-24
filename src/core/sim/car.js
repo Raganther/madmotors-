@@ -2,6 +2,7 @@ import { CAR_HL, CAR_HW, HALF, PHYS, SURF, WALL } from '../constants.js';
 import { clamp, wrapAngle } from '../math.js';
 import { hitBarrier, wallAt, wallPos } from './barriers.js';
 import { carWear, damageCar } from './damage.js';
+import { BOOST_PAD } from '../elements/boost.js';
 import { groundAt, project, roadH } from '../track/query.js';
 
 export function computeGrad(c, W) {
@@ -175,6 +176,14 @@ export function stepCar(c, dt, W, racing) {
     c.x -= tr.rx[i] * side2 * 1.0; c.z -= tr.rz[i] * side2 * 1.0;
     c.yaw = Math.atan2(tr.tx[i] * fwd, tr.tz[i] * fwd); c.vx = tr.tx[i] * fwd * 6; c.vz = tr.tz[i] * fwd * 6; c.wallStuck = 0;
   }
+  // a gap: well below the road here means you fell in; come back on the far side
+  if (tr.gap && c.y < tr.H[pr.i] - 9 && !c.destroyed) {
+    const b = pr.i % (tr.loopN || tr.N), land = tr.gapLand[b];
+    if (land >= 0) { c.lastGood = pr.i - b + land + (land < b ? tr.loopN : 0) + 10; c.events.push({ t: 'fell' }); }
+    respawn(c, W); return;
+  }
+  // boost pads
+  if (tr.boostPad && c.onGround && al < HALF && tr.boostPad[pr.i % (tr.loopN || tr.N)]) { if (!(c.boost > 0.3)) c.events.push({ t: 'boostpad' }); c.boost = Math.max(c.boost, BOOST_PAD); }
   if (c.offT > 0.6 && !c.destroyed) respawn(c, W);   // a smashed road car stays where it lands
   else if (!c.isPlayer && !c.traffic && c.stuckT > 2.5) respawn(c, W);
   else if (!c.isPlayer && racing && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road

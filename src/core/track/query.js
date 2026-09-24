@@ -16,6 +16,7 @@ export function groundAt(W, s, lat, x, z) {
   const al = Math.abs(lat), tr = W.tr;
   const bi = s < 0 ? 0 : s > tr.N - 2 ? tr.N - 2 : s | 0;
   if (tr.bridge[bi] || tr.tunnel[bi]) return al < WALL + 1.2 ? roadH(tr, s) : W.terr.at(x, z);
+  if (tr.gap && tr.gap[tr.loopN ? bi % tr.loopN : bi]) return W.terr.at(x, z);            // a gap: nothing but the drop
   const side = lat >= 0 ? 1 : -1, hasWall = wallAt(W, bi, side) && al < wallPos(W, bi, side) + 1.2;
   if (al >= HALF + 2 && !hasWall) return W.terr.at(x, z);
   const rh = roadH(W.tr, s);

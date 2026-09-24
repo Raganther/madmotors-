@@ -134,7 +134,8 @@ export function finishLoop(stage, g, seed) {
   const U0f = src => { const u = U0(); if (src) for (let i = 0; i < N0; i++) u[i] = src[i]; return u; }, F0f = src => Float32Array.from(src);
   const ch = {};
   if (g.ch) for (const k in g.ch) ch[k] = ['far', 'near', 'rampF', 'rampN'].includes(k) ? F0f(g.ch[k]) : U0f(g.ch[k]);
-  else { ch.bridge = U0f(g.bridge); ch.tunnel = U0f(g.tunnel); for (const k of ['jump', 'town', 'gallery', 'rockfall']) ch[k] = U0(); }
+  else { ch.bridge = U0f(g.bridge); ch.tunnel = U0f(g.tunnel); }
+  for (const e of ELEMENTS) for (const k in e.channels || {}) if (!ch[k]) ch[k] = U0();   // channels a generator didn't provide are all zero
   const tunnel0 = ch.tunnel; for (let i = 0; i < N0; i++) bridge0[i] = ch.bridge[i];
   const noise = makeNoise(seed);
   const startIdx = 36, gorge = !!g.gorge;
@@ -142,7 +143,8 @@ export function finishLoop(stage, g, seed) {
   elementPhase('heights', ctx);                                    // level crossings, then jumps and kickers
   const rails = ctx.rails;
   const idwX = [], idwZ = [], idwH = [];
-  for (let i = 0; i < N0; i += 6) if (!bridge0[i]) { idwX.push(xs0[i]); idwZ.push(zs0[i]); idwH.push(H0[i]); }
+  const void0 = i => bridge0[i] || (ch.gap && ch.gap[i]);   // decks and gaps don't shape the ground under them
+  for (let i = 0; i < N0; i += 6) if (!void0(i)) { idwX.push(xs0[i]); idwZ.push(zs0[i]); idwH.push(H0[i]); }
   let tunMid = -1; { const ti = []; for (let i = 0; i < N0; i++) if (tunnel0[i]) ti.push(i); if (ti.length) tunMid = ti[Math.floor(ti.length / 2)]; }
   const toAB = (x, z) => [(x - z) / Math.SQRT2, -(x + z) / Math.SQRT2];
   const idw = (x, z) => {
@@ -238,7 +240,7 @@ export function finishLoop(stage, g, seed) {
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (let i = 0; i < N0; i++) { minX = Math.min(minX, xs0[i]); maxX = Math.max(maxX, xs0[i]); minZ = Math.min(minZ, zs0[i]); maxZ = Math.max(maxZ, zs0[i]); }
   const hk = (cx, cz) => (cx + 1000) * 100000 + (cz + 1000);
-  const mkHash = (skipBridge, only, CELL = 36, step = 1) => { const h = new Map(); h.cell = CELL; for (let i = 0; i < N0; i += step) { if (skipBridge && (bridge0[i] || tunnel0[i])) continue; if (only && !only[i]) continue; const kk = hk(Math.floor(xs0[i] / CELL), Math.floor(zs0[i] / CELL)); let a = h.get(kk); if (!a) { a = []; h.set(kk, a); } a.push(i); } return h; };
+  const mkHash = (skipBridge, only, CELL = 36, step = 1) => { const h = new Map(); h.cell = CELL; for (let i = 0; i < N0; i += step) { if (skipBridge && (void0(i) || tunnel0[i])) continue; if (only && !only[i]) continue; const kk = hk(Math.floor(xs0[i] / CELL), Math.floor(zs0[i] / CELL)); let a = h.get(kk); if (!a) { a = []; h.set(kk, a); } a.push(i); } return h; };
   const mkNearest = h => (x, z) => {
     const CELL = h.cell, cx = Math.floor(x / CELL), cz = Math.floor(z / CELL); let best = Infinity, bi = -1;
     for (let ddx = -1; ddx <= 1; ddx++) for (let ddz = -1; ddz <= 1; ddz++) {

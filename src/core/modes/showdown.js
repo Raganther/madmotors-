@@ -29,7 +29,8 @@ const racing = R => R.cars.filter((c, k) => !(R.sd.boomT[k] > 0));   // not curr
 export function sdLeader(R) { let best = null; for (const c of racing(R)) if (!best || c.progress > best.progress) best = c; return best; }
 /** Drop a car on road sample i (lateral offset lat), already rolling forward at SD.ROLL, briefly ghosted. */
 function place(c, W, i, lat) {
-  const tr = W.tr;
+  const tr = W.tr, N0 = tr.loopN || tr.N;
+  if (tr.gap) while (i > 4 && (tr.gap[i % N0] || tr.jump[i])) i--;                    // never drop a car into a gap or onto a kicker
   c.x = tr.xs[i] + tr.rx[i] * lat; c.z = tr.zs[i] + tr.rz[i] * lat; c.y = tr.H[i]; c.yaw = tr.th[i];
   c.vx = tr.tx[i] * SD.ROLL; c.vz = tr.tz[i] * SD.ROLL; c.vy = 0; c.vf = SD.ROLL; c.vr = 0; c.onGround = true; c.airT = 0; c.boost = 0; c.driftT = 0; c.spin = 0;
   c.offT = 0; c.stuckT = 0; c.wrongT = 0; c.strandT = 0; c.wallStuck = 0; c.lastGood = i; c.progress = i; c.ai.cur = lat;

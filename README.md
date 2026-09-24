@@ -57,7 +57,7 @@ src/
     math.js constants.js types.js
     track/              road generation (downhill, circuit, gorge), terrain, rails, road queries
     sim/                car physics, AI, barriers, damage, collisions, race loop
-    elements/           TRACK ELEMENTS: one module per reusable piece of road (bridge, tunnel, kick, town, ...)
+    elements/           TRACK ELEMENTS: one module per reusable piece of road (bridge, tunnel, kick, gap, boost, town, ...)
     features/           race systems plugged into the race loop: traffic, trains, parked, rockfall, hazards
     modes/              game modes on top of a race (showdown)
   data/                 stages (one file each), sandboxes (a tiny loop per element), car/traffic definitions
@@ -99,6 +99,8 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | gallery | `gallery` | roofed rock gallery on a ledge |
 | rockfall | `rockfall`, `rockGap` | boulders fall across the road |
 | arch | `arch` | scenery rock arch |
+| gap | `gap` | a void to jump (fall in and you respawn on the far side) |
+| boost | `boost` | boost pads across the road |
 
 A core element can declare `tags`, `stageKeys`, per-sample `channels`, a `section()` hook, build phases (`heights`,
 `walls`, `wallsLate`, `wallsLast`), `track()` to add fields to the built track, and `markers()` saying where it is (see

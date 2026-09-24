@@ -25,7 +25,7 @@ describe('element registry and stage validation', () => {
 });
 
 // what each sandbox must contain, by element name
-const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'] };
+const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'] };
 describe('sandboxes', () => {
   it('there is a sandbox listed here for each one defined', () => expect(Object.keys(SANDBOXES).sort()).toEqual(Object.keys(EXPECT).sort()));
   for (const [name, stage] of Object.entries(SANDBOXES)) it(`${name}: builds, closes, has its elements, and four AI cars lap it cleanly`, () => {
@@ -46,3 +46,22 @@ describe('sandboxes', () => {
     for (const { i } of k.kicks) expect(k.jump[i + 5]).toBe(1);
   });
 });
+
+describe('gap and boost pads', () => {
+  const setup = () => { seedRandom(4); const st = SANDBOXES.gap, tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true }; const R = M.createRace(W, [{ name: 'p', player: true }]); R.phase = 'racing'; R.hzT = 1e9; return { tr, W, R, c: R.cars[0] }; };
+  const gapRun = tr => { let a = -1, b = -1; for (let i = 0; i < tr.loopN; i++) if (tr.gap[i]) { if (a < 0) a = i; b = i; } return [a, b]; };
+  const put = (tr, c, i, v) => { c.x = tr.xs[i]; c.z = tr.zs[i]; c.y = tr.H[i]; c.yaw = tr.th[i]; c.pr = M.project(tr, c.x, c.z, i, 3, 3); c.progress = i; c.lastGood = i; c.vx = tr.tx[i] * v; c.vz = tr.tz[i] * v; c.vy = 0; c.onGround = true; };
+  it('too slow: the car drops into the gap and comes back on the far side', () => {
+    const { tr, W, R, c } = setup(), [a, b] = gapRun(tr); put(tr, c, a - 3, 9);
+    let fell = false; for (let n = 0; n < 600 && !fell; n++) { c.inp.throttle = 0; M.raceStep(R, 1 / 120, W); fell = c.events.some(e => e.t === 'fell'); c.events.length = 0; }
+    expect(fell).toBe(true);
+    expect(c.pr.i).toBeGreaterThan(b);                                  // respawned past the far edge
+    expect(c.pr.i).toBeLessThan(b + 20);
+  });
+  it('boost pads fire a boost', () => {
+    const { tr, W, R, c } = setup(); let i0 = -1; for (let i = 0; i < tr.loopN; i++) if (tr.boostPad[i]) { i0 = i; break; }
+    put(tr, c, i0 - 4, 20); for (let n = 0; n < 60; n++) { c.inp.throttle = 1; M.raceStep(R, 1 / 120, W); }
+    expect(c.boost).toBeGreaterThan(0.3);
+  });
+});
+

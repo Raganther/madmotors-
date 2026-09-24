@@ -41,6 +41,12 @@ export const SANDBOXES = {
     top: [['s', 70, 12, { gallery: true, far: 30, rampF: 5, near: -20, rampN: 10 }], ['s', 30, 6]],
     left: [['s', 60, 0]]
   }, { traffic: { on: 1, with: 1 } }),
+  gap: loop('gap', 'boost pads, a kicker and a 28 m gap over a river canyon', {
+    bottom: [flat(150)],
+    right: [['s', 30, 4, { boost: true }], ['s', 20, 4, { kick: 3, boost: true, far: -30, near: -30, rampF: 4, rampN: 4 }],
+      ['s', 28, -2, { gap: true, far: -40, near: -40, rampF: 3, rampN: 3 }], ['s', 40, -3, { far: -12, near: -12, rampF: 6, rampN: 6 }], ['s', 20, 0]],
+    top: [flat(60)], left: [flat(20)]
+  }, { river: { pts: [[100, 94], [300, 94]], level: -30, width: 14 } }),
   rails: loop('rails', 'a level crossing with trains', {
     bottom: [flat(120)], right: [flat(60)], top: [flat(80)], left: [flat(20)]
   }, { rails: [{ id: 'line', pts: [[60, -80, 0], [60, 80, 0]], speed: 26, cars: 3, body: ravenrock.rails[0].body, coach: ravenrock.rails[0].coach, band: ravenrock.rails[0].band }] })

@@ -31,6 +31,13 @@ export function buildTerrain(tr, stage) {
         else for (let kk = Math.max(0, q.i - 3); kk <= Math.min(tr.N - 1, q.i + 3); kk++) mn = Math.min(mn, tr.H[kk]);
         v = lerp(mn - 0.35, v, smoothstep(HALF + 1, tr.edge || HALF + 15, d));
       }
+      // a gap: ground ahead of the lip / behind the landing falls straight away (no shoulder flattening into the void)
+      let dd = d;
+      if (tr.gap && q) {
+        const N0 = tr.loopN || tr.N, b = q.i % N0, i = q.i, along = (x - tr.xs[i]) * tr.tx[i] + (z - tr.zs[i]) * tr.tz[i];
+        const lip = tr.gap[(b + 1) % N0] && !tr.gap[b], land = tr.gap[(b - 1 + N0) % N0] && !tr.gap[b];
+        if ((lip && along > 0.5) || (land && along < -0.5)) { v = Math.min(v, tr.H[i] - 38); dd = 99; }
+      }
       if (tr.river) v = Math.min(v, riverBed(tr.river, x, z));
       if (tr.rails) for (const L of tr.rails.lines) {           // embankments and cuttings under the tracks
         const pj = railProject(L, x, z); if (pj.d > 12 || pj.s < L.visA - 2 || pj.s > L.visB + 2) continue;
@@ -38,7 +45,7 @@ export function buildTerrain(tr, stage) {
       }
       const qt = tr.nearestTun(x, z);
       if (qt && qt.d < HALF + 18) { const roof = tr.H[qt.i] + 11; v = Math.max(v, lerp(roof, tr.H[qt.i] - 1, smoothstep(HALF + 9, HALF + 18, qt.d))); }
-      h[r * cols + c] = v; dist[r * cols + c] = d;
+      h[r * cols + c] = v; dist[r * cols + c] = dd;
     }
   }
   function at(x, z) {

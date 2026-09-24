@@ -23,6 +23,7 @@ export function makeRoadMesh(tr, stage) {
   const segs = loop ? N : N - 1;
   for (let i = 0; i < segs; i++) {
     const j = loop ? (i + 1) % N : i + 1, onBridge = tr.bridge[i] || tr.bridge[j];
+    if (tr.gap && (tr.gap[i] || tr.gap[j])) continue;                                    // a gap: no road at all
     pos = onBridge ? brPos : mainPos; col = onBridge ? brCol : mainCol;
     for (let s = 0; s < 7; s++) {
       const oa = O[s], ob = O[s + 1];

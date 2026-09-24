@@ -57,7 +57,7 @@ export function updateTraffic(R, W, dt) {
     if (R.traffic.filter(c => c.tdir === dir).length >= want) continue;
     const idx = Math.round(pi + (dir < 0 ? 200 + rnd() * 160 : 130 + rnd() * 160));
     if (idx > lastI || idx < tr.startIdx + 40) continue;
-    let ok = !tr.jump[idx] && !tr.tunnel[idx] && !tr.bridge[idx];
+    let ok = !tr.jump[idx] && !tr.tunnel[idx] && !tr.bridge[idx] && !(tr.gap && tr.gap[idx % (tr.loopN || tr.N)]);
     for (const o of R.traffic) if (Math.abs(o.pr.i - idx) < 60) ok = false;
     for (const o of R.cars) if (Math.abs(o.pr.i - idx) < 50) ok = false;
     if (ok) spawnTraffic(R, W, idx, dir, rnd);

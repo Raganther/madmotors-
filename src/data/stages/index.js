@@ -7,5 +7,6 @@ import mountainLoop from './mountain-loop.js';
 import mountainPass from './mountain-pass.js';
 import ravenrockGorge from './ravenrock-gorge.js';
 import redMesa from './red-mesa.js';
+import thunderFalls from './thunder-falls.js';
 
-export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa];
+export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls];

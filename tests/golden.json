@@ -303,6 +303,44 @@
    "trainHits": 1,
    "rockHits": 0,
    "rocks": 3
+  },
+  "Thunder Falls": {
+   "samples": 2776,
+   "loopN": 1315,
+   "terrain": [
+    158,
+    145,
+    5151.613
+   ],
+   "times": [
+    94.9,
+    93.1,
+    96.908,
+    94.875
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    2688.419,
+    2691.024,
+    2666.077,
+    2692.448
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

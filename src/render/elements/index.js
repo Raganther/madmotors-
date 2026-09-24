@@ -19,6 +19,7 @@ import { addBridge } from './bridge.js';
 import { addRiver } from './river.js';
 import { addTunnel } from './tunnel.js';
 import { addArches } from './arch.js';
+import { addBoostPads, updateBoostPads } from './boost.js';
 import { initHazardVis, updateHazardVis } from '../hazards.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
@@ -46,9 +47,10 @@ const town = {
 const gallery = { name: 'gallery', build(group, tr) { addGallery(group, tr); } };
 const tunnel = { name: 'tunnel', build(group, tr, terr) { addTunnel(group, tr, terr); } };
 const arch = { name: 'arch', build(group, tr, terr, stage) { addArches(group, tr, terr, stage); } };
+const boost = { name: 'boost', build(group, tr) { addBoostPads(group, tr); }, update(dt, now) { updateBoostPads(now); } };
 const rockfall = { name: 'rockfall', init: initRockVis, update(dt, now, fxDt) { updateRocks(fxDt); } };
 
 const hazards = { name: 'hazards', init: initHazardVis, update(dt, now) { updateHazardVis(dt, now); } };
 
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, rockfall, hazards];
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, rockfall, hazards];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };
