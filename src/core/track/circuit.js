@@ -84,7 +84,7 @@ export function genPass(stage) {
 }
 export function genCircuit(stage) {
   let a = 0, b = 0, phi = stage.startHeading || 0, h = 0;
-  const A = [], B = [], hs = [], tunnel = [], bridge = [], farH = [], nearH = [], rampF = [], rampN = [], jumpOK = [], townF = [], galleryF = [], rockF = [], kicks = [];
+  const A = [], B = [], hs = [], tunnel = [], bridge = [], farH = [], nearH = [], rampF = [], rampN = [], jumpOK = [], townF = [], galleryF = [], rockF = [], kicks = [], arches = [];
   const emit = (hh, tg) => {
     A.push(a); B.push(b); hs.push(hh); tunnel.push(tg.tunnel ? 1 : 0); bridge.push(tg.bridge ? 1 : 0); jumpOK.push(tg.jump ? 1 : 0);
     farH.push(tg.far ?? 0); nearH.push(tg.near ?? 0); rampF.push(tg.rampF ?? 20); rampN.push(tg.rampN ?? 20);
@@ -95,6 +95,7 @@ export function genCircuit(stage) {
     const type = sg[0];
     const tg0 = (type === 's' ? sg[3] : sg[4]) || {};
     if (tg0.kick) kicks.push({ i: A.length, h: tg0.kick });   // placed jump at the start of this section
+    const i0 = A.length;
     if (type === 's') {
       let [, len, eh, tg = {}] = sg;
       if (typeof len === 'object') len = len.toA !== undefined ? (len.toA - a) / Math.cos(phi) : (len.toB - b) / Math.sin(phi);
@@ -107,12 +108,13 @@ export function genCircuit(stage) {
       for (let q = 1; q <= n; q++) { phi += dphi / 2; a += Math.cos(phi) * chord; b += Math.sin(phi) * chord; phi += dphi / 2; emit(lerp(h0, eh, q / n), tg); }
       h = eh;
     }
+    if (tg0.arch) arches.push(Math.round((i0 + A.length) / 2));   // rock arch over the middle of this section (scenery only)
   }
   while (A.length > 2 && Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) < 0.6) { A.pop(); B.pop(); for (const arr of [hs, tunnel, bridge, farH, nearH, rampF, rampN, jumpOK, townF, galleryF, rockF]) arr.pop(); }
   const xs = [], zs = [];
   for (let i = 0; i < A.length; i++) { xs.push((A[i] - B[i]) / Math.SQRT2); zs.push(-(A[i] + B[i]) / Math.SQRT2); }
   const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width } : null;
-  return { xs, zs, hs, tunnel, bridge, smoothH: 10, profile: { farH, nearH, rampF, rampN, jumpOK, townF, galleryF, rockF }, kicks, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
+  return { xs, zs, hs, tunnel, bridge, smoothH: 10, profile: { farH, nearH, rampF, rampN, jumpOK, townF, galleryF, rockF }, kicks, arches, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
 }
 export function buildLoop(stage) {
   if (stage.type === 'gorge') return finishLoop(stage, genCircuit(stage), stage.seed);
@@ -289,5 +291,5 @@ export function finishLoop(stage, g, seed) {
   }
   return { N, xs, zs, th, tx, tz, rx, rz, k, ks, H, jump, wallL, wallR, kerbL, kerbR, vmax, hairpins, finishIdx: startIdx + laps * N0, startIdx, noise, base, nearest, nearestT,
     minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge, tunnel, nearestTun, carve: stage.carve || 0, carveW, margin: g.pass ? 230 : g.profile ? 120 : 95,
-    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, rails, town: PF ? town0 : null, gallery: PF ? gallery0 : null, rockfall: PF && rock0.some(v => v) ? rock0 : null, gridS: g.profile ? 4 : 3, edge: g.profile ? HALF + 4 : HALF + 15 };
+    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, rails, town: PF ? town0 : null, gallery: PF ? gallery0 : null, rockfall: PF && rock0.some(v => v) ? rock0 : null, rockGap: stage.rockGap || 1, arches: g.arches || [], gridS: g.profile ? 4 : 3, edge: g.profile ? HALF + 4 : HALF + 15 };
 }

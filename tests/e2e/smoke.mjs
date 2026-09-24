@@ -58,6 +58,10 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await tp.evaluate(() => { window.__dr.G.state = 'racing'; window.__dr.race.phase = 'racing'; });
   const cdp = await ctx.newCDPSession(tp), box = id => tp.evaluate(id => { const r = document.getElementById(id).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, id);
   const w = await box('wheel'), p = await box('pedal');
+  // phone HUD: the speedo sits under the timer, clear of it and of the Reset/Pause buttons
+  const clash = await tp.evaluate(() => { const r = q => document.querySelector(q).getBoundingClientRect(), hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    const sp = r('#speed-block'); return ['#time', '.hud-btns', '#best'].filter(q => hit(sp, r(q))); });
+  if (clash.length) errors.push('phone HUD: speed block overlaps ' + clash.join(', '));
   const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
   // frames are slow under SwiftShader, so wait (up to 3 s) for the player's inputs to reach the expected state
   const expect = async (name, pred, arg = null, timeout = 3000) => { const ok = await tp.waitForFunction(pred, arg, { timeout }).then(() => true, () => false); checks.push([name, ok]); };

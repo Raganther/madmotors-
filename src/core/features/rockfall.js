@@ -17,7 +17,7 @@ export function rockStep(R, W, dt) {
       const far = (-Math.cos(tr.th[jj]) * -Math.SQRT1_2 + Math.sin(tr.th[jj]) * -Math.SQRT1_2) > 0 ? 1 : -1, lat = far * (WALL + 9);
       const x = tr.xs[jj] + tr.rx[jj] * lat, z = tr.zs[jj] + tr.rz[jj] * lat, r = 1.5 + rnd() * 1.0, lv = -far * (8 + rnd() * 5), av = (rnd() - 0.5) * 6;
       R.rocks.push({ x, z, y: W.terr.at(x, z) + r + 3, vx: tr.rx[jj] * lv + tr.tx[jj] * av, vz: tr.rz[jj] * lv + tr.tz[jj] * av, vy: 2, r, age: 0, hint: P.pr.i + (j - pi), fresh: true, id: (R.rockId = (R.rockId || 0) + 1) });
-      R.rockT = 3.5 + rnd() * 3;
+      R.rockT = (3.5 + rnd() * 3) * (tr.rockGap || 1);   // stages can space their boulders out
     }
   }
   const cars = R.cars.concat(R.traffic, R.parked);

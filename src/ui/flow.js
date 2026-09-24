@@ -40,7 +40,10 @@ export function handleEvents() {
         case 'hit': impactFx(c, e, c.isPlayer, near); break;
         case 'smash': impactFx(c, e, c.isPlayer, near); if (c.isPlayer && e.v > 9 && G.calloutTimer <= 0) callout('Smash!'); break;
         case 'bump': carCrashFx(e, e.a.isPlayer || e.b.isPlayer, near); break;
-        case 'land': if (e.air > 0.25) dustRing(c, 12, c.surface === 'tarmac' ? 0xDADADA : 0xD8C29A); if (c.isPlayer && e.air > 0.2) AudioSys.thud(e.imp / 22); break;
+        case 'land':   // bigger jumps kick up more dust; long ones throw a second ring of grit and jolt the camera
+          if (e.air > 0.25) { const k = Math.min(1, (e.air - 0.25) / 0.6), dirt = G.world.stage.colors.dirt; dustRing(c, 12 + Math.round(k * 14), c.surface === 'tarmac' ? 0xDADADA : 0xD8C29A, 5 + k * 5, 1.1 + k * 0.6); if (e.air > 0.5 && near) dustRing(c, 10, dirt, 9, 0.8); }
+          if (c.isPlayer && e.air > 0.2) { AudioSys.thud(e.imp / 22); if (e.air > 0.4) G.shake = Math.min(1.2, G.shake + e.imp / 40); }
+          break;
         case 'bigair': if (c.isPlayer) { callout('Big air!'); AudioSys.whoosh(); } break;
         case 'drift': if (c.isPlayer) { callout(e.amt > 1.6 ? 'Mega drift!' : 'Drift boost!'); AudioSys.whoosh(); } else if (near) AudioSys.whoosh(0.35); break;
         case 'respawn': if (c.isPlayer) callout('Back on track'); break;

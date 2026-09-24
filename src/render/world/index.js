@@ -10,7 +10,7 @@ import { FX } from '../materials.js';
 import { hemi, scene, setGrade, sun } from '../renderer.js';
 import { addBarriers } from './barriers.js';
 import { addBridge } from './bridges.js';
-import { addGantry, addSigns, addTunnel } from './landmarks.js';
+import { addArches, addGantry, addSigns, addTunnel } from './landmarks.js';
 import { addRiver } from './river.js';
 import { makeRoadMesh } from './road.js';
 import { addScenery } from './scenery.js';
@@ -37,6 +37,7 @@ export function buildWorld(idx) {
   addRiver(group, tr);
   featureHook('build', group, tr, terr, stage);
   addTunnel(group, tr, terr);
+  addArches(group, tr, terr, stage);
   addSigns(group, tr, terr);
   G.world = { idx, stage, tr, terr, group, W: { tr, terr, surf: stage.surface, armco: !!stage.armco, traffic: stage.traffic } };
   clearSkids();

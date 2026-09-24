@@ -35,6 +35,7 @@
  * @property {boolean} [bridge] @property {boolean} [tunnel] @property {boolean} [jump]
  * @property {boolean} [town] @property {boolean} [gallery] @property {boolean} [rockfall]
  * @property {number} [kick]              kicker jump of this height (m) at the start of the section
+ * @property {boolean} [arch]             scenery rock arch over the middle of the section
  */
 
 /**

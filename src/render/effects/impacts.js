@@ -58,4 +58,4 @@ export function carCrashFx(e, playerInvolved, near) {
   if (playerInvolved || near) AudioSys.crash('car', clamp(v / 16, 0.15, 1) * (playerInvolved ? 1 : 0.45));
 }
 export function sparks(x, y, z, n) { for (let i = 0; i < n; i++) emit(x, y + 0.6, z, (Math.random() - 0.5) * 16, 3 + Math.random() * 7, (Math.random() - 0.5) * 16, 0.3 + Math.random() * 0.25, 0.3, Math.random() < 0.4 ? 0xFFF4B0 : Math.random() < 0.6 ? 0xFFD34A : 0xFF8A2E, 26); }
-export function dustRing(c, n, col) { for (let i = 0; i < n; i++) { const a = i / n * TAU; emit(c.x + Math.cos(a) * 1.4, c.y + 0.2, c.z + Math.sin(a) * 1.4, Math.cos(a) * 5, 1 + Math.random(), Math.sin(a) * 5, 0.7, 1.1, col, 1); } }
+export function dustRing(c, n, col, sp = 5, sz = 1.1) { for (let i = 0; i < n; i++) { const a = i / n * TAU; emit(c.x + Math.cos(a) * 1.4, c.y + 0.2, c.z + Math.sin(a) * 1.4, Math.cos(a) * sp, 1 + Math.random(), Math.sin(a) * sp, 0.7, sz, col, 1); } }
