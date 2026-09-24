@@ -113,7 +113,7 @@ export function stepCar(c, dt, W, racing) {
     }
   }
   // barriers
-  c.wallContact = false; c.scrape = null;
+  c.wallContact = false; c.scrape = null; c.grind = null;
   const lat = pr.lat, al = Math.abs(lat), side = lat >= 0 ? 1 : -1;
   const w = wallAt(W, pr.i, side), WL = wallPos(W, pr.i, side);
   if (w && c.y < roadH(tr, pr.s) + 1.4) {
@@ -172,7 +172,7 @@ export function stepCar(c, dt, W, racing) {
     c.x -= tr.rx[i] * side2 * 1.0; c.z -= tr.rz[i] * side2 * 1.0;
     c.yaw = Math.atan2(tr.tx[i] * fwd, tr.tz[i] * fwd); c.vx = tr.tx[i] * fwd * 6; c.vz = tr.tz[i] * fwd * 6; c.wallStuck = 0;
   }
-  if (c.offT > 0.6) respawn(c, W);
+  if (c.offT > 0.6 && !c.destroyed) respawn(c, W);   // a smashed road car stays where it lands
   else if (!c.isPlayer && !c.traffic && c.stuckT > 2.5) respawn(c, W);
   else if (!c.isPlayer && racing && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road
   if (pr.i >= tr.N - 6) { c.vx *= 1 - 4 * dt; c.vz *= 1 - 4 * dt; }

@@ -7,6 +7,7 @@ import { WRECK_T, carWear } from '../core/sim/damage.js';
 import { SD } from '../core/modes/showdown.js';
 import { CAR_DEFS, TRAFFIC_KINDS } from '../data/cars.js';
 import { effectsForCar } from './effects/carfx.js';
+import { debris } from './effects/debris.js';
 import { glassBits, sparks } from './effects/impacts.js';
 import { emit } from './effects/particles.js';
 import { spawnProp } from './effects/props.js';
@@ -107,6 +108,7 @@ export function repairCarVis(v) {
   for (const m of [v.bumper, v.wing, ...v.struts]) { const h = m.userData.home; m.position.copy(h.p); m.rotation.copy(h.r); m.visible = true; }
   v.heads.forEach(m => m.visible = true); v.tails.forEach(m => m.visible = true); v.cabin.material = v.glassM;
   v.parts = { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 }; v.wreckFx = 0;
+  v.flipA = 0; v.flipV = 0; v.wheels.forEach(w => w.visible = true);   // pooled road-car meshes come back whole
 }
 export function visOf(c) { return c.traffic ? c.vis : carVis[race.cars.indexOf(c)]; }
 export function dentFx(c, e) {
@@ -124,6 +126,29 @@ export function wreckFx(c, isPlayer, near) {
   if (isPlayer) { G.shake = Math.min(1.6, G.shake + 1.2); G.slowmo = Math.max(G.slowmo, 0.3); if (!race.sd) callout('Wrecked!'); }
   if (isPlayer || near) AudioSys.crash('car', isPlayer ? 1 : 0.5);
 }
+// Road car takedown: it blows apart. Fireball, streaks of sparks, wheels and panels flying, glass, a black
+// smoke column; the shell is scorched and tumbles through the air (see drawCar), then burns where it lands.
+export function takedownFx(c, e, isPlayer, near) {
+  const v = visOf(c), col = c.def.color, hint = c.pr.i, big = c.def.kind === 'truck' ? 1.4 : c.def.kind === 'van' ? 1.2 : 1;
+  shockwave(c.x, c.y, c.z, 10 * big, 0xFFB03A); shockwave(c.x, c.y + 0.5, c.z, 5 * big, 0xFFF1B0);
+  sparks(e.x, e.y, e.z, Math.round(40 + e.v * 1.5), e.nx, e.nz); sparks(c.x, c.y, c.z, 30);
+  for (let k = 0; k < 34 * big; k++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 6; emit(c.x, c.y + 1, c.z, Math.cos(a) * r + c.vx * 0.3, 3 + Math.random() * 7, Math.sin(a) * r + c.vz * 0.3, 0.45 + Math.random() * 0.5, 1.5 + Math.random() * 1.5, k % 3 === 0 ? 0xFFE27A : k % 3 === 1 ? 0xFFB03A : 0xFF5A1E, 3); }
+  for (let k = 0; k < 16; k++) emit(c.x + (Math.random() - 0.5) * 2, c.y + 1.5, c.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2 + c.vx * 0.2, 4 + Math.random() * 4, (Math.random() - 0.5) * 2 + c.vz * 0.2, 1.8 + Math.random(), 2.4 + Math.random() * 1.6, k % 2 ? 0x2E2E2E : 0x4A4A4A, -1.5);
+  // flying parts: its wheels, panels in its paint, trim, glass
+  const S = TRAFFIC_SHAPES[c.def.kind], fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+  if (S) for (const [sx, sz] of S.wheels) { const wx = c.x + fz * -sx + fx * sz, wz = c.z - fx * -sx + fz * sz; debris(wx, c.y + 0.3, wz, c.vx * 0.6 + (wx - c.x) * 4 + (Math.random() - 0.5) * 6, 5 + Math.random() * 6, c.vz * 0.6 + (wz - c.z) * 4 + (Math.random() - 0.5) * 6, 0x1E1E22, S.wr * 2, S.wr * 2, 0.36, 5 + Math.random() * 2, hint); }
+  for (let k = 0; k < 10 * big; k++) { const s = 0.35 + Math.random() * 0.6; debris(c.x, c.y + 1, c.z, c.vx * 0.5 + e.nx * 6 + (Math.random() - 0.5) * 12, 4 + Math.random() * 8, c.vz * 0.5 + e.nz * 6 + (Math.random() - 0.5) * 12, k % 3 ? col : 0x2B2F3A, s * 1.6, s * 0.18, s, 4 + Math.random() * 2, hint); }
+  glassBits(c.x, c.y, c.z, 10, hint);
+  if (v) {
+    detachPart(c, v, v.bumper); detachPart(c, v, v.wing); v.wreckFx = 1;
+    v.paint.color.lerp(_scorch, 0.8); v.wheels.forEach(w => w.visible = false); v.heads.forEach(m => m.visible = false); v.tails.forEach(m => m.visible = false);
+    v.flipV = (Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 5) * (1 / big); v.flipA = 0;
+  }
+  c.smokeT = 1e9;
+  if (isPlayer) { G.shake = Math.min(1.8, G.shake + 1.1); G.slowmo = Math.max(G.slowmo, 0.35); }
+  if (isPlayer || near) AudioSys.crash('car', isPlayer ? 1 : 0.6);
+}
+const _scorch = new THREE.Color(0x1A1612);
 // Showdown blow-up: a fireball and a smoke column on top of the wreck, in the car's colour
 export function sdBoomFx(c, onScreen) {
   const col = c.def.color;
@@ -221,9 +246,11 @@ export function drawCar(c, v, dt, now) {
   _v3.crossVectors(v.n, _v2).normalize(); _v2.crossVectors(_v3, v.n);
   _mb.makeBasis(_v3, v.n, _v2); v.root.quaternion.setFromRotationMatrix(_mb);
   v.wobble = (v.wobble || 0) * Math.exp(-dt * 4.5); v.wobT = (v.wobT || 0) + dt;
-  v.body.rotation.z = clamp(c.vr * 0.016, -0.18, 0.18) + Math.sin(v.wobT * 32) * v.wobble;
+  // a destroyed road car tumbles while airborne and settles on its roof or its wheels
+  if (v.flipV) { if (!c.onGround) v.flipA += v.flipV * dt; else { const tgt = Math.round(v.flipA / Math.PI) * Math.PI; v.flipA += (tgt - v.flipA) * Math.min(1, dt * 8); if (Math.abs(tgt - v.flipA) < 0.01) { v.flipA = tgt; v.flipV = 0; } } }
+  v.body.rotation.z = clamp(c.vr * 0.016, -0.18, 0.18) + Math.sin(v.wobT * 32) * v.wobble + (v.flipA || 0);
   v.body.rotation.x = (c.onGround ? -clamp((c.acc || 0) * 0.003, -0.07, 0.07) : clamp(-c.vy * 0.012, -0.3, 0.3)) + Math.cos(v.wobT * 27) * v.wobble * 0.6;
-  c.squash *= Math.exp(-dt * 7); v.body.scale.y = 1 - c.squash * 0.22; v.body.position.y = -c.squash * 0.08;
+  c.squash *= Math.exp(-dt * 7); v.body.scale.y = 1 - c.squash * 0.22; v.body.position.y = -c.squash * 0.08 + (1 - Math.cos(v.flipA || 0)) * 0.85;   // lifted so a flipped shell rests on its roof
   v.spin += c.vf * dt / (v.wr || 0.42); v.wheels.forEach(w => w.rotation.x = v.spin);
   v.steer.forEach(p => p.rotation.y = -c.inp.steer * 0.42);
   const braking = !v.parts.tails && ((c.inp.brake > 0.05 && c.vf > 0.5) || (c.inp.handbrake > 0 && Math.abs(c.vf) > 3));

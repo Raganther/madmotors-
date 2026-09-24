@@ -3,6 +3,7 @@ import { debris } from './debris.js';
 import { wallFx } from './impacts.js';
 import { emit } from './particles.js';
 import { addSkid } from './skids.js';
+import { spark } from './sparks.js';
 
 export function effectsForCar(c, v, dt) {
   const sp = Math.hypot(c.vx, c.vz), fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
@@ -27,10 +28,16 @@ export function effectsForCar(c, v, dt) {
     v.scrapeAcc = (v.scrapeAcc || 0) + rate * dt;
     while (v.scrapeAcc > 1) {
       v.scrapeAcc -= 1;
-      if (fx.sparks) emit(s.x, s.y + 0.5, s.z, -s.vx * 0.35 + (Math.random() - 0.5) * 5, 1 + Math.random() * 4, -s.vz * 0.35 + (Math.random() - 0.5) * 5, 0.25 + Math.random() * 0.2, 0.25, Math.random() < 0.5 ? 0xFFF4B0 : 0xFFB03A, 20);
+      if (fx.sparks) { spark(s.x, s.y + 0.5, s.z, -s.vx * 0.45 + (Math.random() - 0.5) * 5, 1.5 + Math.random() * 4, -s.vz * 0.45 + (Math.random() - 0.5) * 5); if (Math.random() < 0.3) emit(s.x, s.y + 0.5, s.z, -s.vx * 0.35, 1 + Math.random() * 3, -s.vz * 0.35, 0.25, 0.25, 0xFFB03A, 20); }
       else emit(s.x, s.y + 0.4, s.z, -s.vx * 0.2 + (Math.random() - 0.5) * 3, 0.5 + Math.random() * 2, -s.vz * 0.2 + (Math.random() - 0.5) * 3, 0.5, 0.8, fx.dust, 1);
       if (Math.random() < 0.08) { const [lo, hi] = fx.size, sz = lo + Math.random() * (hi - lo); debris(s.x, s.y + 0.5, s.z, -s.vx * 0.2 + (Math.random() - 0.5) * 4, 2 + Math.random() * 3, -s.vz * 0.2 + (Math.random() - 0.5) * 4, fx.cols[0], sz, sz * 0.6, sz, 1.4, c.pr.i); }
     }
+  }
+  // two cars grinding side by side: a stream of sparks from the rubbing point, flung back along the contact
+  if (c.grind) {
+    const g = c.grind, dir = Math.sign(c.vx * g.tx + c.vz * g.tz) || 1;
+    v.grindAcc = (v.grindAcc || 0) + g.v * 1.6 * dt;
+    while (v.grindAcc > 1) { v.grindAcc -= 1; spark(g.x, g.y + 0.6, g.z, -g.tx * dir * g.v * 0.5 + (Math.random() - 0.5) * 4, 1.5 + Math.random() * 4, -g.tz * dir * g.v * 0.5 + (Math.random() - 0.5) * 4); }
   }
   const wear = carWear(c);
   if (c.wreckT > 0 && Math.random() < 0.8) emit(c.x + fx * 1.3 + (Math.random() - 0.5), c.y + 1.1, c.z + fz * 1.3 + (Math.random() - 0.5), (Math.random() - 0.5) * 2, 3 + Math.random() * 3, (Math.random() - 0.5) * 2, 0.35 + Math.random() * 0.3, 0.9, Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -3);

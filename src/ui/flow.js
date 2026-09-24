@@ -8,12 +8,13 @@ import { CAR_DEFS } from '../data/cars.js';
 import { STAGES } from '../data/stages/index.js';
 import { updateCamera } from '../render/camera.js';
 import { clearDebris } from '../render/effects/debris.js';
+import { clearSparks } from '../render/effects/sparks.js';
 import { carCrashFx, dustRing, impactFx, sparks } from '../render/effects/impacts.js';
 import { clearProps } from '../render/effects/props.js';
 import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
 import { camera, renderer, scene } from '../render/renderer.js';
-import { carVis, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, visOf, wreckFx } from '../render/vehicles.js';
+import { carVis, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
 import { TRACKS, buildWorld } from '../render/world/index.js';
 import { featureHook } from '../render/features.js';
@@ -43,13 +44,16 @@ export function handleEvents() {
         case 'bump': carCrashFx(e, e.a.isPlayer || e.b.isPlayer, near); break;
         case 'land':   // bigger jumps kick up more dust; long ones throw a second ring of grit and jolt the camera
           if (e.air > 0.25) { const k = Math.min(1, (e.air - 0.25) / 0.6), dirt = G.world.stage.colors.dirt; dustRing(c, 12 + Math.round(k * 14), c.surface === 'tarmac' ? 0xDADADA : 0xD8C29A, 5 + k * 5, 1.1 + k * 0.6); if (e.air > 0.5 && near) dustRing(c, 10, dirt, 9, 0.8); }
+          if (e.imp > 15 && c.surface === 'tarmac' && near) sparks(c.x, c.y - 0.5, c.z, Math.round(e.imp * 0.8), c.vx / (Math.hypot(c.vx, c.vz) + 1), c.vz / (Math.hypot(c.vx, c.vz) + 1));   // bottoming out
           if (c.isPlayer && e.air > 0.2) { AudioSys.thud(e.imp / 22); if (e.air > 0.4) G.shake = Math.min(1.2, G.shake + e.imp / 40); }
           break;
         case 'bigair': if (c.isPlayer) { callout('Big air!'); AudioSys.whoosh(); } break;
         case 'drift': if (c.isPlayer) { callout(e.amt > 1.6 ? 'Mega drift!' : 'Drift boost!'); AudioSys.whoosh(); } else if (near) AudioSys.whoosh(0.35); break;
         case 'respawn': if (c.isPlayer) callout('Back on track'); break;
         case 'dent': dentFx(c, e); break;
-        case 'wreck': wreckFx(c, c.isPlayer, near); break;
+        case 'wreck': if (!c.destroyed) wreckFx(c, c.isPlayer, near); break;
+        case 'destroyed': takedownFx(c, e, e.by.isPlayer, near); break;
+        case 'takedown': if (c.isPlayer) { callout(e.kind === 'truck' ? 'Truck takedown!' : 'Takedown!'); AudioSys.whoosh(); } break;
         case 'rockhit': sparks(e.x, e.y, e.z, 14); if (c.isPlayer || near) AudioSys.crash('metal', clamp(e.v / 20, 0.2, 0.9) * (c.isPlayer ? 1 : 0.5)); if (c.isPlayer) G.shake = Math.min(1.4, G.shake + 0.8); break;
         case 'trainhit': sparks(e.x, e.y, e.z, 45); shockwave(e.x, e.y, e.z, 9, 0xFFFFFF); if (c.isPlayer) { G.shake = 1.8; callout('Hit by a train!'); } if (c.isPlayer || near) AudioSys.crash('metal', c.isPlayer ? 1 : 0.5); break;
         case 'repair': { const v = visOf(c); if (v) repairCarVis(v); break; }
@@ -133,7 +137,7 @@ export function selectStage(i, cb) {
 export function startRace(idx) {
   AudioSys.init();
   selectStage(idx, () => {
-    race = newRace(); clearSkids(); clearDebris(); G.shake = 0; G.slowmo = 0;
+    race = newRace(); clearSkids(); clearDebris(); clearSparks(); G.shake = 0; G.slowmo = 0;
     G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; G.sdTick = 0; $('edge').className = '';
     $('menu').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
     $('stage-name').textContent = `Stage ${idx + 1}: ${STAGES[idx].name}`;

@@ -4,6 +4,7 @@ import { TAU, clamp } from '../../core/math.js';
 import { debris } from './debris.js';
 import { emit } from './particles.js';
 import { shockwave } from './rings.js';
+import { sparkBurst } from './sparks.js';
 import { visOf } from '../vehicles.js';
 
 G.shake = 0; G.slowmo = 0;
@@ -38,7 +39,7 @@ export function impactFx(c, e, isPlayer, near) {
   }
   if (v > 7) paintChips(c, e.x, e.y, e.z, Math.round(v * 0.35), -e.nx, -e.nz, hint);
   if (v > 16) glassBits(e.x, e.y, e.z, 6, hint);
-  if (fx.sparks) sparks(e.x, e.y, e.z, Math.round(v * 0.9 * fx.sparks));
+  if (fx.sparks) sparks(e.x, e.y, e.z, Math.round(v * 0.9 * fx.sparks), (c.vx - e.nx * 3) / (Math.hypot(c.vx, c.vz) + 3), (c.vz - e.nz * 3) / (Math.hypot(c.vx, c.vz) + 3));
   for (let k = 0; k < 6 + v * 0.4; k++) emit(e.x, e.y + 0.5, e.z, (Math.random() - 0.5) * 6 - e.nx * 2, 1 + Math.random() * 3, (Math.random() - 0.5) * 6 - e.nz * 2, 0.6 + Math.random() * 0.5, 1 + Math.random(), fx.dust, 1);
   shockwave(e.x, e.y, e.z, 2 + mag * 4, fx.sparks > 1 ? 0xFFE08A : 0xFFFFFF);
   const vis = visOf(c); if (vis) vis.wobble = Math.min(0.3, (vis.wobble || 0) + mag * 0.12);
@@ -51,11 +52,15 @@ export function carCrashFx(e, playerInvolved, near) {
   paintChips(A, e.x, e.y, e.z, Math.round(4 + v * 0.5), -e.nx, -e.nz, hint);
   paintChips(B, e.x, e.y, e.z, Math.round(4 + v * 0.5), e.nx, e.nz, hint);
   if (v > 10) glassBits(e.x, e.y, e.z, 4 + Math.round(v * 0.2), hint);
-  sparks(e.x, e.y, e.z, Math.round(6 + v * 0.8));
+  sparks(e.x, e.y, e.z, Math.round(8 + v * 1.1), -e.nz, e.nx); sparks(e.x, e.y, e.z, Math.round(4 + v * 0.5), e.nz, -e.nx);   // sprayed both ways along the contact
   shockwave(e.x, e.y, e.z, 2 + mag * 3.5, 0xFFFFFF);
   for (const car of [A, B]) { const vis = visOf(car); if (vis) vis.wobble = Math.min(0.3, (vis.wobble || 0) + mag * 0.14); if (v > 13) car.smokeT = Math.max(car.smokeT || 0, 1.4); }
   if (playerInvolved) { G.shake = Math.min(1.4, G.shake + mag * 0.8); if (v > 13) G.slowmo = Math.max(G.slowmo, 0.2); }
   if (playerInvolved || near) AudioSys.crash('car', clamp(v / 16, 0.15, 1) * (playerInvolved ? 1 : 0.45));
 }
-export function sparks(x, y, z, n) { for (let i = 0; i < n; i++) emit(x, y + 0.6, z, (Math.random() - 0.5) * 16, 3 + Math.random() * 7, (Math.random() - 0.5) * 16, 0.3 + Math.random() * 0.25, 0.3, Math.random() < 0.4 ? 0xFFF4B0 : Math.random() < 0.6 ? 0xFFD34A : 0xFF8A2E, 26); }
+// sparks: bright streaks, plus a few glowing embers for body
+export function sparks(x, y, z, n, dx = 0, dz = 0) {
+  sparkBurst(x, y + 0.6, z, Math.round(n * 1.4), dx, dz, 12 + n * 0.1);
+  for (let i = 0; i < n * 0.3; i++) emit(x, y + 0.6, z, (Math.random() - 0.5) * 12, 3 + Math.random() * 6, (Math.random() - 0.5) * 12, 0.3 + Math.random() * 0.25, 0.3, Math.random() < 0.5 ? 0xFFF4B0 : 0xFF8A2E, 26);
+}
 export function dustRing(c, n, col, sp = 5, sz = 1.1) { for (let i = 0; i < n; i++) { const a = i / n * TAU; emit(c.x + Math.cos(a) * 1.4, c.y + 0.2, c.z + Math.sin(a) * 1.4, Math.cos(a) * sp, 1 + Math.random(), Math.sin(a) * sp, 0.7, sz, col, 1); } }

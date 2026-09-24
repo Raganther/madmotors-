@@ -12,6 +12,9 @@ Nothing ever stops; first to 60 s of crown time wins (or the most crown time at 
 The Showdown rules live in `src/core/modes/showdown.js`; `src/core/sim/view.js` uses the camera's exact screen
 axes so what you see is what's judged.
 
+Road cars (traffic and parked) are fragile: a racer hitting one at over 11 m/s (`SMASH_V` in `core/sim/collide.js`)
+destroys it, launching the scorched shell into a tumble while the racer ploughs through with a little boost.
+
 On phones (portrait or landscape) the left thumb points a steering wheel: the car turns to face, on screen, the way
 the thumb points from the wheel's centre (`groundDir` in `core/sim/view.js`). The
 right thumb rests on Gas: slide it down to drift, left to brake/reverse, without lifting it (`src/ui/input.js`).
