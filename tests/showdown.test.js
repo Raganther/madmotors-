@@ -38,23 +38,24 @@ function world(si) {
 function match(si, aspect) {
   seedRandom(3 + si);
   const W = world(si), R = M.createRace(W, DEFS, { mode: 'showdown' }); R.aspect = aspect; R.phase = 'racing'; R.autoPlayer = true;
-  const log = { spawnEv: [], rounds: [], booms: 0, boomLosers: 0, boomsFar: true, regroups: [], rejoins: [], lightsOk: true, zoomOk: true, minT: 0 };
-  let t = 0;
-  while (t < 600 && R.sd.phase !== 'over') {
-    const wasAnnounce = R.sd.phase === 'announce', boomed = R.sd.boomT.map(b => b > 0);
+  const log = { spawnEv: [], crowns: [], booms: [], boomLosers: 0, boomsFar: true, rejoins: [], crownOk: true, zoomOk: true, holderOk: true, minT: 0 };
+  let t = 0, total0 = 0;
+  while (t < 900 && R.sd.phase !== 'over') {
+    const boomed = R.sd.boomT.map(b => b > 0), h0 = R.sd.holder;
     M.raceStep(R, 1 / 120, W); t += 1 / 120;
-    if (R.sd.lights.some(l => l < 0)) log.lightsOk = false;
+    // crown time only grows (booms move it between cars): at most dt x2 per step in total
+    const total = R.sd.crown.reduce((a, b) => a + b, 0);
+    if (R.sd.crown.some(v => v < 0) || total - total0 > 2 / 120 + 1e-9) log.crownOk = false; total0 = total;
     if (R.sd.scale < SD.ZMIN - 1e-6 || R.sd.scale > SD.ZMAX + 1e-6) log.zoomOk = false;
     if (R.sd.scale < SD.ZMIN + 3) log.minT += 1 / 120;
-    if (wasAnnounce && R.sd.phase === 'run') {
-      const L = M.sdLeader(R);
-      log.regroups.push({ spread: Math.max(...R.cars.map(k => Math.abs(k.pr.i - L.pr.i))), rolling: R.cars.every(k => Math.abs(Math.hypot(k.vx, k.vz) - SD.ROLL) < 1.5) });
+    if (R.sd.holder !== h0 && h0 >= 0 && !(R.sd.boomT[h0] > 0) && R.sd.phase !== 'over') {
+      // a steal: the new holder is clearly ahead of the old one
+      if (R.cars[R.sd.holder].progress - R.cars[h0].progress <= SD.STEAL_EDGE) log.holderOk = false;
     }
-    R.cars.forEach((c, k) => { if (boomed[k] && !(R.sd.boomT[k] > 0) && R.sd.phase === 'run') log.rejoins.push({ ghost: c.ghost > 1, wreck: c.wreckT, inView: inFar(R, c) }); });
+    R.cars.forEach((c, k) => { if (boomed[k] && !(R.sd.boomT[k] > 0)) log.rejoins.push({ ghost: c.ghost > 1, wreck: c.wreckT, inView: inFar(R, c), behind: c.progress <= M.sdLeader(R).progress }); });
     for (const c of R.cars.concat(R.traffic, R.parked)) {
-      for (const e of c.events) if (e.t === 'sd-spawn') log.spawnEv.push(e.slot); else if (e.t === 'sd-round') {
-        log.rounds.push({ winner: e.winner, losers: e.losers.slice() });
-        if (e.boom) { log.booms++; log.boomLosers += e.losers.length; for (const k of e.losers) if (!offFar(R, R.cars[k])) log.boomsFar = false; }
+      for (const e of c.events) if (e.t === 'sd-spawn') log.spawnEv.push(e.slot); else if (e.t === 'sd-crown') log.crowns.push(e); else if (e.t === 'sd-boom') {
+        log.booms.push(e); log.boomLosers += e.losers.length; for (const k of e.losers) if (!offFar(R, R.cars[k])) log.boomsFar = false;
       }
       c.events.length = 0;
     }
@@ -62,25 +63,25 @@ function match(si, aspect) {
   return { R, log, t };
 }
 
-describe('showdown matches', () => {
-  for (const [si, aspect] of [[0, 16 / 9], [6, 0.5]]) {
-    it(`stage ${si + 1} (aspect ${aspect.toFixed(2)}): zoom-to-fit, booms only at full zoom, nobody out, winner decided`, () => {
+describe('showdown matches (King of the Hill)', () => {
+  for (const [si, aspect] of [[0, 16 / 9], [6, 0.5], [7, 16 / 9]]) {
+    it(`stage ${si + 1} (aspect ${aspect.toFixed(2)}): crown changes hands on clear passes, booms at full zoom, winner decided`, () => {
       const { R, log, t } = match(si, aspect);
-      expect(log.rounds.length).toBeGreaterThan(0);
-      expect(log.booms).toBeGreaterThan(0);
+      expect(log.crowns.length).toBeGreaterThan(0);                      // the first crowning (steals are forced in a test below)
+      expect(log.crowns[0].from).toBe(-1);
       expect(log.boomsFar).toBe(true);
-      expect(log.lightsOk).toBe(true);
+      expect(log.crownOk).toBe(true);
       expect(log.zoomOk).toBe(true);
-      for (const r of log.rounds) expect(r.losers).not.toContain(r.winner);
-      for (const g of log.regroups) { expect(g.spread).toBeLessThanOrEqual(12); expect(g.rolling).toBe(true); }
-      for (const r of log.rejoins) { expect(r.ghost).toBe(true); expect(r.wreck).toBe(0); expect(r.inView).toBe(true); }
+      expect(log.holderOk).toBe(true);
+      for (const b of log.booms) expect(b.losers).not.toContain(b.to);
+      for (const r of log.rejoins) { expect(r.ghost).toBe(true); expect(r.wreck).toBe(0); expect(r.inView).toBe(true); expect(r.behind).toBe(true); }
       expect(R.sd.phase).toBe('over');
       expect(R.sd.winner).toBeGreaterThanOrEqual(0);
-      expect(R.cars.every(c => !c.out)).toBe(true);
+      const w = R.sd.winner; expect(R.sd.crown[w]).toBe(Math.max(...R.sd.crown));
       expect(log.spawnEv).toEqual(R.sd.spawns);                                  // one sd-spawn event per rejoin
+      expect(R.sd.spawns.every(s => s === 'behind' || s === 'beside')).toBe(true);
       expect(R.sd.booms.reduce((a, b) => a + b, 0)).toBe(log.boomLosers);
-      expect(R.sd.taken.reduce((a, b) => a + b, 0)).toBe(log.rounds.reduce((a, r) => a + r.losers.length, 0));
-      console.log(`stage ${si + 1}: ${log.booms} booms, ${log.regroups.length} breakaways in ${t.toFixed(0)}s, close zoom ${(100 * log.minT / t).toFixed(0)}% of the time, spawns ${R.sd.spawns.join(',')}, final lights ${R.sd.lights.join('/')}, winner ${R.cars[R.sd.winner].name}`);
+      console.log(`stage ${si + 1}: ${log.crowns.length - 1} steals, ${log.booms.length} booms in ${t.toFixed(0)}s, close zoom ${(100 * log.minT / t).toFixed(0)}% of the time, crown ${R.sd.crown.map(v => v.toFixed(1)).join('/')}, winner ${R.cars[w].name}`);
     });
   }
 
@@ -89,67 +90,75 @@ describe('showdown matches', () => {
     const W = world(0), tr = W.tr, R = M.createRace(W, DEFS, { mode: 'showdown' }); R.phase = 'racing'; R.autoPlayer = true;
     for (let n = 0; n < 240; n++) M.raceStep(R, 1 / 120, W);              // past the start grace
     const drop = c => { const i = Math.max(4, c.pr.i - 150); c.x = tr.xs[i]; c.z = tr.zs[i]; c.y = tr.H[i]; c.pr = M.project(tr, c.x, c.z, i, 3, 3); c.progress = i; c.vx = c.vz = 0; c.ghost = 0; };
-    return { R, W, drop };
+    const put = (c, i, lat = 0) => { c.x = tr.xs[i] + tr.rx[i] * lat; c.z = tr.zs[i] + tr.rz[i] * lat; c.y = tr.H[i]; c.pr = M.project(tr, c.x, c.z, i, 3, 3); c.progress = c.pr.s; };
+    return { R, W, drop, put };
   };
   const stepUntil = (R, W, done, n = 400) => { for (let k = 0; k < n && !done(); k++) M.raceStep(R, 1 / 120, W); };
 
-  it('a straggler: the camera zooms all the way out first, then it blows up, loses a light and rejoins near the leader', () => {
+  it('the leader banks crown time, faster on a streak', () => {
+    const { R, W } = setup();
+    const h = R.sd.holder; expect(h).toBeGreaterThanOrEqual(0);
+    expect(M.sdMult(0)).toBe(1); expect(M.sdMult(5)).toBe(1.5); expect(M.sdMult(10)).toBe(2);
+    R.sd.streak = 0; const c0 = R.sd.crown[h];
+    M.raceStep(R, 1 / 120, W);
+    if (R.sd.holder === h) expect(R.sd.crown[h] - c0).toBeCloseTo(1 / 120, 6);
+    R.sd.streak = 12; const c1 = R.sd.crown[R.sd.holder], h2 = R.sd.holder;
+    M.raceStep(R, 1 / 120, W);
+    if (R.sd.holder === h2) expect(R.sd.crown[h2] - c1).toBeCloseTo(2 / 120, 6);
+  });
+
+  it('side by side the crown stays put; a clear pass steals it and resets the streak', () => {
+    const { R, W, put } = setup();
+    const h = R.sd.holder, H = R.cars[h], rival = R.cars.find((c, k) => k !== h), ri = R.cars.indexOf(rival);
+    // freeze everyone so only our placement decides the order
+    const hold = () => { for (const c of R.cars) { c.vx = c.vz = 0; c.inp.throttle = 0; } };
+    const i = Math.round(H.pr.i) + 40;
+    put(H, i, -2.5); put(rival, i + 1, 2.5); hold(); R.sd.streak = 7;
+    for (let n = 0; n < 120; n++) { hold(); M.raceStep(R, 1 / 120, W); }
+    expect(R.sd.holder).toBe(h);                                          // 1 m ahead is not a pass
+    put(rival, i + 8, 2.5); hold(); M.raceStep(R, 1 / 120, W);
+    expect(R.sd.holder).toBe(ri);                                          // 8 m ahead is
+    expect(R.sd.streak).toBeLessThan(0.05);
+    expect(R.sd.steals[ri]).toBeGreaterThan(0);
+  });
+
+  it('a straggler: full zoom first, then it blows up, pays the holder crown time and rejoins behind or beside the leader', () => {
     const { R, W, drop } = setup();
-    const L = M.sdLeader(R), victim = R.cars.find(c => c !== L), vi = R.cars.indexOf(victim), li = R.cars.indexOf(L);
-    const before = R.sd.lights.slice();
+    const hi = R.sd.holder, victim = R.cars.find((c, k) => k !== hi), vi = R.cars.indexOf(victim);
+    R.sd.crown[vi] = 10; const before = R.sd.crown.slice();
     drop(victim);
     let maxScale = 0;
     stepUntil(R, W, () => { maxScale = Math.max(maxScale, R.sd.scale); return R.sd.boomT[vi] > 0; });
     expect(maxScale).toBeGreaterThan(SD.ZMAX - 0.5);
-    expect(R.sd.lights[vi]).toBe(before[vi] - 1);
-    expect(R.sd.lights[li]).toBe(before[li] + 1);
-    expect(R.sd.phase).toBe('run');
+    expect(R.sd.crown[vi]).toBeCloseTo(before[vi] - SD.BOOM_TAKE, 6);
+    const to = R.sd.holder; expect(R.sd.crown[to]).toBeGreaterThanOrEqual(before[to] + SD.BOOM_TAKE - 1e-9);
     expect(victim.wreckT).toBeGreaterThan(0);
     stepUntil(R, W, () => !(R.sd.boomT[vi] > 0));
     expect(victim.wreckT).toBe(0);
     expect(victim.ghost).toBeGreaterThan(1);
-    expect(Math.abs(M.sdLeader(R).pr.i - victim.pr.i)).toBeLessThanOrEqual(20);
+    const L = M.sdLeader(R); expect(L.pr.i - victim.pr.i).toBeGreaterThanOrEqual(0); expect(L.pr.i - victim.pr.i).toBeLessThanOrEqual(20);
     expect(Math.hypot(victim.vx, victim.vz)).toBeGreaterThan(10);
-    expect(R.sd.scale).toBeLessThan(SD.ZMAX);                            // zoom comes back in once the pack is together again
   });
 
-  it('respawns land behind, beside and in front of the leader, all in shot', () => {
+  it('a car with no crown time just blows up (nothing below zero), and everyone left behind at once all blow up with no pause', () => {
     const { R, W, drop } = setup();
-    for (let n = 0; n < 14 && R.sd.phase !== 'over'; n++) {
-      const L = M.sdLeader(R), victim = R.cars.find(c => c !== L && !c.isPlayer), vi = R.cars.indexOf(victim);
-      R.sd.lights.fill(4);
-      drop(victim);
-      stepUntil(R, W, () => R.sd.boomT[vi] > 0 || R.sd.phase !== 'run');
-      stepUntil(R, W, () => !(R.sd.boomT[vi] > 0));
-      if (R.sd.phase === 'run') expect(inFar(R, victim)).toBe(true);
-      stepUntil(R, W, () => victim.ghost <= 0, 300);
-    }
-    for (const slot of ['behind', 'beside', 'front']) expect(R.sd.spawns).toContain(slot);
-  });
-
-  it('a car on no lights keeps racing (nobody is knocked out)', () => {
-    const { R, W, drop } = setup();
-    const L = M.sdLeader(R), victim = R.cars.find(c => c !== L), vi = R.cars.indexOf(victim);
-    R.sd.lights[vi] = 0;
-    drop(victim);
-    stepUntil(R, W, () => R.sd.boomT[vi] > 0);
-    expect(R.sd.lights[vi]).toBe(0);
-    stepUntil(R, W, () => !(R.sd.boomT[vi] > 0));
-    expect(victim.out).toBeFalsy();
-    const p0 = victim.progress; stepUntil(R, W, () => false, 240);
-    expect(victim.progress).toBeGreaterThan(p0 + 20);
-  });
-
-  it('a breakaway (everyone else dropped) scores each chaser and regroups with a rolling start', () => {
-    const { R, W, drop } = setup();
-    const L = M.sdLeader(R), li = R.cars.indexOf(L), before = R.sd.lights.slice();
-    for (const c of R.cars) if (c !== L) drop(c);
-    stepUntil(R, W, () => R.sd.phase !== 'run');
-    expect(R.sd.phase).toBe('announce');
-    expect(R.sd.lights[li]).toBe(before[li] + 3);
-    stepUntil(R, W, () => R.sd.phase !== 'announce');
+    const hi = R.sd.holder;
+    R.cars.forEach((c, k) => { if (k !== hi) R.sd.crown[k] = 0; });
+    for (const c of R.cars) if (c !== R.cars[hi]) drop(c);
+    stepUntil(R, W, () => R.sd.boomT.filter(b => b > 0).length === R.cars.length - 1);
+    expect(R.sd.boomT.filter(b => b > 0).length).toBe(R.cars.length - 1);
     expect(R.sd.phase).toBe('run');
-    const lead = M.sdLeader(R);
-    for (const c of R.cars) { expect(Math.abs(c.pr.i - lead.pr.i)).toBeLessThanOrEqual(12); expect(Math.hypot(c.vx, c.vz)).toBeGreaterThan(10); }
+    expect(R.sd.crown.every(v => v >= 0)).toBe(true);
+    stepUntil(R, W, () => R.sd.boomT.every(b => !(b > 0)));
+    const L = M.sdLeader(R);
+    for (const c of R.cars) { expect(L.pr.i - c.pr.i).toBeGreaterThanOrEqual(0); expect(L.pr.i - c.pr.i).toBeLessThanOrEqual(20); }
+  });
+
+  it('first to the target wins', () => {
+    const { R, W } = setup();
+    const h = R.sd.holder; R.sd.crown[h] = SD.TARGET - 0.01;
+    stepUntil(R, W, () => R.sd.phase === 'over', 10);
+    expect(R.sd.phase).toBe('over');
+    expect(R.sd.winner).toBe(R.sd.holder);
   });
 });

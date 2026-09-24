@@ -3,6 +3,7 @@ import { AudioSys } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { createRace, ranking } from '../core/sim/race.js';
 import { screenOffset } from '../core/sim/view.js';
+import { SD } from '../core/modes/showdown.js';
 import { CAR_DEFS } from '../data/cars.js';
 import { STAGES } from '../data/stages/index.js';
 import { updateCamera } from '../render/camera.js';
@@ -54,7 +55,9 @@ export function handleEvents() {
         case 'repair': { const v = visOf(c); if (v) repairCarVis(v); break; }
         case 'horn': if (Math.hypot(c.x - race.player.x, c.z - race.player.z) < 70) AudioSys.horn(c.def.kind === 'truck' ? 0.75 : 1); break;
         case 'lap': if (c.isPlayer) { callout(e.n === G.world.tr.laps ? 'Final lap!' : 'Lap ' + e.n); AudioSys.beep(660, 0.2); } break;
-        case 'sd-round': sdRound(e); if (e.boom) for (const k of e.losers) { const b = race.cars[k]; sdBoomFx(b, b.isPlayer || onScreen(b)); } break;
+        case 'sd-boom': sdBoom(e); for (const k of e.losers) { const b = race.cars[k]; sdBoomFx(b, b.isPlayer || onScreen(b)); } break;
+        case 'sd-crown': sdCrown(e); break;
+        case 'sd-streak': if (c.isPlayer) { callout(`Crown streak ×${e.mult}!`); AudioSys.tone(880, 0.1, 0.07, 'triangle', 1.3); } break;
         case 'sd-spawn': sdSpawnFx(c); if (c.isPlayer) { callout(e.slot === 'front' ? 'Back in, ahead!' : e.slot === 'beside' ? 'Back in, alongside!' : 'Back in, behind!'); AudioSys.tone(440, 0.25, 0.08, 'triangle', 2); } break;
         case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? 'You win the Showdown!' : w.name + ' wins the Showdown'); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
         case 'finish':
@@ -71,15 +74,18 @@ export function handleEvents() {
 }
 /** Is a car inside the current Showdown view? */
 function onScreen(c) { const v = race.sd.view, f = race.sd.focus; if (!v || !f) return false; const [sx, sy] = screenOffset(c.x, c.y, c.z, f); return Math.abs(sx) < v.hw && Math.abs(sy) < v.hh; }
-// a round of Showdown: the leader took a light from each car that dropped off the screen (blown up, or left behind in a breakaway)
-function sdRound(e) {
-  const P = race.player, pi = race.cars.indexOf(P), w = race.cars[e.winner], n = e.losers.length;
-  if (e.boom) {
-    const lost = e.losers.includes(pi);
-    callout(lost ? 'Boom! You lose a light' : e.winner === pi ? (n > 1 ? `Boom! You take ${n} lights` : 'Boom! You take a light') : `${race.cars[e.losers[0]].name} blew up!`);
-    if (lost) AudioSys.tone(520, 0.3, 0.08, 'triangle', 0.5); else if (e.winner === pi) AudioSys.tone(660, 0.12, 0.08, 'triangle', 1.5);
-  } else if (e.winner === pi) { callout(n > 1 ? `Breakaway! +${n} lights` : 'Breakaway! +1 light'); AudioSys.tone(660, 0.12, 0.08, 'triangle', 1.5); }
-  else { callout(`${w.name} breaks away!`); if (e.losers.includes(pi)) AudioSys.tone(520, 0.3, 0.08, 'triangle', 0.5); }
+// Showdown crown events: stragglers blowing up (and paying crown time to the holder), the crown changing hands
+function sdBoom(e) {
+  const pi = race.cars.indexOf(race.player), i = e.losers.indexOf(pi), fmtS = v => (Math.round(v * 10) / 10) + 's';
+  if (i >= 0) { callout(e.amts[i] > 0 ? `Boom! −${fmtS(e.amts[i])} crown time` : 'Boom!'); AudioSys.tone(520, 0.3, 0.08, 'triangle', 0.5); }
+  else if (e.to === pi) { const got = e.amts.reduce((a, b) => a + b, 0); callout(got > 0 ? `Boom! +${fmtS(got)} crown time` : `${race.cars[e.losers[0]].name} blew up!`); AudioSys.tone(660, 0.12, 0.08, 'triangle', 1.5); }
+  else callout(`${race.cars[e.losers[0]].name} blew up!`);
+}
+function sdCrown(e) {
+  const pi = race.cars.indexOf(race.player), to = race.cars[e.to];
+  if (e.to === pi) { callout('You take the crown!'); AudioSys.tone(784, 0.14, 0.08, 'triangle', 1.5); }
+  else if (e.from === pi) { callout(`Crown stolen by ${to.name}!`); AudioSys.tone(520, 0.3, 0.08, 'triangle', 0.5); }
+  else callout(`${to.name} takes the crown`);
 }
 export function showResults() {
   if (race.sd) return showShowdownResults();
@@ -96,15 +102,16 @@ function showShowdownResults() {
   resultsShown = true; $('results').hidden = false; $('touch').hidden = true;
   const w = race.cars[race.sd.winner], won = w === race.player;
   $('res-title').innerHTML = `<span class="chip" style="background:#${w.def.color.toString(16).padStart(6, '0')}"></span>` + (won ? 'You won the Showdown' : w.name + ' won the Showdown');
-  $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name}, ${race.sd.rounds} ${race.sd.rounds === 1 ? 'round' : 'rounds'}`;
-  $('res-best').textContent = 'Showdown: lose the pack off the screen to blow them up and take their lights';
+  const nb = race.sd.booms.reduce((a, b) => a + b, 0), ns = race.sd.steals.reduce((a, b) => a + b, 0);
+  $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name} · ${ns} crown ${ns === 1 ? 'steal' : 'steals'}, ${nb} ${nb === 1 ? 'blow-up' : 'blow-ups'}`;
+  $('res-best').textContent = `Showdown: hold the lead to bank crown time; first to ${SD.TARGET}s wins`;
   $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
   updateResultsTable(); $('next-btn').focus();
 }
 export function updateResultsTable() {
   if (race.sd) {
-    const S = race.sd, order = race.cars.map((c, k) => ({ c, k, l: S.lights[k] })).sort((a, b) => b.l - a.l || b.c.progress - a.c.progress);
-    $('res-table').innerHTML = order.map(({ c, k, l }, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}<span class="rs">took ${S.taken[k]} · blew up ${S.booms[k]}×</span></td><td class="rt">${l + (l === 1 ? ' light' : ' lights')}</td></tr>`).join('');
+    const S = race.sd, order = race.cars.map((c, k) => ({ c, k, l: S.crown[k] })).sort((a, b) => b.l - a.l || b.c.progress - a.c.progress);
+    $('res-table').innerHTML = order.map(({ c, k, l }, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}<span class="rs">stole the crown ${S.steals[k]}× · blew up ${S.booms[k]}×</span></td><td class="rt">${l.toFixed(1)}s</td></tr>`).join('');
     return;
   }
   const order = ranking(race);
@@ -146,7 +153,7 @@ export function togglePause() {
 export function refreshBest() { STAGES.forEach((s, i) => { const el = $('best-' + i); if (el) el.textContent = best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet'; }); }
 const MODE_DESC = {
   race: 'Beat three rivals to the line.',
-  showdown: 'Head to head: the camera follows the leader. The camera zooms out to keep up; fall too far behind and you blow up, handing the leader one of your lights. Everyone starts with 4; first to 10 wins.'
+  showdown: 'King of the Hill: the leader wears the crown and banks crown time, faster on a long streak. Pass clearly to steal it. Fall off the screen and you blow up, paying the holder 2 s. First to 60 s of crown time wins.'
 };
 export function setMode(m) {
   G.mode = m; saveMode(m);

@@ -1,24 +1,27 @@
-// Showdown: Micro Machines-style head-to-head. The camera frames the leader, zooming out to keep the pack in shot:
-// - once it's zoomed out as far as it goes, a car still left off the screen explodes, the leader takes one of its lights,
-//   and it respawns rolling somewhere around the leader (behind, beside or in front);
-// - only a breakaway (the leader drops every other car at once) stops play: the leader takes a light from each and everyone
-//   regroups at the leader's position with a rolling start.
-// Nobody is knocked out: all four race until someone reaches WIN lights (or the finish decides it on lights).
-// Deterministic: its own seeded generator, never R.rnd, so the race features' random sequence is untouched.
+// Showdown, King of the Hill: whoever leads wears the crown and banks crown time while they hold it; first to TARGET
+// seconds wins (or the most crown time when the leader reaches the finish). The camera frames the leader, zooming out
+// to keep the pack in shot:
+// - the crown only changes hands on a clear pass (STEAL_GAP metres ahead, or STEAL_EDGE ahead for STEAL_HOLD seconds);
+// - a streak multiplies crown time: x1.5 after 5 s in the lead, x2 after 10 s, so an overtake is a big swing;
+// - a car left off the screen at full zoom blows up, hands BOOM_TAKE seconds of its crown time to the crown holder and
+//   respawns rolling behind or beside the leader (never in front, so a blow-up can't hand you the crown).
+// Nothing ever stops or regroups. Deterministic: its own seeded generator, never R.rnd, so the race features' random
+// sequence is untouched.
 import { computeGrad } from '../sim/car.js';
 import { project } from '../track/query.js';
 import { screenOffset } from '../sim/view.js';
 import { mulberry32 } from '../math.js';
 
-export const SD = { START: 4, WIN: 10, ZMIN: 18, ZMAX: 26, FIT: 5, OFF_SLACK: 2, OFF_TIME: 1.0, BOOM: 1.2, ANNOUNCE: 1.0, GRACE: 1.5, ROLL: 14, LOOK: 0.3 };
-const GRID = [[0, -2.8], [0, 2.8], [-8, -2.8], [-8, 2.8]];
+export const SD = { TARGET: 60, ZMIN: 18, ZMAX: 26, FIT: 5, OFF_SLACK: 2, OFF_TIME: 1.0, BOOM: 1.2, GRACE: 1.5, ROLL: 14, LOOK: 0.3,
+  STEAL_GAP: 4.5, STEAL_EDGE: 1.5, STEAL_HOLD: 0.4, BOOM_TAKE: 2, STREAK: [[10, 2], [5, 1.5]] };
 
 /** View half-extents (metres) for a zoom level: `scale` is the half-extent of the screen's short side. */
 export function sdExtents(scale, aspect) { return aspect >= 1 ? { hw: scale * aspect, hh: scale } : { hw: scale, hh: scale / aspect }; }
 
 export function initShowdown(R) {
-  R.sd = { lights: R.cars.map(() => SD.START), phase: 'run', timer: 0, grace: SD.GRACE, focus: null, snap: true, camSnap: true,
-    scale: SD.ZMIN, view: null, offT: R.cars.map(() => 0), boomT: R.cars.map(() => 0), winner: -1, rounds: 0, booms: R.cars.map(() => 0), taken: R.cars.map(() => 0), rng: mulberry32(R.cars.length * 7919 + 17), spawns: [] };
+  R.sd = { crown: R.cars.map(() => 0), holder: -1, streak: 0, stealer: -1, stealT: 0, phase: 'run', grace: SD.GRACE, focus: null, snap: true, camSnap: true,
+    scale: SD.ZMIN, view: null, offT: R.cars.map(() => 0), boomT: R.cars.map(() => 0), winner: -1, booms: R.cars.map(() => 0), taken: R.cars.map(() => 0), steals: R.cars.map(() => 0),
+    rng: mulberry32(R.cars.length * 7919 + 17), spawns: [] };
   if (!R.aspect) R.aspect = 16 / 9;
   R.sd.view = sdExtents(SD.ZMIN, R.aspect);
 }
@@ -34,36 +37,43 @@ function place(c, W, i, lat) {
   if (c.wreckT > 0) { c.wreckT = 0; c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.events.push({ t: 'repair' }); }
   c.ghost = SD.GRACE;
 }
-/** Put every car still in the match on a 2x2 rolling grid at the leader's position, in running order. */
-export function regroup(R, W) {
-  const order = R.cars.slice().sort((a, b) => b.progress - a.progress), i = order[0].pr.i;
-  order.forEach((c, k) => place(c, W, Math.max(4, i + GRID[k % 4][0] - 8 * Math.floor(k / 4)), GRID[k % 4][1]));
-  R.sd.boomT.fill(0); R.sd.offT.fill(0);
-  R.sd.snap = true; R.sd.camSnap = true; R.sd.scale = SD.ZMIN;
-}
 function finish(R, winner) {
   const S = R.sd; S.phase = 'over'; S.winner = R.cars.indexOf(winner);
   R.player.events.push({ t: 'sd-over', winner: S.winner });
 }
-function mostLights(R) {
-  const S = R.sd; let best = null, bi = -1;
-  R.cars.forEach((c, k) => { if (!best || S.lights[k] > S.lights[bi] || (S.lights[k] === S.lights[bi] && c.progress > best.progress)) { best = c; bi = k; } });
-  return best;
+function mostCrown(R) {
+  const S = R.sd; let bi = 0;
+  R.cars.forEach((c, k) => { if (S.crown[k] > S.crown[bi] || (S.crown[k] === S.crown[bi] && c.progress > R.cars[bi].progress)) bi = k; });
+  return R.cars[bi];
 }
-/** The leader takes a light from each loser (a car on none just stays on none). Returns true when the match is over. */
-function score(R, L, losers, boom) {
+/** Crown time multiplier for the current streak. */
+export function sdMult(streak) { for (const [t, m] of SD.STREAK) if (streak >= t) return m; return 1; }
+function take(R, k) {
+  const S = R.sd, from = S.holder; S.holder = k; S.streak = 0; S.stealer = -1; S.stealT = 0;
+  if (from >= 0) S.steals[k]++;
+  R.cars[k].events.push({ t: 'sd-crown', to: k, from });
+}
+/** Hand the crown on a clear pass, then bank the holder's time. Returns true when that wins the match. */
+function crownStep(R, L, dt) {
   const S = R.sd, li = R.cars.indexOf(L);
-  S.lights[li] += losers.length; for (const k of losers) S.lights[k] = Math.max(0, S.lights[k] - 1);
-  S.rounds++; S.taken[li] += losers.length; if (boom) for (const k of losers) S.booms[k]++;
-  L.events.push({ t: 'sd-round', winner: li, losers, boom });
-  if (S.lights[li] >= SD.WIN) { finish(R, L); return true; }
+  if (S.holder < 0 || S.boomT[S.holder] > 0) take(R, li);                        // nobody has it yet, or the holder blew up
+  else if (li !== S.holder) {
+    const gap = L.progress - R.cars[S.holder].progress;
+    if (gap > SD.STEAL_GAP) take(R, li);
+    else if (gap > SD.STEAL_EDGE) { S.stealT = S.stealer === li ? S.stealT + dt : dt; S.stealer = li; if (S.stealT >= SD.STEAL_HOLD) take(R, li); }
+    else S.stealT = 0;
+  } else S.stealT = 0;
+  const h = S.holder, m0 = sdMult(S.streak); S.streak += dt;
+  const m = sdMult(S.streak); if (m > m0) R.cars[h].events.push({ t: 'sd-streak', mult: m });
+  S.crown[h] += dt * m;
+  if (S.crown[h] >= SD.TARGET) { S.crown[h] = SD.TARGET; finish(R, R.cars[h]); return true; }
   return false;
 }
-/** Respawn a blown-up car rolling somewhere around the leader: behind it, beside it or just in front. */
+/** Respawn a blown-up car rolling behind the leader or alongside it (a touch back), never in front. */
 function rejoin(R, W, c) {
   const S = R.sd, L = sdLeader(R), i = L.pr.i, side = L.pr.lat > 0 ? -2.8 : 2.8, r = S.rng();
-  const slot = r < 0.4 ? 'behind' : r < 0.75 ? 'beside' : 'front';
-  const at = slot === 'behind' ? i - 12 : slot === 'beside' ? i : Math.min(i + 10, W.tr.finishIdx - 20);
+  const slot = r < 0.6 ? 'behind' : 'beside';
+  const at = slot === 'behind' ? i - 12 : i - 3;
   place(c, W, Math.max(4, at), slot === 'beside' ? side : (S.rng() < 0.5 ? -2.8 : 2.8));
   S.spawns.push(slot); c.events.push({ t: 'sd-spawn', slot });
 }
@@ -86,32 +96,29 @@ export function showdownStep(R, W, dt) {
   else { const k = 1 - Math.exp(-dt * 5); S.focus.x += (tx - S.focus.x) * k; S.focus.y += (L.y - S.focus.y) * k; S.focus.z += (tz - S.focus.z) * k; }
   fitZoom(R, dt);
   if (R.phase !== 'racing') return;
-  if (L.progress >= W.tr.finishIdx) { finish(R, mostLights(R)); return; }
-
-  if (S.phase === 'announce') { S.timer -= dt; if (S.timer <= 0) { regroup(R, W); S.phase = 'run'; S.grace = SD.GRACE; } return; }
+  if (L.progress >= W.tr.finishIdx) { finish(R, mostCrown(R)); return; }
 
   // blown-up cars come back once the smoke clears
   R.cars.forEach((c, k) => { if (S.boomT[k] > 0 && (S.boomT[k] -= dt) <= 0) { S.boomT[k] = 0; S.offT[k] = 0; rejoin(R, W, c); } });
+  if (crownStep(R, L, dt)) return;
 
   S.grace -= dt; if (S.grace > 0) return;
   // judged against the most zoomed-out view, so the camera always pulls back as far as it can before anyone blows up
-  const far = sdExtents(SD.ZMAX, R.aspect), hw = far.hw + SD.OFF_SLACK, hh = far.hh + SD.OFF_SLACK, chasers = [];
+  const far = sdExtents(SD.ZMAX, R.aspect), hw = far.hw + SD.OFF_SLACK, hh = far.hh + SD.OFF_SLACK, dropped = [];
   R.cars.forEach((c, k) => {
-    if (c === L || S.boomT[k] > 0) { S.offT[k] = 0; return; }
-    chasers.push(k);
-    if (c.ghost > 0) { S.offT[k] = 0; return; }                               // just respawned: safe for a moment
+    if (c === L || S.boomT[k] > 0 || c.ghost > 0) { S.offT[k] = 0; return; }          // just respawned: safe for a moment
     const [sx, sy] = screenOffset(c.x, c.y, c.z, S.focus);
     S.offT[k] = Math.abs(sx) > hw || Math.abs(sy) > hh ? S.offT[k] + dt : 0;
+    if (S.offT[k] >= SD.OFF_TIME) dropped.push(k);
   });
-  const dropped = chasers.filter(k => S.offT[k] >= SD.OFF_TIME);
   if (!dropped.length) return;
-  if (dropped.length === chasers.length) {
-    // breakaway: the leader has left everyone behind, so stop and regroup
-    if (score(R, L, dropped, false)) return;
-    S.offT.fill(0); S.phase = 'announce'; S.timer = SD.ANNOUNCE;
-    return;
+  // left behind: blow up, hand some crown time to the crown holder (to the leader if it was the holder that dropped)
+  const to = dropped.includes(S.holder) ? R.cars.indexOf(L) : S.holder, amts = [];
+  for (const k of dropped) {
+    const c = R.cars[k], amt = Math.min(SD.BOOM_TAKE, S.crown[k]);
+    S.crown[k] -= amt; S.crown[to] += amt; S.taken[to] += amt; S.booms[k]++; amts.push(amt);
+    S.offT[k] = 0; S.boomT[k] = SD.BOOM; c.wreckT = 1e9; c.boost = 0; c.driftT = 0; c.events.push({ t: 'wreck' });
   }
-  // stragglers: blow them up and keep racing
-  for (const k of dropped) { const c = R.cars[k]; S.offT[k] = 0; S.boomT[k] = SD.BOOM; c.wreckT = 1e9; c.boost = 0; c.driftT = 0; c.events.push({ t: 'wreck' }); }
-  score(R, L, dropped, true);
+  R.cars[to].events.push({ t: 'sd-boom', to, losers: dropped, amts });
+  if (S.crown[to] >= SD.TARGET) { S.crown[to] = SD.TARGET; finish(R, R.cars[to]); }
 }

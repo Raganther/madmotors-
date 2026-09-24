@@ -4,7 +4,7 @@ import { AudioSys } from '../audio/audio.js';
 import { CAR_HL, CAR_HW } from '../core/constants.js';
 import { clamp, lerp, wrapAngle } from '../core/math.js';
 import { WRECK_T, carWear } from '../core/sim/damage.js';
-import { SD, sdLeader } from '../core/modes/showdown.js';
+import { SD } from '../core/modes/showdown.js';
 import { CAR_DEFS, TRAFFIC_KINDS } from '../data/cars.js';
 import { effectsForCar } from './effects/carfx.js';
 import { glassBits, sparks } from './effects/impacts.js';
@@ -241,7 +241,7 @@ export function updateCarVisuals(dt, now) {
   for (const v of G.parkVis) v.root.visible = false;
   for (const c of race.parked) if (c.vis) drawCar(c, c.vis, dt, now);
   const P = race.player;
-  const L = sd && G.state !== 'menu' ? sdLeader(race) : null;
+  const L = sd && G.state !== 'menu' && sd.holder >= 0 ? race.cars[sd.holder] : null;   // the crown sits on its holder
   marker.position.set(P.dx ?? P.x, (P.dy ?? P.y) + (L === P ? 5.4 : 3.6) + Math.sin(now * 4) * 0.25, P.dz ?? P.z); marker.rotation.y = now * 1.5;
   marker.visible = G.state !== 'menu';
   crown.visible = !!L;

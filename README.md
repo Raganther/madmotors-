@@ -4,10 +4,11 @@ A top-down alpine racer in the spirit of *Ignition*: breakable barriers, car dam
 crossings, rockfall and a gorge circuit with viaducts. Three.js (r128), plain JavaScript, built with Vite into a
 single self-contained HTML file.
 
-Two modes: **Race** (first to the line) and **Showdown** (Micro Machines-style: the camera follows the leader;
-the camera zooms out as the pack spreads, and once it can't, a car left off the screen blows up, the leader takes one of
-its lights and it rejoins rolling behind, beside or in front of the leader; nobody is knocked out; only a
-breakaway, where the leader drops everyone at once, stops play for a rolling regroup; first to 10 lights wins).
+Two modes: **Race** (first to the line) and **Showdown**, King of the Hill, Micro Machines style: the camera
+follows the leader and zooms out to keep the pack in shot. The leader wears the crown and banks crown time while
+holding it (x1.5 after 5 s in the lead, x2 after 10 s); the crown only changes hands on a clear pass. A car left off
+the screen at full zoom blows up, pays the holder 2 s of its crown time and respawns behind or beside the leader.
+Nothing ever stops; first to 60 s of crown time wins (or the most crown time at the finish).
 The Showdown rules live in `src/core/modes/showdown.js`; `src/core/sim/view.js` uses the camera's exact screen
 axes so what you see is what's judged.
 

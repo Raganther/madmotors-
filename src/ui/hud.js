@@ -1,6 +1,6 @@
 import { G } from '../game.js';
 import { screenOffset } from '../core/sim/view.js';
-import { SD, sdLeader } from '../core/modes/showdown.js';
+import { SD, sdLeader, sdMult } from '../core/modes/showdown.js';
 import { AudioSys } from '../audio/audio.js';
 import { TAU, clamp } from '../core/math.js';
 import { ranking } from '../core/sim/race.js';
@@ -65,7 +65,7 @@ export function updateHUD(dt) {
     $('standings').innerHTML = order.map((c, i) => `<li class="${c.isPlayer ? 'me' : ''}"><span class="st-p">${i + 1}</span><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}</li>`).join('');
   }
   setTxt('time', fmt(P.finished ? P.finishTime : race.time));
-  if (sd) { $('lap').hidden = true; setTxt('sd-title', G.world.tr.loopN ? `Showdown · Lap ${Math.min(G.world.tr.laps, P.lap + 1)} of ${G.world.tr.laps}` : 'Showdown'); }
+  if (sd) { $('lap').hidden = true; setTxt('sd-title', (G.world.tr.loopN ? `Crown · first to ${SD.TARGET}s · Lap ${Math.min(G.world.tr.laps, P.lap + 1)}/${G.world.tr.laps}` : `Crown · first to ${SD.TARGET}s`)); }
   else if (G.world.tr.loopN) { const L = G.world.tr.laps; $('lap').hidden = false; setTxt('lap', P.finished ? 'Finished' : (P.lap + 1 === L ? 'Final lap' : `Lap ${P.lap + 1} of ${L}`)); } else $('lap').hidden = true;
   const b = best[G.world.idx]; setTxt('best', b ? 'Best ' + fmt(b) : 'No best time yet');
   setTxt('speed', String(Math.round(Math.hypot(P.vx, P.vz) * 4.1)));
@@ -77,12 +77,13 @@ export function updateHUD(dt) {
   $('warn').hidden = !(wrong || P.stuckT > 3);
 }
 function updateShowdownHUD(sd, P) {
-  const L = sdLeader(race), key = sd.lights.join() + race.cars.indexOf(L);
+  const L = sdLeader(race), h = sd.holder, key = sd.crown.map(v => Math.floor(v * 4)).join() + '|' + h + '|' + sdMult(sd.streak);
   if (key !== G.sdKey) {
     G.sdKey = key;
-    const hex = c => '#' + c.def.color.toString(16).padStart(6, '0');
-    $('sd-rows').innerHTML = race.cars.map((c, k) => `<li class="${c.isPlayer ? 'me' : ''} ${c === L ? 'lead' : ''}"><span class="chip" style="background:${hex(c)}"></span><span class="nm">${c.name}</span><span class="nm-s">${c.name.slice(0, 3)}</span><span class="sd-l">${
-      Array.from({ length: SD.WIN }, (_, j) => j < sd.lights[k] ? `<i style="background:${hex(c)};box-shadow:0 0 6px ${hex(c)}"></i>` : '<i></i>').join('')}</span></li>`).join('');
+    const hex = c => '#' + c.def.color.toString(16).padStart(6, '0'), m = sdMult(sd.streak);
+    // crown time per car: a bar filling toward the target, seconds, and the holder's streak multiplier
+    $('sd-rows').innerHTML = race.cars.map((c, k) => `<li class="${c.isPlayer ? 'me' : ''} ${k === h ? 'lead' : ''}"><span class="chip" style="background:${hex(c)}"></span><span class="nm">${c.name}</span><span class="nm-s">${c.name.slice(0, 3)}</span>` +
+      `<span class="sd-bar"><b style="width:${(100 * sd.crown[k] / SD.TARGET).toFixed(1)}%;background:${hex(c)}"></b></span><span class="sd-t">${Math.floor(sd.crown[k])}s${k === h && m > 1 ? `<em>×${m}</em>` : ''}</span></li>`).join('');
   }
   // glow on the screen edge you're about to drop off, stronger the closer the camera is to its zoom limit
   const edge = $('edge').children, v = sd.view;

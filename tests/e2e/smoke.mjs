@@ -34,7 +34,7 @@ for (let i = 0; i < n; i++) {
   // the real loop was stubbed out for this stage; reload for the next one
   await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 }
-// Showdown on a downhill stage and on the gorge: play until at least one round is scored (a tight pack can take a while)
+// Showdown (King of the Hill) on a downhill stage, the gorge and the mesa: play until someone has banked 5 s of crown time
 for (const i of [0, 6, 7]) {
   await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
   await page.evaluate(i => { window.__dr.flow.setMode('showdown'); window.__dr.flow.startRace(i); }, i);
@@ -42,13 +42,13 @@ for (const i of [0, 6, 7]) {
   const info = await page.evaluate(() => {
     const d = window.__dr; window.requestAnimationFrame = () => 0;
     d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
-    for (let k = 0; k < 300 && d.race.sd.rounds === 0 && d.race.sd.phase !== 'over'; k++) d.step(0.5);
+    for (let k = 0; k < 60 && Math.max(...d.race.sd.crown) < 5 && d.race.sd.phase !== 'over'; k++) d.step(0.5);
     d.step(0.2);
-    return { stage: d.G.world.stage.name, rounds: d.race.sd.rounds, phase: d.race.sd.phase, lights: d.race.sd.lights.join('/'), panel: !document.getElementById('sd-panel').hidden, view: d.race.sd.view };
+    return { stage: d.G.world.stage.name, crown: d.race.sd.crown.map(v => v.toFixed(1)).join('/'), holder: d.race.sd.holder, phase: d.race.sd.phase, rows: document.querySelectorAll('#sd-rows .sd-bar').length, panel: !document.getElementById('sd-panel').hidden, view: d.race.sd.view };
   });
   await page.screenshot({ path: path.join(outDir, `showdown${i + 1}.png`) });
-  console.log(`showdown ${info.stage}: ${info.rounds} round(s), phase ${info.phase}, lights ${info.lights}, panel ${info.panel}, view ${info.view.hw.toFixed(1)}x${info.view.hh.toFixed(1)}`);
-  if (!info.rounds || !info.panel) errors.push('showdown did not score a round / show its panel on ' + info.stage);
+  console.log(`showdown ${info.stage}: crown ${info.crown} (holder ${info.holder}), phase ${info.phase}, panel ${info.panel} with ${info.rows} bars, view ${info.view.hw.toFixed(1)}x${info.view.hh.toFixed(1)}`);
+  if (info.holder < 0 || !info.panel || info.rows !== 4) errors.push('showdown crown / panel missing on ' + info.stage);
 }
 await page.evaluate(() => window.__dr.flow.setMode('race'));
 // the see-through window opens only inside long tunnels: check it live (real frame loop) in and out of the Mountain Pass tunnel
