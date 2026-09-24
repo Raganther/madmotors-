@@ -1,0 +1,79 @@
+import * as THREE from 'three';
+import { HALF } from '../../core/constants.js';
+import { clamp, lerp } from '../../core/math.js';
+import { chunkMesh } from '../geometry.js';
+import { withCutaway } from '../materials.js';
+import { bridgeMat } from './bridges.js';
+
+export const ROAD_STRIPS = [-HALF + 1.1, -3.7, -2.3, -1.2, 1.2, 2.3, 3.7, HALF - 1.1];
+export function makeRoadMesh(tr, stage) {
+  const C = stage.colors, N = tr.loopN || tr.N, loop = !!tr.loopN;
+  const mainPos = [], mainCol = [], brPos = [], brCol = [];
+  let pos = mainPos, col = mainCol;
+  const road = new THREE.Color(C.road), dirt = new THREE.Color(C.dirt).multiplyScalar(0.85), skirt = new THREE.Color(C.dirt).multiplyScalar(0.68);
+  const concrete = new THREE.Color(0xB9BBC0), red = new THREE.Color(0xD8352A), white = new THREE.Color(0xF4F4F0), yel = new THREE.Color(0xFFC72C), blk = new THREE.Color(0x262626), tmp = new THREE.Color();
+  const mnL = new Float32Array(N);
+  for (let i = 0; i < N; i++) { let m = 1e9; for (let j = i - 3; j <= i + 3; j++) { const jj = loop ? (j + N) % N : clamp(j, 0, N - 1); m = Math.min(m, tr.H[jj]); } mnL[i] = m; }
+  const O = [-HALF - 3, -HALF - 2, -HALF, -HALF + 1.1, HALF - 1.1, HALF, HALF + 2, HALF + 3];
+  const quad = (ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, c) => {
+    pos.push(ax, ay, az, cx, cy, cz, bx, by, bz, bx, by, bz, cx, cy, cz, dx, dy, dz);
+    for (let q = 0; q < 6; q++) col.push(c.r, c.g, c.b);
+  };
+  const P = (i, o, y) => [tr.xs[i] + tr.rx[i] * o, y, tr.zs[i] + tr.rz[i] * o];
+  const segs = loop ? N : N - 1;
+  for (let i = 0; i < segs; i++) {
+    const j = loop ? (i + 1) % N : i + 1, onBridge = tr.bridge[i] || tr.bridge[j];
+    pos = onBridge ? brPos : mainPos; col = onBridge ? brCol : mainCol;
+    for (let s = 0; s < 7; s++) {
+      const oa = O[s], ob = O[s + 1];
+      const yf = (ii, k) => {
+        const H = tr.H[ii];
+        if (tr.bridge[ii]) { if (k === 0 || k === 7) return H - 0.9; if (k === 1 || k === 6) return H - 0.02; }
+        if (k === 0 || k === 7) return Math.min(H - 1.6, mnL[ii] - 1.2);
+        if (k === 1 || k === 6) return H - 0.4;
+        if (s === 2 || s === 4) return H + 0.1;
+        return H + 0.05;
+      };
+      let c;
+      if ((s === 0 || s === 6) && tr.bridge[i]) c = concrete; else if ((s === 1 || s === 5) && tr.bridge[i]) c = concrete;
+      else if (s === 0 || s === 6) c = skirt; else if (s === 1 || s === 5) c = dirt;
+      else if (s === 2 || s === 4) { const kerb = s === 2 ? tr.kerbL[i] : tr.kerbR[i]; c = kerb ? (((i >> 1) & 1) ? red : white) : road; }
+      else if (tr.jump[i]) c = ((i >> 1) & 1) ? yel : blk;
+      else {
+        // the driving surface in strips: darker worn wheel tracks in each lane plus the odd repair patch
+        const base = 1 + tr.noise.n2(i * 0.15, 3.3) * 0.08;
+        for (let q = 0; q < ROAD_STRIPS.length - 1; q++) {
+          const pa = ROAD_STRIPS[q], pb = ROAD_STRIPS[q + 1];
+          let k = base * (q === 1 || q === 5 ? 0.9 : q === 3 ? 1.02 : 1);
+          const pn = tr.noise.n2(i * 0.045 + q * 0.7, 9.1 + q * 0.3); if (pn > 0.62) k *= tr.surface === 'tarmac' ? 0.86 : 1.08;
+          tmp.copy(road).multiplyScalar(k);
+          const qa = P(i, pa, tr.H[i] + 0.05), qb = P(i, pb, tr.H[i] + 0.05), qc = P(j, pa, tr.H[j] + 0.05), qd = P(j, pb, tr.H[j] + 0.05);
+          quad(...qa, ...qb, ...qc, ...qd, tmp);
+        }
+        continue;
+      }
+      // quad corners: a=(i,oa) b=(i,ob) c=(j,oa) d=(j,ob) ; orient so normal faces up
+      const a = P(i, oa, yf(i, s)), b = P(i, ob, yf(i, s + 1)), cc = P(j, oa, yf(j, s)), d = P(j, ob, yf(j, s + 1));
+      quad(...a, ...b, ...cc, ...d, c);
+    }
+    if (tr.surface === 'tarmac' && !tr.jump[i] && i % 6 < 3 && i > 40 && (loop || i < tr.finishIdx - 4)) {
+      const a = P(i, -0.18, tr.H[i] + 0.07), b = P(i, 0.18, tr.H[i] + 0.07), cc = P(j, -0.18, tr.H[j] + 0.07), d = P(j, 0.18, tr.H[j] + 0.07);
+      quad(...a, ...b, ...cc, ...d, white);
+    }
+  }
+  // checkered start and finish lines
+  pos = mainPos; col = mainCol;
+  for (const li of (loop ? [tr.startIdx] : [tr.startIdx, tr.finishIdx])) {
+    for (let row = 0; row < 2; row++) for (let q = 0; q < 12; q++) {
+      const o0 = -HALF + q * (2 * HALF / 12), o1 = o0 + 2 * HALF / 12, s0 = li + row * 0.8, s1 = s0 + 0.8;
+      const i0 = Math.floor(s0), f0 = s0 - i0, i1 = Math.floor(s1), f1 = s1 - i1;
+      const pt = (ii, f, o) => { const x = lerp(tr.xs[ii], tr.xs[ii + 1], f) + tr.rx[ii] * o, z = lerp(tr.zs[ii], tr.zs[ii + 1], f) + tr.rz[ii] * o; return [x, lerp(tr.H[ii], tr.H[ii + 1], f) + 0.08, z]; };
+      quad(...pt(i0, f0, o0), ...pt(i0, f0, o1), ...pt(i1, f1, o0), ...pt(i1, f1, o1), (q + row) % 2 ? white : blk);
+    }
+  }
+  const mk = (P, C, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m; };
+  const mainM = mk(mainPos, mainCol, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), false, { cut: false, cloud: true })), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
+  const bridge = brPos.length ? mk(brPos, brCol, bridgeMat({ vertexColors: true, side: THREE.DoubleSide })) : null;
+  if (bridge) bridge.castShadow = true;
+  return { main, bridge };
+}
