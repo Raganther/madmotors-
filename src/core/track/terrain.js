@@ -27,15 +27,15 @@ export function buildTerrain(tr, stage) {
       if (tr.carve) v -= tr.carve * smoothstep(HALF + 8, HALF + 40, d) * (tr.carveW ? tr.carveW(x, z) : 1);
       if (d < (tr.edge || HALF + 15)) {
         let mn = 1e9;
-        if (tr.loopN) { for (let kk = q.i - 3; kk <= q.i + 3; kk++) mn = Math.min(mn, tr.H[(kk + tr.loopN) % tr.loopN]); }
+        if (tr.loopN) { for (let d = -3; d <= 3; d++) mn = Math.min(mn, tr.H[tr.nb0(q.i, d)]); }
         else for (let kk = Math.max(0, q.i - 3); kk <= Math.min(tr.N - 1, q.i + 3); kk++) mn = Math.min(mn, tr.H[kk]);
         v = lerp(mn - 0.35, v, smoothstep(HALF + 1, tr.edge || HALF + 15, d));
       }
       // a gap or ferry crossing: ground ahead of the lip / behind the landing falls straight away (no flattening into the void)
       let dd = d;
       if (tr.voidMask && q) {
-        const N0 = tr.loopN || tr.N, b = q.i % N0, i = q.i, along = (x - tr.xs[i]) * tr.tx[i] + (z - tr.zs[i]) * tr.tz[i];
-        const V = tr.voidMask, lip = V[(b + 1) % N0] && !V[b], land = V[(b - 1 + N0) % N0] && !V[b];
+        const b = tr.bi(q.i), i = q.i, along = (x - tr.xs[i]) * tr.tx[i] + (z - tr.zs[i]) * tr.tz[i];
+        const V = tr.voidMask, lip = V[tr.nb(b, 1)] && !V[b], land = V[tr.nb(b, -1)] && !V[b];
         if ((lip && along > 0.5) || (land && along < -0.5)) { v = Math.min(v, tr.H[i] - 38); dd = 99; }
       }
       if (tr.river) v = Math.min(v, riverBed(tr.river, x, z));

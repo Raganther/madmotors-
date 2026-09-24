@@ -52,6 +52,9 @@ export const SANDBOXES = {
     right: [['s', 30, 0], ['s', 20, -8, { far: -4, near: -4 }], ['s', 50, -8, { ferry: true, far: -16, rampF: 3, near: -16, rampN: 3 }], ['s', 20, -8, { far: -4, near: -4 }], ['s', 30, 0]],
     top: [flat(60)], left: [flat(20)]
   }, { river: { pts: [[80, 125], [300, 125]], level: -11, width: 40 } }),
+  branch: loop('branch', 'the road splits: a kicker on the main road, a lower boosted route beside it, merging again', {
+    bottom: [flat(40), flat(60), ['s', 40, 0, { kick: 2.4 }], flat(60), flat(40)], right: [flat(60)], top: [flat(200)], left: [flat(20)]
+  }, { branches: [{ from: 1, to: 4, name: 'low road', segs: [['a', 30, -60, -2, { near: -3 }], ['a', 30, 60, -4], ['s', 56, -4, { boost: true, far: 5, rampF: 6 }], ['a', 30, 60, -2], ['a', 30, -60, 0]] }] }),
   rails: loop('rails', 'a level crossing with trains', {
     bottom: [flat(120)], right: [flat(60)], top: [flat(80)], left: [flat(20)]
   }, { rails: [{ id: 'line', pts: [[60, -80, 0], [60, 80, 0]], speed: 26, cars: 3, body: ravenrock.rails[0].body, coach: ravenrock.rails[0].coach, band: ravenrock.rails[0].band }] })

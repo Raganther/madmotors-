@@ -26,33 +26,35 @@ function build(tr) {
   if (group) { scene.remove(group); group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } }); }
   group = new THREE.Group(); group.visible = overlayOn; scene.add(group);
   const N = tr.loopN || tr.N, pos = [], col = [], c = new THREE.Color();
-  for (let i = 0; i < N; i++) {
+  for (const i of tr.all0) {
     const [name] = CH_COL.find(([k]) => tr[k] && tr[k][i]) || []; c.setHex(name ? CH_COL.find(([k]) => k === name)[1] : 0x2FE0FF);
     pos.push(tr.xs[i], tr.H[i] + 0.35, tr.zs[i]); col.push(c.r, c.g, c.b);
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   group.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 4, sizeAttenuation: false, vertexColors: true, depthTest: false })));
   const wp = [], wc = [];
-  for (let i = 0; i < N; i += 2) for (const [arr, s] of [[tr.wallL, -1], [tr.wallR, 1]]) {
+  for (let k = 0; k < tr.all0.length; k += 2) for (const [arr, s] of [[tr.wallL, -1], [tr.wallR, 1]]) {
+    const i = tr.all0[k];
     const t = arr[i]; if (!t) continue; c.setHex(WALL_COL[t] || 0xff00ff);
     for (const lat of [s * (WALL - 0.4), s * (WALL + 0.8)]) { wp.push(tr.xs[i] + tr.rx[i] * lat, tr.H[i] + 1, tr.zs[i] + tr.rz[i] * lat); wc.push(c.r, c.g, c.b); }
   }
   const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wp, 3)); wg.setAttribute('color', new THREE.Float32BufferAttribute(wc, 3));
   group.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ vertexColors: true, depthTest: false })));
-  for (const m of trackMarkers(tr)) { const i = m.i % N, s = label(`${m.element}: ${m.label}`); s.position.set(tr.xs[i], tr.H[i] + 6, tr.zs[i]); group.add(s); }
+  for (const m of trackMarkers(tr)) { const i = m.i < tr.NM ? m.i % N : m.i, s = label(`${m.element}: ${m.label}`); s.position.set(tr.xs[i], tr.H[i] + 6, tr.zs[i]); group.add(s); }
   builtFor = tr;
 }
 const f1 = v => (Math.round(v * 10) / 10).toFixed(1);
 export function updateOverlay() {
   if (!overlayOn || !G.world || !race) return;
   const tr = G.world.tr; if (builtFor !== tr) build(tr);
-  const P = race.player, N = tr.loopN || tr.N, i = P.pr.i % N, marks = trackMarkers(tr);
-  const next = marks.map(m => ({ m, d: ((m.i - i) % N + N) % N })).sort((a, b) => a.d - b.d)[0];
-  const on = CH_COL.map(([k]) => k).filter(k => tr[k] && tr[k][i]);
+  const P = race.player, N = tr.loopN || tr.N, i = tr.bi(P.pr.i), u = P.pr.i, marks = trackMarkers(tr);
+  const next = marks.map(m => ({ m, d: ((tr.bi(m.i) - i) % N + N) % N })).sort((a, b) => a.d - b.d)[0];
+  const on = CH_COL.map(([k]) => k).filter(k => tr[k] && tr[k][k === 'tunnel' || k === 'bridge' || k === 'jump' ? u : i]);
+  const alt = u >= tr.NM ? tr.alts.find(a => i >= a.o && i < a.o + a.n) : null;
   panel.textContent = [
-    `${G.world.stage.name}   sample ${i}/${N}   lat ${f1(P.pr.lat)} m   h ${f1(P.y)} m`,
+    `${G.world.stage.name}   sample ${i}/${N}${alt ? ` (${alt.name})` : ''}   progress ${f1(P.progress)}   lat ${f1(P.pr.lat)} m   h ${f1(P.y)} m`,
     `speed ${Math.round(Math.hypot(P.vx, P.vz) * 3.6)} km/h   surface ${P.surface}   ${P.onGround ? 'ground' : `air ${f1(P.airT)} s`}   draft ${f1(P.draft || 0)}   oil ${f1(Math.max(0, P.oilT || 0))}`,
-    `walls L ${WALL_NAMES[tr.wallL[i]]}  R ${WALL_NAMES[tr.wallR[i]]}   here: ${on.join(', ') || 'open road'}   dmg ${Object.values(P.dmg).map(v => v.toFixed(2)).join('/')}`,
+    `walls L ${WALL_NAMES[tr.wallL[u]]}  R ${WALL_NAMES[tr.wallR[u]]}   here: ${on.join(', ') || 'open road'}   dmg ${Object.values(P.dmg).map(v => v.toFixed(2)).join('/')}`,
     next ? `next: ${next.m.element} (${next.m.label}) in ${next.d} m` : 'no elements',
     `hazards ${(race.hazards || []).length}   traffic ${(race.traffic || []).length}   ${race.sd ? `crown holder ${race.sd.holder}` : ''}`
   ].join('\n');

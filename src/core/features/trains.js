@@ -33,7 +33,7 @@ export function trainStep(R, W, dt) {
     // dispatch assist: player 5-8 s from one of this line's crossings
     const psp = Math.max(12, Math.hypot(P.vx, P.vz));
     for (const C of L.crossings) {
-      const ds = ((C.i - P.pr.i % N0) % N0 + N0) % N0, eta = ds / psp;
+      const ds = ((C.i - tr.bi(P.pr.i)) % N0 + N0) % N0, eta = ds / psp;
       if (ds > 400) { C.assist = -1; continue; }
       if (C.assist === -1 && eta > 5 && eta < 8) {
         C.assist = rnd() < 0.65 ? 1 : 0;
@@ -80,7 +80,7 @@ export function trainStep(R, W, dt) {
 export function closedCrossingAhead(W, i) {
   const rl = W.tr.rails; if (!rl) return Infinity;
   const N0 = W.tr.loopN || W.tr.N; let best = Infinity;
-  for (const C of rl.crossings) if (C.closed) { const ds = ((C.i - i % N0) % N0 + N0) % N0; if (ds < best) best = ds; }
+  for (const C of rl.crossings) if (C.closed) { const ds = ((C.i - W.tr.bi(i)) % N0 + N0) % N0; if (ds < best) best = ds; }
   return best;
 }
 

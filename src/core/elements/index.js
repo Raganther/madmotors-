@@ -29,7 +29,7 @@ export const elementPhase = (phase, ...args) => { for (const e of ELEMENTS) if (
 
 // stage options that belong to the stage itself rather than to an element
 const BASE_KEYS = ['name', 'blurb', 'type', 'laps', 'seed', 'surface', 'hillAmp', 'armco', 'startHeading', 'light', 'colors', 'trees', 'rocks', 'bushes', 'cacti',
-  'village', 'alpine', 'strata', 'river', 'segs', 'traffic', 'plan', 'grade', 'carve', 'L', 'W'];
+  'village', 'alpine', 'strata', 'river', 'segs', 'branches', 'traffic', 'plan', 'grade', 'carve', 'L', 'W'];
 export const SECTION_TAGS = Object.fromEntries(ELEMENTS.flatMap(e => Object.entries(e.tags || {}).map(([t, d]) => [t, `${e.name}: ${d}`])));
 export const STAGE_KEYS = new Set(BASE_KEYS.concat(ELEMENTS.flatMap(e => Object.keys(e.stageKeys || {}))));
 /** Catch typos early: unknown section tags or stage options throw, listing what's allowed. */

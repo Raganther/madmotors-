@@ -40,7 +40,7 @@ export function drawProfile(cv, tr, cars, dotR, cw, ch) {
   }
   const order = cars.slice().sort((a, b) => (a.isPlayer ? 1 : 0) - (b.isPlayer ? 1 : 0));
   for (const c of order) {
-    const s = tr.loopN ? ((c.progress % span) + span) % span : clamp(c.progress, 0, tr.N - 1), x = X(s), y = Y(roadH(tr, s));
+    const s = tr.loopN ? ((c.progress % span) + span) % span : clamp(c.progress, 0, tr.N - 1), x = X(s), y = Y(c.pr.i >= tr.NM ? c.y : roadH(tr, s));   // on a branch: its own height
     g.beginPath(); g.arc(x, y, c.isPlayer ? dotR + 1.5 : dotR, 0, TAU); g.fillStyle = '#' + c.def.color.toString(16).padStart(6, '0'); g.fill();
     g.lineWidth = c.isPlayer ? 2.5 : 1.5; g.strokeStyle = c.isPlayer ? '#FFFFFF' : '#1C2340'; g.stroke();
   }

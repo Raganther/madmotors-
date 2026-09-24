@@ -33,7 +33,7 @@ export function updateCamera(dt, snap) {
     // pull out where the ground falls away in front of the camera (ledges, bridges), pull in through town streets
     const c = race.player, tr = G.world.tr, drop = c.y - G.world.terr.at(c.x + 16, c.z + 16);
     vh += clamp((drop - 12) * 0.35, 0, 16);
-    if (tr.town && tr.town[c.pr.i % tr.loopN]) vh -= 6;
+    if (tr.town && tr.town[tr.bi(c.pr.i)]) vh -= 6;
   }
   if (aspect < 1) vh *= 1.55; if (G.state === 'menu') vh = 58;
   if (race && G.state !== 'menu' && race.sd && race.sd.view) G.viewH = 2 * race.sd.view.hh;   // already eased by the core

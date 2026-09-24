@@ -26,7 +26,7 @@ describe('element registry and stage validation', () => {
 });
 
 // what each sandbox must contain, by element name
-const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'] };
+const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost'] };
 describe('sandboxes', () => {
   it('there is a sandbox listed here for each one defined', () => expect(Object.keys(SANDBOXES).sort()).toEqual(Object.keys(EXPECT).sort()));
   for (const [name, stage] of Object.entries(SANDBOXES)) it(`${name}: builds, closes, has its elements, and four AI cars lap it cleanly`, () => {
@@ -100,3 +100,42 @@ describe('ferry (barge)', () => {
   });
 });
 
+
+describe('branches (stage.branches: the road splits and joins again)', () => {
+  const st = SANDBOXES.branch, tr = M.buildTrack(st), a = tr.alts[0];
+  it('the road graph: fork to merge along the branch, progress mapped onto the main road it replaces', () => {
+    expect(a.M - a.F).toBe(160);
+    for (const L of [0, 1, 2]) {
+      const F = L * tr.loopN + a.F, M0 = L * tr.loopN + a.M;
+      expect(tr.adv(F, 1, -1)).toBe(F + 1);                                          // the main road by default
+      const j = tr.adv(F, 1, 0); expect(j).toBeGreaterThanOrEqual(tr.NM); expect(tr.bi(j)).toBe(a.o);
+      expect(tr.adv(F, a.n + 1, 0)).toBe(M0);                                        // along the branch to the merge
+      expect(tr.adv(j, -1)).toBe(F);
+      let last = -1; for (let q = 0; q < a.n; q++) { const p = tr.progOf(tr.adv(j, q)); expect(p).toBeGreaterThan(last); last = p; }
+      expect(last).toBeGreaterThan(M0 - 2); expect(last).toBeLessThan(M0);
+    }
+    const q = tr.nearest(tr.xs[a.u + 60], tr.zs[a.u + 60]); expect(q.i).toBe(a.u + 60); // nearest() gives lap-0 road indices
+  });
+  it('no barriers between the two roads where they run side by side, tyres on the nose where they part', () => {
+    let fork = 0, merge = 0; for (let b = 0; b < tr.NB; b++) if (tr.twin[b] >= 0) { if (b < a.F + 60 || (b >= a.o && b < a.o + 60)) fork++; else merge++; }
+    expect(fork).toBeGreaterThan(40); expect(merge).toBeGreaterThan(40);
+    const side = tr.wallL[a.u + 5] === 0 ? 'wallL' : 'wallR';
+    expect(tr.wallL[a.F + 10]).toBe(0);                                              // the branch leaves on the main road's left
+    expect([...Array(40)].some((_, k) => tr[side][a.u + 20 + k] === 1 || tr.wallR[a.u + 20 + k] === 1)).toBe(true);
+  });
+  it('the AI splits between the routes and everyone gets round; plain circuits and point-to-point stages have the same route API', () => {
+    seedRandom(3); const W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true };
+    const R = M.createRace(W, DEFS); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9;
+    const took = R.cars.map(() => 0); let t = 0;
+    while (t < 120 && R.cars.some(c => !c.finished)) { M.raceStep(R, 1 / 120, W); t += 1 / 120; R.cars.forEach((c, k) => { if (c.pr.i >= tr.NM) took[k] = 1; }); }
+    expect(R.cars.every(c => c.finished)).toBe(true);
+    expect(took.some(v => v)).toBe(true);
+    expect(R.cars.reduce((n, c) => n + c.respawns, 0)).toBe(0);
+    for (const s of [M.STAGES[0], M.STAGES[4]]) { const t2 = M.buildTrack(s); expect(t2.alts).toEqual([]); expect(t2.bi(7)).toBe(7); expect(t2.u0(7)).toBe(7); expect(t2.progOf(12.5)).toBe(12.5); expect(t2.adv(10, 5)).toBe(15); }
+  });
+  it('a branch that does not rejoin where it should, or uses an element branches do not support, fails loudly', () => {
+    const br = st.branches[0], bad = segs => M.buildTrack({ ...st, branches: [{ ...br, segs }] });
+    expect(() => bad(br.segs.slice(0, -1))).toThrow(/branch 0 ends .* from where it should rejoin/);
+    expect(() => bad([...br.segs.slice(0, 2), ['s', 56, -4, { bridge: true }], ...br.segs.slice(3)])).toThrow(/"bridge" can't be used on a branch/);
+  });
+});

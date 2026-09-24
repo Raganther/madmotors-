@@ -1,4 +1,4 @@
-import { runs } from './jump.js';
+import { baseRuns } from './jump.js';
 
 // Gallery: a rock gallery on a cliff ledge, a roof carried on pillars along the valley side, with a solid parapet.
 export const element = {
@@ -11,5 +11,5 @@ export const element = {
     for (let i = 0; i < N0; i++) if (ch.gallery[i]) { if (PF.dot[i] > 0) wallL0[i] = 5; else wallR0[i] = 5; }
   },
   track(ctx, out) { out.gallery = ctx.gorge ? ctx.ch.gallery : null; },
-  markers: tr => runs(tr.gallery, tr.loopN || tr.N).map(([a, b]) => ({ i: a, label: `gallery ${b - a}m` }))
+  markers: tr => baseRuns(tr, tr.gallery).map(([a, b]) => ({ i: a, label: `gallery ${b - a}m` }))
 };

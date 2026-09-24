@@ -55,7 +55,7 @@ export function frame(t) {
   }
   if (G.calloutTimer > 0) { G.calloutTimer -= dt; if (G.calloutTimer <= 0) $('callout').hidden = true; }
   if (G.hintTimer > 0 && G.state !== 'paused') { G.hintTimer -= dt; $('hint').hidden = G.hintTimer <= 0; } else if (G.hintTimer <= 0) $('hint').hidden = true;
-  if (race && G.state !== 'menu') { const P = race.player; CUT.car.value.set(P.x, P.y, P.z); const cov = G.world.cover[P.pr.i % G.world.cover.length] ? 8.5 : 0; CUT.r.value += ((G.state === 'paused' ? CUT.r.value : cov) - CUT.r.value) * Math.min(1, dt * 6); } else CUT.r.value = 0;
+  if (race && G.state !== 'menu') { const P = race.player; CUT.car.value.set(P.x, P.y, P.z); const cov = G.world.cover[G.world.tr.bi(P.pr.i)] ? 8.5 : 0; CUT.r.value += ((G.state === 'paused' ? CUT.r.value : cov) - CUT.r.value) * Math.min(1, dt * 6); } else CUT.r.value = 0;
   if (G.state !== 'paused') { const fxDt = G.slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); elementHook('update', dt, now, fxDt); updateParticles(fxDt); updateSparks(fxDt); updateFans(now); updateCamera(dt, false); }
   updateHUD(dt); updateOverlay();
   if (!contextLost) renderFrame();

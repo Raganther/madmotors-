@@ -32,6 +32,8 @@ export const element = {
   track(ctx, out) { out.autoJumps = ctx.marks.autoJumps || []; },
   markers: tr => (tr.autoJumps || []).map(i => ({ i, label: 'jump' }))
 };
+/** runs() over a built track's base samples (branches too), as lap-0 road indices [start, end). */
+export const baseRuns = (tr, arr) => runs(arr, tr.NB).map(([a, b]) => [tr.u0(a), tr.u0(a) + b - a]);
 /** Runs of non-zero samples in a per-sample array: [[start, end], ...] (end exclusive). */
 export function runs(arr, N) {
   const out = []; if (!arr) return out;

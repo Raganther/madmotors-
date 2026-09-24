@@ -32,12 +32,19 @@ export function makeCar(W, idx, lat, def) {
 }
 export function respawn(c, W) {
   if (c.traffic) { c.dead = true; return; }
-  const tr = W.tr; const i = clamp(c.lastGood - 10, 4, tr.N - 10);
+  const tr = W.tr; const i = tr.nx ? Math.max(4, tr.adv(c.lastGood, -10)) : clamp(c.lastGood - 10, 4, tr.N - 10);
   const lat = c.isPlayer ? 0 : clamp(c.ai.lane, -3, 3);
   c.x = tr.xs[i] + tr.rx[i] * lat; c.z = tr.zs[i] + tr.rz[i] * lat; c.y = tr.H[i]; c.yaw = tr.th[i]; c.strandT = 0;
   c.vx = tr.tx[i] * 8; c.vz = tr.tz[i] * 8; c.vy = 0; c.onGround = true; c.airT = 0; c.boost = 0; c.offT = 0; c.stuckT = 0; c.wrongT = 0;
   c.ghost = 2; c.driftT = 0; c.spin = 0; c.lastGood = i; c.pr = project(tr, c.x, c.z, i, 2, 2); c.ai.cur = lat;
   computeGrad(c, W); c.events.push({ t: 'respawn' }); c.respawns++;
+}
+/** Where a branch runs alongside the main road (fork and merge), move the car onto whichever route it's clearly
+ *  nearer (a little hysteresis so it doesn't flicker between the two). */
+function pickRoute(tr, c, pr) {
+  const t = tr.twin[tr.bi(pr.i)]; if (t < 0) return pr;
+  const q = project(tr, c.x, c.z, tr.lapU(t, tr.lapOf(pr.i)), 3, 3);
+  return q.dist < pr.dist - 0.3 && Math.abs(tr.H[q.i] - c.y) < 4 ? q : pr;
 }
 /** Integrate one car for one step: engine, grip, gravity, ground, barriers. @param {import('../types.js').Car} c @param {number} dt @param {import('../types.js').World} W @param {boolean} racing */
 export function stepCar(c, dt, W, racing) {
@@ -88,12 +95,18 @@ export function stepCar(c, dt, W, racing) {
   if (c.boost > 0) c.boost -= dt;
   c.x += c.vx * dt; c.z += c.vz * dt;
   pr = project(tr, c.x, c.z, pr.i, 6, 10);
+  if (tr.twin) pr = pickRoute(tr, c, pr);
   if (pr.dist > HALF + 12) {
     // off the road (e.g. through a broken barrier): pick the road back up further along if it's closer
     const q = tr.nearest(c.x, c.z);
     if (q && q.d < pr.dist - 3) {
-      const cand = tr.loopN ? pr.i + ((q.i - pr.i % tr.loopN) % tr.loopN + tr.loopN) % tr.loopN : q.i;
-      if (cand > pr.i && cand - pr.i < 700 && cand < tr.N - 3 && Math.abs(tr.H[cand] - c.y) < 10) pr = project(tr, c.x, c.z, cand, 6, 10);
+      if (tr.nx) {
+        const cand = tr.ahead(tr.bi(q.i), c.progress);
+        if (cand >= 0 && tr.progOf(cand) - c.progress < 700 && Math.abs(tr.H[cand] - c.y) < 10) pr = project(tr, c.x, c.z, cand, 6, 10);
+      } else {
+        const cand = tr.loopN ? pr.i + ((q.i - pr.i % tr.loopN) % tr.loopN + tr.loopN) % tr.loopN : q.i;
+        if (cand > pr.i && cand - pr.i < 700 && cand < tr.N - 3 && Math.abs(tr.H[cand] - c.y) < 10) pr = project(tr, c.x, c.z, cand, 6, 10);
+      }
     }
   }
   c.pr = pr;
@@ -161,7 +174,7 @@ export function stepCar(c, dt, W, racing) {
       }
     }
   }
-  c.progress = pr.s;
+  c.progress = tr.progOf(pr.s);
   if (c.onGround && al < HALF - 0.5) c.lastGood = pr.i;
   const spd = Math.hypot(c.vx, c.vz);
   if (pr.dist > 24) c.offT += dt * (spd > 8 && pr.dist < 70 ? 0.3 : 1); else c.offT = 0;   // a moving car gets time to cut across to the next bit of road
@@ -178,14 +191,14 @@ export function stepCar(c, dt, W, racing) {
   }
   // a gap: well below the road here means you fell in; come back on the far side
   if (tr.gap && c.y < tr.H[pr.i] - 9 && !c.destroyed) {
-    const b = pr.i % (tr.loopN || tr.N), land = tr.gapLand[b];
+    const b = tr.bi(pr.i), land = tr.gapLand[b];
     if (land >= 0) { c.lastGood = pr.i - b + land + (land < b ? tr.loopN : 0) + 10; c.events.push({ t: 'fell' }); }
     respawn(c, W); return;
   }
   // boost pads
-  if (tr.boostPad && c.onGround && al < HALF && tr.boostPad[pr.i % (tr.loopN || tr.N)]) { if (!(c.boost > 0.3)) c.events.push({ t: 'boostpad' }); c.boost = Math.max(c.boost, BOOST_PAD); }
+  if (tr.boostPad && c.onGround && al < HALF && tr.boostPad[tr.bi(pr.i)]) { if (!(c.boost > 0.3)) c.events.push({ t: 'boostpad' }); c.boost = Math.max(c.boost, BOOST_PAD); }
   if (c.offT > 0.6 && !c.destroyed) respawn(c, W);   // a smashed road car stays where it lands
   else if (!c.isPlayer && !c.traffic && c.stuckT > 2.5) respawn(c, W);
   else if (!c.isPlayer && racing && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road
-  if (pr.i >= tr.N - 6) { c.vx *= 1 - 4 * dt; c.vz *= 1 - 4 * dt; }
+  if (pr.i >= tr.NM - 6 && pr.i < tr.NM) { c.vx *= 1 - 4 * dt; c.vz *= 1 - 4 * dt; }
 }

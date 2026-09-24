@@ -7,11 +7,11 @@ import { clamp } from '../math.js';
 // and tunnel walls (5) never break. Loop tracks key pieces by the base sample so damage carries over laps.
 export const BAR_P = 3, BAR_HP = { 1: 15, 2: 9, 3: 6 }, ARMCO_HP = 30, ARMCO_BEND = 1.3;
 export function makeBarriers(tr, armco) {
-  const NB = tr.loopN || tr.N, NP = Math.ceil(NB / BAR_P) + 1;
+  const NB = tr.NB, NP = Math.ceil(NB / BAR_P) + 1;
   const F = () => new Float32Array(NP), U = () => new Uint8Array(NP);
   return { NB, NP, armco: !!armco, dmg: [F(), F()], broken: [U(), U()], bend: [F(), F()], changes: [] };
 }
-export function barPiece(W, i) { const b = W.tr.loopN ? i % W.tr.loopN : i; return (b / BAR_P) | 0; }
+export function barPiece(W, i) { return (W.tr.bi(i) / BAR_P) | 0; }
 export function wallAt(W, i, side) {
   const tr = W.tr, w = side > 0 ? tr.wallR[i] : tr.wallL[i];
   if (!w || w > 3 || !W.bar) return w;

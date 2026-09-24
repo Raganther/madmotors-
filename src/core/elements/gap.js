@@ -1,4 +1,4 @@
-import { runs } from './jump.js';
+import { baseRuns, runs } from './jump.js';
 
 // Gap: no road and no ground: a void (a gorge, a river) that cars must jump. Put a `kick` right before it, ideally
 // with `boost` pads on the run-up, and land the far side a little lower. A car that drops in respawns on the far
@@ -20,5 +20,5 @@ export const element = {
     for (const [a, b] of runs(ch.gap, N0)) for (let i = a; i < b; i++) land[i] = (b + 8) % N0;
     out.gapLand = land;
   },
-  markers: tr => runs(tr.gap, tr.loopN || tr.N).map(([a, b]) => ({ i: a, label: `gap ${b - a}m` }))
+  markers: tr => baseRuns(tr, tr.gap).map(([a, b]) => ({ i: a, label: `gap ${b - a}m` }))
 };

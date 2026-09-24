@@ -29,11 +29,11 @@ const racing = R => R.cars.filter((c, k) => !(R.sd.boomT[k] > 0));   // not curr
 export function sdLeader(R) { let best = null; for (const c of racing(R)) if (!best || c.progress > best.progress) best = c; return best; }
 /** Drop a car on road sample i (lateral offset lat), already rolling forward at SD.ROLL, briefly ghosted. */
 function place(c, W, i, lat) {
-  const tr = W.tr, N0 = tr.loopN || tr.N;
-  if (tr.gap) while (i > 4 && (tr.gap[i % N0] || tr.jump[i])) i--;                    // never drop a car into a gap or onto a kicker
+  const tr = W.tr;
+  if (tr.gap) while (i > 4 && (tr.gap[tr.bi(i)] || tr.jump[i])) i = tr.adv(i, -1);   // never drop a car into a gap or onto a kicker
   c.x = tr.xs[i] + tr.rx[i] * lat; c.z = tr.zs[i] + tr.rz[i] * lat; c.y = tr.H[i]; c.yaw = tr.th[i];
   c.vx = tr.tx[i] * SD.ROLL; c.vz = tr.tz[i] * SD.ROLL; c.vy = 0; c.vf = SD.ROLL; c.vr = 0; c.onGround = true; c.airT = 0; c.boost = 0; c.driftT = 0; c.spin = 0;
-  c.offT = 0; c.stuckT = 0; c.wrongT = 0; c.strandT = 0; c.wallStuck = 0; c.lastGood = i; c.progress = i; c.ai.cur = lat;
+  c.offT = 0; c.stuckT = 0; c.wrongT = 0; c.strandT = 0; c.wallStuck = 0; c.lastGood = i; c.progress = tr.progOf(i); c.ai.cur = lat;
   c.pr = project(tr, c.x, c.z, i, 2, 2); computeGrad(c, W);
   if (c.wreckT > 0) { c.wreckT = 0; c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.events.push({ t: 'repair' }); }
   c.ghost = SD.GRACE;
@@ -74,7 +74,7 @@ function crownStep(R, L, dt) {
 function rejoin(R, W, c) {
   const S = R.sd, L = sdLeader(R), i = L.pr.i, side = L.pr.lat > 0 ? -2.8 : 2.8, r = S.rng();
   const slot = r < 0.6 ? 'behind' : 'beside';
-  const at = slot === 'behind' ? i - 12 : i - 3;
+  const at = W.tr.adv(i, slot === 'behind' ? -12 : -3);
   place(c, W, Math.max(4, at), slot === 'beside' ? side : (S.rng() < 0.5 ? -2.8 : 2.8));
   S.spawns.push(slot); c.events.push({ t: 'sd-spawn', slot });
 }
@@ -106,8 +106,10 @@ export function showdownStep(R, W, dt) {
   S.grace -= dt; if (S.grace > 0) return;
   // judged against the most zoomed-out view, so the camera always pulls back as far as it can before anyone blows up
   const far = sdExtents(SD.ZMAX, R.aspect), hw = far.hw + SD.OFF_SLACK, hh = far.hh + SD.OFF_SLACK, dropped = [];
+  const tr = W.tr, split = c => tr.alts.some(a => { const p = c.progress % tr.loopN; return p > a.F && p < a.M + 25; });
   R.cars.forEach((c, k) => {
     if (c === L || S.boomT[k] > 0 || c.ghost > 0) { S.offT[k] = 0; return; }          // just respawned: safe for a moment
+    if (tr.alts.length && (split(c) || split(L))) { S.offT[k] = 0; return; }           // where the road splits, taking the other route isn't falling behind
     const [sx, sy] = screenOffset(c.x, c.y, c.z, S.focus);
     S.offT[k] = Math.abs(sx) > hw || Math.abs(sy) > hh ? S.offT[k] + dt : 0;
     if (S.offT[k] >= SD.OFF_TIME) dropped.push(k);

@@ -1,7 +1,8 @@
-import { HALF, SURF } from '../constants.js';
+import { HALF, SURF, WALL } from '../constants.js';
 import { TAU, lerp, makeNoise, mulberry32, smoothWrap, smoothstep, wrapAngle } from '../math.js';
 import { railAt } from './rails.js';
 import { ELEMENTS, elementPhase } from '../elements/index.js';
+import { branchRoute, plainRoute } from './route.js';
 
 export function loopHeight(t) {
   if (t < Math.PI) { const s = t / Math.PI; return 9 * smoothstep(0.5, 1, s) + 3.5 * Math.sin(4 * Math.PI * s) * Math.sin(Math.PI * s); }
@@ -83,36 +84,85 @@ export function genPass(stage) {
   for (let i = 0; i < A.length; i++) { xs.push((A[i] - B[i]) / Math.SQRT2); zs.push(-(A[i] + B[i]) / Math.SQRT2); }
   return { xs, zs, hs, tunnel: T, bridge: new Array(A.length).fill(0), smoothH: 12, pass: true };
 }
-export function genCircuit(stage) {
-  const last = stage.segs[stage.segs.length - 1], h0 = last[0] === 's' ? last[2] : last[3];   // a lap starts at the height it closes at
-  let a = 0, b = 0, phi = stage.startHeading || 0, h = h0;
-  const A = [], B = [], hs = [], marks = {};
-  // per-sample channels recorded from each section's tags, as declared by the track elements
+/** Lay sections end to end from a start state, recording samples, per-sample channels and section markers.
+ *  Returns the sample arrays plus where each section started (for branches). */
+function walkSections(stage, segs, start, label) {
+  let { a, b, phi, h } = start;
+  const A = [], B = [], hs = [], marks = {}, starts = [];
   const chans = ELEMENTS.flatMap(e => Object.entries(e.channels || {})), ch = Object.fromEntries(chans.map(([k]) => [k, []]));
   const emit = (hh, tg) => { A.push(a); B.push(b); hs.push(hh); for (const [k, f] of chans) ch[k].push(f(tg)); };
-  emit(h0, stage.segs[0][3] || {});
-  for (const sg of stage.segs) {
+  if (start.emitFirst) emit(h, segs[0][3] || {});
+  segs.forEach((sg, n) => {
     const type = sg[0], tg0 = (type === 's' ? sg[3] : sg[4]) || {}, i0 = A.length;
+    starts.push({ i: i0 - 1, a, b, phi, h });                             // the sample a section starts from, and the state there
     if (type === 's') {
       let [, len, eh, tg = {}] = sg;
       if (typeof len === 'object') len = len.toA !== undefined ? (len.toA - a) / Math.cos(phi) : (len.toB - b) / Math.sin(phi);
-      if (!(len > 0.5)) throw new Error(`${stage.name}: section ${stage.segs.indexOf(sg)} ${JSON.stringify(sg.slice(0, 2))} comes out ${len.toFixed(1)} m long: the sections before it overshoot`);
-      const n = Math.max(1, Math.round(len)), h0 = h, st = len / n;
-      for (let q = 1; q <= n; q++) { a += Math.cos(phi) * st; b += Math.sin(phi) * st; emit(lerp(h0, eh, q / n), tg); }
+      if (!(len > 0.5)) throw new Error(`${stage.name}: ${label}section ${n} ${JSON.stringify(sg.slice(0, 2))} comes out ${len.toFixed(1)} m long: the sections before it overshoot`);
+      const k = Math.max(1, Math.round(len)), h0 = h, st = len / k;
+      for (let q = 1; q <= k; q++) { a += Math.cos(phi) * st; b += Math.sin(phi) * st; emit(lerp(h0, eh, q / k), tg); }
       h = eh;
     } else {
-      const [, R, deg, eh, tg = {}] = sg, th = deg * Math.PI / 180, n = Math.max(2, Math.round(R * Math.abs(th))), dphi = th / n, h0 = h;
+      const [, R, deg, eh, tg = {}] = sg, th = deg * Math.PI / 180, k = Math.max(2, Math.round(R * Math.abs(th))), dphi = th / k, h0 = h;
       const chord = 2 * R * Math.sin(Math.abs(dphi) / 2);
-      for (let q = 1; q <= n; q++) { phi += dphi / 2; a += Math.cos(phi) * chord; b += Math.sin(phi) * chord; phi += dphi / 2; emit(lerp(h0, eh, q / n), tg); }
+      for (let q = 1; q <= k; q++) { phi += dphi / 2; a += Math.cos(phi) * chord; b += Math.sin(phi) * chord; phi += dphi / 2; emit(lerp(h0, eh, q / k), tg); }
       h = eh;
     }
     for (const e of ELEMENTS) if (e.section) e.section(tg0, i0, A.length, marks);
-  }
+  });
+  return { A, B, hs, ch, marks, starts, end: { a, b, phi, h } };
+}
+const toXZ = (A, B) => [A.map((a, i) => (a - B[i]) / Math.SQRT2), A.map((a, i) => -(a + B[i]) / Math.SQRT2)];
+export function genCircuit(stage) {
+  const last = stage.segs[stage.segs.length - 1], h0 = last[0] === 's' ? last[2] : last[3];   // a lap starts at the height it closes at
+  const main = walkSections(stage, stage.segs, { a: 0, b: 0, phi: stage.startHeading || 0, h: h0, emitFirst: true }, '');
+  const { A, B, hs, ch } = main;
   while (A.length > 2 && Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) < 0.6) { A.pop(); B.pop(); hs.pop(); for (const k in ch) ch[k].pop(); }
-  const xs = [], zs = [];
-  for (let i = 0; i < A.length; i++) { xs.push((A[i] - B[i]) / Math.SQRT2); zs.push(-(A[i] + B[i]) / Math.SQRT2); }
+  const [xs, zs] = toXZ(A, B);
   const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width } : null;
-  return { xs, zs, hs, ch, gorge: true, smoothH: 10, marks, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
+  // branches: an alternative route that leaves the main road where main section `from` starts and rejoins it where
+  // main section `to` starts. Its own sections must end exactly there, heading the same way.
+  const alts = (stage.branches || []).map((br, n) => {
+    const S0 = main.starts[br.from], S1 = main.starts[br.to], label = `branch ${n} `;
+    if (!S0 || !S1 || br.to <= br.from) throw new Error(`${stage.name}: ${label}needs from < to, both main section indices`);
+    const w = walkSections(stage, br.segs, { a: S0.a, b: S0.b, phi: S0.phi, h: hs[S0.i] }, label);
+    const miss = Math.hypot(w.end.a - S1.a, w.end.b - S1.b), turn = Math.abs(wrapAngle(w.end.phi - S1.phi)) * 180 / Math.PI;
+    if (miss > 1.5 || turn > 3 || Math.abs(w.end.h - S1.h) > 0.5) throw new Error(`${stage.name}: ${label}ends ${miss.toFixed(1)} m from where it should rejoin (main section ${br.to}), heading off by ${turn.toFixed(1)} degrees, at height ${w.end.h} (the main road is at ${S1.h})`);
+    br.segs.forEach((sg, k) => { for (const t in (sg[0] === 's' ? sg[3] : sg[4]) || {}) if (!ELEMENTS.some(e => e.onBranch && e.tags && t in e.tags)) throw new Error(`${stage.name}: ${label}section ${k}: "${t}" can't be used on a branch (branch-ready: ${ELEMENTS.filter(e => e.onBranch).map(e => e.name).join(', ')})`); });
+    w.A.pop(); w.B.pop(); w.hs.pop(); for (const k in w.ch) w.ch[k].pop();          // its last sample is the merge sample itself
+    const [bx, bz] = toXZ(w.A, w.B);
+    return { F: S0.i, M: S1.i, name: br.name || `branch ${n}`, share: br.share ?? 0.5, xs: bx, zs: bz, hs: w.hs, ch: w.ch, marks: w.marks };
+  });
+  return { xs, zs, hs, ch, gorge: true, smoothH: 10, marks: main.marks, alts, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
+}
+/** Where a branch runs side by side with the main road (its fork and merge) there are no barriers between the two
+ *  roads, and a few tyres mark the nose where they part. Returns twin: for those samples, the nearest sample on the
+ *  other route (for switching a car's route there), else -1. */
+function goreWalls({ N0, NB, w, xs0, zs0, th0, H0, wallL0, wallR0, kerbL0, kerbR0, alts }) {
+  const twin = new Int32Array(NB).fill(-1), R2 = (2 * WALL + 2) ** 2;
+  const pass = (A, B) => {
+    const lat = A.map(i => {
+      let best = Infinity, bj = -1; for (const j of B) { const d = (xs0[j] - xs0[i]) ** 2 + (zs0[j] - zs0[i]) ** 2; if (d < best) { best = d; bj = j; } }
+      const along = (xs0[i] - xs0[bj]) * Math.sin(th0[bj]) + (zs0[i] - zs0[bj]) * Math.cos(th0[bj]);   // beyond the end of the other road?
+      if (best > R2 || Math.abs(along) > 1.5 || Math.abs(H0[bj] - H0[i]) > 3) return null;
+      twin[i] = bj; return (xs0[bj] - xs0[i]) * -Math.cos(th0[i]) + (zs0[bj] - zs0[i]) * Math.sin(th0[i]);
+    });
+    // each run of side-by-side samples opens the side the other road lies on (taken where they're furthest apart)
+    for (let r = 0; r < A.length; r++) if (lat[r] !== null && (r === 0 || lat[r - 1] === null)) {
+      let e = r, far = 0; while (e < A.length && lat[e] !== null) { if (Math.abs(lat[e]) > Math.abs(far)) far = lat[e]; e++; }
+      const [Wl, Kb] = far > 0 ? [wallR0, kerbR0] : [wallL0, kerbL0];
+      for (let q = r; q < e; q++) { Wl[A[q]] = 0; Kb[A[q]] = 0; }
+      for (const q of [r - 1, r - 2, r - 3, r - 4, e, e + 1, e + 2, e + 3]) if (q >= 0 && q < A.length && Wl[A[q]]) Wl[A[q]] = 1;   // tyres on the nose
+      r = e;
+    }
+  };
+  for (const a of alts) {
+    const main = [], alt = [];
+    for (let k = -30; k <= a.M - a.F + 30; k++) main.push(w(a.F + k));
+    for (let k = 0; k < a.n; k++) alt.push(a.o + k);
+    pass(main, alt); pass(alt, main);
+  }
+  return twin;
 }
 export function buildLoop(stage) {
   if (stage.type === 'gorge') return finishLoop(stage, genCircuit(stage), stage.seed);
@@ -122,30 +172,46 @@ export function buildLoop(stage) {
   throw new Error('Circuit generation failed');
 }
 export function finishLoop(stage, g, seed) {
-  const N0 = g.xs.length, w = i => (i % N0 + N0) % N0;
-  const xs0 = Float32Array.from(g.xs), zs0 = Float32Array.from(g.zs);
-  const F0 = () => new Float32Array(N0), U0 = () => new Uint8Array(N0);
+  const N0 = g.xs.length, w = i => (i % N0 + N0) % N0, laps = stage.laps, startIdx = 36, NM = N0 * laps + startIdx + 110;
+  // branches (genCircuit): their samples follow the main loop's in the base arrays; nb steps along the road graph
+  let NB = N0; const AL = (g.alts || []).map(a => { const r = { F: a.F, M: a.M, o: NB, n: a.xs.length, name: a.name, share: a.share }; NB += r.n; return r; });
+  const NA = NB - N0, nx0 = new Int32Array(NB), pv0 = new Int32Array(NB);
+  for (let b = 0; b < N0; b++) { nx0[b] = (b + 1) % N0; pv0[b] = (b + N0 - 1) % N0; }
+  for (const a of AL) for (let k = 0; k < a.n; k++) { nx0[a.o + k] = k < a.n - 1 ? a.o + k + 1 : a.M; pv0[a.o + k] = k ? a.o + k - 1 : a.F; }
+  const route = NA ? branchRoute({ N0, NM, laps, AL, nx0, pv0 }) : plainRoute(NM, N0), nb = route.nb, u0 = route.u0;
+  const smoothG = (a, r) => {                                       // smoothWrap along the road graph
+    if (!NA) return smoothWrap(a, r);
+    const o = new Float32Array(NB);
+    for (let i = 0; i < NB; i++) { let j = nb(i, -r), s = 0; for (let q = -r; q <= r; q++) { s += a[j]; j = nx0[j]; } o[i] = s / (2 * r + 1); }
+    return o;
+  };
+  const cat = k => NA ? g[k].concat(...g.alts.map(a => a[k])) : g[k];
+  const xs0 = Float32Array.from(cat('xs')), zs0 = Float32Array.from(cat('zs'));
+  const F0 = () => new Float32Array(NB), U0 = () => new Uint8Array(NB);
   const th0 = F0(), k0 = F0(), bridge0 = U0(), jump0 = U0(), wallL0 = U0(), wallR0 = U0(), kerbL0 = U0(), kerbR0 = U0(), vmax0 = F0();
-  for (let i = 0; i < N0; i++) th0[i] = Math.atan2(xs0[w(i + 1)] - xs0[w(i - 1)], zs0[w(i + 1)] - zs0[w(i - 1)]);
-  for (let i = 0; i < N0; i++) k0[i] = wrapAngle(th0[w(i + 1)] - th0[w(i - 1)]) / 2;
-  const ks0 = smoothWrap(k0, 6);
-  const hraw = Float32Array.from(g.hs);
-  const H0 = smoothWrap(hraw, g.smoothH || 8);
+  for (let i = 0; i < NB; i++) th0[i] = Math.atan2(xs0[nb(i, 1)] - xs0[nb(i, -1)], zs0[nb(i, 1)] - zs0[nb(i, -1)]);
+  for (let i = 0; i < NB; i++) k0[i] = wrapAngle(th0[nb(i, 1)] - th0[nb(i, -1)]) / 2;
+  const ks0 = smoothG(k0, 6);
+  const hraw = Float32Array.from(cat('hs'));
+  const H0 = smoothG(hraw, g.smoothH || 8);
   // per-sample channels: from the section tags on 'gorge' stages, generated (bridge/tunnel only) on the others
-  const U0f = src => { const u = U0(); if (src) for (let i = 0; i < N0; i++) u[i] = src[i]; return u; }, F0f = src => Float32Array.from(src);
+  const U0f = src => { const u = U0(); if (src) for (let i = 0; i < NB; i++) u[i] = src[i]; return u; }, F0f = src => Float32Array.from(src);
   const ch = {};
-  if (g.ch) for (const k in g.ch) ch[k] = ['far', 'near', 'rampF', 'rampN'].includes(k) ? F0f(g.ch[k]) : U0f(g.ch[k]);
+  if (g.ch) for (const k in g.ch) { const src = NA ? g.ch[k].concat(...g.alts.map(a => a.ch[k])) : g.ch[k]; ch[k] = ['far', 'near', 'rampF', 'rampN'].includes(k) ? F0f(src) : U0f(src); }
   else { ch.bridge = U0f(g.bridge); ch.tunnel = U0f(g.tunnel); }
   for (const e of ELEMENTS) for (const k in e.channels || {}) if (!ch[k]) ch[k] = U0();   // channels a generator didn't provide are all zero
-  const tunnel0 = ch.tunnel; for (let i = 0; i < N0; i++) bridge0[i] = ch.bridge[i];
+  const tunnel0 = ch.tunnel; for (let i = 0; i < NB; i++) bridge0[i] = ch.bridge[i];
   const noise = makeNoise(seed);
-  const startIdx = 36, gorge = !!g.gorge;
-  const ctx = { stage, g, N0, w, xs0, zs0, th0, ks0, H0, ch, jump0, wallL0, wallR0, kerbL0, kerbR0, startIdx, gorge, marks: g.marks || {}, nearCrossing: () => false };
+  const gorge = !!g.gorge;
+  // section markers (kicks, arches...): a branch's are numbered from its own first sample
+  const marks = g.marks || {};
+  (g.alts || []).forEach((a, n) => { for (const k in a.marks) marks[k] = (marks[k] || []).concat(a.marks[k].map(v => typeof v === 'number' ? v + AL[n].o : { ...v, i: v.i + AL[n].o })); });
+  const ctx = { stage, g, N0, NB, w, nb, u0, xs0, zs0, th0, ks0, H0, ch, jump0, wallL0, wallR0, kerbL0, kerbR0, startIdx, gorge, marks, alts: AL, nearCrossing: () => false };
   elementPhase('heights', ctx);                                    // level crossings, then jumps and kickers
   const rails = ctx.rails;
   const idwX = [], idwZ = [], idwH = [];
   const void0 = i => bridge0[i] || (ch.gap && ch.gap[i]) || (ch.ferry && ch.ferry[i]);   // decks, gaps and ferry crossings don't shape the ground under them
-  for (let i = 0; i < N0; i += 6) if (!void0(i)) { idwX.push(xs0[i]); idwZ.push(zs0[i]); idwH.push(H0[i]); }
+  for (let i = 0; i < NB; i += 6) if (!void0(i)) { idwX.push(xs0[i]); idwZ.push(zs0[i]); idwH.push(H0[i]); }
   let tunMid = -1; { const ti = []; for (let i = 0; i < N0; i++) if (tunnel0[i]) ti.push(i); if (ti.length) tunMid = ti[Math.floor(ti.length / 2)]; }
   const toAB = (x, z) => [(x - z) / Math.SQRT2, -(x + z) / Math.SQRT2];
   const idw = (x, z) => {
@@ -167,8 +233,8 @@ export function finishLoop(stage, g, seed) {
     return v;
   };
   // gorge tracks: ground height comes from the nearest road section's profile (far = up-screen side, near = camera side)
-  const PF = gorge ? { far: smoothWrap(ch.far, 12), near: smoothWrap(ch.near, 12),
-    rF: smoothWrap(ch.rampF, 12), rN: smoothWrap(ch.rampN, 12),
+  const PF = gorge ? { far: smoothG(ch.far, 12), near: smoothG(ch.near, 12),
+    rF: smoothG(ch.rampF, 12), rN: smoothG(ch.rampN, 12),
     dot: Float32Array.from(th0, t => -Math.cos(t) * -Math.SQRT1_2 + Math.sin(t) * -Math.SQRT1_2) } : null;   // how much the road's right side faces up-screen
   // profile for one side of sample i (side = +1 right, -1 left): roads running up/down the screen blend far and near
   const sideProf = (i, side) => { const f = smoothstep(-0.45, 0.45, side * PF.dot[i]); return [lerp(PF.near[i], PF.far[i], f), lerp(PF.rN[i], PF.rF[i], f), f]; };
@@ -184,12 +250,13 @@ export function finishLoop(stage, g, seed) {
   };
   const base = gorge ? profBase : (x, z) => idw(x, z) + shape(x, z) + 5 * noise.fbm(x * 0.006 + 2.2, z * 0.006 - 4.1, 2);
   const carveW = g.pass ? (x, z) => 1 - smoothstep(380, 440, toAB(x, z)[1]) : null;
-  for (let i = 0; i < N0; i++) {
+  const own = (i, j) => { const r = nb(i, j); return (i < N0) === (r < N0) ? r : i; };   // along the same route only (a branch's bends don't wall off the main road)
+  for (let i = 0; i < NB; i++) {
     const a = Math.abs(ks0[i]);
-    if (a > 1 / 48) { const out = ks0[i] > 0 ? wallR0 : wallL0; for (let j = i - 8; j <= i + 8; j++) out[w(j)] = 1; }
-    if (a > 1 / 75) for (let j = i - 5; j <= i + 5; j++) { kerbL0[w(j)] = 1; kerbR0[w(j)] = 1; }
+    if (a > 1 / 48) { const out = ks0[i] > 0 ? wallR0 : wallL0; for (let j = -8; j <= 8; j++) out[own(i, j)] = 1; }
+    if (a > 1 / 75) for (let j = -5; j <= 5; j++) { kerbL0[own(i, j)] = 1; kerbR0[own(i, j)] = 1; }
   }
-  for (let i = 0; i < N0; i++) {
+  for (let i = 0; i < NB; i++) {
     const a = Math.abs(ks0[i]), out = ks0[i] > 0 ? wallR0 : wallL0;
     if (a > 1 / 110 && a <= 1 / 48 && !out[i] && !jump0[i]) out[i] = 3;
     if (PF) {
@@ -209,7 +276,7 @@ export function finishLoop(stage, g, seed) {
         if (Hh - R > 3 && !wallR0[i]) wallR0[i] = 2;
       }
     } else {
-      const down = H0[w(i + 1)] - H0[w(i - 1)];
+      const down = H0[nb(i, 1)] - H0[nb(i, -1)];
       if (a < 1 / 60 && !jump0[i] && Math.abs(down) > 0.12) { const side = ks0[i] >= 0 ? wallR0 : wallL0; if (!side[i] && noise.n2(i * 0.03, 5.5) > 0) side[i] = 2; }
     }
     if (i < 48) { if (!wallL0[i]) wallL0[i] = 2; if (!wallR0[i]) wallR0[i] = 2; }
@@ -223,25 +290,26 @@ export function finishLoop(stage, g, seed) {
     i = j;
   }
   const lm = SURF[stage.surface].latMax * 0.8;
-  for (let i = 0; i < N0; i++) { let m = 1e-4; for (let j = i - 2; j <= i + 2; j++) m = Math.max(m, Math.abs(ks0[w(j)])); vmax0[i] = Math.min(70, Math.sqrt(lm / m)); }
+  for (let i = 0; i < NB; i++) { let m = 1e-4; for (let j = -2; j <= 2; j++) m = Math.max(m, Math.abs(ks0[nb(i, j)])); vmax0[i] = Math.min(70, Math.sqrt(lm / m)); }
 
   elementPhase('wallsLate', ctx);                                  // town bollards, gallery parapet
   elementPhase('wallsLast', ctx);                                  // gaps where railways cross
+  const twin = NA ? goreWalls(ctx) : null;
   // unroll laps into a straight run of samples so every lap is just "further along"
-  const laps = stage.laps, N = N0 * laps + startIdx + 110;
+  const N = NA ? route.N : NM, bi = route.bi;
   const F = () => new Float32Array(N), U = () => new Uint8Array(N);
   const xs = F(), zs = F(), th = F(), tx = F(), tz = F(), rx = F(), rz = F(), k = F(), ks = F(), H = F(), vmax = F();
   const jump = U(), wallL = U(), wallR = U(), kerbL = U(), kerbR = U(), bridge = U(), tunnel = U();
   for (let i = 0; i < N; i++) {
-    const b = i % N0;
+    const b = bi(i);
     xs[i] = xs0[b]; zs[i] = zs0[b]; th[i] = th0[b]; tx[i] = Math.sin(th0[b]); tz[i] = Math.cos(th0[b]); rx[i] = -tz[i]; rz[i] = tx[i];
     k[i] = k0[b]; ks[i] = ks0[b]; H[i] = H0[b]; vmax[i] = vmax0[b]; jump[i] = jump0[b]; wallL[i] = wallL0[b]; wallR[i] = wallR0[b];
     kerbL[i] = kerbL0[b]; kerbR[i] = kerbR0[b]; bridge[i] = bridge0[b]; tunnel[i] = tunnel0[b];
   }
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (let i = 0; i < N0; i++) { minX = Math.min(minX, xs0[i]); maxX = Math.max(maxX, xs0[i]); minZ = Math.min(minZ, zs0[i]); maxZ = Math.max(maxZ, zs0[i]); }
+  for (let i = 0; i < NB; i++) { minX = Math.min(minX, xs0[i]); maxX = Math.max(maxX, xs0[i]); minZ = Math.min(minZ, zs0[i]); maxZ = Math.max(maxZ, zs0[i]); }
   const hk = (cx, cz) => (cx + 1000) * 100000 + (cz + 1000);
-  const mkHash = (skipBridge, only, CELL = 36, step = 1) => { const h = new Map(); h.cell = CELL; for (let i = 0; i < N0; i += step) { if (skipBridge && (void0(i) || tunnel0[i])) continue; if (only && !only[i]) continue; const kk = hk(Math.floor(xs0[i] / CELL), Math.floor(zs0[i] / CELL)); let a = h.get(kk); if (!a) { a = []; h.set(kk, a); } a.push(i); } return h; };
+  const mkHash = (skipBridge, only, CELL = 36, step = 1) => { const h = new Map(); h.cell = CELL; for (let i = 0; i < NB; i += step) { if (skipBridge && (void0(i) || tunnel0[i])) continue; if (only && !only[i]) continue; const kk = hk(Math.floor(xs0[i] / CELL), Math.floor(zs0[i] / CELL)); let a = h.get(kk); if (!a) { a = []; h.set(kk, a); } a.push(i); } return h; };
   const mkNearest = h => (x, z) => {
     const CELL = h.cell, cx = Math.floor(x / CELL), cz = Math.floor(z / CELL); let best = Infinity, bi = -1;
     for (let ddx = -1; ddx <= 1; ddx++) for (let ddz = -1; ddz <= 1; ddz++) {
@@ -261,7 +329,8 @@ export function finishLoop(stage, g, seed) {
   }
   const out = { N, xs, zs, th, tx, tz, rx, rz, k, ks, H, jump, wallL, wallR, kerbL, kerbR, vmax, hairpins, finishIdx: startIdx + laps * N0, startIdx, noise, base, nearest, nearestT,
     minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge, tunnel, nearestTun, carve: stage.carve || 0, carveW, margin: g.pass ? 230 : gorge ? 120 : 95,
-    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, gridS: gorge ? 4 : 3, edge: gorge ? HALF + 4 : HALF + 15 };
+    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, gridS: gorge ? 4 : 3, edge: gorge ? HALF + 4 : HALF + 15, ...route, twin };
+  if (NA) { const L0 = q => q && (q.i = u0(q.i), q); out.nearest = (x, z) => L0(nearest(x, z)); out.nearestT = (x, z) => L0(nearestT(x, z)); out.nearestTun = (x, z) => L0(nearestTun(x, z)); }
   elementPhase('track', ctx, out);                                 // each element's fields (town, gallery, rails, ...)
   // samples with nothing under the road line (gaps, ferry crossings): the terrain doesn't flatten into them
   out.voidMask = (ch.gap && ch.gap.some(v => v)) || (ch.ferry && ch.ferry.some(v => v)) ? Uint8Array.from(ch.gap, (v, i) => v || ch.ferry[i]) : null;

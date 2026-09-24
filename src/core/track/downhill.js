@@ -1,5 +1,6 @@
 import { SURF } from '../constants.js';
 import { autoJumps } from '../elements/jump.js';
+import { plainRoute } from './route.js';
 import { TAU, clamp, makeNoise, mulberry32, smoothArr, wrapAngle } from '../math.js';
 
 export function genPath(stage, seed) {
@@ -109,5 +110,5 @@ export function finishTrack(stage, g, seed) {
   }
   let minX = Infinity, maxX = -Infinity; for (let i = 0; i < N; i++) { minX = Math.min(minX, xs[i]); maxX = Math.max(maxX, xs[i]); }
   return { N, xs, zs, th, tx, tz, rx, rz, k, ks, H, jump, wallL, wallR, kerbL, kerbR, vmax, hairpins, finishIdx, startIdx: 36, noise, base, nearest, nearestT: nearest,
-    minZ, maxZ, minX, maxX, surface: stage.surface, seed, autoJumps: autoAt, bridge: new Uint8Array(N), tunnel: new Uint8Array(N), nearestTun: () => null, carve: 0, carveW: null, margin: 95, loopN: 0, laps: 1 };
+    minZ, maxZ, minX, maxX, surface: stage.surface, seed, autoJumps: autoAt, bridge: new Uint8Array(N), tunnel: new Uint8Array(N), nearestTun: () => null, carve: 0, carveW: null, margin: 95, loopN: 0, laps: 1, ...plainRoute(N, 0) };
 }

@@ -8,22 +8,24 @@ import { _e, _m, _p, _q, _s, addInstanced, flat } from '../geometry.js';
 
 export let barVis = null;
 export function addBarriers(group, tr, terr, stage) {
-  const tyres = [], posts = [], rails = [], bales = [], NB = tr.loopN || tr.N, armco = !!(stage && stage.armco);
-  for (let i = 0; i < NB; i++) for (const side of [-1, 1]) {
+  const tyres = [], posts = [], rails = [], bales = [], NB = tr.NB, armco = !!(stage && stage.armco);
+  const idx = []; for (let i = 0; i < (tr.loopN || tr.N); i++) idx.push(i);
+  for (const a of tr.alts) for (let q = 1; q <= a.n; q++) idx.push(a.u + q);            // branches (lap-0 samples)
+  for (const i of idx) for (const side of [-1, 1]) {
     const w = side < 0 ? tr.wallL[i] : tr.wallR[i]; if (!w) continue;
     const x = tr.xs[i] + tr.rx[i] * side * WALL, z = tr.zs[i] + tr.rz[i] * side * WALL, y = terr.at(x, z);
-    const base = { s: side > 0 ? 1 : 0, p: (i / BAR_P) | 0, nx: tr.rx[i] * side, nz: tr.rz[i] * side, tx: tr.tx[i], tz: tr.tz[i] };
+    const base = { s: side > 0 ? 1 : 0, p: (tr.bi(i) / BAR_P) | 0, nx: tr.rx[i] * side, nz: tr.rz[i] * side, tx: tr.tx[i], tz: tr.tz[i] };
     if (w === 1) {
       const stripe = ((i / 3) | 0) % 5 === 0;
       tyres.push({ ...base, kind: 'tyre', x, y: y + 0.21, z, color: 0x232323 });
       tyres.push({ ...base, kind: 'tyre', x, y: y + 0.63, z, color: stripe ? (((i / 15) | 0) % 2 ? 0xE0402F : 0xF4F4F0) : 0x2A2A2A });
     } else if (w === 2 && i % 3 === 0) {
       posts.push({ ...base, kind: 'post', x, y: y + 0.6, z, color: armco ? 0x8D939C : 0x8A5E3B, dims: [0.2, 1.2, 0.2] });
-      const j = tr.loopN ? (i + 3) % NB : i + 3;
+      const j = tr.loopN ? tr.nb0(i, 3) : i + 3;
       if (j < tr.N && (side < 0 ? tr.wallL[j] : tr.wallR[j]) === 2) {
         const x2 = tr.xs[j] + tr.rx[j] * side * WALL, z2 = tr.zs[j] + tr.rz[j] * side * WALL, y2 = terr.at(x2, z2);
         const len = Math.hypot(x2 - x, z2 - z), ry = Math.atan2(x2 - x, z2 - z), rxa = -Math.atan2(y2 - y, len);
-        const rail = { ...base, kind: 'rail', a: [x, y, z], b: [x2, y2, z2], pa: base.p, pb: (j / BAR_P) | 0, x: (x + x2) / 2, z: (z + z2) / 2, ry, rx: rxa, sz: len };
+        const rail = { ...base, kind: 'rail', a: [x, y, z], b: [x2, y2, z2], pa: base.p, pb: (tr.bi(j) / BAR_P) | 0, x: (x + x2) / 2, z: (z + z2) / 2, ry, rx: rxa, sz: len };
         if (armco) rails.push({ ...rail, hh: 0.75, y: (y + y2) / 2 + 0.75, sx: 1.4, sy: 2.6, color: 0xCDD2D9, dims: [0.14, 0.364, len] });
         else for (const hh of [0.55, 1.0]) rails.push({ ...rail, hh, y: (y + y2) / 2 + hh, color: 0xC4935E, dims: [0.1, 0.14, len] });
       }

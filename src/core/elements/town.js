@@ -1,4 +1,4 @@
-import { runs } from './jump.js';
+import { baseRuns } from './jump.js';
 
 // Town: a street with pavements; bollards along the kerb on both sides, houses, parked cars (features/parked.js)
 // and a closer camera.
@@ -12,5 +12,5 @@ export const element = {
     for (let i = 0; i < N0; i++) if (ch.town[i]) { wallL0[i] = 7; wallR0[i] = 7; kerbL0[i] = kerbR0[i] = 0; }
   },
   track(ctx, out) { out.town = ctx.gorge ? ctx.ch.town : null; },
-  markers: tr => runs(tr.town, tr.loopN || tr.N).map(([a, b]) => ({ i: a, label: `town ${b - a}m` }))
+  markers: tr => baseRuns(tr, tr.town).map(([a, b]) => ({ i: a, label: `town ${b - a}m` }))
 };

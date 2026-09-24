@@ -28,9 +28,16 @@ for (let i = 0; i < N; i++) {
   const t = (tr.H[i] - hmin) / Math.max(1, hmax - hmin), col = tr.bridge[i] ? '#fff' : tr.tunnel[i] ? '#000' : `hsl(${240 - t * 240},80%,55%)`;
   svg += `<line x1="${px(A[i])}" y1="${py(B[i])}" x2="${px(A[j])}" y2="${py(B[j])}" stroke="${col}" stroke-width="${tr.bridge[i] ? 7 : 5}"/>`;
 }
+// branches: from the fork, along the branch, to the merge (dashed outline so they stand out)
+const sa = i => (tr.xs[i] - tr.zs[i]) / Math.SQRT2, sb = i => -(tr.xs[i] + tr.zs[i]) / Math.SQRT2;
+for (const a of tr.alts) {
+  for (let q = 0; q <= a.n; q++) { const i = a.u + q, j = i + 1, t = (tr.H[i] - hmin) / Math.max(1, hmax - hmin); svg += `<line x1="${px(sa(i))}" y1="${py(sb(i))}" x2="${px(sa(j))}" y2="${py(sb(j))}" stroke="hsl(${240 - t * 240},80%,55%)" stroke-width="5"/>`; }
+  for (let q = 1; q <= a.n; q += 100) svg += `<text x="${px(sa(a.u + q)) + 6}" y="${py(sb(a.u + q)) - 6}" fill="#9ef" font-size="12">${a.name} h${tr.H[a.u + q].toFixed(0)}</text>`;
+  console.log(`  branch "${a.name}": forks at ${a.F}, merges at ${a.M} (main ${a.M - a.F} m, branch ${a.n + 1} m)`);
+}
 for (let i = 0; i < N; i += 100) svg += `<text x="${px(A[i]) + 6}" y="${py(B[i]) - 6}" fill="#fff" font-size="12">${i} h${tr.H[i].toFixed(0)}</text>`;
 // every element's markers (tunnel, bridge, kick, crossing...), labelled
-for (const m of trackMarkers(tr)) { const i = m.i % N; svg += `<circle cx="${px(A[i])}" cy="${py(B[i])}" r="4" fill="#ffd34a"/><text x="${px(A[i]) + 6}" y="${py(B[i]) + 14}" fill="#ffd34a" font-size="11">${m.label}</text>`; }
+for (const m of trackMarkers(tr)) { const i = m.i < tr.NM ? m.i % N : m.i; svg += `<circle cx="${px(sa(i))}" cy="${py(sb(i))}" r="4" fill="#ffd34a"/><text x="${px(sa(i)) + 6}" y="${py(sb(i)) + 14}" fill="#ffd34a" font-size="11">${m.label}</text>`; }
 svg += `<circle cx="${px(A[tr.startIdx])}" cy="${py(B[tr.startIdx])}" r="6" fill="#ff0"/><text x="12" y="22" fill="#fff" font-size="15">${st.name}</text></svg>`;
 fs.mkdirSync('tools/out', { recursive: true });
 const out = `tools/out/layout-${sid}.svg`; fs.writeFileSync(out, svg); console.log('wrote', out);

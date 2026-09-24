@@ -3,11 +3,30 @@ import { closedCrossingAhead } from '../features/trains.js';
 import { ferryTarget } from '../features/ferry.js';
 import { clamp } from '../math.js';
 
+/** Before each fork pick a route, the branch or the main road, at random (stage.branches[k].share = the branch's
+ *  chance), so the pack splits. */
+function chooseRoute(c, tr) {
+  const ai = c.ai; if (c.pr.i >= tr.NM) return;                                  // already on a branch
+  const b = c.pr.i % tr.loopN, key = tr.lapOf(c.pr.i) * 64;
+  tr.alts.forEach((a, k) => { const d = a.F - b; if (d > 0 && d < 90 && ai.forkKey !== key + k) { ai.forkKey = key + k; const r = Math.random(); ai.alt = ai.forceAlt ?? (r < (a.share ?? 0.5) ? k : -1); } });
+}
+/** Just past a fork, still on the road it didn't pick (the two run side by side there): look ahead from the same
+ *  place on the route it did pick, so it steers across. */
+function forkStart(c, tr) {
+  const i = c.pr.i, b = tr.bi(i), t = tr.twin[b], want = c.ai.alt ?? -1; if (t < 0) return i;
+  const altOf = x => tr.alts.findIndex(a => x >= a.o && x < a.o + a.n), mine = altOf(b), other = altOf(t);
+  const nearFork = k => { const a = tr.alts[k]; return (k === mine ? b : t) - a.o < a.n / 2; };
+  if ((mine < 0 && other === want && nearFork(other)) || (mine >= 0 && want !== mine && nearFork(mine))) return tr.lapU(t, tr.lapOf(i));
+  return i;
+}
 export function aiControl(c, W, cars, dt, hazards) {
   const tr = W.tr, pr = c.pr, i = pr.i, N = tr.N, ai = c.ai;
+  // d samples further along the road (along the route this car has picked on stages with branches)
+  const G = !!tr.nx; if (G) chooseRoute(c, tr);
+  const i0 = G ? forkStart(c, tr) : i, at = G ? d => tr.adv(i0, d, ai.alt ?? -1) : d => Math.min(N - 1, i + d);
   const sp = Math.hypot(c.vx, c.vz);
   ai.wT -= dt; if (ai.wT <= 0) { ai.wT = 2 + Math.random() * 3; ai.lane = (Math.random() * 2 - 1) * 2.2; }
-  const ka = tr.ks[Math.min(N - 1, i + Math.round(8 + sp * 0.45))];
+  const ka = tr.ks[at(Math.round(8 + sp * 0.45))];
   let lane = ai.lane * 0.6 - clamp(ka * 95, -1, 1) * 3.3;
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); let minLane = -HALF;
   for (const o of cars) {
@@ -36,13 +55,14 @@ export function aiControl(c, W, cars, dt, hazards) {
   }
   lane = clamp(Math.max(lane, minLane), -HALF + 1.7, HALF - 1.2);
   ai.cur += (lane - ai.cur) * Math.min(1, dt * (minLane > -HALF ? 3 : 1.8));
-  const L = Math.min(N - 1, i + Math.round(7 + sp * 0.38));
+  const L = at(Math.round(7 + sp * 0.38));
   const tx = tr.xs[L] + tr.rx[L] * ai.cur, tz = tr.zs[L] + tr.rz[L] * ai.cur;
   const dx = tx - c.x, dz = tz - c.z; const lx = -dx * fz + dz * fx, lz = dx * fx + dz * fz;
   c.inp.steer = clamp(Math.atan2(lx, lz) * 2.6, -1, 1);
   const skill = ai.skill * (0.9 + 0.1 * c.mod);
-  let target = 99; const look = Math.min(N - 2, i + Math.round(sp * 1.7 + 18));
-  for (let j = i; j <= look; j++) { const vm = tr.vmax[j] * skill; const v = Math.sqrt(vm * vm + 56 * (j - i)); if (v < target) target = v; }
+  let target = 99;
+  if (G) { const n = Math.round(sp * 1.7 + 18); for (let d = 0, j = i0; d <= n; d++, j = tr.adv(j, 1, ai.alt ?? -1)) { const vm = tr.vmax[j] * skill; const v = Math.sqrt(vm * vm + 56 * d); if (v < target) target = v; } }
+  else { const look = Math.min(N - 2, i + Math.round(sp * 1.7 + 18)); for (let j = i; j <= look; j++) { const vm = tr.vmax[j] * skill; const v = Math.sqrt(vm * vm + 56 * (j - i)); if (v < target) target = v; } }
   if (Math.abs(pr.lat) > HALF + 0.5) target = Math.min(target, 16);
   target = Math.min(target, hzSlow);
   target = Math.min(target, ferryTarget(W, c));                                  // queue for the barge, stop at the front of its deck
@@ -55,13 +75,14 @@ export function aiControl(c, W, cars, dt, hazards) {
   if (!ai.flick) return;
   dr.cool -= dt;
   if (dr.until < 0 && dr.cool <= 0 && sp > 15 && c.onGround && c.surface !== 'grass' && Math.abs(pr.lat) < HALF - 1) {
-    const near = i + Math.round(4 + sp * 0.25), far = Math.min(N - 2, i + Math.round(10 + sp * 0.6));
-    let kmax = 0, kj = -1; for (let j = near; j <= far; j++) { const a = Math.abs(tr.ks[j]); if (a > kmax) { kmax = a; kj = j; } }
-    if (kj > 0 && kmax > ai.driftK) { dr.until = kj + 10; dr.t = 0; dr.dir = Math.sign(tr.ks[kj]); }
+    let kmax = 0, kj = -1;
+    if (G) { const dn = Math.round(4 + sp * 0.25), df = Math.round(10 + sp * 0.6); for (let d = dn, j = at(dn); d <= df; d++, j = tr.adv(j, 1, ai.alt ?? -1)) { const a = Math.abs(tr.ks[j]); if (a > kmax) { kmax = a; kj = j; } } }
+    else { const near = i + Math.round(4 + sp * 0.25), far = Math.min(N - 2, i + Math.round(10 + sp * 0.6)); for (let j = near; j <= far; j++) { const a = Math.abs(tr.ks[j]); if (a > kmax) { kmax = a; kj = j; } } }
+    if (kj > 0 && kmax > ai.driftK) { dr.until = G ? tr.progOf(kj) + 10 : kj + 10; dr.t = 0; dr.dir = Math.sign(tr.ks[kj]); }
   }
   if (dr.until >= 0) {
     dr.t += dt;
-    const done = i > dr.until || Math.abs(pr.lat) > HALF - 0.3 || sp < 8 || !c.onGround;
+    const done = (G ? c.progress : i) > dr.until || Math.abs(pr.lat) > HALF - 0.3 || sp < 8 || !c.onGround;
     if (done) { dr.until = -1; dr.cool = 1.0; return; }
     const turnIn = 0.1, flickEnd = turnIn + ai.flick;
     if (dr.t < flickEnd) {

@@ -19,18 +19,20 @@ export function makeRoadMesh(tr, stage) {
     pos.push(ax, ay, az, cx, cy, cz, bx, by, bz, bx, by, bz, cx, cy, cz, dx, dy, dz);
     for (let q = 0; q < 6; q++) col.push(c.r, c.g, c.b);
   };
-  const P = (i, o, y) => [tr.xs[i] + tr.rx[i] * o, y, tr.zs[i] + tr.rz[i] * o];
-  const segs = loop ? N : N - 1;
-  for (let i = 0; i < segs; i++) {
-    const j = loop ? (i + 1) % N : i + 1, onBridge = tr.bridge[i] || tr.bridge[j];
-    if (tr.voidMask && (tr.voidMask[i] || tr.voidMask[j])) continue;                      // a gap or ferry crossing: no road at all
+  let up = 0;                                                                             // branches sit a hair higher where they overlap the main road
+  const P = (i, o, y) => [tr.xs[i] + tr.rx[i] * o, y + up, tr.zs[i] + tr.rz[i] * o];
+  const minH = i => { if (i < N) return mnL[i]; let m = 1e9; for (let d = -3; d <= 3; d++) m = Math.min(m, tr.H[tr.nb0(i, d)]); return m; };
+  // one stretch of road from sample i to sample j
+  const seg = (i, j) => {
+    const onBridge = tr.bridge[i] || tr.bridge[j];
+    if (tr.voidMask && (tr.voidMask[tr.bi(i)] || tr.voidMask[tr.bi(j)])) return;          // a gap or ferry crossing: no road at all
     pos = onBridge ? brPos : mainPos; col = onBridge ? brCol : mainCol;
     for (let s = 0; s < 7; s++) {
       const oa = O[s], ob = O[s + 1];
       const yf = (ii, k) => {
         const H = tr.H[ii];
         if (tr.bridge[ii]) { if (k === 0 || k === 7) return H - 0.9; if (k === 1 || k === 6) return H - 0.02; }
-        if (k === 0 || k === 7) return Math.min(H - 1.6, mnL[ii] - 1.2);
+        if (k === 0 || k === 7) return Math.min(H - 1.6, minH(ii) - 1.2);
         if (k === 1 || k === 6) return H - 0.4;
         if (s === 2 || s === 4) return H + 0.1;
         return H + 0.05;
@@ -61,7 +63,12 @@ export function makeRoadMesh(tr, stage) {
       const a = P(i, -0.18, tr.H[i] + 0.07), b = P(i, 0.18, tr.H[i] + 0.07), cc = P(j, -0.18, tr.H[j] + 0.07), d = P(j, 0.18, tr.H[j] + 0.07);
       quad(...a, ...b, ...cc, ...d, white);
     }
-  }
+  };
+  for (let i = 0; i < (loop ? N : N - 1); i++) seg(i, loop ? (i + 1) % N : i + 1);
+  // from the fork, along the branch, to the merge (not where it lies right on top of the main road)
+  const onMain = i => { const t = tr.twin && tr.twin[tr.bi(i)], u = t >= 0 ? tr.u0(t) : -1; return u >= 0 && Math.hypot(tr.xs[u] - tr.xs[i], tr.zs[u] - tr.zs[i]) < 0.6; };
+  up = 0.03; for (const a of tr.alts) for (let q = 0; q <= a.n; q++) if (!(onMain(a.u + q) && onMain(a.u + q + 1))) seg(a.u + q, a.u + q + 1);
+  up = 0;
   // checkered start and finish lines
   pos = mainPos; col = mainCol;
   for (const li of (loop ? [tr.startIdx] : [tr.startIdx, tr.finishIdx])) {

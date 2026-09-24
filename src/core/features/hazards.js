@@ -26,7 +26,8 @@ export function hzLeader(R) {
 }
 function spotOK(tr, j) {
   const N0 = tr.loopN || tr.N, w = k => tr.loopN ? k % N0 : k;
-  if (j > tr.finishIdx - 60) return false;
+  if (j > tr.finishIdx - 60 || j >= tr.NM) return false;
+  if (tr.alts.some(a => w(j) > a.F - 40 && w(j) < a.M + 20)) return false;           // not where the road splits: which way would it be fair?
   for (let k = j - 18; k <= j + 18; k++) { const b = w(k); if (tr.jump[b] || tr.tunnel[b] || tr.bridge[b] || (tr.gap && tr.gap[b]) || (tr.ferry && tr.ferry[b]) || (tr.boostPad && tr.boostPad[b]) || Math.abs(tr.ks[b]) > 1 / 45) return false; }
   if (tr.rails && tr.rails.crossings.some(C => Math.abs(C.i - w(j)) < 40)) return false;
   if ((tr.ferries || []).some(f => w(j) > f.a - 190 && w(j) < f.b + 30)) return false;   // not in the ferry queue

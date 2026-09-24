@@ -11,7 +11,7 @@ import { respawn } from '../sim/car.js';
 //   B    docked at B, front ramp down: cars drive off; it leaves LEAVE_B s after the deck is clear.
 //   toA  going back empty. While the barge isn't at A the gate at dock A is shut.
 // Barge state lives on the world (W.ferries, like W.bar) so the ground query can see the deck. No randomness.
-const base = (tr, s) => { const N0 = tr.loopN || tr.N; return ((s % N0) + N0) % N0; };
+const base = (tr, s) => { if (s >= tr.NM) return -1e6; const N0 = tr.loopN || tr.N; return ((s % N0) + N0) % N0; };   // a branch is nowhere near a ferry
 /** Deck height if (s, lat) is on a barge deck, else null (water). */
 export function ferryDeckAt(W, s, lat) {
   if (!W.ferries) return null; const b = base(W.tr, s);

@@ -7,9 +7,9 @@ import { groundAt, project } from '../track/query.js';
 // a few seconds ahead of the player while they are on the ledge.
 export function rockStep(R, W, dt) {
   const tr = W.tr; if (!tr.rockfall) return;
-  const N0 = tr.loopN, P = R.player, rnd = R.rnd, pi = P.pr.i % N0;
+  const N0 = tr.loopN, P = R.player, rnd = R.rnd, pi = tr.bi(P.pr.i) % N0;
   R.rockT -= dt;
-  if (R.phase === 'racing' && R.rockT <= 0 && R.rocks.length < 4) {
+  if (R.phase === 'racing' && R.rockT <= 0 && R.rocks.length < 4 && P.pr.i < tr.NM) {
     R.rockT = 1.2;
     const sp = Math.max(15, Math.hypot(P.vx, P.vz)), j = Math.round(pi + sp * (2.2 + rnd() * 1.8));
     const jj = j % N0;
