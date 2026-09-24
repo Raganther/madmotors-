@@ -16,7 +16,7 @@ export function addScenery(group, tr, terr, stage) {
   const nT = Math.round(area * stage.trees.density);
   for (let k = 0; k < nT; k++) {
     const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z);
-    if (q && q.d < HALF + 11) continue; if (slopeAt(x, z) > 0.8 || overhangs(x, z, q)) continue; if (tr.town && q && tr.town[tr.bi(q.i)] && q.d < 32) continue; { const qt = tr.nearestTun(x, z); if (qt && qt.d < HALF + 16) continue; }
+    if (q && q.d < HALF + 11) continue; if (slopeAt(x, z) > 0.8 || overhangs(x, z, q)) continue; if (tr.town && q && tr.town[tr.bi(q.i)] && q.d < 32) continue; if (tr.falls && tr.falls.some(f => Math.hypot(x - tr.xs[f.i], z - tr.zs[f.i]) < 32)) continue; { const qt = tr.nearestTun(x, z); if (qt && qt.d < HALF + 16) continue; }
     const y = terr.at(x, z) - 0.2, s = 0.8 + rnd() * 0.7, ry = rnd() * TAU;
     trunks.push({ x, y, z, sx: s, sy: s, sz: s, color: 0x6B4A32 });
     const high = !!stage.alpine && y > stage.alpine.treeLine;

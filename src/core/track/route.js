@@ -9,7 +9,7 @@ import { clamp } from '../math.js';
 //   progOf(s)          progress for a road position (branches map onto the stretch of main road they replace)
 //   ahead(b, prog)     the first unrolled index of base sample b with progress beyond prog (-1 if none)
 //   all0               every base sample as a lap-0 index: the main loop, then each branch (for drawing the road)
-//   twin               base sample -> the nearest sample on the other route where two routes run side by side
+//   twin               base sample -> the nearest sample on the other route where a car can change road (fork, merge)
 //                      (fork and merge), else -1; null without branches
 // Branch layout (stage.branches): the main laps come first (NM samples, as on any circuit), then for each lap a block
 // per branch: [copy of the fork sample F, the branch's samples, copy of the merge sample M]. Nothing steps onto the
@@ -22,7 +22,9 @@ export function plainRoute(N, N0) {
     nb: (b, d) => w(b + d), nb0: (u, d) => w(u + d), adv: (i, d) => clamp(i + d, 0, N - 1), progOf: s => s, lapOf: i => N0 ? (i / N0) | 0 : 0,
     ahead: N0 ? (b, prog) => { const i = Math.floor(prog), u = i + ((b - i % N0) % N0 + N0) % N0; return u < N ? u : -1; } : (b, prog) => b > prog ? b : -1 };
 }
-/** A circuit with branches. AL: [{ F, M, o, n, name }] (fork / merge main samples, base offset and count). */
+/** A circuit with branches. AL: [{ F, M, o, n, name, g, h }] (fork / merge main samples, base offset and count, and
+ *  how many of its samples run beside the main road at the fork (g) and the merge (h): progress there matches the main
+ *  road's one for one, so switching roads doesn't jump; the middle is stretched or squeezed to fit). */
 export function branchRoute({ N0, NM, laps, AL, nx0, pv0 }) {
   let NAU = 0; for (const a of AL) { a.off = NAU; NAU += a.n + 2; }
   const N = NM + (laps + 1) * NAU, NB = N0 + AL.reduce((s, a) => s + a.n, 0);
@@ -52,8 +54,9 @@ export function branchRoute({ N0, NM, laps, AL, nx0, pv0 }) {
   };
   const progOf = s => {
     const i = s | 0; if (i < NM) return s;
-    const r = (i - NM) % NAU, a = AL[amap[r]], q = r - a.off;                        // q: 0 copy of F, 1..n the branch, n+1 copy of M
-    return lapOf(i) * N0 + a.F + (q + s - i) * (a.M - a.F) / (a.n + 1);
+    const r = (i - NM) % NAU, a = AL[amap[r]], q = r - a.off + s - i, D = a.M - a.F, n1 = a.n + 1;   // q: 0 copy of F, 1..n the branch, n+1 copy of M
+    const g = a.g || 0, h = a.h || 0, p = g + h < Math.min(D, n1) - 2 ? (q <= g ? q : q >= n1 - h ? D - (n1 - q) : g + (q - g) * (D - h - g) / (n1 - h - g)) : q * D / n1;
+    return lapOf(i) * N0 + a.F + p;
   };
   const ahead = (b, prog) => {
     for (let L = Math.max(0, Math.floor(prog / N0) - 1); L <= laps; L++) { const u = lapU(b, L); if (u < N && (b >= N0 || u < NM) && progOf(u) > prog) return u; }

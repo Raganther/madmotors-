@@ -135,26 +135,22 @@ export function genCircuit(stage) {
   });
   return { xs, zs, hs, ch, gorge: true, smoothH: 10, marks: main.marks, alts, river, closeGap: Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) };
 }
-/** Where a branch runs side by side with the main road (its fork and merge) there are no barriers between the two
- *  roads, and a few tyres mark the nose where they part. Returns twin: for those samples, the nearest sample on the
- *  other route (for switching a car's route there), else -1. */
-function goreWalls({ N0, NB, w, xs0, zs0, th0, H0, wallL0, wallR0, kerbL0, kerbR0, alts }) {
-  const twin = new Int32Array(NB).fill(-1), R2 = (2 * WALL + 2) ** 2;
+/** Where a branch runs side by side with the main road (its fork and merge): for each sample there, the nearest
+ *  sample on the other route and which side it lies on. twin: close enough that there are no barriers between the
+ *  two (walls open); near: a little further, where a car can still change road (so one squeezed out past its own
+ *  barrier at the nose, on the other road's verge, belongs to that road). The two roads' heights meet in the middle
+ *  where they overlap, so there's never a step from one to the other. */
+function sideBySide({ NB, w, nb, xs0, zs0, th0, H0, alts }) {
+  const twin = new Int32Array(NB).fill(-1), near = new Int32Array(NB).fill(-1), lat = new Float32Array(NB), lists = [], H1 = H0.slice();
+  const R2 = (2 * WALL + 2) ** 2, R2N = (2 * WALL + 8) ** 2;
   const pass = (A, B) => {
-    const lat = A.map(i => {
+    for (const i of A) {
       let best = Infinity, bj = -1; for (const j of B) { const d = (xs0[j] - xs0[i]) ** 2 + (zs0[j] - zs0[i]) ** 2; if (d < best) { best = d; bj = j; } }
       const along = (xs0[i] - xs0[bj]) * Math.sin(th0[bj]) + (zs0[i] - zs0[bj]) * Math.cos(th0[bj]);   // beyond the end of the other road?
-      if (best > R2 || Math.abs(along) > 1.5 || Math.abs(H0[bj] - H0[i]) > 3) return null;
-      twin[i] = bj; return (xs0[bj] - xs0[i]) * -Math.cos(th0[i]) + (zs0[bj] - zs0[i]) * Math.sin(th0[i]);
-    });
-    // each run of side-by-side samples opens the side the other road lies on (taken where they're furthest apart)
-    for (let r = 0; r < A.length; r++) if (lat[r] !== null && (r === 0 || lat[r - 1] === null)) {
-      let e = r, far = 0; while (e < A.length && lat[e] !== null) { if (Math.abs(lat[e]) > Math.abs(far)) far = lat[e]; e++; }
-      const [Wl, Kb] = far > 0 ? [wallR0, kerbR0] : [wallL0, kerbL0];
-      for (let q = r; q < e; q++) { Wl[A[q]] = 0; Kb[A[q]] = 0; }
-      for (const q of [r - 1, r - 2, r - 3, r - 4, e, e + 1, e + 2, e + 3]) if (q >= 0 && q < A.length && Wl[A[q]]) Wl[A[q]] = 1;   // tyres on the nose
-      r = e;
+      if (best > R2N || Math.abs(along) > 1.5) continue;
+      near[i] = bj; if (best <= R2) twin[i] = bj; lat[i] = (xs0[bj] - xs0[i]) * -Math.cos(th0[i]) + (zs0[bj] - zs0[i]) * Math.sin(th0[i]);
     }
+    lists.push(A);
   };
   for (const a of alts) {
     const main = [], alt = [];
@@ -162,7 +158,23 @@ function goreWalls({ N0, NB, w, xs0, zs0, th0, H0, wallL0, wallR0, kerbL0, kerbR
     for (let k = 0; k < a.n; k++) alt.push(a.o + k);
     pass(main, alt); pass(alt, main);
   }
-  return twin;
+  for (let i = 0; i < NB; i++) { const j = twin[i]; if (j >= 0) H0[i] = lerp(H1[i], (H1[i] + H1[j]) / 2, 1 - smoothstep(4, 13, Math.hypot(xs0[j] - xs0[i], zs0[j] - zs0[i]))); }
+  { const H2 = H0.slice(); for (const A of lists) A.forEach((i, r) => { if (!A.slice(Math.max(0, r - 6), r + 7).some(k => twin[k] >= 0)) return; let s = 0; for (let d = -3; d <= 3; d++) s += H2[nb(i, d)]; H0[i] = s / 7; }); }   // and smooth out the seams
+  for (let i = 0; i < NB; i++) {                                                   // one passing over the other isn't side by side
+    if (twin[i] >= 0 && Math.abs(H0[twin[i]] - H0[i]) > 3) twin[i] = -1;
+    if (near[i] >= 0 && Math.abs(H0[near[i]] - H0[i]) > 4) near[i] = -1;
+  }
+  return { twin, near, lat, lists };
+}
+/** No barriers between the two roads where they run side by side, and a few tyres on the nose where they part. */
+function goreWalls({ wallL0, wallR0, kerbL0, kerbR0 }, { twin, lat, lists }) {
+  for (const A of lists) for (let r = 0; r < A.length; r++) if (twin[A[r]] >= 0 && (r === 0 || twin[A[r - 1]] < 0)) {
+    let e = r, far = 0; while (e < A.length && twin[A[e]] >= 0) { if (Math.abs(lat[A[e]]) > Math.abs(far)) far = lat[A[e]]; e++; }
+    const [Wl, Kb] = far > 0 ? [wallR0, kerbR0] : [wallL0, kerbL0];              // the side the other road lies on (where they're furthest apart)
+    for (let q = r; q < e; q++) { Wl[A[q]] = 0; Kb[A[q]] = 0; }
+    for (const q of [r - 1, r - 2, r - 3, r - 4, e, e + 1, e + 2, e + 3]) if (q >= 0 && q < A.length && Wl[A[q]]) Wl[A[q]] = 1;
+    r = e;
+  }
 }
 export function buildLoop(stage) {
   if (stage.type === 'gorge') return finishLoop(stage, genCircuit(stage), stage.seed);
@@ -208,6 +220,7 @@ export function finishLoop(stage, g, seed) {
   (g.alts || []).forEach((a, n) => { for (const k in a.marks) marks[k] = (marks[k] || []).concat(a.marks[k].map(v => typeof v === 'number' ? v + AL[n].o : { ...v, i: v.i + AL[n].o })); });
   const ctx = { stage, g, N0, NB, w, nb, u0, xs0, zs0, th0, ks0, H0, ch, jump0, wallL0, wallR0, kerbL0, kerbR0, startIdx, gorge, marks, alts: AL, nearCrossing: () => false };
   elementPhase('heights', ctx);                                    // level crossings, then jumps and kickers
+  const sbs = NA ? sideBySide(ctx) : null;                          // where a branch runs beside the main road
   const rails = ctx.rails;
   const idwX = [], idwZ = [], idwH = [];
   const void0 = i => bridge0[i] || (ch.gap && ch.gap[i]) || (ch.ferry && ch.ferry[i]);   // decks, gaps and ferry crossings don't shape the ground under them
@@ -294,7 +307,8 @@ export function finishLoop(stage, g, seed) {
 
   elementPhase('wallsLate', ctx);                                  // town bollards, gallery parapet
   elementPhase('wallsLast', ctx);                                  // gaps where railways cross
-  const twin = NA ? goreWalls(ctx) : null;
+  if (sbs) { goreWalls(ctx, sbs); for (const a of AL) { a.g = 0; while (a.g < a.n && sbs.twin[a.o + a.g] >= 0) a.g++; a.h = 0; while (a.h < a.n && sbs.twin[a.o + a.n - 1 - a.h] >= 0) a.h++; } }
+  const twin = sbs && sbs.near;
   // unroll laps into a straight run of samples so every lap is just "further along"
   const N = NA ? route.N : NM, bi = route.bi;
   const F = () => new Float32Array(N), U = () => new Uint8Array(N);

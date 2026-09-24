@@ -11,13 +11,16 @@ function chooseRoute(c, tr) {
   tr.alts.forEach((a, k) => { const d = a.F - b; if (d > 0 && d < 90 && ai.forkKey !== key + k) { ai.forkKey = key + k; const r = Math.random(); ai.alt = ai.forceAlt ?? (r < (a.share ?? 0.5) ? k : -1); } });
 }
 /** Just past a fork, still on the road it didn't pick (the two run side by side there): look ahead from the same
- *  place on the route it did pick, so it steers across. */
+ *  place on the route it did pick, so it steers across; too late for that (past the first third of the side-by-side
+ *  stretch, alt.g samples), and it takes the road it's on. */
 function forkStart(c, tr) {
   const i = c.pr.i, b = tr.bi(i), t = tr.twin[b], want = c.ai.alt ?? -1; if (t < 0) return i;
   const altOf = x => tr.alts.findIndex(a => x >= a.o && x < a.o + a.n), mine = altOf(b), other = altOf(t);
-  const nearFork = k => { const a = tr.alts[k]; return (k === mine ? b : t) - a.o < a.n / 2; };
-  if ((mine < 0 && other === want && nearFork(other)) || (mine >= 0 && want !== mine && nearFork(mine))) return tr.lapU(t, tr.lapOf(i));
-  return i;
+  if (mine === want || (mine < 0 && other !== want)) return i;                      // on the road it wants
+  const a = tr.alts[mine >= 0 ? mine : other], k = (mine >= 0 ? b : t) - a.o;
+  if (k > a.n / 2) return i;                                                         // the merge, not the fork
+  if (k > a.g * 0.35) { c.ai.alt = mine; return i; }                                // too late to cross
+  return tr.lapU(t, tr.lapOf(i));
 }
 export function aiControl(c, W, cars, dt, hazards) {
   const tr = W.tr, pr = c.pr, i = pr.i, N = tr.N, ai = c.ai;

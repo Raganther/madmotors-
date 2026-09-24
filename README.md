@@ -102,11 +102,23 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | gap | `gap` | a void to jump (fall in and you respawn on the far side) |
 | boost | `boost` | boost pads across the road |
 | ferry | `ferry` | a barge carries the cars across water between two docks (moves in `features/ferry.js`) |
+| falls | `falls` | scenery waterfall arcing over the road off a cliff on the far side |
 
 A core element can declare `tags`, `stageKeys`, per-sample `channels`, a `section()` hook, build phases (`heights`,
 `walls`, `wallsLate`, `wallsLast`), `track()` to add fields to the built track, and `markers()` saying where it is (see
 the header of `src/core/elements/index.js`). `buildTrack` validates every stage against the registry, so a misspelt
 tag or option fails with the list of valid ones, and a section that comes out backwards fails with its index.
+
+### Branches (the road splits and joins again)
+
+A `gorge` stage can add `branches: [{ from, to, name, share, segs }]`: an alternative route that leaves the main road
+where main section `from` starts and rejoins it where section `to` starts. Its own `segs` must end exactly there
+(position, heading and height, or `buildTrack` says how far off it is). `share` is the chance an AI car takes it.
+Elements marked `onBranch` work on a branch (ground, kick, arch, boost, falls); the others throw if tagged there.
+The road graph (`src/core/track/route.js`) gives every track the same API: `tr.adv(i, d, alt)` steps along the road,
+`tr.progOf(s)` maps a position to race progress, `tr.bi(i)` / `tr.u0(b)` convert between road and base samples, and
+`tr.all0` lists every sample for drawing. Where the two roads run side by side the barriers between them open, their
+heights meet, and a car belongs to whichever road it's clearly on. Try `?sandbox=branch`.
 
 ### Debugging an element
 

@@ -22,6 +22,7 @@ import { addArches } from './arch.js';
 import { addBoostPads, updateBoostPads } from './boost.js';
 import { addFerryDocks, newFerryRace, updateFerryVis } from './ferry.js';
 import { initHazardVis, updateHazardVis } from '../hazards.js';
+import { addFalls, updateFalls } from './falls.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
 const river = { name: 'river', build(group, tr) { addRiver(group, tr); } };
@@ -53,6 +54,7 @@ const ferry = { name: 'ferry', build(group, tr) { addFerryDocks(group, tr); }, n
 const rockfall = { name: 'rockfall', init: initRockVis, update(dt, now, fxDt) { updateRocks(fxDt); } };
 
 const hazards = { name: 'hazards', init: initHazardVis, update(dt, now) { updateHazardVis(dt, now); } };
+const falls = { name: 'falls', build(group, tr, terr) { addFalls(group, tr, terr); }, update(dt, now) { updateFalls(dt, now); } };
 
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards];
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };
