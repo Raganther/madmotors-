@@ -68,7 +68,7 @@ export function genPass(stage) {
       for (let q = 1; q <= n; q++) { a += Math.cos(phi) * st; b += Math.sin(phi) * st; emit(lerp(h0, p2, q / n), p3 === 'tunnel'); }
       h = p2;
     } else {
-      const R = p1, th = p2 * Math.PI / 180, n = Math.max(2, Math.round(R * Math.abs(th))), dphi = th / n, st = R * Math.abs(th) / n, h0 = h;
+      const R = p1, th = p2 * Math.PI / 180, n = Math.max(2, Math.round(R * Math.abs(th))), dphi = th / n, h0 = h;
       const chord = 2 * R * Math.sin(Math.abs(dphi) / 2);
       for (let q = 1; q <= n; q++) { phi += dphi / 2; a += Math.cos(phi) * chord; b += Math.sin(phi) * chord; phi += dphi / 2; emit(lerp(h0, p3, q / n), false); }
       h = p3;
@@ -239,7 +239,7 @@ export function finishLoop(stage, g, seed) {
   for (let i = 0; i < N0; i++) { let m = 1e-4; for (let j = i - 2; j <= i + 2; j++) m = Math.max(m, Math.abs(ks0[w(j)])); vmax0[i] = Math.min(70, Math.sqrt(lm / m)); }
 
   // town: bollards along the pavement edge on both sides; gallery: a solid parapet on the valley side
-  const town0 = U0(), gallery0 = U0(), rock0 = U0(), parkSpots = [];
+  const town0 = U0(), gallery0 = U0(), rock0 = U0();
   if (PF) for (let i = 0; i < N0; i++) {
     town0[i] = g.profile.townF[i]; gallery0[i] = g.profile.galleryF[i]; rock0[i] = g.profile.rockF[i];
     if (town0[i]) { wallL0[i] = 7; wallR0[i] = 7; kerbL0[i] = kerbR0[i] = 0; }

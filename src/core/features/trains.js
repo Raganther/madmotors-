@@ -83,3 +83,10 @@ export function closedCrossingAhead(W, i) {
   for (const C of rl.crossings) if (C.closed) { const ds = ((C.i - i % N0) % N0 + N0) % N0; if (ds < best) best = ds; }
   return best;
 }
+
+/** Railways: one train per line, level-crossing barriers, collisions. Active when the stage has `rails`. */
+export const feature = {
+  name: 'trains',
+  init(R, W) { R.trains = makeTrains(W, R.rnd); },
+  after: trainStep
+};

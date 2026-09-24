@@ -26,7 +26,7 @@ export function makeTrainMeshes(group, T) {
   });
   return meshes;
 }
-export function initTrainsVis(group) { trainVis = race && race.trains ? race.trains.map(T => ({ T, meshes: makeTrainMeshes(group, T) })) : []; }
+export function initTrainsVis(group, r = race) { trainVis = r && r.trains ? r.trains.map(T => ({ T, meshes: makeTrainMeshes(group, T) })) : []; }
 export let trainHorned = new WeakSet();
 export function updateTrainsVis() {
   if (!race || !race.trains) return;

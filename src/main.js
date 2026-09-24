@@ -1,12 +1,12 @@
 import './debug.js';
 import { G } from './game.js';
+import { $ } from './ui/dom.js';
 import { AudioSys } from './audio/audio.js';
 import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
 import { raceStep } from './core/sim/race.js';
 import { STAGES } from './data/stages/index.js';
 import { updateCamera } from './render/camera.js';
-import { updateCrossings } from './render/crossings.js';
 import { initDebris, updateDebris } from './render/effects/debris.js';
 import { initParticles, updateParticles } from './render/effects/particles.js';
 import { initProps, updateProps } from './render/effects/props.js';
@@ -14,13 +14,11 @@ import { initRings, updateRings } from './render/effects/rings.js';
 import { initSkids } from './render/effects/skids.js';
 import { CUT, FX } from './render/materials.js';
 import { contextLost, cycleQuality, initRenderer, perfSample, renderFrame, renderer } from './render/renderer.js';
-import { initRockVis, updateRocks } from './render/rocks.js';
-import { updateTrainsVis } from './render/trains.js';
 import { initCars, updateCarVisuals } from './render/vehicles.js';
+import { featureHook } from './render/features.js';
 import { applyBarrierChanges } from './render/world/barriers.js';
 import { updateBridgeFade } from './render/world/bridges.js';
 import { updateFans } from './render/world/scenery.js';
-import { $ } from './ui/dom.js';
 import { buildStageList, handleEvents, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
 import { updateHUD } from './ui/hud.js';
 import { readInput } from './ui/input.js';
@@ -55,7 +53,7 @@ export function frame(t) {
   if (G.hintTimer > 0 && G.state !== 'paused') { G.hintTimer -= dt; $('hint').hidden = G.hintTimer <= 0; } else if (G.hintTimer <= 0) $('hint').hidden = true;
   updateBridgeFade(dt);
   if (race && G.state !== 'menu') { const P = race.player; CUT.car.value.set(P.x, P.y, P.z); CUT.r.value += ((G.state === 'paused' ? CUT.r.value : 8.5) - CUT.r.value) * Math.min(1, dt * 6); } else CUT.r.value = 0;
-  if (G.state !== 'paused') { const fxDt = G.slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); updateTrainsVis(); updateCrossings(dt, now); updateRocks(fxDt); updateParticles(fxDt); updateFans(now); updateCamera(dt, false); }
+  if (G.state !== 'paused') { const fxDt = G.slowmo > 0 ? dt * 0.35 : dt; updateDebris(fxDt); updateProps(fxDt); updateRings(fxDt); updateCarVisuals(dt, now); featureHook('update', dt, now, fxDt); updateParticles(fxDt); updateFans(now); updateCamera(dt, false); }
   updateHUD(dt);
   if (!contextLost) renderFrame();
 }
@@ -83,7 +81,7 @@ export async function boot() {
     step = 'starting WebGL'; initRenderer(); initParticles(); initSkids(); initDebris(); initRings(); initProps();
     step = 'loading fonts';
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
-    step = 'building the cars'; initCars(); initRockVis();
+    step = 'building the cars'; initCars(); featureHook('init');
     step = 'building the first stage';
     selectStage(0);
     requestAnimationFrame(frame);

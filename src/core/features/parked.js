@@ -1,5 +1,5 @@
 import { HALF } from '../constants.js';
-import { makeCar } from '../sim/car.js';
+import { makeCar, stepCar } from '../sim/car.js';
 import { TRAFFIC_COLORS, TRAFFIC_KINDS } from '../../data/cars.js';
 
 // ---------- parked cars (town) ----------
@@ -18,3 +18,14 @@ export function makeParked(W, rnd) {
   }
   return out;
 }
+
+/** Parked cars along town streets: handbrake on, but they can be shunted, damaged and wrecked. */
+export const feature = {
+  name: 'parked',
+  init(R, W) { R.parked = makeParked(W, R.rnd); },
+  vehicles: R => R.parked,
+  move(R, W, dt, all, racing) {
+    for (const c of R.parked) { c.inp.throttle = 0; c.inp.brake = 0; c.inp.steer = 0; c.inp.handbrake = 1; stepCar(c, dt, W, racing); }
+    if (R.parked.some(c => c.dead)) R.parked = R.parked.filter(c => !c.dead);
+  }
+};

@@ -26,9 +26,9 @@ export function collideCars(cars) {
     const A = cars[a], B = cars[b];
     if (A.ghost > 0 || B.ghost > 0 || Math.abs(A.y - B.y) > 2) continue;
     if ((B.x - A.x) ** 2 + (B.z - A.z) ** 2 > (A.hl + B.hl + 1) ** 2) continue;                         // cheap distance reject
-    let hit = null, impulseDone = false;
+    let impulseDone = false;
     for (let it = 0; it < 3; it++) {
-      const h = carSAT(A, B); if (!h) break; hit = h;
+      const h = carSAT(A, B); if (!h) break;
       // push apart along the contact normal (split evenly)
       const push = h.depth + 0.01, sa = A.im / (A.im + B.im), sb = 1 - sa;   // heavier vehicles get shoved less
       A.x -= h.nx * push * sa; A.z -= h.nz * push * sa; B.x += h.nx * push * sb; B.z += h.nz * push * sb;

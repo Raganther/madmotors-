@@ -40,3 +40,10 @@ export function rockStep(R, W, dt) {
     if (o.age > 10 || o.y < tr.H[pr.i] - 30 || pr.dist > 70) R.rocks.splice(k, 1);
   }
 }
+
+/** Boulders dropping onto the cliff ledge. Active where the track has `rockfall` sections. */
+export const feature = {
+  name: 'rockfall',
+  init(R) { R.rocks = []; R.rockT = 4; },
+  after: rockStep
+};

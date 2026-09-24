@@ -13,7 +13,7 @@ export function addCrossings(group, tr) {
   crossVis = []; const rl = tr.rails; if (!rl) return;
   const M = c => new THREE.MeshLambertMaterial({ color: c }), B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
   for (const C of rl.crossings) {
-    const i = C.i, rp = railAt(C.line, C.s), H = tr.H[i];
+    const i = C.i, rp = railAt(C.line, C.s);
     const vis = { C, t: 0, gates: [], lamps: [], flash: 0 };
     // one gate each side of the rails: on the right-hand edge before them and the left-hand edge after them (both directions covered)
     const cross = Math.abs(Math.sin(wrapAngle(rp.yaw - tr.th[i]))), setBack = Math.round(4 + HALF * Math.sqrt(Math.max(0, 1 - cross * cross)) / Math.max(0.3, cross) + 2.5);   // clear of a diagonal track

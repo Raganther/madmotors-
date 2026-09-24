@@ -1,7 +1,4 @@
-import { makeParked } from '../features/parked.js';
-import { rockStep } from '../features/rockfall.js';
-import { trafficControl, updateTraffic } from '../features/traffic.js';
-import { makeTrains, trainStep } from '../features/trains.js';
+import { FEATURES } from '../features/index.js';
 import { clamp, mulberry32 } from '../math.js';
 import { aiControl } from './ai.js';
 import { makeBarriers } from './barriers.js';
@@ -12,13 +9,14 @@ export function createRace(W, defs) {
   const grid = [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
   W.bar = makeBarriers(W.tr, W.armco);
   const cars = defs.map((d, k) => makeCar(W, grid[k][0], grid[k][1], d));
-  const rnd = mulberry32((W.tr.seed || 1) * 31 + 7);
-  return { cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false, traffic: [], trafT: 1.5, rnd, trains: makeTrains(W, rnd), parked: makeParked(W, rnd), rocks: [], rockT: 4 };
+  const R = { cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false, rnd: mulberry32((W.tr.seed || 1) * 31 + 7) };
+  for (const f of FEATURES) if (f.init) f.init(R, W);
+  return R;
 }
 export function raceStep(R, dt, W) {
   const racing = R.phase === 'racing';
   if (racing) R.time += dt;
-  const P = R.player, tr = W.tr, all = R.traffic.length || R.parked.length ? R.cars.concat(R.traffic, R.parked) : R.cars;
+  const P = R.player, tr = W.tr, all = R.cars.concat(...FEATURES.filter(f => f.vehicles).map(f => f.vehicles(R)));
   for (const c of R.cars) {
     if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt);
     if (c.finished && c.progress > tr.finishIdx + 18) { c.inp.throttle = 0; c.inp.brake = c.vf > 0.5 ? 0.7 : 0; c.inp.handbrake = c.vf > 0.5 ? 0 : 1; }   // pull up and stay put (no creeping backwards)
@@ -38,13 +36,10 @@ export function raceStep(R, dt, W) {
     }
     if (racing && !c.finished && c.progress >= tr.finishIdx) { c.finished = true; c.finishTime = R.time; c.place = ++R.nFinished; c.events.push({ t: 'finish' }); }
   }
-  for (const c of R.traffic) { if (c.wreckT <= 0) trafficControl(c, W, all, dt); stepCar(c, dt, W, racing); }
-  for (const c of R.parked) { c.inp.throttle = 0; c.inp.brake = 0; c.inp.steer = 0; c.inp.handbrake = 1; stepCar(c, dt, W, racing); }
-  if (R.parked.some(c => c.dead)) R.parked = R.parked.filter(c => !c.dead);
-  updateTraffic(R, W, dt);
+  for (const f of FEATURES) if (f.move) f.move(R, W, dt, all, racing);
+  for (const f of FEATURES) if (f.spawn) f.spawn(R, W, dt);
   collideCars(all); collideCars(all);
-  trainStep(R, W, dt);
-  rockStep(R, W, dt);
+  for (const f of FEATURES) if (f.after) f.after(R, W, dt);
 }
 export function ranking(R) {
   return R.cars.slice().sort((a, b) => {

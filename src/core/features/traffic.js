@@ -1,7 +1,7 @@
 import { HALF } from '../constants.js';
 import { closedCrossingAhead } from './trains.js';
 import { clamp, wrapAngle } from '../math.js';
-import { makeCar } from '../sim/car.js';
+import { makeCar, stepCar } from '../sim/car.js';
 import { TRAFFIC_COLORS, TRAFFIC_KINDS } from '../../data/cars.js';
 
 export const LANE = 2.9;
@@ -63,3 +63,12 @@ export function updateTraffic(R, W, dt) {
     if (ok) spawnTraffic(R, W, idx, dir, rnd);
   }
 }
+
+/** Civilian traffic: spawned ahead of the player, removed once well behind. */
+export const feature = {
+  name: 'traffic',
+  init(R) { R.traffic = []; R.trafT = 1.5; },
+  vehicles: R => R.traffic,
+  move(R, W, dt, all, racing) { for (const c of R.traffic) { if (c.wreckT <= 0) trafficControl(c, W, all, dt); stepCar(c, dt, W, racing); } },
+  spawn: updateTraffic
+};

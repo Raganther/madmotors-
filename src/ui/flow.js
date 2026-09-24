@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { G } from '../game.js';
 import { AudioSys } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
@@ -6,18 +5,16 @@ import { createRace, ranking } from '../core/sim/race.js';
 import { CAR_DEFS } from '../data/cars.js';
 import { STAGES } from '../data/stages/index.js';
 import { updateCamera } from '../render/camera.js';
-import { crossVis } from '../render/crossings.js';
 import { clearDebris } from '../render/effects/debris.js';
 import { carCrashFx, dustRing, impactFx, sparks } from '../render/effects/impacts.js';
 import { clearProps } from '../render/effects/props.js';
 import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
-import { disposeGroup } from '../render/geometry.js';
 import { camera, renderer, scene } from '../render/renderer.js';
-import { initTrainsVis } from '../render/trains.js';
-import { carVis, dentFx, makeTrafficMesh, repairCarVis, visOf, wreckFx } from '../render/vehicles.js';
+import { carVis, dentFx, repairCarVis, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
 import { TRACKS, buildWorld } from '../render/world/index.js';
+import { featureHook } from '../render/features.js';
 import { $, isTouch } from './dom.js';
 import { fmt, ordinal } from './format.js';
 import { callout, drawProfile } from './hud.js';
@@ -30,12 +27,7 @@ export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
   const r = createRace(G.world.W, CAR_DEFS); clearProps(); resetBarrierVis(); carVis.forEach(repairCarVis);
-  if (G.world.trainGroup) { G.world.group.remove(G.world.trainGroup); disposeGroup(G.world.trainGroup); }
-  G.world.trainGroup = new THREE.Group(); G.world.group.add(G.world.trainGroup);
-  const prev = race; race = r; initTrainsVis(G.world.trainGroup); race = prev;
-  crossVis.forEach(v => { v.t = 0; v.gates.forEach(g => { g.broken = false; g.arm.visible = true; }); });
-  for (const v of G.parkVis) { scene.remove(v.root); disposeGroup(v.root); } G.parkVis = [];
-  for (const c of r.parked) { const v = makeTrafficMesh(c.def.kind); v.paint.color.set(c.def.color); v.root.visible = true; c.vis = v; G.parkVis.push(v); }
+  featureHook('newRace', r);
   return r;
 }
 // ---------- flow ----------
