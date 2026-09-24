@@ -5,7 +5,8 @@ import { groundDir } from '../core/sim/view.js';
 import { respawn } from '../core/sim/car.js';
 import { $ } from './dom.js';
 import { toggleOverlay } from '../render/overlay.js';
-import { saveSteer } from './storage.js';
+import { saveCamera, saveSteer } from './storage.js';
+import { CAM_MODES, CAM_ZOOMS } from '../render/camera.js';
 import { race, selected, startRace, togglePause } from './flow.js';
 
 // ---------- input ----------
@@ -17,6 +18,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyR' && G.state === 'racing' && race && !race.player.finished) respawn(race.player, G.world.W);
   if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
   if (e.code === 'KeyM') AudioSys.toggle();
+  if (e.code === 'KeyC' && G.state !== 'menu') setCamera(nextCamera());           // cycle the camera
   if (e.code === 'Backquote') toggleOverlay();                              // debug overlay (render/overlay.js)
   if (e.code === 'Enter' && G.state === 'menu' && $('loading').hidden && document.activeElement === document.body) startRace(selected);
 });
@@ -51,6 +53,14 @@ thumbZone($('steer-zone'), (_x, _y, e) => {
   touch.dir = [dx, -dy]; wheelG.setAttribute('transform', `rotate(${(Math.atan2(dx, -dy) * 180 / Math.PI).toFixed(1)})`);
   return null;
 }, () => { touch.dir = null; touch.wheel = touch.left = touch.right = false; wheel.classList.remove('on'); wheelG.removeAttribute('transform'); arrowEls.forEach(el => el.classList.remove('on')); });
+/** Camera mode and zoom (render/camera.js). Remembered between visits. */
+export function setCamera(mode = G.camMode, zoom = G.camZoom) {
+  G.camMode = mode in CAM_MODES ? mode : 'classic'; G.camZoom = zoom in CAM_ZOOMS ? zoom : 'normal'; saveCamera({ mode: G.camMode, zoom: G.camZoom });
+  for (const b of document.querySelectorAll('.cam-btn')) b.textContent = 'Camera: ' + CAM_MODES[G.camMode].name;
+  for (const b of document.querySelectorAll('.zoom-btn')) b.textContent = 'Zoom: ' + CAM_ZOOMS[G.camZoom].name;
+}
+const next = (obj, k) => { const ks = Object.keys(obj); return ks[(ks.indexOf(k) + 1) % ks.length]; };
+export const nextCamera = () => next(CAM_MODES, G.camMode), nextZoom = () => next(CAM_ZOOMS, G.camZoom);
 /** Touch steering: 'wheel' (point-to-steer) or 'arrows'. Remembered between visits. */
 export function setSteer(m) {
   G.steer = m === 'arrows' ? 'arrows' : 'wheel'; saveSteer(G.steer);
@@ -77,7 +87,7 @@ export function readInput(dt) {
   const cur = P.inp.steer;
   if (touch.wheel && !st) {   // point-to-steer: turn toward the screen direction the wheel points at (flipped when reversing)
     let want = 0;
-    if (touch.dir) { const [gx, gz] = groundDir(touch.dir[0], touch.dir[1]); want = clamp(-wrapAngle(Math.atan2(gx, gz) - P.yaw) * 2.4 * (P.vf < -1 ? -1 : 1), -1, 1); }
+    if (touch.dir) { const [gx, gz] = groundDir(touch.dir[0], touch.dir[1], G.camDir); want = clamp(-wrapAngle(Math.atan2(gx, gz) - P.yaw) * 2.4 * (P.vf < -1 ? -1 : 1), -1, 1); }
     P.inp.steer = cur + (want - cur) * Math.min(1, dt * 20);
   }
   else if (gp && Math.abs(st) > 0 && Math.abs(st) < 1) P.inp.steer = st;

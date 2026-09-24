@@ -82,7 +82,7 @@ function rejoin(R, W, c) {
 function fitZoom(R, dt) {
   const S = R.sd, a = R.aspect, ax = a >= 1 ? a : 1, ay = a >= 1 ? 1 : 1 / a;
   let need = SD.ZMIN;
-  for (const c of racing(R)) { const [sx, sy] = screenOffset(c.x, c.y, c.z, S.focus); need = Math.max(need, (Math.abs(sx) + SD.FIT) / ax, (Math.abs(sy) + SD.FIT) / ay); }
+  for (const c of racing(R)) { const [sx, sy] = screenOffset(c.x, c.y, c.z, S.focus, R.camDir); need = Math.max(need, (Math.abs(sx) + SD.FIT) / ax, (Math.abs(sy) + SD.FIT) / ay); }
   need = Math.min(need, SD.ZMAX);
   S.scale += (need - S.scale) * (1 - Math.exp(-dt * (need > S.scale ? 4 : 0.8)));
   S.view = sdExtents(S.scale, a);
@@ -110,7 +110,7 @@ export function showdownStep(R, W, dt) {
   R.cars.forEach((c, k) => {
     if (c === L || S.boomT[k] > 0 || c.ghost > 0) { S.offT[k] = 0; return; }          // just respawned: safe for a moment
     if (tr.alts.length && (split(c) || split(L))) { S.offT[k] = 0; return; }           // where the road splits, taking the other route isn't falling behind
-    const [sx, sy] = screenOffset(c.x, c.y, c.z, S.focus);
+    const [sx, sy] = screenOffset(c.x, c.y, c.z, S.focus, R.camDir);
     S.offT[k] = Math.abs(sx) > hw || Math.abs(sy) > hh ? S.offT[k] + dt : 0;
     if (S.offT[k] >= SD.OFF_TIME) dropped.push(k);
   });

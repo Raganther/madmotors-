@@ -58,7 +58,7 @@ export function updateHazardVis(dt, now) {
     // warning signs either side, flashing
     for (const side of [-1, 1]) {
       const s = signs[gi++]; if (!s) break; const i = ((h.warnI % tr.N) + tr.N) % tr.N, lat = side * (WALL + 1.6);
-      s.g.visible = true; s.g.position.set(tr.xs[i] + tr.rx[i] * lat, tr.H[i], tr.zs[i] + tr.rz[i] * lat); s.g.rotation.y = Math.atan2(CAM_DIR[0], CAM_DIR[2]);   // turned to face the camera, like a billboard
+      s.g.visible = true; s.g.position.set(tr.xs[i] + tr.rx[i] * lat, tr.H[i], tr.zs[i] + tr.rz[i] * lat); s.g.rotation.y = Math.atan2(...(G.camDir ? [G.camDir[0], G.camDir[2]] : [CAM_DIR[0], CAM_DIR[2]]));   // turned to face the camera, like a billboard
       if (s.key !== h.kind) { s.key = h.kind; s.face.material.map = tex(h.kind); s.face.material.needsUpdate = true; }
       s.lamp.visible = Math.floor(now * 3) % 2 === 0;
     }

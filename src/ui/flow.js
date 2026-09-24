@@ -93,7 +93,7 @@ export function handleEvents() {
   }
 }
 /** Is a car inside the current Showdown view? */
-function onScreen(c) { const v = race.sd.view, f = race.sd.focus; if (!v || !f) return false; const [sx, sy] = screenOffset(c.x, c.y, c.z, f); return Math.abs(sx) < v.hw && Math.abs(sy) < v.hh; }
+function onScreen(c) { const v = race.sd.view, f = race.sd.focus; if (!v || !f) return false; const [sx, sy] = screenOffset(c.x, c.y, c.z, f, race.camDir); return Math.abs(sx) < v.hw && Math.abs(sy) < v.hh; }
 // Showdown crown events: stragglers blowing up (and paying crown time to the holder), the crown changing hands
 function sdBoom(e) {
   const pi = race.cars.indexOf(race.player), i = e.losers.indexOf(pi), fmtS = v => (Math.round(v * 10) / 10) + 's';

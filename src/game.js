@@ -25,5 +25,7 @@ export const G = {
 };
 G.mode = 'race';        // 'race' | 'showdown' (chosen in the menu)
 G.steer = 'wheel';      // touch steering: 'wheel' | 'arrows' (menu / pause setting)
+G.camMode = 'classic'; G.camZoom = 'normal';   // camera settings (render/camera.js CAM_MODES / CAM_ZOOMS)
+G.camDir = null;        // where the camera looks from, [x, y, z] (set each frame by the camera)
 G.sdOverAt = 0;
 G.sdTick = 0;        // next Showdown danger tick (race time)

@@ -9,3 +9,6 @@ export function saveMode(m) { try { localStorage.setItem(MODE_KEY, m); } catch (
 export const STEER_KEY = 'downhill-rush-steer';
 export function loadSteer() { try { return localStorage.getItem(STEER_KEY) === 'arrows' ? 'arrows' : 'wheel'; } catch (e) { return 'wheel'; } }
 export function saveSteer(m) { try { localStorage.setItem(STEER_KEY, m); } catch (e) { } }
+export const CAM_KEY = 'downhill-rush-camera';
+export function loadCamera() { try { return JSON.parse(localStorage.getItem(CAM_KEY) || '{}') || {}; } catch (e) { return {}; } }
+export function saveCamera(c) { try { localStorage.setItem(CAM_KEY, JSON.stringify(c)); } catch (e) { } }

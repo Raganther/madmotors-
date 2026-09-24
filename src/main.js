@@ -1,7 +1,7 @@
 import './debug.js';
 import { G } from './game.js';
 import { $, isTouch } from './ui/dom.js';
-import { loadMode, loadSteer } from './ui/storage.js';
+import { loadCamera, loadMode, loadSteer } from './ui/storage.js';
 import { AudioSys } from './audio/audio.js';
 import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
@@ -24,7 +24,7 @@ import { applyBarrierChanges } from './render/world/barriers.js';
 import { updateFans } from './render/world/scenery.js';
 import { setMode, buildStageList, handleEvents, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
 import { updateHUD } from './ui/hud.js';
-import { readInput, setSteer } from './ui/input.js';
+import { nextCamera, nextZoom, readInput, setCamera, setSteer } from './ui/input.js';
 
 export function frame(t) {
   requestAnimationFrame(frame);
@@ -77,6 +77,8 @@ export function wireUI() {
   document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('gfx-btn').addEventListener('click', () => { if (renderer) cycleQuality(); });
   for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
+  for (const b of document.querySelectorAll('.cam-btn')) b.addEventListener('click', () => setCamera(nextCamera()));
+  for (const b of document.querySelectorAll('.zoom-btn')) b.addEventListener('click', () => setCamera(G.camMode, nextZoom()));
 }
 export async function boot() {
   let step = 'setting up the menu';
@@ -86,6 +88,7 @@ export async function boot() {
     if (sbName) { if (!SANDBOXES[sbName]) throw new Error(`no sandbox "${sbName}"; try ${Object.keys(SANDBOXES).join(', ')}`); STAGES.push(SANDBOXES[sbName]); }
     if (new URLSearchParams(location.search).has('debug')) toggleOverlay(true);
     wireUI(); buildStageList(); setMode(loadMode());
+    { const c = loadCamera(); setCamera(c.mode, c.zoom); }
     setSteer(loadSteer()); for (const b of document.querySelectorAll('.steer-btn')) b.hidden = !isTouch;   // steering choice only matters with touch controls
     if (isTouch) { document.documentElement.classList.add('touch'); $('time-block').insertBefore($('speed-block'), $('time-block').querySelector('.hud-btns')); }   // keep the speedo clear of the thumb controls
     $('race-btn').textContent = 'Race ' + STAGES[0].name;

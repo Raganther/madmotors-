@@ -88,7 +88,7 @@ function updateShowdownHUD(sd, P) {
   // glow on the screen edge you're about to drop off, stronger the closer the camera is to its zoom limit
   const edge = $('edge').children, v = sd.view;
   if (sd.focus && v && sd.phase === 'run' && L !== P) {
-    const tension = clamp((sd.scale - SD.ZMIN) / (SD.ZMAX - SD.ZMIN), 0, 1), [sx, sy] = screenOffset(P.x, P.y, P.z, sd.focus), a = t => clamp((t - 0.72) / 0.28, 0, 1) * (0.25 + 0.75 * tension);
+    const tension = clamp((sd.scale - SD.ZMIN) / (SD.ZMAX - SD.ZMIN), 0, 1), [sx, sy] = screenOffset(P.x, P.y, P.z, sd.focus, race.camDir), a = t => clamp((t - 0.72) / 0.28, 0, 1) * (0.25 + 0.75 * tension);
     // last car with the camera maxed out: a ticking warning
     const last = race.cars.every(c => c === P || c.progress >= P.progress);
     if (last && tension > 0.9 && race.time > G.sdTick) { G.sdTick = race.time + 0.4; AudioSys.tone(1320, 0.06, 0.05, 'square'); }
