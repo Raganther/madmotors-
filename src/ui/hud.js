@@ -1,6 +1,7 @@
 import { G } from '../game.js';
 import { screenOffset } from '../core/sim/view.js';
-import { SD } from '../core/modes/showdown.js';
+import { SD, sdLeader } from '../core/modes/showdown.js';
+import { AudioSys } from '../audio/audio.js';
 import { TAU, clamp } from '../core/math.js';
 import { ranking } from '../core/sim/race.js';
 import { roadH } from '../core/track/query.js';
@@ -76,17 +77,20 @@ export function updateHUD(dt) {
   $('warn').hidden = !(wrong || P.stuckT > 3);
 }
 function updateShowdownHUD(sd, P) {
-  const key = sd.lights.join();
+  const L = sdLeader(race), key = sd.lights.join() + race.cars.indexOf(L);
   if (key !== G.sdKey) {
     G.sdKey = key;
     const hex = c => '#' + c.def.color.toString(16).padStart(6, '0');
-    $('sd-rows').innerHTML = race.cars.map((c, k) => `<li class="${c.isPlayer ? 'me' : ''}"><span class="chip" style="background:${hex(c)}"></span><span class="nm">${c.name}</span><span class="nm-s">${c.name.slice(0, 3)}</span><span class="sd-l">${
+    $('sd-rows').innerHTML = race.cars.map((c, k) => `<li class="${c.isPlayer ? 'me' : ''} ${c === L ? 'lead' : ''}"><span class="chip" style="background:${hex(c)}"></span><span class="nm">${c.name}</span><span class="nm-s">${c.name.slice(0, 3)}</span><span class="sd-l">${
       Array.from({ length: SD.WIN }, (_, j) => j < sd.lights[k] ? `<i style="background:${hex(c)};box-shadow:0 0 6px ${hex(c)}"></i>` : '<i></i>').join('')}</span></li>`).join('');
   }
-  // glow on the screen edge you're about to drop off
+  // glow on the screen edge you're about to drop off, stronger the closer the camera is to its zoom limit
   const edge = $('edge').children, v = sd.view;
-  if (sd.focus && v && sd.phase === 'run') {
-    const [sx, sy] = screenOffset(P.x, P.y, P.z, sd.focus), a = t => clamp((t - 0.72) / 0.28, 0, 1);
+  if (sd.focus && v && sd.phase === 'run' && L !== P) {
+    const tension = clamp((sd.scale - SD.ZMIN) / (SD.ZMAX - SD.ZMIN), 0, 1), [sx, sy] = screenOffset(P.x, P.y, P.z, sd.focus), a = t => clamp((t - 0.72) / 0.28, 0, 1) * (0.25 + 0.75 * tension);
+    // last car with the camera maxed out: a ticking warning
+    const last = race.cars.every(c => c === P || c.progress >= P.progress);
+    if (last && tension > 0.9 && race.time > G.sdTick) { G.sdTick = race.time + 0.4; AudioSys.tone(1320, 0.06, 0.05, 'square'); }
     edge[0].style.opacity = a(-sx / v.hw); edge[1].style.opacity = a(sx / v.hw); edge[2].style.opacity = a(sy / v.hh); edge[3].style.opacity = a(-sy / v.hh);
   } else for (const e of edge) e.style.opacity = 0;
 }

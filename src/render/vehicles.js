@@ -4,6 +4,7 @@ import { AudioSys } from '../audio/audio.js';
 import { CAR_HL, CAR_HW } from '../core/constants.js';
 import { clamp, lerp, wrapAngle } from '../core/math.js';
 import { WRECK_T, carWear } from '../core/sim/damage.js';
+import { SD, sdLeader } from '../core/modes/showdown.js';
 import { CAR_DEFS, TRAFFIC_KINDS } from '../data/cars.js';
 import { effectsForCar } from './effects/carfx.js';
 import { glassBits, sparks } from './effects/impacts.js';
@@ -120,8 +121,21 @@ export function wreckFx(c, isPlayer, near) {
   for (let k = 0; k < 26; k++) emit(c.x + (Math.random() - 0.5) * 2, c.y + 0.8, c.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 7, 2 + Math.random() * 4, (Math.random() - 0.5) * 7, 1 + Math.random(), 1.4 + Math.random(), k % 3 ? 0x3A3A3A : 0xFF8A2E, -1);
   if (v) { detachPart(c, v, v.bumper); detachPart(c, v, v.wing); v.wreckFx = 1; }
   c.smokeT = WRECK_T;
-  if (isPlayer) { G.shake = Math.min(1.6, G.shake + 1.2); G.slowmo = Math.max(G.slowmo, 0.3); callout('Wrecked!'); }
+  if (isPlayer) { G.shake = Math.min(1.6, G.shake + 1.2); G.slowmo = Math.max(G.slowmo, 0.3); if (!race.sd) callout('Wrecked!'); }
   if (isPlayer || near) AudioSys.crash('car', isPlayer ? 1 : 0.5);
+}
+// Showdown blow-up: a fireball and a smoke column on top of the wreck, in the car's colour
+export function sdBoomFx(c, onScreen) {
+  const col = c.def.color;
+  shockwave(c.x, c.y, c.z, 11, col); shockwave(c.x, c.y + 0.4, c.z, 6, 0xFFE08A);
+  for (let k = 0; k < 40; k++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 7; emit(c.x, c.y + 1, c.z, Math.cos(a) * r, 4 + Math.random() * 7, Math.sin(a) * r, 0.5 + Math.random() * 0.5, 1.6 + Math.random() * 1.4, k % 4 === 0 ? col : k % 2 ? 0xFFB03A : 0xFFE27A, 4); }
+  for (let k = 0; k < 18; k++) emit(c.x + (Math.random() - 0.5) * 1.5, c.y + 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, 5 + Math.random() * 4, (Math.random() - 0.5) * 1.5, 1.6 + Math.random() * 0.8, 2.2 + Math.random() * 1.5, 0x3A3A3A, -1.5);
+  if (onScreen) { G.shake = Math.min(1.8, G.shake + (c.isPlayer ? 1.4 : 0.7)); AudioSys.crash('car', c.isPlayer ? 1 : 0.8); }
+}
+// Showdown respawn: a ring and sparkles in the car's colour so you can see where it came back
+export function sdSpawnFx(c) {
+  shockwave(c.x, c.y, c.z, 6, c.def.color);
+  for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; emit(c.x + Math.cos(a) * 1.6, c.y + 0.4, c.z + Math.sin(a) * 1.6, Math.cos(a) * 3, 2 + Math.random() * 2, Math.sin(a) * 3, 0.5, 0.7, k % 2 ? c.def.color : 0xFFFFFF, 2); }
 }
 // civilian vehicles: same part names as the race cars so damage visuals work on them too
 export const TRAFFIC_SHAPES = {
@@ -184,12 +198,17 @@ export function syncTrafficVis() {
     v.owner = c; c.vis = v; repairCarVis(v); v.paint.color.set(c.def.color); v.root.visible = true; v.n.set(0, 1, 0); v.wobble = 0;
   }
 }
-export let marker;
+export let marker, crown;
 export function initCars() {
   CAR_DEFS.forEach(d => carVis.push(makeCarMesh(d)));
   for (const k of Object.keys(trafficPool)) for (let i = 0; i < 5; i++) trafficPool[k].push(makeTrafficMesh(k));
   marker = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.1, 4).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: 0xFFC72C }));
   scene.add(marker);
+  // Showdown leader's crown: a gold band with five points
+  const gold = new THREE.MeshBasicMaterial({ color: 0xFFC72C });
+  crown = new THREE.Group(); crown.add(new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.55, 0.34, 10, 1, true), gold));
+  for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2, p = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.42, 4), gold); p.position.set(Math.cos(a) * 0.55, 0.36, Math.sin(a) * 0.55); crown.add(p); }
+  crown.scale.setScalar(1.7); crown.visible = false; scene.add(crown);
 }
 export const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _mb = new THREE.Matrix4();
 export function drawCar(c, v, dt, now) {
@@ -215,12 +234,16 @@ export function drawCar(c, v, dt, now) {
 }
 export function updateCarVisuals(dt, now) {
   if (!race) return;
-  race.cars.forEach((c, k) => drawCar(c, carVis[k], dt, now));
+  const sd = race.sd;
+  race.cars.forEach((c, k) => { drawCar(c, carVis[k], dt, now); if (sd && sd.boomT[k] > 0 && sd.boomT[k] < SD.BOOM - 0.2) carVis[k].root.visible = false; });   // blown to bits
   syncTrafficVis();
   for (const c of race.traffic) if (c.vis) drawCar(c, c.vis, dt, now);
   for (const v of G.parkVis) v.root.visible = false;
   for (const c of race.parked) if (c.vis) drawCar(c, c.vis, dt, now);
   const P = race.player;
-  marker.position.set(P.dx ?? P.x, (P.dy ?? P.y) + 3.6 + Math.sin(now * 4) * 0.25, P.dz ?? P.z); marker.rotation.y = now * 1.5;
+  const L = sd && G.state !== 'menu' ? sdLeader(race) : null;
+  marker.position.set(P.dx ?? P.x, (P.dy ?? P.y) + (L === P ? 5.4 : 3.6) + Math.sin(now * 4) * 0.25, P.dz ?? P.z); marker.rotation.y = now * 1.5;
   marker.visible = G.state !== 'menu';
+  crown.visible = !!L;
+  if (L) { crown.position.set(L.dx ?? L.x, (L.dy ?? L.y) + 3.1 + Math.sin(now * 3) * 0.15, L.dz ?? L.z); crown.rotation.y = now * 0.8; }
 }

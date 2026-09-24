@@ -2,6 +2,7 @@ import { G } from '../game.js';
 import { AudioSys } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { createRace, ranking } from '../core/sim/race.js';
+import { screenOffset } from '../core/sim/view.js';
 import { CAR_DEFS } from '../data/cars.js';
 import { STAGES } from '../data/stages/index.js';
 import { updateCamera } from '../render/camera.js';
@@ -11,7 +12,7 @@ import { clearProps } from '../render/effects/props.js';
 import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
 import { camera, renderer, scene } from '../render/renderer.js';
-import { carVis, dentFx, repairCarVis, visOf, wreckFx } from '../render/vehicles.js';
+import { carVis, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
 import { TRACKS, buildWorld } from '../render/world/index.js';
 import { featureHook } from '../render/features.js';
@@ -50,7 +51,8 @@ export function handleEvents() {
         case 'repair': { const v = visOf(c); if (v) repairCarVis(v); break; }
         case 'horn': if (Math.hypot(c.x - race.player.x, c.z - race.player.z) < 70) AudioSys.horn(c.def.kind === 'truck' ? 0.75 : 1); break;
         case 'lap': if (c.isPlayer) { callout(e.n === G.world.tr.laps ? 'Final lap!' : 'Lap ' + e.n); AudioSys.beep(660, 0.2); } break;
-        case 'sd-round': sdRound(e); break;
+        case 'sd-round': sdRound(e); if (e.boom) for (const k of e.losers) { const b = race.cars[k]; sdBoomFx(b, b.isPlayer || onScreen(b)); } break;
+        case 'sd-spawn': sdSpawnFx(c); if (c.isPlayer) { callout(e.slot === 'front' ? 'Back in, ahead!' : e.slot === 'beside' ? 'Back in, alongside!' : 'Back in, behind!'); AudioSys.tone(440, 0.25, 0.08, 'triangle', 2); } break;
         case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? 'You win the Showdown!' : w.name + ' wins the Showdown'); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
         case 'finish':
           if (c.isPlayer) {
@@ -64,6 +66,8 @@ export function handleEvents() {
     c.events.length = 0;
   }
 }
+/** Is a car inside the current Showdown view? */
+function onScreen(c) { const v = race.sd.view, f = race.sd.focus; if (!v || !f) return false; const [sx, sy] = screenOffset(c.x, c.y, c.z, f); return Math.abs(sx) < v.hw && Math.abs(sy) < v.hh; }
 // a round of Showdown: the leader took a light from each car that dropped off the screen (blown up, or left behind in a breakaway)
 function sdRound(e) {
   const P = race.player, pi = race.cars.indexOf(P), w = race.cars[e.winner], n = e.losers.length;
@@ -87,17 +91,17 @@ export function showResults() {
 }
 function showShowdownResults() {
   resultsShown = true; $('results').hidden = false; $('touch').hidden = true;
-  const won = race.cars[race.sd.winner] === race.player;
-  $('res-title').textContent = won ? 'You won the Showdown' : race.cars[race.sd.winner].name + ' won the Showdown';
-  $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name}, ${race.sd.rounds} rounds`;
-  $('res-best').textContent = 'Showdown: take lights by leaving rivals off the screen';
+  const w = race.cars[race.sd.winner], won = w === race.player;
+  $('res-title').innerHTML = `<span class="chip" style="background:#${w.def.color.toString(16).padStart(6, '0')}"></span>` + (won ? 'You won the Showdown' : w.name + ' won the Showdown');
+  $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name}, ${race.sd.rounds} ${race.sd.rounds === 1 ? 'round' : 'rounds'}`;
+  $('res-best').textContent = 'Showdown: lose the pack off the screen to blow them up and take their lights';
   $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
   updateResultsTable(); $('next-btn').focus();
 }
 export function updateResultsTable() {
   if (race.sd) {
-    const S = race.sd, order = race.cars.map((c, k) => ({ c, l: S.lights[k] })).sort((a, b) => b.l - a.l || b.c.progress - a.c.progress);
-    $('res-table').innerHTML = order.map(({ c, l }, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}</td><td class="rt">${l + (l === 1 ? ' light' : ' lights')}</td></tr>`).join('');
+    const S = race.sd, order = race.cars.map((c, k) => ({ c, k, l: S.lights[k] })).sort((a, b) => b.l - a.l || b.c.progress - a.c.progress);
+    $('res-table').innerHTML = order.map(({ c, k, l }, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}<span class="rs">took ${S.taken[k]} · blew up ${S.booms[k]}×</span></td><td class="rt">${l + (l === 1 ? ' light' : ' lights')}</td></tr>`).join('');
     return;
   }
   const order = ranking(race);
@@ -120,7 +124,7 @@ export function startRace(idx) {
   AudioSys.init();
   selectStage(idx, () => {
     race = newRace(); clearSkids(); clearDebris(); G.shake = 0; G.slowmo = 0;
-    G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; $('edge').className = '';
+    G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; G.sdTick = 0; $('edge').className = '';
     $('menu').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
     $('stage-name').textContent = `Stage ${idx + 1}: ${STAGES[idx].name}`;
     racesStarted++; G.hintTimer = racesStarted <= 2 ? 7 : 0;

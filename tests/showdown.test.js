@@ -31,7 +31,7 @@ function world(si) {
 function match(si, aspect) {
   seedRandom(3 + si);
   const W = world(si), R = M.createRace(W, DEFS, { mode: 'showdown' }); R.aspect = aspect; R.phase = 'racing'; R.autoPlayer = true;
-  const log = { rounds: [], booms: 0, boomsFar: true, regroups: [], rejoins: [], lightsOk: true, zoomOk: true, minT: 0 };
+  const log = { spawnEv: [], rounds: [], booms: 0, boomLosers: 0, boomsFar: true, regroups: [], rejoins: [], lightsOk: true, zoomOk: true, minT: 0 };
   let t = 0;
   while (t < 600 && R.sd.phase !== 'over') {
     const wasAnnounce = R.sd.phase === 'announce', boomed = R.sd.boomT.map(b => b > 0);
@@ -45,9 +45,9 @@ function match(si, aspect) {
     }
     R.cars.forEach((c, k) => { if (boomed[k] && !(R.sd.boomT[k] > 0) && R.sd.phase === 'run') log.rejoins.push({ ghost: c.ghost > 1, wreck: c.wreckT, inView: inFar(R, c) }); });
     for (const c of R.cars.concat(R.traffic, R.parked)) {
-      for (const e of c.events) if (e.t === 'sd-round') {
+      for (const e of c.events) if (e.t === 'sd-spawn') log.spawnEv.push(e.slot); else if (e.t === 'sd-round') {
         log.rounds.push({ winner: e.winner, losers: e.losers.slice() });
-        if (e.boom) { log.booms++; for (const k of e.losers) if (!offFar(R, R.cars[k])) log.boomsFar = false; }
+        if (e.boom) { log.booms++; log.boomLosers += e.losers.length; for (const k of e.losers) if (!offFar(R, R.cars[k])) log.boomsFar = false; }
       }
       c.events.length = 0;
     }
@@ -70,6 +70,9 @@ describe('showdown matches', () => {
       expect(R.sd.phase).toBe('over');
       expect(R.sd.winner).toBeGreaterThanOrEqual(0);
       expect(R.cars.every(c => !c.out)).toBe(true);
+      expect(log.spawnEv).toEqual(R.sd.spawns);                                  // one sd-spawn event per rejoin
+      expect(R.sd.booms.reduce((a, b) => a + b, 0)).toBe(log.boomLosers);
+      expect(R.sd.taken.reduce((a, b) => a + b, 0)).toBe(log.rounds.reduce((a, r) => a + r.losers.length, 0));
       console.log(`stage ${si + 1}: ${log.booms} booms, ${log.regroups.length} breakaways in ${t.toFixed(0)}s, close zoom ${(100 * log.minT / t).toFixed(0)}% of the time, spawns ${R.sd.spawns.join(',')}, final lights ${R.sd.lights.join('/')}, winner ${R.cars[R.sd.winner].name}`);
     });
   }

@@ -18,7 +18,7 @@ export function sdExtents(scale, aspect) { return aspect >= 1 ? { hw: scale * as
 
 export function initShowdown(R) {
   R.sd = { lights: R.cars.map(() => SD.START), phase: 'run', timer: 0, grace: SD.GRACE, focus: null, snap: true, camSnap: true,
-    scale: SD.ZMIN, view: null, offT: R.cars.map(() => 0), boomT: R.cars.map(() => 0), winner: -1, rounds: 0, rng: mulberry32(R.cars.length * 7919 + 17), spawns: [] };
+    scale: SD.ZMIN, view: null, offT: R.cars.map(() => 0), boomT: R.cars.map(() => 0), winner: -1, rounds: 0, booms: R.cars.map(() => 0), taken: R.cars.map(() => 0), rng: mulberry32(R.cars.length * 7919 + 17), spawns: [] };
   if (!R.aspect) R.aspect = 16 / 9;
   R.sd.view = sdExtents(SD.ZMIN, R.aspect);
 }
@@ -54,7 +54,7 @@ function mostLights(R) {
 function score(R, L, losers, boom) {
   const S = R.sd, li = R.cars.indexOf(L);
   S.lights[li] += losers.length; for (const k of losers) S.lights[k] = Math.max(0, S.lights[k] - 1);
-  S.rounds++;
+  S.rounds++; S.taken[li] += losers.length; if (boom) for (const k of losers) S.booms[k]++;
   L.events.push({ t: 'sd-round', winner: li, losers, boom });
   if (S.lights[li] >= SD.WIN) { finish(R, L); return true; }
   return false;
@@ -65,7 +65,7 @@ function rejoin(R, W, c) {
   const slot = r < 0.4 ? 'behind' : r < 0.75 ? 'beside' : 'front';
   const at = slot === 'behind' ? i - 12 : slot === 'beside' ? i : Math.min(i + 10, W.tr.finishIdx - 20);
   place(c, W, Math.max(4, at), slot === 'beside' ? side : (S.rng() < 0.5 ? -2.8 : 2.8));
-  S.spawns.push(slot);
+  S.spawns.push(slot); c.events.push({ t: 'sd-spawn', slot });
 }
 /** Ease the zoom towards whatever keeps every car in shot, between ZMIN and ZMAX. */
 function fitZoom(R, dt) {

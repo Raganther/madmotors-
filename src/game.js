@@ -26,3 +26,4 @@ export const G = {
 };
 G.mode = 'race';        // 'race' | 'showdown' (chosen in the menu)
 G.sdOverAt = 0;
+G.sdTick = 0;        // next Showdown danger tick (race time)
