@@ -28,5 +28,8 @@ Visual work is judged by eye, so the loop is: screenshot → change → screensh
 - Anything expensive built per call (PMREM environments, render targets, canvases) must be cached; rebuilding it per
   garage picture timed the page out.
 - Strong direct light on shiny paint washes car tops white: keep paint roughness around 0.6.
+- Specular highlights (Phong `specular`, low roughness) on a flat, level surface flood the whole patch white: the
+  camera is orthographic, so every point sees the sun's reflection at once. Paint glints into the texture instead.
+  To find an object on screen, `npm run shot -- <n> <m> --eval "...recolour it red..."`.
 - Big-scale noise reads as dirty stains; fine-scale, low-contrast grain reads as texture.
 - Headless is SwiftShader and slow: wait with `waitForFunction`, never a fixed sleep.
