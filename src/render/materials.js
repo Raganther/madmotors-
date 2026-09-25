@@ -66,8 +66,9 @@ export function withCutaway(mat, solidInside, opts = {}) {
       #include <fog_fragment>`);
     if (grain) fs = fs.replace('#include <color_fragment>', `#include <color_fragment>
       if (uGrain > 0.0) {
-        float gr = texture2D(uCloud, vCutW.xz / 5.3).r * 0.6 + texture2D(uCloud, vCutW.xz / 0.9 + 0.37).r * 0.4;
-        diffuseColor.rgb *= 1.0 + ${grain.toFixed(3)} * uGrain * (gr - 0.5) * 2.0;
+        // mostly the fine scale, a hint of the broad one, contrast softened: speckle, not stains
+        float gr = texture2D(uCloud, vCutW.xz / 4.1).r * 0.25 + texture2D(uCloud, vCutW.xz / 0.8 + 0.37).r * 0.75;
+        diffuseColor.rgb *= 1.0 + ${grain.toFixed(3)} * uGrain * clamp((gr - 0.5) * 1.1, -0.5, 0.5);
       }`);
     if (solidInside) fs = fs.replace('#include <color_fragment>', '#include <color_fragment>\n  if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.23, 0.21, 0.19);');
     sh.fragmentShader = fs;

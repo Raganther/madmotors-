@@ -80,7 +80,7 @@ export function makeRoadMesh(tr, stage) {
     }
   }
   const mk = (P, C, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m; };
-  const mainM = mk(mainPos, mainCol, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), false, { cut: false, cloud: true, grain: tr.surface === 'tarmac' ? 0.12 : 0.2 })), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
+  const mainM = mk(mainPos, mainCol, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), false, { cut: false, cloud: true, grain: tr.surface === 'tarmac' ? 0.07 : 0.12 })), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
   const bridge = brPos.length ? mk(brPos, brCol, bridgeMat({ vertexColors: true, side: THREE.DoubleSide })) : null;
   if (bridge) bridge.castShadow = true;
   return { main, bridge };

@@ -38,5 +38,5 @@ export function makeTerrainMesh(terr, tr, stage) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
   const fg = g.toNonIndexed(); g.dispose(); fg.computeVertexNormals();          // per-face normals keep the faceted look with cheap Lambert lighting
-  return chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true, { cloud: true, grain: 0.16 }), 60, true);
+  return chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true, { cloud: true, grain: 0.1 }), 60, true);
 }
