@@ -118,7 +118,9 @@ tag or option fails with the list of valid ones, and a section that comes out ba
 
 `core/features/wear.js` gives every road a wear grid (0.5 m cells across, 1 m along) that the wheels wear in as the
 race goes on, reset each race: ruts in mud (firmer, but they grab), grooves along the line on gravel (a touch more
-grip), a rubbered-in line on tarmac (looks only), and a mud trail behind cars leaving a bog. `render/elements/wear.js`
+grip), a rubbered-in line on tarmac (looks only), and a mud trail behind cars leaving a bog. Every wheel also leaves
+fresh tyre tracks where it actually is (curved scuffs when drifting) on gravel, grass verges and mud, from the first
+pass; on tarmac, skid marks do that job. `render/elements/wear.js`
 draws it over the road; the bogs draw their own ruts. A new surface gets its wear from `WEAR.DIG` and its worn-in
 grip from the `FIRM` table there.
 

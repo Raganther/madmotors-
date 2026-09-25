@@ -66,7 +66,7 @@ const mill = { name: 'mill', build(group, tr, terr) { addMill(group, tr, terr); 
 
 const mud = { name: 'mud', build(group, tr, terr, stage) { addMud(group, tr, terr, stage); }, newRace() { newMudRace(); }, update(dt) { updateMud(dt); } };
 
-const wear = { name: 'wear', build(group, tr, terr, stage) { addWear(group, tr, stage); }, newRace() { newWearRace(); }, update(dt) { updateWear(dt); } };   // every stage (features/wear.js)
+const wear = { name: 'wear', build(group, tr, terr, stage) { addWear(group, tr, terr, stage); }, newRace() { newWearRace(); }, update(dt) { updateWear(dt); } };   // every stage (features/wear.js)
 
 export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

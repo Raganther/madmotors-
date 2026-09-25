@@ -230,11 +230,14 @@ describe('track wear on every surface', () => {
     for (let t = 0; t < 24; t += 1 / 120) M.raceStep(R, 1 / 120, W);
     const [a, b] = M.mudRuns(tr)[0], sum = (arr, r0, r1) => { let s = 0; for (let r = r0; r < r1; r++) for (let k = 0; k < C; k++) s += arr[r * C + k]; return s; };
     expect(sum(W.wear.g, 60, 120)).toBeGreaterThan(1);                             // grooves on the gravel start straight
-    expect(sum(W.wear.m, b + 2, b + 20)).toBeGreaterThan(sum(W.wear.m, 60, 120));   // a mud trail out of the bog
+    const T = M.WEAR.TCOLS, wide = (arr, r0, r1) => { let s = 0; for (let r = r0; r < r1; r++) for (let k = 0; k < T; k++) s += arr[r * T + k]; return s; };
+    expect(wide(W.wear.m, b + 2, b + 20)).toBeGreaterThan(wide(W.wear.m, 60, 120));   // a mud trail out of the bog
+    expect(wide(W.wear.t, 60, 120)).toBeGreaterThan(5);                              // fresh tyre tracks on the dirt from the first lap
     expect(M.SURF.gravelSwept.grip).toBeGreaterThan(M.SURF.gravel.grip);
     const tt = M.buildTrack(M.STAGES[0]), Wt = { tr: tt, terr: M.buildTerrain(tt, M.STAGES[0]), surf: 'tarmac' }, Rt = M.createRace(Wt, DEFS); Rt.phase = 'racing'; Rt.autoPlayer = true;
     for (let t = 0; t < 5; t += 1 / 120) M.raceStep(Rt, 1 / 120, Wt);
     expect(Wt.wear.g.some(v => v > 0)).toBe(true); expect(Rt.cars.every(c => !(c.rut > 0))).toBe(true);   // worn to look at, same to drive on
+    expect(Wt.wear.t.some(v => v > 0)).toBe(false);                               // tarmac: no dirt tracks (skid marks instead)
   });
 });
 
