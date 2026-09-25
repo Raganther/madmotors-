@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { flat } from './geometry.js';
-import { glassMat, numberTex, paintMat } from './materials.js';
+import { numberTex } from './materials.js';
+import { bakeAO, carMat } from './carpaint.js';
 
 // The racers' bodies, one builder per model (CAR_DEFS[].model). They differ where it shows from the camera, overhead:
 // outline, roof and deck. All share the same footprint (the hitbox is the same for everyone), wheels, lights and the
@@ -11,12 +12,13 @@ const DARK = 0x2B2F3A, GLASS = 0x253450, CHROME = 0xD3D7DD, TYRE = 0x1E1E22, LAM
 
 function kit(def, root, body) {
   const mats = new Map(), dentable = [];
-  const mat = c => { if (!mats.has(c)) mats.set(c, c === def.color || c === def.accent ? paintMat(c) : c === GLASS ? glassMat() : new THREE.MeshLambertMaterial({ color: c })); return mats.get(c); };
+  const kind = c => c === def.color || c === def.accent ? 'paint' : c === GLASS ? 'glass' : c === CHROME ? 'chrome' : c === TYRE ? 'rubber' : 'trim';
+  const mat = c => { if (!mats.has(c)) mats.set(c, carMat(kind(c), c)); return mats.get(c); };
   const hl = new THREE.MeshBasicMaterial({ color: LAMP }), tl = new THREE.MeshBasicMaterial({ color: 0xFF4A3A });
   const K = {
     dentable,
     /** A mesh on the body; `dims` is what flies off when it's knocked loose. */
-    part(geo, c, x, y, z, dims) { const m = new THREE.Mesh(geo, mat(c)); m.position.set(x, y, z); m.castShadow = true; body.add(m); m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims, color: c }; return m; },
+    part(geo, c, x, y, z, dims) { const m = new THREE.Mesh(bakeAO(geo, y), mat(c)); m.position.set(x, y, z); m.castShadow = true; body.add(m); m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims, color: c }; return m; },
     /** A box; seg subdivides it (for dents), shape(x, y, z) -> [x, y, z] bends its corners (wedges, tapers, fastbacks). */
     box(w, h, d, c, x, y, z, { seg, shape, rx = 0 } = {}) {
       const g = seg ? new THREE.BoxGeometry(w, h, d, seg[0], seg[1], seg[2]) : new THREE.BoxGeometry(w, h, d);
@@ -39,9 +41,9 @@ function kit(def, root, body) {
       for (const [x, z, r, wd] of list) {
         const pivot = new THREE.Group(); pivot.position.set(x, r, z); root.add(pivot);
         const spin = new THREE.Group(); pivot.add(spin);
-        const t = new THREE.Mesh(flat(new THREE.CylinderGeometry(r, r, wd, knobbly ? 8 : 10).rotateZ(Math.PI / 2)), mat(TYRE)); t.castShadow = true; spin.add(t);
-        spin.add(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.48, r * 0.48, wd + 0.02, 6).rotateZ(Math.PI / 2), mat(hub)));
-        if (knobbly) for (let k = 0; k < 8; k++) { const a = (k + 0.5) / 8 * Math.PI * 2, b = new THREE.Mesh(new THREE.BoxGeometry(wd * 0.9, 0.1, 0.16), mat(TYRE)); b.position.set(0, Math.cos(a) * r, Math.sin(a) * r); b.rotation.x = -a; spin.add(b); }
+        const t = new THREE.Mesh(bakeAO(flat(new THREE.CylinderGeometry(r, r, wd, knobbly ? 8 : 10).rotateZ(Math.PI / 2)), r), mat(TYRE)); t.castShadow = true; spin.add(t);
+        spin.add(new THREE.Mesh(bakeAO(new THREE.CylinderGeometry(r * 0.48, r * 0.48, wd + 0.02, 6).rotateZ(Math.PI / 2), r), mat(hub)));
+        if (knobbly) for (let k = 0; k < 8; k++) { const a = (k + 0.5) / 8 * Math.PI * 2, b = new THREE.Mesh(bakeAO(new THREE.BoxGeometry(wd * 0.9, 0.1, 0.16), r), mat(TYRE)); b.position.set(0, Math.cos(a) * r, Math.sin(a) * r); b.rotation.x = -a; spin.add(b); }
         wheels.push(spin); if (z > 0) steer.push(pivot);
       }
       return { wheels, steer, wr: list[0][2] };

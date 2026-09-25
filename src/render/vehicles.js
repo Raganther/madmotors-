@@ -13,7 +13,8 @@ import { emit } from './effects/particles.js';
 import { spawnProp } from './effects/props.js';
 import { shockwave } from './effects/rings.js';
 import { _p, _q, _s, disposeGroup, flat, radialTex } from './geometry.js';
-import { getCrackTex, glassMat, paintMat } from './materials.js';
+import { getCrackTex } from './materials.js';
+import { bakeAO, carMat } from './carpaint.js';
 import { scene } from './renderer.js';
 import { buildCarModel } from './carmodels.js';
 import { addDirt, updateDirt } from './effects/dirt.js';
@@ -140,17 +141,18 @@ export const TRAFFIC_SHAPES = {
   van: { wheels: [[1.02, 1.5], [-1.02, 1.5], [1.02, -1.5], [-1.02, -1.5]], wr: 0.44 },
   truck: { wheels: [[1.12, 2.2], [-1.12, 2.2], [1.12, -1.3], [-1.12, -1.3], [1.12, -2.35], [-1.12, -2.35]], wr: 0.52 }
 };
+const glass = 0x253450, trim = 0x8E939B, dark = 0x2B2F3A;
 export function makeTrafficMesh(kind) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
-  const paint = paintMat(0xffffff), dentable = [];
+  const paint = carMat('paint', 0xffffff), dentable = [];
   const box = (w, h, d, c, x, y, z, seg, mat) => {
     const g = flat(seg ? new THREE.BoxGeometry(w, h, d, seg[0], seg[1], seg[2]) : new THREE.BoxGeometry(w, h, d));
-    const m = new THREE.Mesh(g, mat || new THREE.MeshLambertMaterial({ color: c })); m.position.set(x, y, z); m.castShadow = true; body.add(m);
+    const m = new THREE.Mesh(bakeAO(g, y), mat || carMat(c === trim ? 'chrome' : 'trim', c)); m.position.set(x, y, z); m.castShadow = true; body.add(m);
     m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims: [w, h, d], color: c };
     return m;
   };
   const dent = m => { m.userData.orig = Float32Array.from(m.geometry.attributes.position.array); dentable.push(m); return m; };
-  const glass = 0x253450, trim = 0x8E939B, dark = 0x2B2F3A, glassM = glassMat();
+  const glassM = carMat('glass', 0x253450);
   let cabin, bumper, wing, hz, hy;
   if (kind === 'hatch') {
     dent(box(1.9, 0.3, 3.3, dark, 0, 0.45, 0, [3, 1, 5]));
@@ -172,7 +174,7 @@ export function makeTrafficMesh(kind) {
   }
   const hl = new THREE.MeshBasicMaterial({ color: 0xFFF6C8 }), tl = new THREE.MeshBasicMaterial({ color: 0xFF4A3A }), heads = [], tails = [];
   for (const sx of [-1, 1]) { const a = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.16, 0.06), hl); a.position.set(sx * 0.66, hy, hz); body.add(a); heads.push(a); const b2 = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.06), tl); b2.position.set(sx * 0.7, hy, -hz); body.add(b2); tails.push(b2); }
-  const S = TRAFFIC_SHAPES[kind], wheelG = flat(new THREE.CylinderGeometry(S.wr, S.wr, 0.36, 10).rotateZ(Math.PI / 2)), wheelM = new THREE.MeshLambertMaterial({ color: 0x1E1E22 });
+  const S = TRAFFIC_SHAPES[kind], wheelG = bakeAO(flat(new THREE.CylinderGeometry(S.wr, S.wr, 0.36, 10).rotateZ(Math.PI / 2)), S.wr), wheelM = carMat('rubber', 0x1E1E22);
   const wheels = [], steer = [];
   for (const [sx, sz] of S.wheels) {
     const pivot = new THREE.Group(); pivot.position.set(sx, S.wr, sz); root.add(pivot);

@@ -7,7 +7,8 @@ import { STAGES } from '../../data/stages/index.js';
 import { clearSkids } from '../effects/skids.js';
 import { disposeGroup } from '../geometry.js';
 import { FX } from '../materials.js';
-import { hemi, scene, setGrade, sun } from '../renderer.js';
+import { hemi, renderer, scene, setGrade, sun } from '../renderer.js';
+import { setCarEnvironment } from '../carpaint.js';
 import { addBarriers } from './barriers.js';
 import { addGantry, addSigns } from './landmarks.js';
 import { makeRoadMesh } from './road.js';
@@ -38,6 +39,7 @@ export function buildWorld(idx) {
   scene.background.set(stage.colors.sky); scene.fog.color.set(stage.colors.sky);
   const Lt = stage.light; sun.color.setHex(Lt.sun); sun.intensity = Lt.sunI; hemi.color.setHex(Lt.sky); hemi.groundColor.setHex(Lt.ground); hemi.intensity = Lt.hemiI; FX.cloudAmt.value = Lt.cloud; setGrade(Lt);
   const hz = Lt.haze; FX.hazeAmt.value = hz ? hz.amt : 0; if (hz) { FX.hazeCol.value.setHex(hz.color); FX.hazeTop.value = hz.top; FX.hazeRange.value = hz.range; }
+  setCarEnvironment(renderer, scene, stage);                          // what the cars' paint and glass reflect
   group.add(makeTerrainMesh(terr, tr, stage));
   const roads = makeRoadMesh(tr, stage); group.add(roads.main); if (roads.bridge) group.add(roads.bridge);
   addBarriers(group, tr, terr, stage);

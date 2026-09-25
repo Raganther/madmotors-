@@ -6,7 +6,8 @@ import { canvasTex } from './geometry.js';
 export const CUT = { car: { value: new THREE.Vector3() }, dir: { value: new THREE.Vector3(1, 1.3, 1).normalize() }, r: { value: 0 } };
 // world effects shared by the scenery shaders: time for wind and the drifting cloud-shadow texture
 export const FX = { time: { value: 0 }, cloud: { value: null }, cloudAmt: { value: 0.3 }, wind: { value: new THREE.Vector2(3.2, 1.6) },
-  hazeCol: { value: new THREE.Color(0x9DB8D2) }, hazeTop: { value: 0 }, hazeRange: { value: 40 }, hazeAmt: { value: 0 } };
+  hazeCol: { value: new THREE.Color(0x9DB8D2) }, hazeTop: { value: 0 }, hazeRange: { value: 40 }, hazeAmt: { value: 0 },
+  grain: { value: 1 } };   // grain: surface detail on/off (the Low graphics setting turns it off)
 export function makeCloudTex() {
   // tileable value noise: a few octaves on wrapping grids
   const N = 128, data = new Float32Array(N * N), rnd = mulberry32(4242);
@@ -21,14 +22,15 @@ export function makeCloudTex() {
   const t = canvasTex(N, N, (g2) => { const img = g2.createImageData(N, N); for (let i = 0; i < N * N; i++) { const v = clamp((data[i] - 0.5) * 3.2 + 0.5, 0, 1) * 255; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; } g2.putImageData(img, 0, 0); });
   t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
 }
-// opts: cut (see-through window over the player, default on), cloud (drifting cloud shadows), sway (foliage in the wind)
+// opts: cut (see-through window over the player, default on), cloud (drifting cloud shadows), sway (foliage in the wind),
+// grain (0..1: fine surface detail in world space, two scales of the tileable noise, so ground and road aren't flat colour)
 export function withCutaway(mat, solidInside, opts = {}) {
-  const cut = opts.cut !== false, cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water;
+  const cut = opts.cut !== false, cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water, grain = opts.grain || 0;
   if (solidInside) mat.side = THREE.DoubleSide;
   mat.onBeforeCompile = sh => {
     sh.uniforms.uCutCar = CUT.car; sh.uniforms.uCutDir = CUT.dir; sh.uniforms.uCutR = CUT.r;
     sh.uniforms.uTime = FX.time; sh.uniforms.uCloud = FX.cloud; sh.uniforms.uCloudAmt = FX.cloudAmt; sh.uniforms.uWind = FX.wind;
-    sh.uniforms.uHazeCol = FX.hazeCol; sh.uniforms.uHazeTop = FX.hazeTop; sh.uniforms.uHazeRange = FX.hazeRange; sh.uniforms.uHazeAmt = FX.hazeAmt;
+    sh.uniforms.uGrain = FX.grain; sh.uniforms.uHazeCol = FX.hazeCol; sh.uniforms.uHazeTop = FX.hazeTop; sh.uniforms.uHazeRange = FX.hazeRange; sh.uniforms.uHazeAmt = FX.hazeAmt;
     let vs = 'varying vec3 vCutW;\nuniform float uTime;\n' + sh.vertexShader;
     if (sway) vs = vs.replace('#include <begin_vertex>', `#include <begin_vertex>
       #ifdef USE_INSTANCING
@@ -46,7 +48,7 @@ export function withCutaway(mat, solidInside, opts = {}) {
         cutP = instanceMatrix * cutP;
       #endif
       vCutW = (modelMatrix * cutP).xyz;`);
-    let fs = 'uniform vec3 uCutCar;\nuniform vec3 uCutDir;\nuniform float uCutR;\nuniform float uTime;\nuniform sampler2D uCloud;\nuniform float uCloudAmt;\nuniform vec2 uWind;\nuniform vec3 uHazeCol;\nuniform float uHazeTop;\nuniform float uHazeRange;\nuniform float uHazeAmt;\nvarying vec3 vCutW;\n' + sh.fragmentShader;
+    let fs = 'uniform vec3 uCutCar;\nuniform vec3 uCutDir;\nuniform float uCutR;\nuniform float uTime;\nuniform sampler2D uCloud;\nuniform float uCloudAmt;\nuniform vec2 uWind;\nuniform vec3 uHazeCol;\nuniform float uHazeTop;\nuniform float uHazeRange;\nuniform float uHazeAmt;\nuniform float uGrain;\nvarying vec3 vCutW;\n' + sh.fragmentShader;
     if (cut) fs = fs.replace('void main() {', `void main() {
       if (uCutR > 0.0) {
         vec3 cv = vCutW - uCutCar; float ct = dot(cv, uCutDir);
@@ -62,10 +64,15 @@ export function withCutaway(mat, solidInside, opts = {}) {
       gl_FragColor.rgb += vec3(0.75, 0.85, 0.95) * smoothstep(0.55, 0.95, rp) * 0.22;` : ''}
       gl_FragColor.rgb = mix(gl_FragColor.rgb, uHazeCol, clamp((uHazeTop - vCutW.y) / uHazeRange, 0.0, 1.0) * uHazeAmt);   // valley haze
       #include <fog_fragment>`);
+    if (grain) fs = fs.replace('#include <color_fragment>', `#include <color_fragment>
+      if (uGrain > 0.0) {
+        float gr = texture2D(uCloud, vCutW.xz / 5.3).r * 0.6 + texture2D(uCloud, vCutW.xz / 0.9 + 0.37).r * 0.4;
+        diffuseColor.rgb *= 1.0 + ${grain.toFixed(3)} * uGrain * (gr - 0.5) * 2.0;
+      }`);
     if (solidInside) fs = fs.replace('#include <color_fragment>', '#include <color_fragment>\n  if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.23, 0.21, 0.19);');
     sh.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => 'wfx' + (solidInside ? 's' : '') + (cut ? 'c' : '') + (cloud ? 'k' : '') + (water ? 'w' : '') + sway;
+  mat.customProgramCacheKey = () => 'wfx' + (solidInside ? 's' : '') + (cut ? 'c' : '') + (cloud ? 'k' : '') + (water ? 'w' : '') + sway + 'g' + grain;
   return mat;
 }
 export function bannerTex(text) {
@@ -90,8 +97,7 @@ export function chevronTex(right) {
 export function numberTex(n, bg, fg) {
   return canvasTex(128, 128, (g, w, h) => { g.fillStyle = bg; g.beginPath(); g.arc(64, 64, 60, 0, TAU); g.fill(); g.fillStyle = fg; g.font = '64px Bungee, Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 70); });
 }
-// Paint stays matte: the bodies are flat boxes seen from a fixed angle under a fixed sun, so any specular lights a
-// whole face at once and bright paint clips to white. Only the dark glass gets a (mild) shine.
+// Matte paint for props and anything that isn't a vehicle; the racers and road cars use carpaint.js.
 export function paintMat(c) { return new THREE.MeshLambertMaterial({ color: c }); }
 export function glassMat() { return new THREE.MeshPhongMaterial({ color: 0x253450, specular: 0x3C465E, shininess: 70 }); }
 G.glowTex = null; G.blobTex = null;

@@ -85,7 +85,9 @@ for (const sb of ['tunnel', 'town']) {
     await page.evaluate(([idx, inTunnel]) => { const d = window.__dr, tr = d.G.world.tr, cov = d.G.world.cover; let i = cov.findIndex(v => inTunnel ? v : false); if (!inTunnel) i = 60;
       if (inTunnel) i += 30; const P = d.race.player; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
       P.x = tr.xs[i]; P.z = tr.zs[i]; P.y = tr.H[i]; P.yaw = tr.th[i]; P.vx = P.vz = 0; P.pr = d.core.project(tr, P.x, P.z, i, 3, 3); P.lastGood = i; }, [idx, inTunnel]);
-    await page.waitForTimeout(1500); return page.evaluate(() => window.__dr.CUT.r.value);
+    // the real loop eases the window open or shut; give it time to settle (software GL frames are slow)
+    await page.waitForFunction(inT => { const r = window.__dr.CUT.r.value; return inT ? r > 4 : r < 1; }, inTunnel, { timeout: 15000 }).catch(() => {});
+    return page.evaluate(() => window.__dr.CUT.r.value);
   };
   await page.evaluate(() => window.__dr.flow.startRace(5)); await page.waitForFunction(() => window.__dr.G.world.idx === 5 && window.__dr.race, null, { timeout: 30000 });
   const inside = await put(5, true), outside = await put(5, false);
@@ -93,6 +95,7 @@ for (const sb of ['tunnel', 'town']) {
   if (!(inside > 4) || !(outside < 1)) errors.push(`see-through window wrong: ${inside} in tunnel, ${outside} outside`);
 }
 // Touch controls on a landscape phone, two thumbs at once: drag the wheel, hold the pedal, slide down to drift, left to brake
+await page.goto('about:blank');   // park the desktop page so its render loop doesn't starve this one (software GL)
 {
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
   const tp = await ctx.newPage(); tp.on('pageerror', e => errors.push(e.message));
