@@ -12,6 +12,12 @@ export function riverDist(rv, x, z) {
 }
 // river channel: 3 m below the water across its width, banks rising steeply either side
 export function riverBed(rv, x, z) { const d = riverDist(rv, x, z); return rv.level - 3 + Math.max(0, d - rv.width / 2) * 1.1; }
+// Beyond a tunnel's mouth the hill over it stops dead, so the road runs up to a steep rock face with the portal in it
+// rather than into a mound that slopes down over the arch.
+function pastMouth(tr, i, x, z) {
+  const N = tr.loopN || tr.N, nb = d => tr.loopN ? tr.nb0(i, d) : clamp(i + d, 0, N - 1), along = (x - tr.xs[i]) * tr.tx[i] + (z - tr.zs[i]) * tr.tz[i];
+  return (along < -0.5 && !tr.tunnel[nb(-1)]) || (along > 0.5 && !tr.tunnel[nb(1)]);
+}
 export function buildTerrain(tr, stage) {
   const S = tr.gridS || 3, M = tr.margin || 95, x0 = Math.floor(Math.min(-200, tr.minX - M)), x1 = Math.ceil(Math.max(200, tr.maxX + M)), z0 = Math.floor(tr.minZ - Math.max(90, M)), z1 = Math.ceil(tr.maxZ + Math.max(120, M));
   const cols = Math.floor((x1 - x0) / S) + 1, rows = Math.floor((z1 - z0) / S) + 1;
@@ -44,7 +50,7 @@ export function buildTerrain(tr, stage) {
         v = lerp(railAt(L, pj.s).h - 0.1, v, smoothstep(4, 12, pj.d));
       }
       const qt = tr.nearestTun(x, z);
-      if (qt && qt.d < HALF + 18) { const roof = tr.H[qt.i] + 11; v = Math.max(v, lerp(roof, tr.H[qt.i] - 1, smoothstep(HALF + 9, HALF + 18, qt.d))); }
+      if (qt && qt.d < HALF + 18 && !pastMouth(tr, qt.i, x, z)) { const roof = tr.H[qt.i] + 11; v = Math.max(v, lerp(roof, tr.H[qt.i] - 1, smoothstep(HALF + 9, HALF + 18, qt.d))); }
       h[r * cols + c] = v; dist[r * cols + c] = dd;
     }
   }

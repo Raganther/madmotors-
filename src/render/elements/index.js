@@ -53,7 +53,7 @@ const town = {
   }
 };
 const gallery = { name: 'gallery', build(group, tr) { addGallery(group, tr); } };
-const tunnel = { name: 'tunnel', build(group, tr, terr) { addTunnel(group, tr, terr); } };
+const tunnel = { name: 'tunnel', build(group, tr, terr, stage) { addTunnel(group, tr, terr, stage); } };
 const arch = { name: 'arch', build(group, tr, terr, stage) { addArches(group, tr, terr, stage); } };
 const boost = { name: 'boost', build(group, tr) { addBoostPads(group, tr); }, update(dt, now) { updateBoostPads(now); } };
 const ferry = { name: 'ferry', build(group, tr) { addFerryDocks(group, tr); }, newRace(r) { newFerryRace(r); }, update(dt, now) { updateFerryVis(dt, now); } };

@@ -5,16 +5,16 @@ import { WEAR } from '../../core/features/wear.js';
 import { withCutaway } from '../materials.js';
 
 // Track wear visuals (core/features/wear.js): a see-through layer over the road and its verges, one texel per wear
-// cell (WEAR.TCOLS across), repainted from W.wear a few times a second. On it: fresh tyre tracks (dark on dirt and
+// track cell (WEAR.TCOLS across), repainted from W.wear a few times a second. On it: fresh tyre tracks (dark on dirt and
 // gravel, torn and flattened on grass, wet on mud; a drift leaves a curved scuff), grooves worn in along the line
 // (gravel), a rubbered-in line (tarmac), a packed-down line (snow) and the mud trail cars lay coming out of a bog. It follows the road across and
 // the terrain over the verges. The bogs draw their own ruts (mud.js); tarmac skid marks are effects/skids.js.
-const T = WEAR.TCOLS, OFF = (WEAR.TCOLS - WEAR.COLS) / 2, SPAN = T * WEAR.CELL / 2;
+const T = WEAR.TCOLS, SPAN = T * WEAR.TCELL / 2, GK = k => Math.floor(((k + 0.5) * WEAR.TCELL - SPAN) / WEAR.CELL + WEAR.COLS / 2);   // texel -> groove cell
 // per stage surface: groove colour and how strongly grooves show; tyre track colour on the road
-const LOOK = { gravel: { groove: [0x4E, 0x3A, 0x26], gk: 12, gmax: 0.55, track: [0x33, 0x22, 0x14], tmax: 0.85 },
-  tarmac: { groove: [0x1C, 0x1C, 0x1E], gk: 40, gmax: 0.4, track: [0x2A, 0x2A, 0x2A], tmax: 0.5 },
-  snow: { groove: [0x9C, 0xA9, 0xB8], gk: 14, gmax: 0.5, track: [0x7E, 0x8C, 0x9E], tmax: 0.6, verge: [0x8E, 0x9E, 0xB2] } };   // snow: packed grey-blue, powder ploughed
-const VERGE = [0x33, 0x30, 0x18], TRAIL = [0x3A, 0x26, 0x16], BOG = [0x2A, 0x1C, 0x10];
+const LOOK = { gravel: { groove: [0x5E, 0x48, 0x32], gk: 12, gmax: 0.35, track: [0x4A, 0x36, 0x24], tmax: 0.6 },
+  tarmac: { groove: [0x1C, 0x1C, 0x1E], gk: 40, gmax: 0.3, track: [0x2A, 0x2A, 0x2A], tmax: 0.45 },
+  snow: { groove: [0x9C, 0xA9, 0xB8], gk: 14, gmax: 0.4, track: [0x86, 0x94, 0xA6], tmax: 0.5, verge: [0x8E, 0x9E, 0xB2] } };   // snow: packed grey-blue, powder ploughed
+const VERGE = [0x44, 0x3E, 0x24], TRAIL = [0x3A, 0x26, 0x16], BOG = [0x2A, 0x1C, 0x10];
 let vis = null;
 export function addWear(group, tr, terr, stage) {
   vis = null;
@@ -33,7 +33,7 @@ export function addWear(group, tr, terr, stage) {
     const base = pos.length / 3;
     for (const [k, v] of [[i, (b + 0.5) / NB], [j, (b + 1.5) / NB]]) for (let n = 0; n < NX; n++) {
       const o = Math.max(-w, Math.min(w, -SPAN + n * STEP));
-      pos.push(tr.xs[k] + tr.rx[k] * o, up(k, o), tr.zs[k] + tr.rz[k] * o); uv.push((o / WEAR.CELL + T / 2) / T, v);
+      pos.push(tr.xs[k] + tr.rx[k] * o, up(k, o), tr.zs[k] + tr.rz[k] * o); uv.push((o / WEAR.TCELL + T / 2) / T, v);
     }
     for (let n = 0; n < NX - 1; n++) idx.push(base + n, base + NX + n, base + n + 1, base + n + 1, base + NX + n, base + NX + n + 1);
   }
@@ -44,15 +44,15 @@ export function addWear(group, tr, terr, stage) {
   paint(null);
 }
 function paint(W) {
-  const { tr, data, look } = vis, NB = tr.NB, road = HALF / WEAR.CELL;
+  const { tr, data, look } = vis, NB = tr.NB, road = HALF / WEAR.TCELL;
   if (!W) { data.fill(0); vis.tex.needsUpdate = true; return; }
   const { g, t, m } = W.wear;
   for (let b = 0; b < NB; b++) {
     const bog = tr.mud && tr.mud[b] === 1;
     for (let k = 0; k < T; k++) {
-      const q = b * T + k, p = q * 4, verge = Math.abs(k + 0.5 - T / 2) > road, gk = k - OFF;
+      const q = b * T + k, p = q * 4, verge = Math.abs(k + 0.5 - T / 2) > road, gk = GK(k);
       const gv = !bog && !verge && gk >= 0 && gk < WEAR.COLS ? look.gmax * (1 - Math.exp(-g[b * WEAR.COLS + gk] * look.gk)) : 0;
-      const tv = (verge ? 0.8 : bog ? 0.5 : look.tmax) * (1 - Math.exp(-t[q] * 5)), mv = bog ? 0 : 0.85 * (1 - Math.exp(-m[q] * 2));
+      const tv = (verge ? 0.6 : bog ? 0.5 : look.tmax) * (1 - Math.exp(-t[q] * 5)), mv = bog ? 0 : 0.85 * (1 - Math.exp(-m[q] * 2));
       const a = Math.min(0.9, Math.max(gv, tv, mv)), sum = gv + tv + mv || 1, tc = verge ? look.verge || VERGE : bog ? BOG : look.track;
       for (let ch = 0; ch < 3; ch++) data[p + ch] = (look.groove[ch] * gv + tc[ch] * tv + TRAIL[ch] * mv) / sum;
       data[p + 3] = a * 255;
