@@ -341,6 +341,44 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Bogwood Rally": {
+   "samples": 3101,
+   "loopN": 985,
+   "terrain": [
+    146,
+    140,
+    37444.514
+   ],
+   "times": [
+    113.725,
+    109.108,
+    116,
+    111.367
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3016.809,
+    3020.654,
+    2991.237,
+    3018.483
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

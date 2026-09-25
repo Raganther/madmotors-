@@ -218,7 +218,7 @@ export function finishLoop(stage, g, seed) {
   // section markers (kicks, arches...): a branch's are numbered from its own first sample
   const marks = g.marks || {};
   (g.alts || []).forEach((a, n) => { for (const k in a.marks) marks[k] = (marks[k] || []).concat(a.marks[k].map(v => typeof v === 'number' ? v + AL[n].o : { ...v, i: v.i + AL[n].o })); });
-  const ctx = { stage, g, N0, NB, w, nb, u0, xs0, zs0, th0, ks0, H0, ch, jump0, wallL0, wallR0, kerbL0, kerbR0, startIdx, gorge, marks, alts: AL, nearCrossing: () => false };
+  const ctx = { stage, g, N0, NB, w, nb, u0, xs0, zs0, th0, ks0, H0, ch, jump0, wallL0, wallR0, kerbL0, kerbR0, vmax0, startIdx, gorge, marks, alts: AL, nearCrossing: () => false };
   elementPhase('heights', ctx);                                    // level crossings, then jumps and kickers
   const sbs = NA ? sideBySide(ctx) : null;                          // where a branch runs beside the main road
   const rails = ctx.rails;
@@ -305,6 +305,7 @@ export function finishLoop(stage, g, seed) {
   }
   const lm = SURF[stage.surface].latMax * 0.8;
   for (let i = 0; i < NB; i++) { let m = 1e-4; for (let j = -2; j <= 2; j++) m = Math.max(m, Math.abs(ks0[nb(i, j)])); vmax0[i] = Math.min(70, Math.sqrt(lm / m)); }
+  elementPhase('speeds', ctx);                                     // slower through mud
 
   elementPhase('wallsLate', ctx);                                  // town bollards, gallery parapet
   elementPhase('wallsLast', ctx);                                  // gaps where railways cross

@@ -60,6 +60,10 @@ export const SANDBOXES = {
     right: [['s', 40, 0], ['s', 24, 0, { drawbridge: 0, far: -10, rampF: 3, near: -10, rampN: 3 }], ['s', 40, 0]],
     top: [['s', 80, 0, { logs: true }]], left: [flat(20)]
   }),
+  rally: loop('rally', 'off-road bits: a run of whoops, a mud bog and a water splash', {
+    bottom: [flat(150)], right: [['s', 66, 0, { whoops: 0.8 }]],
+    top: [['s', 40, 0, { mud: true }], ['s', 24, -1, { mud: 'water', far: -1.5, rampF: 6, near: -1.5, rampN: 6 }], flat(30)], left: [flat(20)]
+  }, { surface: 'gravel' }),
   rails: loop('rails', 'a level crossing with trains', {
     bottom: [flat(120)], right: [flat(60)], top: [flat(80)], left: [flat(20)]
   }, { rails: [{ id: 'line', pts: [[60, -80, 0], [60, 80, 0]], speed: 26, cars: 3, body: ravenrock.rails[0].body, coach: ravenrock.rails[0].coach, band: ravenrock.rails[0].band }] })

@@ -7,6 +7,7 @@
 //   section(tg, i0, i1, marks)     section-level markers (samples i0..i1 of this section)
 //   heights(ctx)                   after the road heights are smoothed (kickers, level crossings)
 //   walls(ctx)                     after the base barriers (curves, drops); wallsLate after hairpins; wallsLast at the end
+//   speeds(ctx)                    after the corner speed limits (ctx.vmax0) are worked out
 //   track(ctx, out)                fields to put on the built track
 //   markers(tr) -> [{ i, label }]  where it is, for the layout map, the sandbox report and the debug overlay
 //   hollow                         nothing under the road (gap, ferry...): the ground drops away beneath its samples
@@ -28,8 +29,10 @@ import { element as ferry } from './ferry.js';
 import { element as falls } from './falls.js';
 import { element as drawbridge } from './drawbridge.js';
 import { element as mill } from './mill.js';
+import { element as mud } from './mud.js';
+import { element as whoops } from './whoops.js';
 
-export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill];
+export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops];
 export const elementPhase = (phase, ...args) => { for (const e of ELEMENTS) if (e[phase]) e[phase](...args); };
 
 // stage options that belong to the stage itself rather than to an element

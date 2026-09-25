@@ -26,7 +26,7 @@ describe('element registry and stage validation', () => {
 });
 
 // what each sandbox must contain, by element name
-const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'] };
+const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'], rally: ['mud', 'whoops'] };
 describe('sandboxes', () => {
   it('there is a sandbox listed here for each one defined', () => expect(Object.keys(SANDBOXES).sort()).toEqual(Object.keys(EXPECT).sort()));
   for (const [name, stage] of Object.entries(SANDBOXES)) it(`${name}: builds, closes, has its elements, and four AI cars lap it cleanly`, () => {
@@ -174,5 +174,23 @@ describe('drawbridge', () => {
       expect(want === 'jump' ? jumped : waited).toBeGreaterThan(0);
       expect(R.cars.reduce((n, c) => n + c.respawns, 0)).toBe(0);
     }
+  });
+});
+
+describe('mud and whoops', () => {
+  const st = SANDBOXES.rally, tr = M.buildTrack(st);
+  it('whoops are bumps on the road; bogs and splashes are slower corners for the AI', () => {
+    const w = tr.whoops[0]; let lo = Infinity, hi = -Infinity; for (let q = 0; q < 44; q++) { lo = Math.min(lo, tr.H[w.i + q]); hi = Math.max(hi, tr.H[w.i + q]); }
+    expect(hi - lo).toBeGreaterThan(0.7);
+    const mudI = [...tr.mud].findIndex(v => v === 1), wetI = [...tr.mud].findIndex(v => v === 2);
+    expect(tr.vmax[mudI + 5]).toBeLessThanOrEqual(70 * 0.8 + 1e-3); expect(tr.vmax[wetI + 5]).toBeLessThanOrEqual(70 * 0.66 + 1e-3);   // straight road: 70 dry
+  });
+  it('a car in the bog is on mud, in the splash on the ford, and loses speed there', () => {
+    seedRandom(2); const W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true };
+    const R = M.createRace(W, [{ name: 'p', player: true }]); R.phase = 'racing'; R.hzT = 1e9; const P = R.player, seen = new Set();
+    const i = [...tr.mud].findIndex(v => v === 1) + 1; P.x = tr.xs[i]; P.z = tr.zs[i]; P.y = tr.H[i]; P.yaw = tr.th[i]; P.pr = M.project(tr, P.x, P.z, i, 3, 3); P.vx = tr.tx[i] * 25; P.vz = tr.tz[i] * 25;
+    let t = 0; while (t < 4) { P.inp.throttle = 1; P.inp.steer = 0; M.raceStep(R, 1 / 120, W); t += 1 / 120; seen.add(P.surface); }
+    expect(seen.has('mud')).toBe(true); expect(seen.has('ford')).toBe(true);
+    expect(M.SURF.ford.drag).toBeGreaterThan(M.SURF.gravel.drag);
   });
 });

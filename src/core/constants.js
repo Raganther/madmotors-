@@ -3,7 +3,9 @@ export const PHYS = { ENGINE: 24, DRAG: 0.019, BRAKE: 46, REVERSE: 14, BOOST: 17
 export const SURF = {
   tarmac: { engine: 1, latMax: 31, grip: 10, drag: 0 },
   gravel: { engine: 0.95, latMax: 25, grip: 7, drag: 0.02 },
-  grass: { engine: 0.6, latMax: 15, grip: 5, drag: 0.35 }
+  grass: { engine: 0.6, latMax: 15, grip: 5, drag: 0.35 },
+  mud: { engine: 0.8, latMax: 17, grip: 4.5, drag: 0.12 },       // the mud element's bogs
+  ford: { engine: 0.75, latMax: 16, grip: 5, drag: 0.3 }         // and its water splash
 };
 export const STEP = 1 / 120;
 // Direction from the ground towards the (orthographic) camera. The renderer builds its camera from this, and
