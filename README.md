@@ -105,7 +105,7 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | falls | `falls` | scenery waterfall arcing over the road off a cliff on the far side |
 | drawbridge | `drawbridge: <s>` | a bascule bridge that rises every so often: jump it while it's low, wait while it's up (cycle in `features/drawbridge.js`) |
 | mill | `mill`, `logs` | sawmill shed and log stacks; log piles along the road (scenery) |
-| mud | `mud: true`, `mud: 'water'` | a mud bog or a water splash: less grip, more drag, spray from the wheels. Bogs rut as the race goes on (`features/mud.js`): the ruts are firmer but tug at the wheels |
+| mud | `mud: true`, `mud: 'water'` | a mud bog or a water splash: less grip, more drag, spray from the wheels. Bogs rut as the race goes on: the ruts are firmer but tug at the wheels; cars leaving a bog lay a mud trail (`features/wear.js`) |
 | whoops | `whoops: <m>` | a run of rolling bumps |
 | yump | `yump: <m>` | a natural dirt crest jump (no painted ramp); `kick` is the painted one |
 
@@ -113,6 +113,14 @@ A core element can declare `tags`, `stageKeys`, per-sample `channels`, a `sectio
 `walls`, `wallsLate`, `wallsLast`), `track()` to add fields to the built track, and `markers()` saying where it is (see
 the header of `src/core/elements/index.js`). `buildTrack` validates every stage against the registry, so a misspelt
 tag or option fails with the list of valid ones, and a section that comes out backwards fails with its index.
+
+### Track wear (every stage)
+
+`core/features/wear.js` gives every road a wear grid (0.5 m cells across, 1 m along) that the wheels wear in as the
+race goes on, reset each race: ruts in mud (firmer, but they grab), grooves along the line on gravel (a touch more
+grip), a rubbered-in line on tarmac (looks only), and a mud trail behind cars leaving a bog. `render/elements/wear.js`
+draws it over the road; the bogs draw their own ruts. A new surface gets its wear from `WEAR.DIG` and its worn-in
+grip from the `FIRM` table there.
 
 ### Branches (the road splits and joins again)
 

@@ -197,12 +197,12 @@ describe('mud and whoops', () => {
 });
 
 describe('ruts: bogs churn up as the race goes on', () => {
-  const st = SANDBOXES.rally, tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true }, C = M.RUT.COLS;
+  const st = SANDBOXES.rally, tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true }, C = M.WEAR.COLS, [a, b] = M.mudRuns(tr)[0], len = b - a;
   const run = (groove, lat) => {
-    const R = M.createRace(W, [{ name: 'p', player: true }]); R.phase = 'racing'; R.hzT = 1e9; const P = R.player, r = W.ruts[0];
-    if (groove) for (let u = 0; u < r.len; u++) for (const k of [11, 12, 13, 15, 16, 17]) r.g[u * C + k] = 1;   // a rut under each wheel of a centred car
-    const i = r.a + 1; P.x = tr.xs[i] + tr.rx[i] * lat; P.z = tr.zs[i] + tr.rz[i] * lat; P.y = tr.H[i]; P.yaw = tr.th[i]; P.pr = M.project(tr, P.x, P.z, i, 3, 3); P.vx = tr.tx[i] * 12; P.vz = tr.tz[i] * 12;
-    let t = 0; while ((P.pr.s % tr.loopN) < r.a + r.len && t < 10) { P.inp.throttle = 1; P.inp.steer = 0; M.raceStep(R, 1 / 120, W); t += 1 / 120; }
+    const R = M.createRace(W, [{ name: 'p', player: true }]); R.phase = 'racing'; R.hzT = 1e9; const P = R.player, g = W.wear.g;
+    if (groove) for (let u = 0; u < len; u++) for (const k of [11, 12, 13, 15, 16, 17]) g[(a + u) * C + k] = 1;   // a rut under each wheel of a centred car
+    const i = a + 1; P.x = tr.xs[i] + tr.rx[i] * lat; P.z = tr.zs[i] + tr.rz[i] * lat; P.y = tr.H[i]; P.yaw = tr.th[i]; P.pr = M.project(tr, P.x, P.z, i, 3, 3); P.vx = tr.tx[i] * 12; P.vz = tr.tz[i] * 12;
+    let t = 0; while ((P.pr.s % tr.loopN) < a + len && t < 10) { P.inp.throttle = 1; P.inp.steer = 0; M.raceStep(R, 1 / 120, W); t += 1 / 120; }
     return { t, lat: P.pr.lat, R };
   };
   it('the rutted line is quicker than fresh mud; beside it, the ruts tug you in and cost time', () => {
@@ -215,8 +215,23 @@ describe('ruts: bogs churn up as the race goes on', () => {
   it('racing digs ruts along the line the cars take, and everyone still gets round', () => {
     seedRandom(4); const R = M.createRace(W, DEFS); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9; let t = 0;
     while (t < 90 && R.cars.some(c => !c.finished)) { M.raceStep(R, 1 / 120, W); t += 1 / 120; }
-    const r = W.ruts[0], across = Array.from({ length: C }, (_, k) => { let s = 0; for (let u = 0; u < r.len; u++) s += r.g[u * C + k]; return s / r.len; });
-    expect(Math.max(...across)).toBeGreaterThan(0.5); expect(across[0] + across[C - 1]).toBeLessThan(0.1);   // a groove, not the whole width
+    const across = Array.from({ length: C }, (_, k) => { let s = 0; for (let u = 0; u < len; u++) s += W.wear.g[(a + u) * C + k]; return s / len; });
+    expect(Math.max(...across)).toBeGreaterThan(0.5); expect(across[0] + across[C - 1]).toBeLessThan(0.2);   // a groove, not the whole width
     expect(R.cars.every(c => c.finished)).toBe(true); expect(R.cars.reduce((n, c) => n + c.respawns, 0)).toBe(0);
+  });
+});
+
+describe('track wear on every surface', () => {
+  it('gravel grooves along the line and grips a little better there; cars leaving a bog lay a mud trail; tarmac only looks worn', () => {
+    const st = M.STAGES.find(x => x.name === 'Bogwood Rally'), tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface }, C = M.WEAR.COLS;
+    seedRandom(6); const R = M.createRace(W, DEFS); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9;
+    for (let t = 0; t < 24; t += 1 / 120) M.raceStep(R, 1 / 120, W);
+    const [a, b] = M.mudRuns(tr)[0], sum = (arr, r0, r1) => { let s = 0; for (let r = r0; r < r1; r++) for (let k = 0; k < C; k++) s += arr[r * C + k]; return s; };
+    expect(sum(W.wear.g, 60, 120)).toBeGreaterThan(1);                             // grooves on the gravel start straight
+    expect(sum(W.wear.m, b + 2, b + 20)).toBeGreaterThan(sum(W.wear.m, 60, 120));   // a mud trail out of the bog
+    expect(M.SURF.gravelSwept.grip).toBeGreaterThan(M.SURF.gravel.grip);
+    const tt = M.buildTrack(M.STAGES[0]), Wt = { tr: tt, terr: M.buildTerrain(tt, M.STAGES[0]), surf: 'tarmac' }, Rt = M.createRace(Wt, DEFS); Rt.phase = 'racing'; Rt.autoPlayer = true;
+    for (let t = 0; t < 5; t += 1 / 120) M.raceStep(Rt, 1 / 120, Wt);
+    expect(Wt.wear.g.some(v => v > 0)).toBe(true); expect(Rt.cars.every(c => !(c.rut > 0))).toBe(true);   // worn to look at, same to drive on
   });
 });

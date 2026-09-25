@@ -5,7 +5,8 @@ export const SURF = {
   gravel: { engine: 0.95, latMax: 25, grip: 7, drag: 0.02 },
   grass: { engine: 0.6, latMax: 15, grip: 5, drag: 0.35 },
   mud: { engine: 0.8, latMax: 17, grip: 4.5, drag: 0.12 },       // the mud element's bogs: fresh...
-  mudPacked: { engine: 0.95, latMax: 23, grip: 6.5, drag: 0.03 }, // ...and rutted in (features/mud.js blends the two)
+  mudPacked: { engine: 0.95, latMax: 23, grip: 6.5, drag: 0.03 }, // ...and rutted in (features/wear.js blends the two)
+  gravelSwept: { engine: 0.97, latMax: 27, grip: 7.6, drag: 0.012 }, // gravel with the loose stuff swept off the line
   ford: { engine: 0.75, latMax: 16, grip: 5, drag: 0.3 }         // and its water splash
 };
 export const STEP = 1 / 120;

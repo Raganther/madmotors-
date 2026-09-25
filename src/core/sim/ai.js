@@ -2,7 +2,7 @@ import { HALF } from '../constants.js';
 import { closedCrossingAhead } from '../features/trains.js';
 import { ferryTarget } from '../features/ferry.js';
 import { drawTarget } from '../features/drawbridge.js';
-import { rutDepth, rutLane } from '../features/mud.js';
+import { rutDepth, rutLane } from '../features/wear.js';
 import { clamp } from '../math.js';
 
 /** Before each fork pick a route, the branch or the main road, at random (stage.branches[k].share = the branch's

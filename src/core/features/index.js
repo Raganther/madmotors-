@@ -12,6 +12,6 @@ import { feature as rockfall } from './rockfall.js';
 import { feature as hazards } from './hazards.js';
 import { feature as ferry } from './ferry.js';
 import { feature as drawbridge } from './drawbridge.js';
-import { feature as mud } from './mud.js';
+import { feature as wear } from './wear.js';
 
-export const FEATURES = [traffic, trains, parked, rockfall, hazards, ferry, drawbridge, mud];
+export const FEATURES = [traffic, trains, parked, rockfall, hazards, ferry, drawbridge, wear];
