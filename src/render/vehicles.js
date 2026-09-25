@@ -205,6 +205,7 @@ export function setRoster(defs) {
     if (v) { scene.remove(v.root); disposeGroup(v.root); }
     carVis[k] = makeCarMesh(d);
   });
+  for (const v of carVis.splice(defs.length)) { scene.remove(v.root); disposeGroup(v.root); }   // a smaller field than last time
 }
 export function initCars() {
   CAR_DEFS.forEach(d => carVis.push(makeCarMesh(d)));

@@ -62,7 +62,10 @@ export function updateHUD(dt) {
   const key = order.map(c => c.name).join();
   if (key !== G.standingsKey) {
     G.standingsKey = key;
-    $('standings').innerHTML = order.map((c, i) => `<li class="${c.isPlayer ? 'me' : ''}"><span class="st-p">${i + 1}</span><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}</li>`).join('');
+    // a big field: the top three, then you and whoever is either side of you
+    const show = order.length <= 6 ? order.map((c, i) => i) : [...new Set([0, 1, 2, place - 2, place - 1, place].filter(i => i >= 0 && i < order.length))].sort((a, b) => a - b);
+    $('standings').innerHTML = show.map((i, n) => (n && i > show[n - 1] + 1 ? '<li class="gap">&middot;&middot;&middot;</li>' : '') +
+      `<li class="${order[i].isPlayer ? 'me' : ''}"><span class="st-p">${i + 1}</span><span class="chip" style="background:#${order[i].def.color.toString(16).padStart(6, '0')}"></span>${order[i].name}</li>`).join('');
   }
   setTxt('time', fmt(P.finished ? P.finishTime : race.time));
   if (sd) { $('lap').hidden = true; setTxt('sd-title', (G.world.tr.loopN ? `Crown · first to ${SD.TARGET}s · Lap ${Math.min(G.world.tr.laps, P.lap + 1)}/${G.world.tr.laps}` : `Crown · first to ${SD.TARGET}s`)); }

@@ -51,9 +51,9 @@ export function updateTraffic(R, W, dt) {
   for (const c of R.traffic) if (c.pr.i < pi - 110 || c.pr.i > pi + 480) c.dead = true;
   R.traffic = R.traffic.filter(c => !c.dead);
   R.trafT -= dt; if (R.trafT > 0) return; R.trafT = 0.5;
-  const rnd = R.rnd, lastI = tr.finishIdx - 30;
+  const rnd = R.rnd, lastI = tr.finishIdx - 30, thin = Math.min(1, 5 / R.cars.length);   // a big field is traffic enough: fewer civilians
   for (const dir of [-1, 1]) {
-    const want = dir < 0 ? cfg.on : cfg.with; if (!want) continue;
+    const want = Math.round((dir < 0 ? cfg.on : cfg.with) * thin); if (!want) continue;
     if (R.traffic.filter(c => c.tdir === dir).length >= want) continue;
     const idx = Math.round(pi + (dir < 0 ? 200 + rnd() * 160 : 130 + rnd() * 160));
     if (idx > lastI || idx < tr.startIdx + 40) continue;

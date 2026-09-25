@@ -5,7 +5,7 @@ import { SANDBOXES } from '../src/data/sandboxes/index.js';
 import { genCircuit } from '../src/core/track/circuit.js';
 import { seedRandom } from './scenarios.js';
 import { VEHICLES } from '../src/data/vehicles.js';
-import { CAR_DEFS, raceDefs } from '../src/data/cars.js';
+import { CAR_DEFS, MAX_RIVALS, raceDefs } from '../src/data/cars.js';
 const FERRYLEN = M.FERRY.LEN;
 
 const DEFS = [{ name: 'a', skill: 0.95, flick: 0.38, driftK: 1 / 62 }, { name: 'b', skill: 0.99, flick: 0.22, driftK: 1 / 38 }, { name: 'p', player: true }, { name: 'c', skill: 0.92, flick: 0.28, driftK: 1 / 50 }];
@@ -264,6 +264,19 @@ describe('the garage', () => {
     expect(std.find(d => d.player).veh).toBeUndefined();
     const h = raceDefs(VEHICLES.find(v => v.id === 'hatch')); expect(h.find(d => d.player).model).toBe('hatch'); expect(h.filter(d => d.model === 'hatch').length).toBe(1);
     expect(new Set(VEHICLES.map(v => v.id)).size).toBe(VEHICLES.length); expect(VEHICLES.length).toBe(14);
+  });
+  it('a full field: one of every vehicle, 14 cars on the grid, the player at the back; everyone gets round', () => {
+    const defs = raceDefs(VEHICLES[0], MAX_RIVALS);
+    expect(defs.length).toBe(14); expect(new Set(defs.map(d => d.model)).size).toBe(14); expect(defs.at(-1).player).toBe(true);
+    expect(raceDefs(VEHICLES.find(v => v.id === 'kart'), MAX_RIVALS).filter(d => d.model === 'kart').length).toBe(1);   // whoever drove it takes a coupe
+    expect(raceDefs(VEHICLES[0], 1).map(d => d.name)).toEqual(['Okafor', 'You']);
+    for (const st of [M.STAGES[0], M.STAGES[10]]) {
+      seedRandom(5); const tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: !!st.armco, traffic: st.traffic };
+      const R = M.createRace(W, defs); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9;
+      let t = 0; while (t < 400 && !R.cars.every(c => c.finished)) { M.raceStep(R, 1 / 120, W); t += 1 / 120; }
+      const resp = R.cars.reduce((a, c) => a + c.respawns, 0);
+      expect(R.cars.every(c => c.finished)).toBe(true); expect(resp).toBeLessThanOrEqual(6);   // a pack this size knocks the odd car off
+    }
   });
   it('every vehicle gets round a tarmac and a dirt stage alone, within 10% of the coupe, without respawning', () => {
     for (const st of [M.STAGES[7], M.STAGES[9]]) {

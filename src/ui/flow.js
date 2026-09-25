@@ -4,7 +4,7 @@ import { clamp } from '../core/math.js';
 import { createRace, ranking } from '../core/sim/race.js';
 import { screenOffset } from '../core/sim/view.js';
 import { SD } from '../core/modes/showdown.js';
-import { raceDefs } from '../data/cars.js';
+import { DEFAULT_RIVALS, MAX_RIVALS, raceDefs } from '../data/cars.js';
 import { vehicleById } from '../data/vehicles.js';
 import { STAGES } from '../data/stages/index.js';
 import { updateCamera } from '../render/camera.js';
@@ -25,7 +25,7 @@ import { elementHook } from '../render/elements/index.js';
 import { $, isTouch } from './dom.js';
 import { fmt, ordinal } from './format.js';
 import { callout, drawProfile } from './hud.js';
-import { best, saveBest, saveMode } from './storage.js';
+import { best, saveBest, saveMode, saveRivals } from './storage.js';
 
 export let race = null, pausedFrom = null, selected = 0;
 G.world = null; G.state = 'menu';
@@ -33,7 +33,7 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const defs = raceDefs(vehicleById(G.vehicle)); setRoster(defs);                        // the line-up, with the player's pick
+  const defs = raceDefs(vehicleById(G.vehicle), G.mode === 'showdown' ? DEFAULT_RIVALS : G.rivals); setRoster(defs);                        // the line-up, with the player's pick
   const r = createRace(G.world.W, defs, { mode: G.mode }); clearProps(); resetBarrierVis(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
   elementHook('newRace', r);
   return r;
@@ -176,14 +176,21 @@ export function togglePause() {
 }
 export function refreshBest() { STAGES.forEach((s, i) => { const el = $('best-' + i); if (el) el.textContent = best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet'; }); }
 const MODE_DESC = {
-  race: 'Beat three rivals to the line.',
+  race: () => G.rivals === 1 ? 'Beat your rival to the line.' : `Beat ${G.rivals} rivals to the line${G.rivals > 3 ? ', starting from the back of the grid' : ''}.`,
   showdown: 'King of the Hill: the leader wears the crown and banks crown time. Pass clearly to steal it; slipstream helps, and a runaway leader meets cows and oil. Fall off the screen and you blow up, paying the holder 2 s. First to 60 s of crown time wins.'
 };
 export function setMode(m) {
   G.mode = m; saveMode(m);
   document.querySelectorAll('.mode-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false'));
-  $('mode-desc').textContent = MODE_DESC[m];
+  $('mode-desc').textContent = typeof MODE_DESC[m] === 'function' ? MODE_DESC[m]() : MODE_DESC[m];
   $('race-btn').textContent = (m === 'showdown' ? 'Showdown: ' : 'Race ') + STAGES[selected].name;
+  $('rivals').hidden = m === 'showdown';
+}
+/** The Race field size (menu stepper): 1..MAX_RIVALS AI cars. */
+export function setRivals(n) {
+  G.rivals = Math.max(1, Math.min(MAX_RIVALS, n)); saveRivals(G.rivals);
+  if (G.mode === 'race') $('mode-desc').textContent = MODE_DESC.race();
+  $('rivals-n').textContent = String(G.rivals); $('rivals-less').disabled = G.rivals <= 1; $('rivals-more').disabled = G.rivals >= MAX_RIVALS;
 }
 export function buildStageList() {
   const ol = $('stage-list'); ol.innerHTML = '';

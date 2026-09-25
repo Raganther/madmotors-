@@ -1,6 +1,6 @@
 // Screenshots from the player's seat on the production build (run `npm run build` first). The player car drives
 // itself (AI) to each race distance and the frame is saved, so wear, mud and dirt have built up the way they would.
-//   node tools/shot.mjs <stage|sandbox:name> [metres ...] [--vehicle id] [--debug] [--w 1100 --h 620]
+//   node tools/shot.mjs <stage|sandbox:name> [metres ...] [--vehicle id] [--rivals n] [--debug] [--w 1100 --h 620]
 //   --eval '<js>' runs in the page once the race is built (window.__dr as d), e.g. to recolour something to find it
 //   node tools/shot.mjs garage              the garage, top and bottom, once every vehicle's picture is drawn
 // Stage is a 1-based number or (part of) its name. Metres are from the start line (1 sample = 1 m; past one lap on a circuit is lap 2).
@@ -14,7 +14,7 @@ import { SANDBOXES } from '../src/data/sandboxes/index.js';
 
 const args = process.argv.slice(2), opt = (k, d) => { const i = args.indexOf('--' + k); if (i < 0) return d; const v = args[i + 1]; args.splice(i, 2); return v; };
 const flag = k => { const i = args.indexOf('--' + k); if (i < 0) return false; args.splice(i, 1); return true; };
-const evalJs = opt('eval', ''), vehicle = opt('vehicle', 'coupe'), W = +opt('w', 1100), H = +opt('h', 620), debug = flag('debug');
+const evalJs = opt('eval', ''), rivals = +opt('rivals', 3), vehicle = opt('vehicle', 'coupe'), W = +opt('w', 1100), H = +opt('h', 620), debug = flag('debug');
 const [which = '', ...marks] = args, sb = which.startsWith('sandbox:') ? which.slice(8) : null;
 if (sb && !SANDBOXES[sb]) throw new Error(`no sandbox "${sb}"; sandboxes: ${Object.keys(SANDBOXES).join(', ')}`);
 const garage = which === 'garage';
@@ -36,7 +36,7 @@ if (garage) {
   if (errs.length) console.log('page errors:\n  ' + errs.join('\n  '));
   await browser.close(); process.exit(errs.length ? 1 : 0);
 }
-await page.evaluate(([i, v]) => { window.__dr.G.vehicle = v; window.__dr.flow.startRace(i); }, [idx, vehicle]);
+await page.evaluate(([i, v, n]) => { window.__dr.G.vehicle = v; window.__dr.G.rivals = n; window.__dr.flow.startRace(i); }, [idx, vehicle, rivals]);
 await page.waitForFunction(i => window.__dr.race && window.__dr.G.world.idx === i, idx, { timeout: 30000 });
 const info = await page.evaluate(() => {
   const d = window.__dr; window.requestAnimationFrame = () => 0;   // we drive the frames

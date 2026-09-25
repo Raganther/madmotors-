@@ -1,7 +1,7 @@
 // Render benchmark on the production build (run `npm run build` first). Places the camera at 8 points around each
 // stage and times full frames with the GPU synced. Uses software rendering, so compare runs with each other rather
 // than reading the numbers as real frame times.
-//   node tools/bench.mjs [stage ...]         (default: all stages)
+//   node tools/bench.mjs [stage ...]         (default: all stages; RIVALS=13 for a full field)
 import { chromium } from 'playwright';
 import path from 'node:path';
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
@@ -12,7 +12,7 @@ const n = await page.evaluate(() => window.__dr.core.STAGES.length);
 const stages = process.argv.length > 2 ? process.argv.slice(2).map(a => Number(a) - 1) : [...Array(n).keys()];
 for (const si of stages) {
   await page.goto(url); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
-  await page.evaluate(i => window.__dr.flow.startRace(i), si);
+  await page.evaluate(([i, n]) => { window.__dr.G.rivals = n; window.__dr.flow.startRace(i); }, [si, +(process.env.RIVALS || 3)]);
   await page.waitForFunction(i => window.__dr.G.world.idx === i && window.__dr.race, si, { timeout: 30000 });
   const r = await page.evaluate(() => {
     const d = window.__dr, G = d.G; window.requestAnimationFrame = () => 0; G.state = 'racing'; d.race.phase = 'racing';

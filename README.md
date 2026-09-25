@@ -184,7 +184,9 @@ points over a lap). `npm run shot -- garage` shoots the vehicle picker.
    optionally `anim(v, c, now)` for moving parts.
 2. An entry in `src/data/vehicles.js`: name, blurb, livery, and handling next to the standard car (`accel`, `top`,
    `grip`, `off`, `im`; hitbox `hw`/`hl`). The garage lists it, with its picture and stat bars.
-3. `npm run check`: a test races every vehicle alone on a tarmac and a dirt stage and wants it within 10% of the coupe.
+3. An AI rival to drive it in bigger fields: an entry in `MORE_RIVALS` (`src/data/cars.js`; the menu's Rivals setting goes
+   up to 3 + that many).
+4. `npm run check`: a test races every vehicle alone on a tarmac and a dirt stage and wants it within 10% of the coupe.
 
 ## Adding a race feature (a new hazard or system)
 

@@ -37,7 +37,7 @@ export function collideCars(cars) {
   const n = cars.length;
   for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) {
     const A = cars[a], B = cars[b];
-    if (A.ghost > 0 || B.ghost > 0 || Math.abs(A.y - B.y) > 2) continue;
+    if (A.ghost > 0 || B.ghost > 0 || A.finished || B.finished || Math.abs(A.y - B.y) > 2) continue;   // finished cars pull up past the line: the rest drive through them
     if ((B.x - A.x) ** 2 + (B.z - A.z) ** 2 > (A.hl + B.hl + 1) ** 2) continue;                         // cheap distance reject
     let impulseDone = false;
     for (let it = 0; it < 3; it++) {

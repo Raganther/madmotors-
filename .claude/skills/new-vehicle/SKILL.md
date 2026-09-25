@@ -27,6 +27,9 @@ existing vehicle's role (list: `src/data/vehicles.js`).
 - `npm test`: a test races every vehicle alone on a tarmac and a dirt stage and wants lap times within 10% of the
   coupe with no respawn. If it fails, tune the stats, not the test.
 
+Give it an AI driver: an entry at the end of `MORE_RIVALS` in `src/data/cars.js` (name, number, skill), so a full
+field (Rivals at max) has one of every vehicle; the full-field test checks that.
+
 ## 4. Look at it
 - `npm run shot -- <stage> --vehicle <id>` on a tarmac and a dirt stage: readable from the race camera? Damage and
   dirt show? Wheels on the ground?

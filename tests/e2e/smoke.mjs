@@ -68,6 +68,20 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   }
   console.log(`garage: raced all ${ids.length} vehicles`);
 }
+// the Rivals setting: a full field of 14 (one of every vehicle), then down to a single rival; the meshes follow
+{
+  await page.evaluate(() => window.__dr.flow.toMenu()); await page.evaluate(() => { document.getElementById('garage').hidden = true; });
+  for (const [btn, want] of [['#rivals-more', 14], ['#rivals-less', 2]]) {
+    while (await page.$eval(btn, b => !b.disabled)) await page.click(btn);
+    await page.evaluate(() => window.__dr.flow.startRace(0)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 0, null, { timeout: 30000 });
+    const got = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; for (let k = 0; k < 30; k++) d.step(1 / 30);
+      return { n: d.race.cars.length, vis: d.carVis.length, same: d.race.cars.every((c, k) => d.carVis[k].def.model === c.def.model), rows: document.querySelectorAll('#standings li:not(.gap)').length }; });
+    if (got.n !== want || got.vis !== want || !got.same) errors.push(`rivals: wanted ${want} cars, raced ${got.n} with ${got.vis} meshes${got.same ? '' : ' (wrong bodies)'}`);
+    if (got.rows > 6) errors.push(`rivals: the standings list ${got.rows} rows`);
+    console.log(`rivals: ${got.n} cars raced, ${got.rows} rows in the standings`);
+    await page.evaluate(() => window.__dr.flow.toMenu());
+  }
+}
 // an element sandbox with the debug overlay: ?sandbox=<name>&debug loads it as the last stage and shows the readout
 for (const sb of ['tunnel', 'town']) {
   await page.goto('file://' + file + `?sandbox=${sb}&debug`); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
