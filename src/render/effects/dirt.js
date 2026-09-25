@@ -30,6 +30,7 @@ export function updateDirt(c, v, dt) {
   const M = MUCK[c.surface] || MUCK.tarmac, sp = Math.hypot(c.vx, c.vz); if (sp < 2) return;
   const add = M.rate * dt * Math.min(1.5, sp / 20);
   if (add > 0 && M.col !== null) D.col.lerp(D.tmp.setHex(M.col), Math.min(1, add / (D.amt + add) * 1.5));
-  if (c.surface === 'ford') D.amt = Math.max(Math.min(D.amt, 0.35), D.amt + add);   // rinses off the worst of it else D.amt = Math.min(1, Math.max(0, D.amt + add));
+  if (c.surface === 'ford') D.amt = Math.max(Math.min(D.amt, 0.35), D.amt + add);   // the splash rinses off the worst of it
+  else D.amt = Math.min(1, Math.max(0, D.amt + add));
   D.mat.color.copy(D.col); D.mat.opacity = Math.min(0.95, D.amt * 1.3);
 }

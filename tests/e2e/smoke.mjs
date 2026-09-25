@@ -23,14 +23,16 @@ for (let i = 0; i < n; i++) {
   const info = await page.evaluate(() => {
     const d = window.__dr; window.requestAnimationFrame = () => 0;
     d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
-    d.step(6);
+    d.step(6); for (let k = 0; k < 30; k++) d.step(1 / 60);   // a few drawn frames: the cars pick up dust on dirt stages
+    const dirt = d.carVis.reduce((m, v) => Math.max(m, v.dirt ? v.dirt.amt : 0), 0), dirtStage = d.G.world.stage.surface !== 'tarmac';
     // see-through scenery only inside long covered stretches: off on open road, on inside a tunnel
     const cov = d.G.world.cover, N = cov.length, open = cov.findIndex(v => !v), tun = cov.findIndex(v => v);
-    return { stage: d.G.world.stage.name, t: d.race.time.toFixed(1), progress: Math.round(d.race.player.progress), cov: cov[d.race.player.pr.i % N], open, tun, N };
+    return { stage: d.G.world.stage.name, t: d.race.time.toFixed(1), progress: Math.round(d.race.player.progress), cov: cov[d.race.player.pr.i % N], open, tun, N, dirt, dirtStage };
   });
   await page.screenshot({ path: path.join(outDir, `stage${i + 1}.png`) });
   console.log(`stage ${i + 1} ${info.stage}: raced ${info.t}s, player progress ${info.progress}, covered stretch ${info.tun < 0 ? 'none' : 'from ' + info.tun}`);
   if (info.open < 0) errors.push('see-through is on along the whole of ' + info.stage);
+  if (info.dirtStage && !(info.dirt > 0)) errors.push('cars did not get dusty on the dirt stage ' + info.stage);
   // the real loop was stubbed out for this stage; reload for the next one
   await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 }
