@@ -20,6 +20,10 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape' && !$('garage').hidden) { closeGarage(); return; }
   if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
   if (e.code === 'KeyM') AudioSys.toggle();
+  if (G.state === 'racing' && race && race.weapons) {                              // weapons: F fires the missile, Q / E swing the left / right door
+    if (e.code === 'KeyF') race.player.inp.fire = true;
+    if (e.code === 'KeyQ') race.player.inp.door = -1; if (e.code === 'KeyE') race.player.inp.door = 1;
+  }
   if (e.code === 'KeyC' && G.state !== 'menu') setCamera(nextCamera());           // cycle the camera
   if (e.code === 'Backquote') toggleOverlay();                              // debug overlay (render/overlay.js)
   if (e.code === 'Enter' && G.state === 'menu' && $('loading').hidden && document.activeElement === document.body) startRace(selected);
@@ -55,6 +59,11 @@ thumbZone($('steer-zone'), (_x, _y, e) => {
   touch.dir = [dx, -dy]; wheelG.setAttribute('transform', `rotate(${(Math.atan2(dx, -dy) * 180 / Math.PI).toFixed(1)})`);
   return null;
 }, () => { touch.dir = null; touch.wheel = touch.left = touch.right = false; wheel.classList.remove('on'); wheelG.removeAttribute('transform'); arrowEls.forEach(el => el.classList.remove('on')); });
+// touch weapons: the missile, and a door that swings on whichever side has a car beside you
+for (const [id, act] of [['wpn-fire', P => { P.inp.fire = true; }], ['wpn-door', P => {
+  let side = 0, best = 9; for (const o of race.cars) { if (o === P) continue; const lat = -(o.x - P.x) * Math.cos(P.yaw) + (o.z - P.z) * Math.sin(P.yaw), lon = (o.x - P.x) * Math.sin(P.yaw) + (o.z - P.z) * Math.cos(P.yaw); if (Math.abs(lon) < 4 && Math.abs(lat) < best) { best = Math.abs(lat); side = Math.sign(lat); } }
+  P.inp.door = side || 1;
+}]]) $(id).addEventListener('pointerdown', e => { e.preventDefault(); if (G.state === 'racing' && race && race.weapons) act(race.player); });
 /** Camera mode and zoom (render/camera.js). Remembered between visits. */
 export function setCamera(mode = G.camMode, zoom = G.camZoom) {
   G.camMode = mode in CAM_MODES ? mode : 'classic'; G.camZoom = zoom in CAM_ZOOMS ? zoom : 'normal'; saveCamera({ mode: G.camMode, zoom: G.camZoom });
@@ -85,6 +94,9 @@ export function readInput(dt) {
     const ax = gp.axes[0] || 0; if (Math.abs(ax) > 0.15) st = ax;
     if (gp.buttons[7]) thr = Math.max(thr, gp.buttons[7].value); if (gp.buttons[6]) brk = Math.max(brk, gp.buttons[6].value);
     if (gp.buttons[0] && gp.buttons[0].pressed) hb = 1;
+    const pr = k => gp.buttons[k] && gp.buttons[k].pressed, was = G.gpPrev || [];                          // B: missile, LB / RB: doors
+    if (race.weapons) { if (pr(1) && !was[1]) P.inp.fire = true; if (pr(4) && !was[4]) P.inp.door = -1; if (pr(5) && !was[5]) P.inp.door = 1; }
+    G.gpPrev = [0, 1, 2, 3, 4, 5].map(pr);
   }
   const cur = P.inp.steer;
   if (touch.wheel && !st) {   // point-to-steer: turn toward the screen direction the wheel points at (flipped when reversing)

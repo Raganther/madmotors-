@@ -17,6 +17,7 @@ import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
 import { camera, renderer, scene } from '../render/renderer.js';
 import { resetDirt } from '../render/effects/dirt.js';
+import { missileBlast, missilePuff } from '../render/weapons.js';
 import { landDust } from '../render/effects/carfx.js';
 import { carVis, setRoster, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
@@ -25,7 +26,7 @@ import { elementHook } from '../render/elements/index.js';
 import { $, isTouch } from './dom.js';
 import { fmt, ordinal } from './format.js';
 import { callout, drawProfile } from './hud.js';
-import { best, saveBest, saveMode, saveRivals } from './storage.js';
+import { best, saveBest, saveMode, saveRivals, saveWeapons } from './storage.js';
 
 export let race = null, pausedFrom = null, selected = 0;
 G.world = null; G.state = 'menu';
@@ -34,7 +35,7 @@ export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
   const defs = raceDefs(vehicleById(G.vehicle), G.mode !== 'race' ? DEFAULT_RIVALS : G.rivals); setRoster(defs);                        // the line-up, with the player's pick
-  const r = createRace(G.world.W, defs, { mode: G.mode }); clearProps(); resetBarrierVis(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
+  const r = createRace(G.world.W, defs, { mode: G.mode, weapons: G.weapons }); clearProps(); resetBarrierVis(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
   elementHook('newRace', r);
   return r;
 }
@@ -82,6 +83,13 @@ export function handleEvents() {
         case 'sd-boom': sdBoom(e); for (const k of e.losers) { const b = race.cars[k]; sdBoomFx(b, b.isPlayer || onScreen(b)); } break;
         case 'sd-crown': sdCrown(e); break;
         case 'cp-point': cpPoint(e); break;
+        case 'missile-fire': if (near) AudioSys.whoosh(c.isPlayer ? 1.2 : 0.6); if (c.isPlayer) AudioSys.tone(220, 0.35, 0.08, 'sawtooth', 2.2); break;
+        case 'missile-lock': if (c.isPlayer) { callout(`${race.cars[e.from].name} fired a missile at you!`); AudioSys.beep(1500, 0.1); AudioSys.tone(1200, 0.25, 0.05, 'square', 1.2); } break;
+        case 'missile-hit': missileBlast(e); if (near) { AudioSys.crash('car', 1); AudioSys.burst(0.7, 'lowpass', 140, 0.7); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1.1); callout('Hit by a missile!'); } else if (race.cars[e.from] === race.player) callout(`Direct hit on ${c.name}!`); break;
+        case 'missile-fizzle': missilePuff(e); break;
+        case 'missile-ready': if (c.isPlayer) AudioSys.tone(660, 0.1, 0.05, 'triangle', 1.5); break;
+        case 'door': if (near) AudioSys.burst(0.12, 'bandpass', 1500, 0.12); break;
+        case 'door-hit': sparks(e.x, e.y, e.z, 8); if (near) AudioSys.crash('metal', 0.55); { const by = race.cars[e.by]; if (c.isPlayer) { G.shake = Math.min(1.2, G.shake + 0.5); callout(`Door slam from ${by.name}!`); } else if (by === race.player) callout(`Slammed ${c.name}!`); } break;
         case 'cp-miss': callout('Nobody through the gate'); break;
         case 'sd-streak': if (c.isPlayer) { callout(`Crown streak ×${e.mult}!`); AudioSys.tone(880, 0.1, 0.07, 'triangle', 1.3); } break;
         case 'sd-spawn': sdSpawnFx(c); if (c.isPlayer) { callout(e.slot === 'front' ? 'Back in, ahead!' : e.slot === 'beside' ? 'Back in, alongside!' : 'Back in, behind!'); AudioSys.tone(440, 0.25, 0.08, 'triangle', 2); } break;
@@ -205,6 +213,8 @@ export function setMode(m) {
   $('race-btn').textContent = MODE_BTN[m] + STAGES[selected].name;
   $('rivals').hidden = m !== 'race';
 }
+/** Weapons on or off (menu), for every mode. */
+export function setWeapons(on) { G.weapons = on; saveWeapons(on); $('wpn-btn').textContent = 'Weapons: ' + (on ? 'On' : 'Off'); }
 /** The Race field size (menu stepper): 1..MAX_RIVALS AI cars. */
 export function setRivals(n) {
   G.rivals = Math.max(1, Math.min(MAX_RIVALS, n)); saveRivals(G.rivals);

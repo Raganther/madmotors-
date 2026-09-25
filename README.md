@@ -4,13 +4,24 @@ A top-down alpine racer in the spirit of *Ignition*: breakable barriers, car dam
 crossings, rockfall and a gorge circuit with viaducts. Three.js (r128), plain JavaScript, built with Vite into a
 single self-contained HTML file.
 
-Two modes: **Race** (first to the line) and **Showdown**, King of the Hill, Micro Machines style: the camera
+Four modes: **Race** (first to the line, against 1 to 13 rivals: the menu's Rivals setting), **Deuce** and
+**Tiebreak** (checkpoint gates, below) and **Showdown**, King of the Hill, Micro Machines style: the camera
 follows the leader and zooms out to keep the pack in shot. The leader wears the crown and banks crown time while
 holding it; the crown only changes hands on a clear pass. A car left off
 the screen at full zoom blows up, pays the holder 2 s of its crown time and respawns behind or beside the leader.
 Nothing ever stops; first to 60 s of crown time wins (or the most crown time at the finish).
 The Showdown rules live in `src/core/modes/showdown.js`; `src/core/sim/view.js` uses the camera's exact screen
 axes so what you see is what's judged.
+
+**Deuce** and **Tiebreak** use the same pack rules (camera on the leader, blow up off the screen, rejoin behind the
+leader) with checkpoint gates instead of crown time: a gate stands on one side of the road ahead, and the first car to
+drive *through* it scores (a leader on the wrong line can miss it). Win by two, like tennis: Deuce is first to 4
+(3-3 is deuce, then advantage), Tiebreak first to 7. The rules are in the same file (`R.sd.kind`, `CP`).
+
+**Weapons** (menu: Weapons on/off, every mode; `src/core/features/weapons.js`): every car carries a homing missile
+(F; reloads in 15 s) that locks on to the nearest car ahead and knocks it up, spinning and slowed, and can swing a
+door into a car alongside (Q / E) to shove it off its line. Tuned to needle rather than decide a race; the AI uses
+both. On touch there are Missile and Door buttons; a gamepad uses B and the bumpers.
 
 Catch-up, in both modes: a car tucked in 3-20 m behind another gets a slipstream tow (`PHYS.DRAFT`), and once a
 leader pulls clear (35 m, or 8 s holding the crown) leader hazards appear ~3 s ahead of it (`core/features/hazards.js`):
@@ -59,7 +70,7 @@ src/
     sim/                car physics, AI, barriers, damage, collisions, race loop
     elements/           TRACK ELEMENTS: one module per reusable piece of road (bridge, tunnel, kick, gap, boost, town, ...)
     features/           race systems plugged into the race loop: traffic, trains, parked, rockfall, hazards
-    modes/              game modes on top of a race (showdown)
+    modes/              game modes on top of a race (showdown: King of the Hill, Deuce, Tiebreak)
   data/                 stages (one file each), sandboxes (a tiny loop per element), car/traffic definitions
   render/               three.js: renderer & quality, materials/shaders, world (terrain, road, barriers,
                         scenery), elements/ (each element's and feature's visuals), vehicles (racer bodies: carmodels.js, one builder per `model`; paint, glass, chrome and occlusion: carpaint.js; garage pictures: thumbs.js), effects,

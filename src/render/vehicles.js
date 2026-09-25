@@ -242,6 +242,21 @@ export function drawCar(c, v, dt, now) {
   v.root.visible = c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
   if (G.state === 'racing') { effectsForCar(c, v, dt); updateDirt(c, v, dt); }
   if (v.anim) v.anim(v, c, now);
+  if (c.wpn) swingDoors(c, v, dt);
+}
+// door bashing (core/features/weapons.js): a door panel in the car's colour swings out on the side it was flung open,
+// hinged at the front, and closes again. Built the first time a car uses one.
+function swingDoors(c, v, dt) {
+  const w = c.wpn, want = w.doorT > 0 ? w.doorSide : 0;
+  if (!want && !v.doors) return;
+  if (!v.doors) {
+    const hw = v.def.hw || CAR_HW, mat = carMat('paint', v.def.color);
+    v.doors = [-1, 1].map(s => { const p = new THREE.Group(); p.position.set(-s * (hw + 0.04), 0.62, 0.45); const d = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.6, 1.25), mat); d.position.z = -0.62; d.castShadow = true; p.add(d); p.visible = false; v.body.add(p); return { s, p, a: 0 }; });
+  }
+  for (const d of v.doors) {                                                     // core side +1 is the car's local -x
+    const tgt = d.s === want ? 1.15 : 0; d.a += (tgt - d.a) * Math.min(1, dt * (tgt ? 22 : 9));
+    d.p.visible = d.a > 0.03; d.p.rotation.y = d.s * d.a;
+  }
 }
 export function updateCarVisuals(dt, now) {
   if (!race) return;

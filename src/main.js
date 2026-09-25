@@ -1,7 +1,7 @@
 import './debug.js';
 import { G } from './game.js';
 import { $, isTouch } from './ui/dom.js';
-import { loadCamera, loadMode, loadRivals, loadSteer, loadVehicle } from './ui/storage.js';
+import { loadCamera, loadMode, loadRivals, loadSteer, loadVehicle, loadWeapons } from './ui/storage.js';
 import { DEFAULT_RIVALS, MAX_RIVALS } from './data/cars.js';
 import { closeGarage, openGarage, setVehicle } from './ui/garage.js';
 import { AudioSys } from './audio/audio.js';
@@ -24,7 +24,7 @@ import { initCars, updateCarVisuals } from './render/vehicles.js';
 import { elementHook } from './render/elements/index.js';
 import { applyBarrierChanges } from './render/world/barriers.js';
 import { updateFans } from './render/world/scenery.js';
-import { setMode, setRivals, buildStageList, handleEvents, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
+import { setMode, setRivals, setWeapons, buildStageList, handleEvents, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
 import { updateHUD } from './ui/hud.js';
 import { nextCamera, nextZoom, readInput, setCamera, setSteer } from './ui/input.js';
 
@@ -78,6 +78,7 @@ export function wireUI() {
   $('mute-btn').addEventListener('click', () => { AudioSys.init(); AudioSys.toggle(); });
   document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('rivals-less').addEventListener('click', () => setRivals(G.rivals - 1)); $('rivals-more').addEventListener('click', () => setRivals(G.rivals + 1));
+  $('wpn-btn').addEventListener('click', () => setWeapons(!G.weapons));
   $('gfx-btn').addEventListener('click', () => { if (renderer) cycleQuality(); });
   for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
   $('veh-btn').addEventListener('click', openGarage); $('garage-done').addEventListener('click', closeGarage);
@@ -91,7 +92,7 @@ export async function boot() {
     const sbName = new URLSearchParams(location.search).get('sandbox');
     if (sbName) { if (!SANDBOXES[sbName]) throw new Error(`no sandbox "${sbName}"; try ${Object.keys(SANDBOXES).join(', ')}`); STAGES.push(SANDBOXES[sbName]); }
     if (new URLSearchParams(location.search).has('debug')) toggleOverlay(true);
-    wireUI(); buildStageList(); setMode(loadMode()); setRivals(loadRivals(MAX_RIVALS, DEFAULT_RIVALS)); G.vehicle = loadVehicle();
+    wireUI(); buildStageList(); setMode(loadMode()); setRivals(loadRivals(MAX_RIVALS, DEFAULT_RIVALS)); setWeapons(loadWeapons()); G.vehicle = loadVehicle();
     { const c = loadCamera(); setCamera(c.mode, c.zoom); }
     setSteer(loadSteer()); for (const b of document.querySelectorAll('.steer-btn')) b.hidden = !isTouch;   // steering choice only matters with touch controls
     if (isTouch) { document.documentElement.classList.add('touch'); $('time-block').insertBefore($('speed-block'), $('time-block').querySelector('.hud-btns')); }   // keep the speedo clear of the thumb controls

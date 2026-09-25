@@ -12,11 +12,11 @@ export function gridSlots(n) {
   if (n <= 4) return [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
   return Array.from({ length: n }, (_, k) => [30 - Math.floor(k / 3) * 6, [-3.5, 0, 3.5][k % 3]]);
 }
-/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'|'deuce'|'tiebreak'}} [opts] @returns {import('../types.js').Race} */
+/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'|'deuce'|'tiebreak', weapons?: boolean}} [opts] @returns {import('../types.js').Race} */
 export function createRace(W, defs, opts = {}) {
   W.bar = makeBarriers(W.tr, W.armco);
   const grid = gridSlots(defs.length), cars = defs.map((d, k) => makeCar(W, grid[k][0], grid[k][1], d));
-  const R = { cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false, rnd: mulberry32((W.tr.seed || 1) * 31 + 7) };
+  const R = { weapons: !!opts.weapons, cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false, rnd: mulberry32((W.tr.seed || 1) * 31 + 7) };
   for (const f of FEATURES) if (f.init) f.init(R, W);
   R.mode = opts.mode || 'race';
   if (SD_KINDS[R.mode]) initShowdown(R, SD_KINDS[R.mode]);

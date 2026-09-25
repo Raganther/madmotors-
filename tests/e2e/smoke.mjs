@@ -82,6 +82,16 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
     await page.evaluate(() => window.__dr.flow.toMenu());
   }
 }
+// weapons: F fires a missile that flies, Q swings a door, and the HUD shows the missile reloading
+{
+  await page.evaluate(() => window.__dr.flow.startRace(0)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 0, null, { timeout: 30000 });
+  await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; d.step(1); });
+  await page.keyboard.press('KeyF'); await page.keyboard.press('KeyQ');
+  const got = await page.evaluate(() => { const d = window.__dr; d.step(0.2); return { on: d.race.weapons, missiles: d.race.missiles.length, ammo: d.race.player.wpn.ammo, door: d.race.player.wpn.doorCool > 0, hud: document.getElementById('wpn-state').textContent }; });
+  if (!got.on || got.ammo !== 0 || !got.door || !/Reloading|incoming/.test(got.hud)) errors.push('weapons: ' + JSON.stringify(got));
+  console.log(`weapons: fired (${got.missiles} in flight), door swung, HUD "${got.hud}"`);
+  await page.evaluate(() => window.__dr.flow.toMenu());
+}
 // the checkpoint modes: a Deuce match runs, the gate stands on the road and the HUD shows the points
 {
   await page.click('.mode-btn[data-mode="deuce"]');

@@ -101,6 +101,10 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .unit{font-size:14px;font-weight:600;color:var(--mist);margin-top:-2px}
 #boost{height:7px;border-radius:4px;background:rgba(255,255,255,.14);margin-top:6px;overflow:hidden}
 #boost-fill{height:100%;width:0;background:#8B93B5;border-radius:4px;transition:background .15s}
+#wpn{position:absolute;right:var(--rgt);bottom:calc(var(--bot) + 118px);background:var(--panel);border-radius:10px;padding:6px 10px;font-weight:700;font-size:14px;min-width:132px;text-align:center}
+#wpn b{display:block;color:var(--yellow)} #wpn.reload b{color:#fff} #wpn.lock{background:rgba(190,30,30,.85);animation:wpnflash .3s steps(2) infinite} #wpn.lock b{color:#fff}
+#wpn-bar{display:block;height:5px;margin-top:4px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden} #wpn-fill{display:block;height:100%;width:100%;background:var(--yellow)}
+@keyframes wpnflash{50%{opacity:.55}}
 #boost-fill.live{background:linear-gradient(90deg,var(--yellow),#FF7A2E)}
 #callout{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);font-family:var(--display);font-size:clamp(30px,5vw,48px);color:var(--yellow);text-shadow:0 3px 0 var(--ink),0 0 18px rgba(28,35,64,.4);white-space:nowrap}
 #callout.pop{animation:pop .9s ease-out both}
@@ -113,6 +117,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 #touch{position:fixed;inset:auto 0 0 0;height:0;pointer-events:none}
 #touch .tz{position:fixed;bottom:0;width:46%;height:50%;pointer-events:auto;touch-action:none}
 #steer-zone{left:0} #pedal-zone{right:0}
+#wpn-touch{position:fixed;right:var(--rgt);bottom:calc(50% + 6px);display:flex;gap:10px;pointer-events:auto} #wpn-touch button{width:62px;height:62px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(28,35,64,.62);color:#fff;font-weight:700;font-size:13px;touch-action:none} #wpn-touch button.ready{border-color:var(--yellow);color:var(--yellow)} #touch.nowpn #wpn-touch{display:none}
 #arrows{position:absolute;left:var(--lft);bottom:var(--bot);display:flex;gap:12px}
 #arrows i{width:var(--ab,82px);height:var(--ab,82px);border-radius:20px;background:rgba(28,35,64,.62);color:#fff;font-style:normal;font-size:30px;display:grid;place-items:center;transition:background .08s}
 #arrows i.on{background:rgba(255,199,44,.9);color:var(--ink)}
@@ -217,9 +222,11 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
       <dt>Space</dt><dd>Handbrake drift, release for a boost</dd>
       <dt>R</dt><dd>Reset to the road</dd>
       <dt>C</dt><dd>Change camera</dd>
+      <dt>F</dt><dd>Fire your homing missile</dd>
+      <dt>Q / E</dt><dd>Swing a door into a car alongside</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
-    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button></div>
+    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button></div>
   </div>
 </div>
 
@@ -229,6 +236,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   <div id="pos-block"><div id="pos"><span id="pos-n">1</span><span id="pos-suf">st</span></div><div id="lap" hidden></div><ol id="standings"></ol></div>
   <div id="profile-wrap"><canvas id="profile" aria-label="Stage profile showing each car's position on the descent"></canvas><div id="stage-name"></div></div>
   <div id="time-block"><div id="time">0:00.00</div><div id="best"></div><div class="hud-btns"><button id="reset-btn" type="button">Reset</button><button id="pause-btn" type="button">Pause</button></div></div>
+  <div id="wpn" hidden><b id="wpn-state">Missile ready</b><span id="wpn-bar"><i id="wpn-fill"></i></span></div>
   <div id="speed-block"><svg id="dmg" viewBox="0 0 24 40" role="img" aria-label="Car damage"><rect x="7" y="9" width="10" height="22" rx="2" fill="rgba(255,255,255,.12)"/><rect id="dz-f" x="4" y="0" width="16" height="7" rx="2"/><rect id="dz-b" x="4" y="33" width="16" height="7" rx="2"/><rect id="dz-l" x="0" y="9" width="5" height="22" rx="2"/><rect id="dz-r" x="19" y="9" width="5" height="22" rx="2"/></svg><div id="speed">0</div><div class="unit">km/h</div><div id="boost"><div id="boost-fill"></div></div></div>
   <div id="callout" hidden></div>
   <div id="countdown" hidden></div>
@@ -238,6 +246,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 
 <div id="touch" hidden>
   <div id="steer-zone" class="tz"><div id="arrows" hidden aria-label="Steer left or right: slide between the arrows"><i data-d="-1">◀</i><i data-d="1">▶</i></div><div id="wheel" aria-label="Steering wheel: point your thumb where you want to go"><svg viewBox="-50 -50 100 100" aria-hidden="true"><g id="wheel-g" fill="none" stroke="#fff" stroke-linecap="round"><circle r="40" stroke-width="9" stroke-opacity=".9"/><path d="M-36 4 L-10 6 M36 4 L10 6 M0 12 L0 37" stroke-width="8" stroke-opacity=".75"/><circle r="11" fill="rgba(255,255,255,.85)" stroke="none"/><path d="M-7 -41 L7 -41" stroke="#FFC72C" stroke-width="9"/></g></svg></div></div>
+  <div id="wpn-touch"><button id="wpn-fire" type="button" aria-label="Fire missile">Missile</button><button id="wpn-door" type="button" aria-label="Door bash">Door</button></div>
   <div id="pedal-zone" class="tz"><div id="pedal" aria-label="Gas: hold; slide down to drift, left to brake">Gas<i class="p-hb">▼ Drift</i><i class="p-brk">◀ Brake</i></div></div>
 </div>
 
