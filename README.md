@@ -135,6 +135,12 @@ The road graph (`src/core/track/route.js`) gives every track the same API: `tr.a
 `tr.all0` lists every sample for drawing. Where the two roads run side by side the barriers between them open, their
 heights meet, and a car belongs to whichever road it's clearly on. Try `?sandbox=branch`.
 
+### Screenshots
+
+`npm run shot -- <stage|sandbox:name> [metres ...] [--vehicle id] [--debug]` builds the game and saves frames from the
+player's seat to `tools/out/`: the player car drives itself to each distance from the start line (default: five
+points over a lap). `npm run shot -- garage` shoots the vehicle picker.
+
 ### Debugging an element
 
 - **Sandbox:** `src/data/sandboxes/` has a tiny loop per element. Play one with `?sandbox=<name>` (it's added as the
@@ -177,8 +183,8 @@ heights meet, and a car belongs to whichever road it's clearly on. Try `?sandbox
 1. **Simulation:** `src/core/features/<name>.js` exporting a `feature` object with any of
    `init(R, W)`, `vehicles(R)`, `move(R, W, dt, all, racing)`, `spawn(R, W, dt)`, `after(R, W, dt)`;
    add it to the end of `FEATURES` in `core/features/index.js`. Push events onto cars for effects.
-2. **Visuals:** an entry in `src/render/features.js` with any of `init()`, `build(group, tr, terr, stage)`,
-   `newRace(r)`, `update(dt, now, fxDt)`.
+2. **Visuals:** `src/render/elements/<name>.js` and an entry in `RENDER_ELEMENTS` (`src/render/elements/index.js`)
+   with any of `init()`, `build(group, tr, terr, stage)`, `newRace(r)`, `update(dt, now, fxDt)`.
 3. **Stage data:** switch it on from the stage (a tag, a list, a flag).
 4. Add a scenario to `tests/scenarios.js` if it has rules worth locking down.
 

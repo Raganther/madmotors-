@@ -17,7 +17,8 @@
     "layout": "node tools/layout.mjs",
     "terrain": "node tools/terrain.mjs",
     "sandbox": "node tools/sandbox.mjs",
-    "bench": "vite build && node tools/bench.mjs"
+    "bench": "vite build && node tools/bench.mjs",
+    "shot": "vite build --logLevel error && node tools/shot.mjs"
   },
   "dependencies": {
     "three": "0.128.0"

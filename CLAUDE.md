@@ -7,8 +7,12 @@ Top-down racer, three.js r128, plain JS modules, Vite. Read README.md for the la
 - `npm run e2e`: production build + headless browser run of every stage (no console errors allowed).
 - `npm run layout -- <n>` / `npm run terrain -- <n>`: inspect a stage's road plan / terrain before playing it (`sandbox:<name>` works too).
 - `npm run sandbox -- <name|all>`: AI laps of an element sandbox, with what went wrong where. Browser: `?sandbox=<name>&debug`; backquote toggles the debug overlay.
+- `npm run shot -- <n|sandbox:name|garage> [metres ...] [--vehicle id] [--debug]`: screenshots from the player's seat (AI drives to each distance) → tools/out/. Look at them.
 - `npm run bench -- <n>`: render benchmark (SwiftShader here, so only compare against a previous run).
 - Headless Chromium lives at /opt/pw-browsers (don't `playwright install`); pass `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`.
+
+## Skills (.claude/skills)
+`/new-stage`, `/new-element`, `/new-vehicle`, `/new-feature`, `/look` (visual changes), `/ship` (verify, commit, push, publish). Each holds the workflow, the done-checks and traps we've hit; the README holds the how. When you hit a new trap, add it to the skill it belongs to.
 
 ## Rules
 - `src/core` and `src/data` must stay free of three.js/DOM/`render`/`ui`/`audio`/`game.js` (ESLint enforces). The simulation talks to the rest only through state and `car.events`.
