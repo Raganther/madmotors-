@@ -62,7 +62,7 @@ src/
     modes/              game modes on top of a race (showdown)
   data/                 stages (one file each), sandboxes (a tiny loop per element), car/traffic definitions
   render/               three.js: renderer & quality, materials/shaders, world (terrain, road, barriers,
-                        scenery), elements/ (each element's and feature's visuals), vehicles (racer bodies: carmodels.js, one builder per `model` in data/cars.js), effects,
+                        scenery), elements/ (each element's and feature's visuals), vehicles (racer bodies: carmodels.js, one builder per `model`; garage pictures: thumbs.js), effects,
                         camera, overlay.js (debug overlay)
   audio/                Web Audio synth (engine, crashes, horns, bells)
   ui/                   HUD, menu/flow (countdown, pause, results), input, storage
@@ -161,6 +161,14 @@ heights meet, and a car belongs to whichever road it's clearly on. Try `?sandbox
 3. Iterate with `npm run layout -- <n>`, `npm run terrain -- <n>` and `npm run sandbox -- <n>` until the plan closes cleanly and nothing
    overlaps by accident, then play it with `npm run dev`.
 4. `npm run golden` to record the new stage, then `npm run check`.
+
+## Adding a vehicle
+
+1. A body builder in `src/render/carmodels.js` (`MODELS.<name>`): outline, wheels (`K.wheels`), the damage parts, and
+   optionally `anim(v, c, now)` for moving parts.
+2. An entry in `src/data/vehicles.js`: name, blurb, livery, and handling next to the standard car (`accel`, `top`,
+   `grip`, `off`, `im`; hitbox `hw`/`hl`). The garage lists it, with its picture and stat bars.
+3. `npm run check`: a test races every vehicle alone on a tarmac and a dirt stage and wants it within 10% of the coupe.
 
 ## Adding a race feature (a new hazard or system)
 

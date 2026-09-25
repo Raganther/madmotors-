@@ -12,7 +12,7 @@ import { glassBits, sparks } from './effects/impacts.js';
 import { emit } from './effects/particles.js';
 import { spawnProp } from './effects/props.js';
 import { shockwave } from './effects/rings.js';
-import { _p, _q, _s, flat, radialTex } from './geometry.js';
+import { _p, _q, _s, disposeGroup, flat, radialTex } from './geometry.js';
 import { getCrackTex, glassMat, paintMat } from './materials.js';
 import { scene } from './renderer.js';
 import { buildCarModel } from './carmodels.js';
@@ -39,7 +39,7 @@ export function makeCarMesh(def) {
   scene.add(root);
   const v = { root, body, wheels: m.wheels, steer: m.steer, wr: m.wr, soft: m.soft || 1, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
     dentable: m.dentable, bumper: m.bumper, wing: m.wing, struts: m.struts, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
-  addCarExtras(v, m.tails, CAR_HW, CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin)); return v;
+  v.anim = m.anim; v.def = def; addCarExtras(v, m.tails, def.hw || CAR_HW, def.hl || CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin)); return v;
 }
 // push the bodywork in around a contact point (car-local coords), deterministic per vertex so shared corners stay welded
 export function dentMesh(v, lx, ly, lz, ix, iz, depth, radius) {
@@ -196,6 +196,14 @@ export function syncTrafficVis() {
   }
 }
 export let marker, crown;
+/** Make the racers' meshes match a line-up (new vehicle picked, or a rival swapped cars). */
+export function setRoster(defs) {
+  defs.forEach((d, k) => {
+    const v = carVis[k]; if (v && v.def.model === d.model && v.def.color === d.color && v.def.accent === d.accent) return;
+    if (v) { scene.remove(v.root); disposeGroup(v.root); }
+    carVis[k] = makeCarMesh(d);
+  });
+}
 export function initCars() {
   CAR_DEFS.forEach(d => carVis.push(makeCarMesh(d)));
   for (const k of Object.keys(trafficPool)) for (let i = 0; i < 5; i++) trafficPool[k].push(makeTrafficMesh(k));
@@ -230,6 +238,7 @@ export function drawCar(c, v, dt, now) {
   v.blob.visible = c.onGround;
   v.root.visible = c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
   if (G.state === 'racing') { effectsForCar(c, v, dt); updateDirt(c, v, dt); }
+  if (v.anim) v.anim(v, c, now);
 }
 export function updateCarVisuals(dt, now) {
   if (!race) return;

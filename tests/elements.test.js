@@ -4,6 +4,8 @@ import M from './core-under-test.js';
 import { SANDBOXES } from '../src/data/sandboxes/index.js';
 import { genCircuit } from '../src/core/track/circuit.js';
 import { seedRandom } from './scenarios.js';
+import { VEHICLES } from '../src/data/vehicles.js';
+import { CAR_DEFS, raceDefs } from '../src/data/cars.js';
 const FERRYLEN = M.FERRY.LEN;
 
 const DEFS = [{ name: 'a', skill: 0.95, flick: 0.38, driftK: 1 / 62 }, { name: 'b', skill: 0.99, flick: 0.22, driftK: 1 / 38 }, { name: 'p', player: true }, { name: 'c', skill: 0.92, flick: 0.28, driftK: 1 / 50 }];
@@ -233,5 +235,26 @@ describe('track wear on every surface', () => {
     const tt = M.buildTrack(M.STAGES[0]), Wt = { tr: tt, terr: M.buildTerrain(tt, M.STAGES[0]), surf: 'tarmac' }, Rt = M.createRace(Wt, DEFS); Rt.phase = 'racing'; Rt.autoPlayer = true;
     for (let t = 0; t < 5; t += 1 / 120) M.raceStep(Rt, 1 / 120, Wt);
     expect(Wt.wear.g.some(v => v > 0)).toBe(true); expect(Rt.cars.every(c => !(c.rut > 0))).toBe(true);   // worn to look at, same to drive on
+  });
+});
+
+describe('the garage', () => {
+  it('the standard coupe is the line-up as it always was; picking a rival\'s car hands them the coupe', () => {
+    const std = raceDefs(VEHICLES[0]); expect(std.map(d => d.model)).toEqual(CAR_DEFS.map(d => d.model));
+    expect(std.find(d => d.player).veh).toBeUndefined();
+    const h = raceDefs(VEHICLES.find(v => v.id === 'hatch')); expect(h.find(d => d.player).model).toBe('hatch'); expect(h.filter(d => d.model === 'hatch').length).toBe(1);
+    expect(new Set(VEHICLES.map(v => v.id)).size).toBe(VEHICLES.length); expect(VEHICLES.length).toBe(14);
+  });
+  it('every vehicle gets round a tarmac and a dirt stage alone, within 10% of the coupe, without respawning', () => {
+    for (const st of [M.STAGES[7], M.STAGES[9]]) {
+      const tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: !!st.armco }; let base = 0;
+      for (const v of VEHICLES) {
+        seedRandom(7); const R = M.createRace(W, [raceDefs(v).find(d => d.player)]); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9;
+        const P = R.player, end = tr.startIdx + tr.loopN; let t = 0;
+        while (t < 120 && P.progress < end) { M.raceStep(R, 1 / 120, W); t += 1 / 120; }
+        if (!base) base = t;
+        expect(Math.abs(t / base - 1), `${v.id} on ${st.name}`).toBeLessThan(0.1); expect(P.respawns, v.id).toBe(0);
+      }
+    }
   });
 });

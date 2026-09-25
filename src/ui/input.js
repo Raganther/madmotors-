@@ -4,6 +4,7 @@ import { clamp, wrapAngle } from '../core/math.js';
 import { groundDir } from '../core/sim/view.js';
 import { respawn } from '../core/sim/car.js';
 import { $ } from './dom.js';
+import { closeGarage } from './garage.js';
 import { toggleOverlay } from '../render/overlay.js';
 import { saveCamera, saveSteer } from './storage.js';
 import { CAM_MODES, CAM_ZOOMS } from '../render/camera.js';
@@ -16,6 +17,7 @@ addEventListener('keydown', e => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (e.repeat) return;
   if (e.code === 'KeyR' && G.state === 'racing' && race && !race.player.finished) respawn(race.player, G.world.W);
+  if (e.code === 'Escape' && !$('garage').hidden) { closeGarage(); return; }
   if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
   if (e.code === 'KeyM') AudioSys.toggle();
   if (e.code === 'KeyC' && G.state !== 'menu') setCamera(nextCamera());           // cycle the camera

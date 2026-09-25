@@ -4,7 +4,8 @@ import { clamp } from '../core/math.js';
 import { createRace, ranking } from '../core/sim/race.js';
 import { screenOffset } from '../core/sim/view.js';
 import { SD } from '../core/modes/showdown.js';
-import { CAR_DEFS } from '../data/cars.js';
+import { raceDefs } from '../data/cars.js';
+import { vehicleById } from '../data/vehicles.js';
 import { STAGES } from '../data/stages/index.js';
 import { updateCamera } from '../render/camera.js';
 import { clearDebris } from '../render/effects/debris.js';
@@ -16,7 +17,7 @@ import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
 import { camera, renderer, scene } from '../render/renderer.js';
 import { resetDirt } from '../render/effects/dirt.js';
-import { carVis, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
+import { carVis, setRoster, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
 import { buildWorld, trackOf } from '../render/world/index.js';
 import { elementHook } from '../render/elements/index.js';
@@ -31,7 +32,8 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const r = createRace(G.world.W, CAR_DEFS, { mode: G.mode }); clearProps(); resetBarrierVis(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
+  const defs = raceDefs(vehicleById(G.vehicle)); setRoster(defs);                        // the line-up, with the player's pick
+  const r = createRace(G.world.W, defs, { mode: G.mode }); clearProps(); resetBarrierVis(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
   elementHook('newRace', r);
   return r;
 }
@@ -156,7 +158,7 @@ export function startRace(idx) {
   selectStage(idx, () => {
     race = newRace(); clearSkids(); clearDebris(); clearSparks(); G.shake = 0; G.slowmo = 0;
     G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; G.sdTick = 0; $('edge').className = '';
-    $('menu').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
+    $('menu').hidden = true; $('garage').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
     $('stage-name').textContent = `Stage ${idx + 1}: ${STAGES[idx].name}`;
     racesStarted++; G.hintTimer = racesStarted <= 2 ? 7 : 0;
     $('hint').textContent = isTouch ? G.steer === 'wheel' ? 'Point the wheel where to go. Slide Gas down to drift' : 'Slide Gas down to drift, back up to boost' : 'Hold Space through a corner to drift, then let go for a boost';

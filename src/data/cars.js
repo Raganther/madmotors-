@@ -14,3 +14,13 @@ export const CAR_DEFS = [
   { name: 'You', model: 'coupe', color: 0xFFC72C, accent: 0x1C2340, num: 7, player: true },
   { name: 'Vasquez', model: 'buggy', color: 0x2FB36B, accent: 0xFFFFFF, num: 24, skill: 0.92, flick: 0.28, driftK: 1 / 50 }
 ];
+
+/** The race's line-up with the player in vehicle v (data/vehicles.js): their livery, body, hitbox and handling. A rival
+ *  whose car the player took drives the player's usual coupe instead. */
+export function raceDefs(v) {
+  const coupe = CAR_DEFS.find(d => d.player);
+  return CAR_DEFS.map(d => {
+    if (d.player) return { ...d, model: v.model, color: v.color, accent: v.accent, hw: v.hw, hl: v.hl, im: v.veh ? v.veh.im : undefined, veh: v.veh, vehicle: v.id };
+    return d.model === v.model && v.model !== 'coupe' ? { ...d, model: coupe.model } : d;
+  });
+}

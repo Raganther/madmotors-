@@ -53,6 +53,21 @@ for (const i of [0, 6, 7]) {
   if (info.holder < 0 || !info.panel || info.rows !== 4) errors.push('showdown crown / panel missing on ' + info.stage);
 }
 await page.evaluate(() => window.__dr.flow.setMode('race'));
+// the garage: pick each vehicle in turn, race it briefly: its body is built (moving parts too) and nothing errors
+{
+  await page.goto('file://' + file); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
+  await page.click('#veh-btn'); await page.waitForFunction(() => document.querySelectorAll('.g-card img[src^="data:"]').length > 13, null, { timeout: 60000 });
+  const ids = await page.evaluate(() => [...document.querySelectorAll('.g-card')].map(b => b.dataset.id));
+  for (const id of ids) {
+    await page.click(`.g-card[data-id="${id}"]`);
+    await page.evaluate(() => window.__dr.flow.startRace(9));
+    await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 9, null, { timeout: 30000 });
+    const got = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; for (let k = 0; k < 20; k++) d.step(1 / 30); return { v: d.G.vehicle, model: d.carVis[2].def.model, pm: d.race.player.def.model }; });
+    if (got.v !== id || got.model !== got.pm) errors.push(`garage: picked ${id}, raced ${got.pm} drawn as ${got.model}`);
+    await page.evaluate(() => window.__dr.flow.toMenu()); await page.click('#veh-btn');
+  }
+  console.log(`garage: raced all ${ids.length} vehicles`);
+}
 // an element sandbox with the debug overlay: ?sandbox=<name>&debug loads it as the last stage and shows the readout
 for (const sb of ['tunnel', 'town']) {
   await page.goto('file://' + file + `?sandbox=${sb}&debug`); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });

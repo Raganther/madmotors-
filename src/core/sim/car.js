@@ -22,7 +22,7 @@ export function makeCar(W, idx, lat, def) {
     onGround: true, airT: 0, boost: 0, driftT: 0, lastGood: idx, progress: idx, finished: false, finishTime: 0, place: 0,
     offT: 0, ghost: 0, stuckT: 0, wrongT: 0, lap: 0, spin: 0, mod: 1, vf: 0, vr: 0, gx: 0, gz: 0, squash: 0, surface: tr.surface, respawns: 0,
     inp: { throttle: 0, brake: 0, steer: 0, handbrake: 0 }, events: [], dmg: { f: 0, b: 0, l: 0, r: 0 }, wreckT: 0, wrecks: 0,
-    hw: def.hw || CAR_HW, hl: def.hl || CAR_HL, im: def.im || 1, traffic: !!def.traffic,
+    hw: def.hw || CAR_HW, hl: def.hl || CAR_HL, im: def.im || 1, traffic: !!def.traffic, veh: def.veh || null,
     isPlayer: !!def.player, name: def.name, def,
     ai: { lane: lat, cur: lat, skill: def.player ? 0.85 : def.skill, wT: 1 + Math.random() * 2, flick: def.player ? 0 : (def.flick || 0), driftK: def.driftK || 1 / 45, drift: { until: -1, t: 0, cool: 0, dir: 0 } }
   };
@@ -66,17 +66,19 @@ export function stepCar(c, dt, W, racing) {
   let vf = c.vx * fx + c.vz * fz, vr = c.vx * rx + c.vz * rz;
   if (c.onGround) {
     let a = 0; const mod = c.mod, wear = carWear(c);
-    if (inp.throttle > 0) a += inp.throttle * PHYS.ENGINE * S.engine * mod * (1 - 0.3 * wear);
+    const V = c.veh, rough = c.surface !== 'tarmac';                              // a vehicle's handling (data/vehicles.js); none = the standard car
+    if (inp.throttle > 0) a += inp.throttle * PHYS.ENGINE * S.engine * mod * (1 - 0.3 * wear) * (V ? V.accel * (rough ? V.off : 1) : 1);
     if (inp.brake > 0) { if (vf > 0.5) a -= inp.brake * PHYS.BRAKE; else if (vf > -12) a -= inp.brake * PHYS.REVERSE; }
     if (c.boost > 0) a += PHYS.BOOST;
     if (c.draft > 0) a += c.draft * PHYS.DRAFT;                        // slipstream: tucked in behind another racer
-    a -= PHYS.DRAG * vf * Math.abs(vf) + S.drag * vf;
+    a -= PHYS.DRAG * vf * Math.abs(vf) / (V ? V.top * V.top : 1) + S.drag * vf * (V && rough ? 2 - V.off : 1);
     vf += a * dt;
     if (inp.throttle <= 0 && inp.brake <= 0 && Math.abs(vf) < 1) vf *= Math.max(0, 1 - 3 * dt);
     const hb = inp.handbrake > 0 && Math.abs(vf) > 6;
     const slick = c.oilT > 0 ? 0.22 : 1;                                    // on an oil slick the tyres barely hold
-    const latMax = (hb ? PHYS.HB_LAT : S.latMax) * (0.8 + 0.2 * mod) * slick;
-    const grip = (hb ? 1.4 : S.grip) * slick;
+    const vg = V ? V.grip * (rough ? Math.sqrt(V.off) : 1) : 1;
+    const latMax = (hb ? PHYS.HB_LAT : S.latMax) * (0.8 + 0.2 * mod) * slick * vg;
+    const grip = (hb ? 1.4 : S.grip) * slick * vg;
     let dvr = -vr * (1 - Math.exp(-grip * dt)); const lim = latMax * dt; dvr = clamp(dvr, -lim, lim); vr += dvr;
     const loss = (Math.abs(vr) * 0.35 + (hb ? 5 : 0)) * dt;
     if (Math.abs(vf) > loss) vf -= Math.sign(vf) * loss; else vf = 0;

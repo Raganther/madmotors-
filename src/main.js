@@ -1,7 +1,8 @@
 import './debug.js';
 import { G } from './game.js';
 import { $, isTouch } from './ui/dom.js';
-import { loadCamera, loadMode, loadSteer } from './ui/storage.js';
+import { loadCamera, loadMode, loadSteer, loadVehicle } from './ui/storage.js';
+import { closeGarage, openGarage, setVehicle } from './ui/garage.js';
 import { AudioSys } from './audio/audio.js';
 import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
@@ -77,6 +78,7 @@ export function wireUI() {
   document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('gfx-btn').addEventListener('click', () => { if (renderer) cycleQuality(); });
   for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
+  $('veh-btn').addEventListener('click', openGarage); $('garage-done').addEventListener('click', closeGarage);
   for (const b of document.querySelectorAll('.cam-btn')) b.addEventListener('click', () => setCamera(nextCamera()));
   for (const b of document.querySelectorAll('.zoom-btn')) b.addEventListener('click', () => setCamera(G.camMode, nextZoom()));
 }
@@ -87,7 +89,7 @@ export async function boot() {
     const sbName = new URLSearchParams(location.search).get('sandbox');
     if (sbName) { if (!SANDBOXES[sbName]) throw new Error(`no sandbox "${sbName}"; try ${Object.keys(SANDBOXES).join(', ')}`); STAGES.push(SANDBOXES[sbName]); }
     if (new URLSearchParams(location.search).has('debug')) toggleOverlay(true);
-    wireUI(); buildStageList(); setMode(loadMode());
+    wireUI(); buildStageList(); setMode(loadMode()); G.vehicle = loadVehicle();
     { const c = loadCamera(); setCamera(c.mode, c.zoom); }
     setSteer(loadSteer()); for (const b of document.querySelectorAll('.steer-btn')) b.hidden = !isTouch;   // steering choice only matters with touch controls
     if (isTouch) { document.documentElement.classList.add('touch'); $('time-block').insertBefore($('speed-block'), $('time-block').querySelector('.hud-btns')); }   // keep the speedo clear of the thumb controls
@@ -95,7 +97,7 @@ export async function boot() {
     step = 'starting WebGL'; initRenderer(); initParticles(); initSparks(); initSkids(); initDebris(); initRings(); initProps();
     step = 'loading fonts';
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
-    step = 'building the cars'; initCars(); elementHook('init');
+    step = 'building the cars'; initCars(); elementHook('init'); setVehicle(G.vehicle);
     step = 'building the first stage';
     selectStage(sbName ? STAGES.length - 1 : 0);
     requestAnimationFrame(frame);
