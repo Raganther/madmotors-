@@ -3,13 +3,21 @@ import { debris } from './debris.js';
 import { wallFx } from './impacts.js';
 import { emit } from './particles.js';
 import { addSkid } from './skids.js';
+import { AudioSys } from '../../audio/audio.js';
 import { spark } from './sparks.js';
 
 // what flies up from the wheels on each surface: dust, grass, clods of mud, a spray of water
 const SURF_FX = { tarmac: { rate: 0, col: 0xE8E8E8, up: 1.5, size: 0.8 }, gravel: { rate: 1.1, col: 0xD8C29A, up: 1.5, size: 0.8 }, grass: { rate: 0.6, col: 0x8E9A5B, up: 1.5, size: 0.8 },
-  mud: { rate: 1.6, col: 0x4E3622, up: 2.5, size: 0.6 }, ford: { rate: 2.4, col: 0xE4F2FF, up: 3.5, size: 1.1 } };
+  mud: { rate: 1.6, col: 0x4E3622, up: 2.5, size: 0.6 }, ford: { rate: 3.2, col: 0xF2F8FF, up: 4.5, size: 1.5 } };
 export function effectsForCar(c, v, dt) {
   const sp = Math.hypot(c.vx, c.vz), fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+  // hitting the water: a wall of spray thrown up and out either side, and a whoosh
+  if (c.surface === 'ford' && v.lastSurf !== 'ford' && sp > 6) {
+    const k = Math.min(1.6, sp / 18);
+    for (let n = 0; n < 34 * k; n++) { const s = n % 2 ? 1 : -1, out = 2 + Math.random() * 5; emit(c.x + fx * 1.2 + (Math.random() - 0.5) * 2, c.y + 0.4, c.z + fz * 1.2 + (Math.random() - 0.5) * 2, c.vx * 0.35 - fz * s * out, 4 + Math.random() * 6 * k, c.vz * 0.35 + fx * s * out, 0.9 + Math.random() * 0.6, 1.2 + Math.random() * 1.4, n % 3 ? 0xF6FBFF : 0xD2E8F7, 2); }
+    if (c.isPlayer) AudioSys.burst(0.5 * k, 'bandpass', 1400, 0.7, 350);
+  }
+  v.lastSurf = c.surface;
   const slide = Math.abs(c.vr), loose = c.surface !== 'tarmac';
   const skidding = c.onGround && c.surface !== 'grass' && (slide > 4.2 || (c.inp.handbrake && sp > 6));
   for (let w = 0; w < 2; w++) {

@@ -31,8 +31,9 @@ import { element as drawbridge } from './drawbridge.js';
 import { element as mill } from './mill.js';
 import { element as mud } from './mud.js';
 import { element as whoops } from './whoops.js';
+import { element as yump } from './yump.js';
 
-export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops];
+export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops, yump];
 export const elementPhase = (phase, ...args) => { for (const e of ELEMENTS) if (e[phase]) e[phase](...args); };
 
 // stage options that belong to the stage itself rather than to an element

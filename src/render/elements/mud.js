@@ -1,10 +1,23 @@
 import * as THREE from 'three';
 import { HALF } from '../../core/constants.js';
-import { flat } from '../geometry.js';
+import { canvasTex, flat } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 
 // Mud visuals ('mud' element): bogs get a churned brown layer over the road with glossy puddles; a water splash gets
 // a shallow stream running across the road (wheels in the water). The spray from the wheels is in effects/carfx.js.
+// light streaks on the stream, scrolled across the road so it flows (updateMud)
+let ripple = null;
+function rippleTex() {
+  if (ripple) return ripple;
+  ripple = canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, w, h);
+    let s = 5; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    for (let k = 0; k < 70; k++) { g.fillStyle = `rgba(200,225,240,${(0.3 + r() * 0.5).toFixed(2)})`; g.fillRect(r() * w, r() * h, 10 + r() * 30, 1 + r() * 2); }
+  });
+  ripple.wrapS = ripple.wrapT = THREE.RepeatWrapping; ripple.repeat.set(3, 1);
+  return ripple;
+}
+export function updateMud(dt) { if (ripple) ripple.offset.x -= dt * 0.12; }
 export function addMud(group, tr, terr) {
   if (!tr.mud) return;
   const pos = [], col = [], c = new THREE.Color(), A = new THREE.Color(0x3F2B1C), B = new THREE.Color(0x6A4A30), W = HALF + 1.2;
@@ -32,11 +45,11 @@ export function addMud(group, tr, terr) {
     m.position.set(x, y, z); m.scale.set(1.6, 1, 1); m.rotation.y = tr.th[p.i] + Math.PI / 2; m.receiveShadow = true; group.add(m);
   }
   // water splashes: one sheet of water per run, crossing the road and out over the low ground either side
-  const water = withCutaway(new THREE.MeshLambertMaterial({ color: 0x3E7DAE, transparent: true, opacity: 0.85, depthWrite: false }), false, { cut: false, cloud: true, water: true });
+  const water = withCutaway(new THREE.MeshLambertMaterial({ color: 0x4F8DBA, map: rippleTex(), transparent: true, opacity: 0.88, depthWrite: false }), false, { cut: false, cloud: true, water: true });
   for (let k = 0; k < fords.length;) {
     let e = k; while (e + 1 < fords.length && fords[e + 1] === tr.nb0(fords[e], 1)) e++;
     const a = fords[k], b = fords[e], mid = fords[(k + e) >> 1], len = e - k + 8, h = Math.min(tr.H[a], tr.H[b], tr.H[mid]) + 0.35;
-    const m = new THREE.Mesh(flat(new THREE.PlaneGeometry(30, len, 6, 4).rotateX(-Math.PI / 2)), water);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(30, len, 6, 4).rotateX(-Math.PI / 2), water);
     m.position.set(tr.xs[mid], h, tr.zs[mid]); m.rotation.y = tr.th[mid]; m.renderOrder = 1; group.add(m);
     for (const s of [-1, 1]) for (let q = 0; q < 3; q++) {                          // stepping stones on the banks
       const [x, , z] = P(mid, s * (HALF + 3 + q * 2.4), 0), r = new THREE.Mesh(flat(new THREE.DodecahedronGeometry(0.7 + q * 0.2, 0)), new THREE.MeshLambertMaterial({ color: 0x8C877C }));

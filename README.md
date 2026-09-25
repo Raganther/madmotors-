@@ -107,6 +107,7 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | mill | `mill`, `logs` | sawmill shed and log stacks; log piles along the road (scenery) |
 | mud | `mud: true`, `mud: 'water'` | a mud bog or a water splash: less grip, more drag, spray from the wheels |
 | whoops | `whoops: <m>` | a run of rolling bumps |
+| yump | `yump: <m>` | a natural dirt crest jump (no painted ramp); `kick` is the painted one |
 
 A core element can declare `tags`, `stageKeys`, per-sample `channels`, a `section()` hook, build phases (`heights`,
 `walls`, `wallsLate`, `wallsLast`), `track()` to add fields to the built track, and `markers()` saying where it is (see

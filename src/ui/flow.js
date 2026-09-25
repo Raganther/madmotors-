@@ -15,6 +15,7 @@ import { clearProps } from '../render/effects/props.js';
 import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
 import { camera, renderer, scene } from '../render/renderer.js';
+import { resetDirt } from '../render/effects/dirt.js';
 import { carVis, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
 import { buildWorld, trackOf } from '../render/world/index.js';
@@ -30,7 +31,7 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const r = createRace(G.world.W, CAR_DEFS, { mode: G.mode }); clearProps(); resetBarrierVis(); carVis.forEach(repairCarVis);
+  const r = createRace(G.world.W, CAR_DEFS, { mode: G.mode }); clearProps(); resetBarrierVis(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
   elementHook('newRace', r);
   return r;
 }

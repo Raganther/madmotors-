@@ -26,7 +26,7 @@ describe('element registry and stage validation', () => {
 });
 
 // what each sandbox must contain, by element name
-const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'], rally: ['mud', 'whoops'] };
+const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'], rally: ['mud', 'whoops', 'yump'] };
 describe('sandboxes', () => {
   it('there is a sandbox listed here for each one defined', () => expect(Object.keys(SANDBOXES).sort()).toEqual(Object.keys(EXPECT).sort()));
   for (const [name, stage] of Object.entries(SANDBOXES)) it(`${name}: builds, closes, has its elements, and four AI cars lap it cleanly`, () => {
@@ -182,6 +182,7 @@ describe('mud and whoops', () => {
   it('whoops are bumps on the road; bogs and splashes are slower corners for the AI', () => {
     const w = tr.whoops[0]; let lo = Infinity, hi = -Infinity; for (let q = 0; q < 44; q++) { lo = Math.min(lo, tr.H[w.i + q]); hi = Math.max(hi, tr.H[w.i + q]); }
     expect(hi - lo).toBeGreaterThan(0.7);
+    const y = tr.yumps[0]; expect(tr.jump[y.i + 5]).toBe(2); expect(tr.H[y.i + 17] - tr.H[y.i]).toBeGreaterThan(2.5);   // a natural crest: unpainted, and a real rise
     const mudI = [...tr.mud].findIndex(v => v === 1), wetI = [...tr.mud].findIndex(v => v === 2);
     expect(tr.vmax[mudI + 5]).toBeLessThanOrEqual(70 * 0.8 + 1e-3); expect(tr.vmax[wetI + 5]).toBeLessThanOrEqual(70 * 0.66 + 1e-3);   // straight road: 70 dry
   });

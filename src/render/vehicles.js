@@ -16,6 +16,7 @@ import { _p, _q, _s, flat, radialTex } from './geometry.js';
 import { getCrackTex, glassMat, paintMat } from './materials.js';
 import { scene } from './renderer.js';
 import { buildCarModel } from './carmodels.js';
+import { addDirt, updateDirt } from './effects/dirt.js';
 import { race } from '../ui/flow.js';
 import { callout } from '../ui/hud.js';
 
@@ -38,7 +39,7 @@ export function makeCarMesh(def) {
   scene.add(root);
   const v = { root, body, wheels: m.wheels, steer: m.steer, wr: m.wr, soft: m.soft || 1, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
     dentable: m.dentable, bumper: m.bumper, wing: m.wing, struts: m.struts, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
-  addCarExtras(v, m.tails, CAR_HW, CAR_HL); return v;
+  addCarExtras(v, m.tails, CAR_HW, CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin)); return v;
 }
 // push the bodywork in around a contact point (car-local coords), deterministic per vertex so shared corners stay welded
 export function dentMesh(v, lx, ly, lz, ix, iz, depth, radius) {
@@ -228,7 +229,7 @@ export function drawCar(c, v, dt, now) {
   if (v.braking !== braking) { v.braking = braking; v.tailM.color.setHex(braking ? 0xFF4A36 : 0x8E2016); v.glow.forEach(g => g.visible = braking); }
   v.blob.visible = c.onGround;
   v.root.visible = c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
-  if (G.state === 'racing') effectsForCar(c, v, dt);
+  if (G.state === 'racing') { effectsForCar(c, v, dt); updateDirt(c, v, dt); }
 }
 export function updateCarVisuals(dt, now) {
   if (!race) return;

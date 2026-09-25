@@ -41,7 +41,7 @@ export function makeRoadMesh(tr, stage) {
       if ((s === 0 || s === 6) && tr.bridge[i]) c = concrete; else if ((s === 1 || s === 5) && tr.bridge[i]) c = concrete;
       else if (s === 0 || s === 6) c = skirt; else if (s === 1 || s === 5) c = dirt;
       else if (s === 2 || s === 4) { const kerb = s === 2 ? tr.kerbL[i] : tr.kerbR[i]; c = kerb ? (((i >> 1) & 1) ? red : white) : road; }
-      else if (tr.jump[i]) c = ((i >> 1) & 1) ? yel : blk;
+      else if (tr.jump[i] === 1) c = ((i >> 1) & 1) ? yel : blk;                           // painted kickers (natural crests stay dirt)
       else {
         // the driving surface in strips: darker worn wheel tracks in each lane plus the odd repair patch
         const base = 1 + tr.noise.n2(i * 0.15, 3.3) * 0.08;
