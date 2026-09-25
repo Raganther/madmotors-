@@ -25,7 +25,7 @@ import { initHazardVis, updateHazardVis } from '../hazards.js';
 import { addFalls, updateFalls } from './falls.js';
 import { addDrawbridges, updateDrawbridges } from './drawbridge.js';
 import { addMill } from './mill.js';
-import { addMud, updateMud } from './mud.js';
+import { addMud, newMudRace, updateMud } from './mud.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
 const river = { name: 'river', build(group, tr) { addRiver(group, tr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
@@ -63,7 +63,7 @@ const drawbridge = { name: 'drawbridge', build(group, tr) { addDrawbridges(group
 
 const mill = { name: 'mill', build(group, tr, terr) { addMill(group, tr, terr); } };
 
-const mud = { name: 'mud', build(group, tr, terr) { addMud(group, tr, terr); }, update(dt) { updateMud(dt); } };
+const mud = { name: 'mud', build(group, tr, terr) { addMud(group, tr, terr); }, newRace() { newMudRace(); }, update(dt) { updateMud(dt); } };
 
 export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

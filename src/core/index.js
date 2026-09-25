@@ -23,6 +23,8 @@ export { ferryDeckAt, ferryTarget } from './features/ferry.js';
 export { FERRY } from './elements/ferry.js';
 export { DRAW } from './elements/drawbridge.js';
 export { drawState } from './features/drawbridge.js';
+export { RUT } from './elements/mud.js';
+export { rutLane } from './features/mud.js';
 export { STAGES } from '../data/stages/index.js';
 export { FEATURES } from './features/index.js';
 export * from './sim/view.js';

@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { G } from '../../game.js';
+import { RUT, mudRuns } from '../../core/elements/mud.js';
 import { HALF } from '../../core/constants.js';
 import { canvasTex, flat } from '../geometry.js';
 import { withCutaway } from '../materials.js';
@@ -17,28 +19,54 @@ function rippleTex() {
   ripple.wrapS = ripple.wrapT = THREE.RepeatWrapping; ripple.repeat.set(3, 1);
   return ripple;
 }
-export function updateMud(dt) { if (ripple) ripple.offset.x -= dt * 0.12; }
+// The bogs: a surface of RUT.COLS x length cells over the road, redrawn from the race's rut grid (W.ruts) a few times
+// a second: fresh mud mottled and lighter, churned ruts dark, wet and sunk in, the ridges between them catching the light.
+const FRESH = [new THREE.Color(0x6E4E32), new THREE.Color(0x8C6A44)], RUTC = new THREE.Color(0x1A0F08), RIDGE = new THREE.Color(0xA07C52);
+let bogs = [], redraw = 0;
+function bogMesh(group, tr, a, b) {
+  const len = b - a, C = RUT.COLS + 1, pos = new Float32Array((len + 1) * C * 3), col = new Float32Array(pos.length), fresh = [], idx = [], rows = [];
+  for (let u = 0; u <= len; u++) {
+    const i = tr.u0(tr.nb(a, u)); rows.push(i);
+    for (let k = 0; k < C; k++) { const o = (k - RUT.COLS / 2) * RUT.CELL; fresh.push(FRESH[0].clone().lerp(FRESH[1], 0.5 + 0.5 * tr.noise.n2(u * 0.23 + k * 0.2, 4.4))); pos.set([tr.xs[i] + tr.rx[i] * o, tr.H[i] + 0.07, tr.zs[i] + tr.rz[i] * o], (u * C + k) * 3); }
+  }
+  for (let u = 0; u < len; u++) for (let k = 0; k < C - 1; k++) { const q = u * C + k; idx.push(q, q + C, q + 1, q + 1, q + C, q + C + 1); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setIndex(idx);
+  const m = new THREE.Mesh(g, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 }), false, { cut: false, cloud: true }));
+  m.receiveShadow = true; group.add(m);
+  const bog = { tr, len, rows, fresh, g, pos, col };
+  paintBog(bog, null); return bog;
+}
+function paintBog(B, grid) {
+  const C = RUT.COLS + 1, cell = (u, k) => grid && u >= 0 && u < B.len && k >= 0 && k < RUT.COLS ? grid[u * RUT.COLS + k] : 0, c = new THREE.Color();
+  for (let u = 0; u <= B.len; u++) {
+    const i = B.rows[u], H = B.tr.H[i];
+    for (let k = 0; k < C; k++) {
+      const v = (cell(u - 1, k - 1) + cell(u - 1, k) + cell(u, k - 1) + cell(u, k)) / 4, ridge = Math.max(0, Math.max(cell(u, k - 2), cell(u, k + 1)) - v) * (1 - v) * 1.5;
+      c.copy(B.fresh[u * C + k]).lerp(RUTC, Math.min(1, v * 1.2)).lerp(RIDGE, Math.min(0.6, ridge));
+      B.col.set([c.r, c.g, c.b], (u * C + k) * 3); B.pos[(u * C + k) * 3 + 1] = H + 0.14 - 0.07 * v + 0.05 * ridge;   // sunk into ruts, but always above the road under it
+    }
+  }
+  B.g.attributes.position.needsUpdate = true; B.g.attributes.color.needsUpdate = true; B.g.computeVertexNormals();
+}
+export function updateMud(dt) {
+  if (ripple) ripple.offset.x -= dt * 0.12;
+  const W = G.world && G.world.W; if (!bogs.length || !W || !W.ruts || (redraw -= dt) > 0) return;
+  redraw = 0.15;
+  W.ruts.forEach((r, n) => { if (r.dirty && bogs[n]) { r.dirty = false; paintBog(bogs[n], r.g); } });
+}
+/** A new race: fresh, unrutted bogs. */
+export function newMudRace() { bogs.forEach(b => paintBog(b, null)); }
 export function addMud(group, tr, terr) {
-  if (!tr.mud) return;
-  const pos = [], col = [], c = new THREE.Color(), A = new THREE.Color(0x3F2B1C), B = new THREE.Color(0x6A4A30), W = HALF + 1.2;
+  bogs = []; if (!tr.mud) return;
   const P = (i, o, y) => [tr.xs[i] + tr.rx[i] * o, y, tr.zs[i] + tr.rz[i] * o];
   let seed = 3; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const puddles = [], fords = [];
   for (const i of tr.all0) {
-    const b = tr.bi(i), m = tr.mud[b]; if (!m) continue;
-    const j = tr.nb0(i, 1); if (tr.mud[tr.bi(j)] !== m) continue;
-    if (m === 2) { fords.push(i); continue; }
-    for (let q = 0; q < 6; q++) {                                                  // strips across the road, mottled
-      const oa = -W + q * W / 3, ob = oa + W / 3, v = (o, k) => { c.copy(A).lerp(B, 0.5 + 0.5 * tr.noise.n2(k * 0.21 + o * 0.3, 4.4)); return [c.r, c.g, c.b]; };
-      const a = P(i, oa, tr.H[i] + 0.07), bb = P(i, ob, tr.H[i] + 0.07), cc = P(j, oa, tr.H[j] + 0.07), d = P(j, ob, tr.H[j] + 0.07);
-      pos.push(...a, ...cc, ...bb, ...bb, ...cc, ...d); col.push(...v(oa, i), ...v(oa, j), ...v(ob, i), ...v(ob, i), ...v(oa, j), ...v(ob, j));
-    }
-    if (rnd() < 0.12) puddles.push({ i, lat: (rnd() - 0.5) * 2 * (HALF - 1.5), r: 1 + rnd() * 1.6 });
+    const m = tr.mud[tr.bi(i)]; if (!m) continue;
+    if (m === 2) { if (tr.mud[tr.bi(tr.nb0(i, 1))] === 2) fords.push(i); continue; }
+    if (rnd() < 0.1) puddles.push({ i, lat: (rnd() - 0.5) * 2 * (HALF - 1.5), r: 1 + rnd() * 1.6 });
   }
-  if (pos.length) {
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 }), false, { cut: false, cloud: true })); m.receiveShadow = true; group.add(m);
-  }
+  bogs = mudRuns(tr).map(([a, b]) => bogMesh(group, tr, a, b));
   const pm = new THREE.MeshLambertMaterial({ color: 0x33373A, emissive: 0x1C2630, polygonOffset: true, polygonOffsetFactor: -2 });   // dark water reflecting the sky
   for (const p of puddles) {
     const m = new THREE.Mesh(new THREE.CircleGeometry(p.r, 12).rotateX(-Math.PI / 2), pm), [x, y, z] = P(p.i, p.lat, tr.H[p.i] + 0.1);

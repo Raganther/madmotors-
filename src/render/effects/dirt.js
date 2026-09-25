@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { canvasTex } from '../geometry.js';
+import { race } from '../../ui/flow.js';
 
 // Dirty cars: every racer's body panels carry a see-through layer of splatter (sharing the panel's geometry, so it
 // dents with it). It builds up from what the wheels are on: slowly on gravel and grass, fast in mud; a water splash
-// washes most of it off. Its colour drifts toward the latest muck: pale dust, green-brown, dark mud.
+// rinses the worst of it off, and following a car through a bog gets you sprayed. Its colour drifts toward the
+// latest muck: pale dust, green-brown, dark mud.
 const MUCK = { gravel: { rate: 0.025, col: 0xB49A74 }, grass: { rate: 0.012, col: 0x6E6A3A }, mud: { rate: 0.4, col: 0x4A3322 }, ford: { rate: -0.3, col: 0x5A4632 }, tarmac: { rate: -0.004, col: null } };
 let tex = null;
 function dirtTex() {
@@ -25,8 +27,20 @@ export function addDirt(v, panels) {
   v.dirt = { amt: 0, mat, col: new THREE.Color(0xB49A74), tmp: new THREE.Color() };
 }
 export function resetDirt(v) { if (v.dirt) { v.dirt.amt = 0; v.dirt.mat.opacity = 0; } }
+// following a car through a bog: its rooster tail lands on you
+function inSpray(c) {
+  if (!race) return false;
+  for (const o of race.cars) {
+    if (o === c || o.surface !== 'mud' || !o.onGround || Math.hypot(o.vx, o.vz) < 8) continue;
+    const dx = c.x - o.x, dz = c.z - o.z, fx = Math.sin(o.yaw), fz = Math.cos(o.yaw), behind = -(dx * fx + dz * fz), side = Math.abs(dx * fz - dz * fx);
+    if (behind > 2 && behind < 14 && side < 2.6) return true;
+  }
+  return false;
+}
 export function updateDirt(c, v, dt) {
-  const D = v.dirt; if (!D || !c.onGround) return;
+  const D = v.dirt; if (!D) return;
+  if (inSpray(c)) { D.amt = Math.min(1, D.amt + 0.35 * dt); D.col.lerp(D.tmp.setHex(MUCK.mud.col), Math.min(1, dt * 2)); D.mat.color.copy(D.col); D.mat.opacity = Math.min(0.95, D.amt * 1.3); }
+  if (!c.onGround) return;
   const M = MUCK[c.surface] || MUCK.tarmac, sp = Math.hypot(c.vx, c.vz); if (sp < 2) return;
   const add = M.rate * dt * Math.min(1.5, sp / 20);
   if (add > 0 && M.col !== null) D.col.lerp(D.tmp.setHex(M.col), Math.min(1, add / (D.amt + add) * 1.5));

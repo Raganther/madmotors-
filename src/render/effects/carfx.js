@@ -7,8 +7,8 @@ import { AudioSys } from '../../audio/audio.js';
 import { spark } from './sparks.js';
 
 // what flies up from the wheels on each surface: dust, grass, clods of mud, a spray of water
-const SURF_FX = { tarmac: { rate: 0, col: 0xE8E8E8, up: 1.5, size: 0.8 }, gravel: { rate: 1.1, col: 0xD8C29A, up: 1.5, size: 0.8 }, grass: { rate: 0.6, col: 0x8E9A5B, up: 1.5, size: 0.8 },
-  mud: { rate: 1.6, col: 0x4E3622, up: 2.5, size: 0.6 }, ford: { rate: 3.2, col: 0xF2F8FF, up: 4.5, size: 1.5 } };
+const SURF_FX = { tarmac: { rate: 0, col: 0xE8E8E8, up: 1.5, size: 0.8, back: 0.12 }, gravel: { rate: 1.1, col: 0xD8C29A, up: 1.5, size: 0.8, back: 0.12 }, grass: { rate: 0.6, col: 0x8E9A5B, up: 1.5, size: 0.8, back: 0.12 },
+  mud: { rate: 2.6, col: 0x8A6440, col2: 0x5A3E26, up: 4, size: 0.9, back: 0.35 }, ford: { rate: 3.2, col: 0xF2F8FF, up: 4.5, size: 1.5, back: 0.25 } };   // mud: rooster tails of clods
 export function effectsForCar(c, v, dt) {
   const sp = Math.hypot(c.vx, c.vz), fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
   // hitting the water: a wall of spray thrown up and out either side, and a whoosh
@@ -30,7 +30,7 @@ export function effectsForCar(c, v, dt) {
     v.emitAcc += rate * dt;
     while (v.emitAcc > 1) {
       v.emitAcc -= 1; const s = Math.random() < 0.5 ? 1 : -1;
-      emit(c.x - fx * 1.5 - fz * 0.9 * s, c.y + 0.3, c.z - fz * 1.5 + fx * 0.9 * s, -c.vx * 0.12 + (Math.random() - 0.5) * 3, F.up + Math.random() * 2.5, -c.vz * 0.12 + (Math.random() - 0.5) * 3, 0.6 + Math.random() * 0.5, F.size + Math.random() * 0.8, F.col, 2);
+      emit(c.x - fx * 1.5 - fz * 0.9 * s, c.y + 0.3, c.z - fz * 1.5 + fx * 0.9 * s, -c.vx * F.back + (Math.random() - 0.5) * 3, F.up + Math.random() * 2.5, -c.vz * F.back + (Math.random() - 0.5) * 3, 0.6 + Math.random() * 0.5, F.size + Math.random() * 0.8, F.col2 && Math.random() < 0.5 ? F.col2 : F.col, 2);
     }
   }
   if (c.scrape) {

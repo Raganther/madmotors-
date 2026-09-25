@@ -2,6 +2,7 @@ import { HALF } from '../constants.js';
 import { closedCrossingAhead } from '../features/trains.js';
 import { ferryTarget } from '../features/ferry.js';
 import { drawTarget } from '../features/drawbridge.js';
+import { rutDepth, rutLane } from '../features/mud.js';
 import { clamp } from '../math.js';
 
 /** Before each fork pick a route, the branch or the main road, at random (stage.branches[k].share = the branch's
@@ -32,6 +33,7 @@ export function aiControl(c, W, cars, dt, hazards) {
   ai.wT -= dt; if (ai.wT <= 0) { ai.wT = 2 + Math.random() * 3; ai.lane = (Math.random() * 2 - 1) * 2.2; }
   const ka = tr.ks[at(Math.round(8 + sp * 0.45))];
   let lane = ai.lane * 0.6 - clamp(ka * 95, -1, 1) * 3.3;
+  { const rl = rutLane(W, c, 6); if (rl !== null) lane = lane * 0.3 + rl * 0.7; }   // in a bog, follow the ruts
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); let minLane = -HALF;
   for (const o of cars) {
     if (o === c || o.ghost > 0) continue;
@@ -65,8 +67,9 @@ export function aiControl(c, W, cars, dt, hazards) {
   c.inp.steer = clamp(Math.atan2(lx, lz) * 2.6, -1, 1);
   const skill = ai.skill * (0.9 + 0.1 * c.mod);
   let target = 99;
-  if (G) { const n = Math.round(sp * 1.7 + 18); for (let d = 0, j = i0; d <= n; d++, j = tr.adv(j, 1, ai.alt ?? -1)) { const vm = tr.vmax[j] * skill; const v = Math.sqrt(vm * vm + 56 * d); if (v < target) target = v; } }
-  else { const look = Math.min(N - 2, i + Math.round(sp * 1.7 + 18)); for (let j = i; j <= look; j++) { const vm = tr.vmax[j] * skill; const v = Math.sqrt(vm * vm + 56 * (j - i)); if (v < target) target = v; } }
+  const bog = j => { if (!tr.mud || tr.mud[tr.bi(j)] !== 1) return 1; const r = rutDepth(W, j, ai.cur); return r < 0 ? 1 : 0.9 + 0.25 * r; };   // fresh mud slower, rutted quicker
+  if (G) { const n = Math.round(sp * 1.7 + 18); for (let d = 0, j = i0; d <= n; d++, j = tr.adv(j, 1, ai.alt ?? -1)) { const vm = tr.vmax[j] * skill * bog(j); const v = Math.sqrt(vm * vm + 56 * d); if (v < target) target = v; } }
+  else { const look = Math.min(N - 2, i + Math.round(sp * 1.7 + 18)); for (let j = i; j <= look; j++) { const vm = tr.vmax[j] * skill * bog(j); const v = Math.sqrt(vm * vm + 56 * (j - i)); if (v < target) target = v; } }
   if (Math.abs(pr.lat) > HALF + 0.5) target = Math.min(target, 16);
   target = Math.min(target, hzSlow);
   target = Math.min(target, ferryTarget(W, c), drawTarget(W, c));                                  // queue for the barge, stop at the front of its deck

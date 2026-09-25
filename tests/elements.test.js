@@ -195,3 +195,28 @@ describe('mud and whoops', () => {
     expect(M.SURF.ford.drag).toBeGreaterThan(M.SURF.gravel.drag);
   });
 });
+
+describe('ruts: bogs churn up as the race goes on', () => {
+  const st = SANDBOXES.rally, tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true }, C = M.RUT.COLS;
+  const run = (groove, lat) => {
+    const R = M.createRace(W, [{ name: 'p', player: true }]); R.phase = 'racing'; R.hzT = 1e9; const P = R.player, r = W.ruts[0];
+    if (groove) for (let u = 0; u < r.len; u++) for (const k of [11, 12, 13, 15, 16, 17]) r.g[u * C + k] = 1;   // a rut under each wheel of a centred car
+    const i = r.a + 1; P.x = tr.xs[i] + tr.rx[i] * lat; P.z = tr.zs[i] + tr.rz[i] * lat; P.y = tr.H[i]; P.yaw = tr.th[i]; P.pr = M.project(tr, P.x, P.z, i, 3, 3); P.vx = tr.tx[i] * 12; P.vz = tr.tz[i] * 12;
+    let t = 0; while ((P.pr.s % tr.loopN) < r.a + r.len && t < 10) { P.inp.throttle = 1; P.inp.steer = 0; M.raceStep(R, 1 / 120, W); t += 1 / 120; }
+    return { t, lat: P.pr.lat, R };
+  };
+  it('the rutted line is quicker than fresh mud; beside it, the ruts tug you in and cost time', () => {
+    const fresh = run(false, 0), line = run(true, 0), beside = run(true, 3);
+    expect(line.t).toBeLessThan(fresh.t * 0.95);
+    expect(beside.t).toBeGreaterThan(line.t);
+    expect(beside.lat).toBeLessThan(2.8);                                          // pulled toward the groove
+    expect(M.rutLane(W, line.R.player, 0)).toBeCloseTo(0, 0);                      // and the AI can see where it is
+  });
+  it('racing digs ruts along the line the cars take, and everyone still gets round', () => {
+    seedRandom(4); const R = M.createRace(W, DEFS); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9; let t = 0;
+    while (t < 90 && R.cars.some(c => !c.finished)) { M.raceStep(R, 1 / 120, W); t += 1 / 120; }
+    const r = W.ruts[0], across = Array.from({ length: C }, (_, k) => { let s = 0; for (let u = 0; u < r.len; u++) s += r.g[u * C + k]; return s / r.len; });
+    expect(Math.max(...across)).toBeGreaterThan(0.5); expect(across[0] + across[C - 1]).toBeLessThan(0.1);   // a groove, not the whole width
+    expect(R.cars.every(c => c.finished)).toBe(true); expect(R.cars.reduce((n, c) => n + c.respawns, 0)).toBe(0);
+  });
+});

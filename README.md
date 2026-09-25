@@ -105,7 +105,7 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | falls | `falls` | scenery waterfall arcing over the road off a cliff on the far side |
 | drawbridge | `drawbridge: <s>` | a bascule bridge that rises every so often: jump it while it's low, wait while it's up (cycle in `features/drawbridge.js`) |
 | mill | `mill`, `logs` | sawmill shed and log stacks; log piles along the road (scenery) |
-| mud | `mud: true`, `mud: 'water'` | a mud bog or a water splash: less grip, more drag, spray from the wheels |
+| mud | `mud: true`, `mud: 'water'` | a mud bog or a water splash: less grip, more drag, spray from the wheels. Bogs rut as the race goes on (`features/mud.js`): the ruts are firmer but tug at the wheels |
 | whoops | `whoops: <m>` | a run of rolling bumps |
 | yump | `yump: <m>` | a natural dirt crest jump (no painted ramp); `kick` is the painted one |
 
