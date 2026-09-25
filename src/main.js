@@ -39,7 +39,7 @@ export function frame(t) {
     const n = Math.ceil(G.countdown - 0.2);
     if (n < G.lastBeep && n >= 1) { G.lastBeep = n; AudioSys.beep(440, 0.15); }
     $('countdown').hidden = false; $('countdown').textContent = n >= 1 ? n : 'Go!';
-    AudioSys.update(race.player, 'rev');
+    AudioSys.update(race.player, 'rev', race.cars, G.camDir);
     if (G.countdown <= 0.2) { G.state = 'racing'; race.phase = 'racing'; AudioSys.beep(880, 0.3); G.goTimer = 0.8; G.accumulator = 0; }
   } else if (G.state === 'racing') {
     if (!race.player.finished) readInput(dt);
@@ -49,7 +49,7 @@ export function frame(t) {
     if (n === 12) G.accumulator = 0;
     G.renderAlpha = G.accumulator / STEP;
     handleEvents(); applyBarrierChanges();
-    AudioSys.update(race.player, 'drive');
+    AudioSys.update(race.player, 'drive', race.cars, G.camDir);
     if (G.goTimer > 0) { G.goTimer -= dt; if (G.goTimer <= 0) $('countdown').hidden = true; }
     if (race.player.finished && !resultsShown && race.time - race.player.finishTime > 1.6) showResults();
     if (race.sd && race.sd.phase === 'over' && !resultsShown && race.time - G.sdOverAt > 1.8) showResults();
