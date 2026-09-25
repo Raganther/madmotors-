@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { canvasTex } from '../geometry.js';
 import { race } from '../../ui/flow.js';
+import { fxSurf } from './carfx.js';
 
 // Dirty cars: every racer's body panels carry a see-through layer of splatter (sharing the panel's geometry, so it
 // dents with it). It builds up from what the wheels are on: slowly on gravel and grass, fast in mud; a water splash
 // rinses the worst of it off, and following a car through a bog gets you sprayed. Its colour drifts toward the
-// latest muck: pale dust, green-brown, dark mud.
-const MUCK = { gravel: { rate: 0.025, col: 0xB49A74 }, grass: { rate: 0.012, col: 0x6E6A3A }, mud: { rate: 0.4, col: 0x4A3322 }, ford: { rate: -0.3, col: 0x5A4632 }, tarmac: { rate: -0.004, col: null } };
+// latest muck: pale dust, green-brown, dark mud, or snow.
+const MUCK = { gravel: { rate: 0.025, col: 0xB49A74 }, grass: { rate: 0.012, col: 0x6E6A3A }, mud: { rate: 0.4, col: 0x4A3322 }, ford: { rate: -0.3, col: 0x5A4632 }, tarmac: { rate: -0.004, col: null },
+  snow: { rate: 0.02, col: 0xEEF3F8 }, powder: { rate: 0.05, col: 0xFFFFFF }, ice: { rate: -0.002, col: null } };   // snow: a crust of white builds up instead
 let tex = null;
 function dirtTex() {
   if (tex) return tex;
@@ -41,7 +43,7 @@ export function updateDirt(c, v, dt) {
   const D = v.dirt; if (!D) return;
   if (inSpray(c)) { D.amt = Math.min(1, D.amt + 0.35 * dt); D.col.lerp(D.tmp.setHex(MUCK.mud.col), Math.min(1, dt * 2)); D.mat.color.copy(D.col); D.mat.opacity = Math.min(0.95, D.amt * 1.3); }
   if (!c.onGround) return;
-  const M = MUCK[c.surface] || MUCK.tarmac, sp = Math.hypot(c.vx, c.vz); if (sp < 2) return;
+  const M = MUCK[fxSurf(c)] || MUCK.tarmac, sp = Math.hypot(c.vx, c.vz); if (sp < 2) return;
   const add = M.rate * dt * Math.min(1.5, sp / 20);
   if (add > 0 && M.col !== null) D.col.lerp(D.tmp.setHex(M.col), Math.min(1, add / (D.amt + add) * 1.5));
   if (c.surface === 'ford') D.amt = Math.max(Math.min(D.amt, 0.35), D.amt + add);   // the splash rinses off the worst of it

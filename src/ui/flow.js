@@ -17,6 +17,7 @@ import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
 import { camera, renderer, scene } from '../render/renderer.js';
 import { resetDirt } from '../render/effects/dirt.js';
+import { landDust } from '../render/effects/carfx.js';
 import { carVis, setRoster, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
 import { buildWorld, trackOf } from '../render/world/index.js';
@@ -47,7 +48,7 @@ export function handleEvents() {
         case 'smash': impactFx(c, e, c.isPlayer, near); if (c.isPlayer && e.v > 9 && G.calloutTimer <= 0) callout('Smash!'); break;
         case 'bump': carCrashFx(e, e.a.isPlayer || e.b.isPlayer, near); break;
         case 'land':   // bigger jumps kick up more dust; long ones throw a second ring of grit and jolt the camera
-          if (e.air > 0.25) { const k = Math.min(1, (e.air - 0.25) / 0.6), dirt = G.world.stage.colors.dirt; dustRing(c, 12 + Math.round(k * 14), c.surface === 'tarmac' ? 0xDADADA : 0xD8C29A, 5 + k * 5, 1.1 + k * 0.6); if (e.air > 0.5 && near) dustRing(c, 10, dirt, 9, 0.8); }
+          if (e.air > 0.25) { const k = Math.min(1, (e.air - 0.25) / 0.6), dirt = G.world.stage.colors.dirt; dustRing(c, 12 + Math.round(k * 14), landDust(c), 5 + k * 5, 1.1 + k * 0.6); if (e.air > 0.5 && near) dustRing(c, 10, dirt, 9, 0.8); }
           if (e.imp > 15 && c.surface === 'tarmac' && near) sparks(c.x, c.y - 0.5, c.z, Math.round(e.imp * 0.8), c.vx / (Math.hypot(c.vx, c.vz) + 1), c.vz / (Math.hypot(c.vx, c.vz) + 1));   // bottoming out
           if (c.isPlayer && e.air > 0.2) { AudioSys.thud(e.imp / 22); if (e.air > 0.4) G.shake = Math.min(1.2, G.shake + e.imp / 40); }
           break;

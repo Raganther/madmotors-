@@ -5,14 +5,14 @@
  * @typedef {object} Stage
  * @property {string} name
  * @property {string} blurb
- * @property {'tarmac'|'gravel'} surface
+ * @property {'tarmac'|'gravel'|'snow'} surface
  * @property {number} seed                 random seed for layout, terrain and scenery
  * @property {number} [laps]               circuits only
  * @property {'loop'|'pass'|'gorge'} [type]
  * @property {Array} [plan]                downhill: [['st'|'sw'|'sb', arg], ...] straight / sweepers / switchbacks
  * @property {Segment[]} [segs]            'gorge' circuits: the road, section by section
  * @property {{on: number, with: number}} [traffic]  oncoming / same-way civilian cars kept alive
- * @property {{pts: number[][], level: number, width: number}} [river]
+ * @property {{pts: number[][], level: number, width: number, logs?: number, frozen?: boolean}} [river]
  * @property {RailDef[]} [rails]
  * @property {object} colors               terrain, road, sky and scenery palette
  * @property {object} light                sun/fill light, cloud shadows, colour grade, optional valley haze
@@ -67,7 +67,7 @@
  * What the simulation runs against.
  * @typedef {object} World
  * @property {Track} tr @property {object} terr  terrain grid with at(x, z)
- * @property {'tarmac'|'gravel'} surf @property {boolean} armco @property {object} [traffic]
+ * @property {'tarmac'|'gravel'|'snow'} surf @property {boolean} armco @property {object} [traffic]
  * @property {object} [bar]                 barrier damage state (created per race)
  */
 

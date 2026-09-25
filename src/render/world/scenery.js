@@ -76,6 +76,10 @@ export function addScenery(group, tr, terr, stage) {
   const L = (o) => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, Object.assign({ cloud: true }, o));
   addInstanced(group, flat(new THREE.CylinderGeometry(0.2, 0.28, 1.6, 5).translate(0, 0.8, 0)), L(), trunks, { cast: true });
   addInstanced(group, merge([flat(new THREE.ConeGeometry(1.7, 3.2, 7).translate(0, 2.6, 0)), flat(new THREE.ConeGeometry(1.2, 2.4, 7).translate(0, 4.2, 0))]), L({ sway: 1 }), pines, { cast: true });
+  if (stage.surface === 'snow') {                                                    // snow stages: snow lying on the pines' upper slopes
+    const cap = merge([flat(new THREE.ConeGeometry(0.8, 1.5, 7).translate(0, 4.66, 0)), flat(new THREE.CylinderGeometry(0.68, 1.12, 0.8, 7).translate(0, 2.6, 0))]);
+    addInstanced(group, cap, L({ sway: 1 }), pines.map(p => ({ ...p, color: 0xF2F6FA })));
+  }
   addInstanced(group, flat(new THREE.IcosahedronGeometry(1.7, 0).translate(0, 3.1, 0)), L({ sway: 1 }), rounds, { cast: true });
   if (cacti.length) {
     const cyl = (r, h) => new THREE.CylinderGeometry(r, r, h, 6);

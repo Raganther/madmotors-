@@ -32,13 +32,14 @@ import { element as mill } from './mill.js';
 import { element as mud } from './mud.js';
 import { element as whoops } from './whoops.js';
 import { element as yump } from './yump.js';
+import { element as ice } from './ice.js';
 
-export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops, yump];
+export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops, yump, ice];
 export const elementPhase = (phase, ...args) => { for (const e of ELEMENTS) if (e[phase]) e[phase](...args); };
 
 // stage options that belong to the stage itself rather than to an element
 const BASE_KEYS = ['name', 'blurb', 'type', 'laps', 'seed', 'surface', 'hillAmp', 'armco', 'startHeading', 'light', 'colors', 'trees', 'rocks', 'bushes', 'cacti',
-  'village', 'alpine', 'strata', 'river', 'segs', 'branches', 'traffic', 'plan', 'grade', 'carve', 'L', 'W'];
+  'village', 'alpine', 'snowfall', 'strata', 'river', 'segs', 'branches', 'traffic', 'plan', 'grade', 'carve', 'L', 'W'];
 export const SECTION_TAGS = Object.fromEntries(ELEMENTS.flatMap(e => Object.entries(e.tags || {}).map(([t, d]) => [t, `${e.name}: ${d}`])));
 export const STAGE_KEYS = new Set(BASE_KEYS.concat(ELEMENTS.flatMap(e => Object.keys(e.stageKeys || {}))));
 /** Catch typos early: unknown section tags or stage options throw, listing what's allowed. */

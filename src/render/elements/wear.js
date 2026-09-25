@@ -7,12 +7,13 @@ import { withCutaway } from '../materials.js';
 // Track wear visuals (core/features/wear.js): a see-through layer over the road and its verges, one texel per wear
 // cell (WEAR.TCOLS across), repainted from W.wear a few times a second. On it: fresh tyre tracks (dark on dirt and
 // gravel, torn and flattened on grass, wet on mud; a drift leaves a curved scuff), grooves worn in along the line
-// (gravel), a rubbered-in line (tarmac) and the mud trail cars lay coming out of a bog. It follows the road across and
+// (gravel), a rubbered-in line (tarmac), a packed-down line (snow) and the mud trail cars lay coming out of a bog. It follows the road across and
 // the terrain over the verges. The bogs draw their own ruts (mud.js); tarmac skid marks are effects/skids.js.
 const T = WEAR.TCOLS, OFF = (WEAR.TCOLS - WEAR.COLS) / 2, SPAN = T * WEAR.CELL / 2;
 // per stage surface: groove colour and how strongly grooves show; tyre track colour on the road
 const LOOK = { gravel: { groove: [0x4E, 0x3A, 0x26], gk: 12, gmax: 0.55, track: [0x33, 0x22, 0x14], tmax: 0.85 },
-  tarmac: { groove: [0x1C, 0x1C, 0x1E], gk: 40, gmax: 0.4, track: [0x2A, 0x2A, 0x2A], tmax: 0.5 } };
+  tarmac: { groove: [0x1C, 0x1C, 0x1E], gk: 40, gmax: 0.4, track: [0x2A, 0x2A, 0x2A], tmax: 0.5 },
+  snow: { groove: [0x9C, 0xA9, 0xB8], gk: 14, gmax: 0.5, track: [0x7E, 0x8C, 0x9E], tmax: 0.6, verge: [0x8E, 0x9E, 0xB2] } };   // snow: packed grey-blue, powder ploughed
 const VERGE = [0x33, 0x30, 0x18], TRAIL = [0x3A, 0x26, 0x16], BOG = [0x2A, 0x1C, 0x10];
 let vis = null;
 export function addWear(group, tr, terr, stage) {
@@ -52,7 +53,7 @@ function paint(W) {
       const q = b * T + k, p = q * 4, verge = Math.abs(k + 0.5 - T / 2) > road, gk = k - OFF;
       const gv = !bog && !verge && gk >= 0 && gk < WEAR.COLS ? look.gmax * (1 - Math.exp(-g[b * WEAR.COLS + gk] * look.gk)) : 0;
       const tv = (verge ? 0.8 : bog ? 0.5 : look.tmax) * (1 - Math.exp(-t[q] * 5)), mv = bog ? 0 : 0.85 * (1 - Math.exp(-m[q] * 2));
-      const a = Math.min(0.9, Math.max(gv, tv, mv)), sum = gv + tv + mv || 1, tc = verge ? VERGE : bog ? BOG : look.track;
+      const a = Math.min(0.9, Math.max(gv, tv, mv)), sum = gv + tv + mv || 1, tc = verge ? look.verge || VERGE : bog ? BOG : look.track;
       for (let ch = 0; ch < 3; ch++) data[p + ch] = (look.groove[ch] * gv + tc[ch] * tv + TRAIL[ch] * mv) / sum;
       data[p + 3] = a * 255;
     }

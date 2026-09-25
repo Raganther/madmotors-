@@ -5,10 +5,18 @@ import { emit } from './particles.js';
 import { addSkid } from './skids.js';
 import { AudioSys } from '../../audio/audio.js';
 import { spark } from './sparks.js';
+import { G } from '../../game.js';
 
 // what flies up from the wheels on each surface: dust, grass, clods of mud, a spray of water
 const SURF_FX = { tarmac: { rate: 0, col: 0xE8E8E8, up: 1.5, size: 0.8, back: 0.12 }, gravel: { rate: 1.1, col: 0xD8C29A, up: 1.5, size: 0.8, back: 0.12 }, grass: { rate: 0.6, col: 0x8E9A5B, up: 1.5, size: 0.8, back: 0.12 },
-  mud: { rate: 2.6, col: 0x8A6440, col2: 0x5A3E26, up: 4, size: 0.9, back: 0.35 }, ford: { rate: 3.2, col: 0xF2F8FF, up: 4.5, size: 1.5, back: 0.25 } };   // mud: rooster tails of clods
+  mud: { rate: 2.6, col: 0x8A6440, col2: 0x5A3E26, up: 4, size: 0.9, back: 0.35 }, ford: { rate: 3.2, col: 0xF2F8FF, up: 4.5, size: 1.5, back: 0.25 },   // mud: rooster tails of clods
+  snow: { rate: 1.3, col: 0xF6F9FF, col2: 0xDDE8F4, up: 2.2, size: 1, back: 0.2 }, powder: { rate: 1.8, col: 0xFFFFFF, col2: 0xE4EEF8, up: 3.2, size: 1.2, back: 0.25 },
+  ice: { rate: 0.25, col: 0xE8F6FF, up: 1, size: 0.5, back: 0.1 } };
+/** What the wheels are in, for looks: off the road on a snow stage it's deep powder, not grass. */
+const LAND = { tarmac: 0xDADADA, snow: 0xF4F8FF, powder: 0xFFFFFF, ice: 0xEAF6FF };
+/** The dust (or snow) a landing throws up. */
+export const landDust = c => LAND[fxSurf(c)] || 0xD8C29A;
+export const fxSurf = c => c.surface === 'grass' && G.world && G.world.W.surf === 'snow' ? 'powder' : c.surface;
 export function effectsForCar(c, v, dt) {
   const sp = Math.hypot(c.vx, c.vz), fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
   // hitting the water: a wall of spray thrown up and out either side, and a whoosh
@@ -26,7 +34,7 @@ export function effectsForCar(c, v, dt) {
     else v.skPrev[w] = null;
   }
   if (c.onGround && sp > 6 && (loose || slide > 3.5)) {
-    const F = SURF_FX[c.surface] || SURF_FX.tarmac, rate = loose ? sp * F.rate : slide * 2.4;
+    const F = SURF_FX[fxSurf(c)] || SURF_FX.tarmac, rate = loose ? sp * F.rate : slide * 2.4;
     v.emitAcc += rate * dt;
     while (v.emitAcc > 1) {
       v.emitAcc -= 1; const s = Math.random() < 0.5 ? 1 : -1;

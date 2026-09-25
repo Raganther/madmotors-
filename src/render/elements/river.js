@@ -17,7 +17,8 @@ export function addRiver(group, tr) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
   // wind the triangles upward if the polyline ran the other way
   if (g.attributes.normal.array[1] < 0) { g.attributes.normal.array.forEach((v, i, a) => a[i] = -v); }
-  const mat = withCutaway(new THREE.MeshLambertMaterial({ color: 0x3E7DAE, side: THREE.DoubleSide }), false, { cut: false, cloud: true, water: true });   // opaque: nothing needs to show through
+  const mat = rv.frozen ? withCutaway(new THREE.MeshLambertMaterial({ color: 0xA9C8E0, side: THREE.DoubleSide }), false, { cut: false, cloud: true, grain: 0.25 })   // frozen over: no ripples
+    : withCutaway(new THREE.MeshLambertMaterial({ color: 0x3E7DAE, side: THREE.DoubleSide }), false, { cut: false, cloud: true, water: true });   // opaque: nothing needs to show through
   group.add(chunkMesh(g, mat, 80, true));
 }
 // logs drifting downstream (river.logs of them): along the polyline from its first point, bobbing, wrapping at the end

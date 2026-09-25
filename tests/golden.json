@@ -379,6 +379,44 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Frostpeak": {
+   "samples": 3713,
+   "loopN": 1189,
+   "terrain": [
+    149,
+    157,
+    54967.353
+   ],
+   "times": [
+    131.575,
+    130.467,
+    134.175,
+    131.533
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3627.529,
+    3631.105,
+    3603.131,
+    3629.319
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

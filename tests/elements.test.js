@@ -28,7 +28,7 @@ describe('element registry and stage validation', () => {
 });
 
 // what each sandbox must contain, by element name
-const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'], rally: ['mud', 'whoops', 'yump'] };
+const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'], rally: ['mud', 'whoops', 'yump'], snow: ['ice'] };
 describe('sandboxes', () => {
   it('there is a sandbox listed here for each one defined', () => expect(Object.keys(SANDBOXES).sort()).toEqual(Object.keys(EXPECT).sort()));
   for (const [name, stage] of Object.entries(SANDBOXES)) it(`${name}: builds, closes, has its elements, and four AI cars lap it cleanly`, () => {
@@ -195,6 +195,23 @@ describe('mud and whoops', () => {
     let t = 0; while (t < 4) { P.inp.throttle = 1; P.inp.steer = 0; M.raceStep(R, 1 / 120, W); t += 1 / 120; seen.add(P.surface); }
     expect(seen.has('mud')).toBe(true); expect(seen.has('ford')).toBe(true);
     expect(M.SURF.ford.drag).toBeGreaterThan(M.SURF.gravel.drag);
+  });
+});
+
+describe('snow and ice', () => {
+  const st = SANDBOXES.snow, tr = M.buildTrack(st);
+  it('ice patches are slower corners for the AI, braked for a little before', () => {
+    const b = [...tr.ice].findIndex(v => v), i = tr.u0(b);
+    expect(tr.vmax[i + 5]).toBeLessThanOrEqual(70 * M.ICE_SLOW + 1e-3);
+    expect(tr.vmax[i - 5]).toBeLessThan(70);
+  });
+  it('a car on the road is on snow, on a patch on ice, where it has far less grip', () => {
+    seedRandom(2); const W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true };
+    const R = M.createRace(W, [{ name: 'p', player: true }]); R.phase = 'racing'; R.hzT = 1e9; const P = R.player, seen = new Set();
+    const i = tr.u0([...tr.ice].findIndex(v => v)) - 20; P.x = tr.xs[i]; P.z = tr.zs[i]; P.y = tr.H[i]; P.yaw = tr.th[i]; P.pr = M.project(tr, P.x, P.z, i, 3, 3); P.vx = tr.tx[i] * 20; P.vz = tr.tz[i] * 20;
+    let t = 0; while (t < 3) { P.inp.throttle = 1; P.inp.steer = 0; M.raceStep(R, 1 / 120, W); t += 1 / 120; seen.add(P.surface); }
+    expect(seen.has('snow')).toBe(true); expect(seen.has('ice')).toBe(true);
+    expect(M.SURF.ice.latMax).toBeLessThan(M.SURF.snow.latMax * 0.5);
   });
 });
 

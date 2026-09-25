@@ -108,11 +108,19 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | mud | `mud: true`, `mud: 'water'` | a mud bog or a water splash: less grip, more drag, spray from the wheels. Bogs rut as the race goes on: the ruts are firmer but tug at the wheels; cars leaving a bog lay a mud trail (`features/wear.js`) |
 | whoops | `whoops: <m>` | a run of rolling bumps |
 | yump | `yump: <m>` | a natural dirt crest jump (no painted ramp); `kick` is the painted one |
+| ice | `ice: true` | an ice patch across the road: hardly any grip; the AI slows for it. Best on a snow stage |
 
 A core element can declare `tags`, `stageKeys`, per-sample `channels`, a `section()` hook, build phases (`heights`,
 `walls`, `wallsLate`, `wallsLast`), `track()` to add fields to the built track, and `markers()` saying where it is (see
 the header of `src/core/elements/index.js`). `buildTrack` validates every stage against the registry, so a misspelt
 tag or option fails with the list of valid ones, and a section that comes out backwards fails with its index.
+
+### Snow stages
+
+`surface: 'snow'` gives a packed-snow road (grip between gravel and grass; it packs into a firmer line as the race
+goes on, like gravel), snow spray and a crust of snow on the cars instead of dust and mud, deep powder off the road, and
+snow on the pines. Stage options that suit it: `snowfall: 0..1` (falling snow, off on Graphics: Low) and
+`river: { ..., frozen: true }`. See `frostpeak.js`.
 
 ### Track wear (every stage)
 

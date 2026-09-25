@@ -8,14 +8,15 @@ import { clamp } from '../math.js';
 //   mud     deep ruts: firmer (SURF.mud -> SURF.mudPacked with the depth under the wheels), and they grab: straddling a
 //           rut's edge pulls the car toward its bottom and scrubs a little speed
 //   gravel  grooves along the line: the loose stuff swept off, a touch more grip (SURF.gravel -> SURF.gravelSwept)
+//   snow    the same on a snow road: packed down into a firmer line (SURF.snow -> SURF.snowPacked)
 //   tarmac  a faint rubbered-in line (looks only; skid marks are drawn separately)
 // A car leaving a bog carries mud on its tyres and lays a fading trail (the mud channel) over the next WEAR.CARRY m,
 // until a water splash washes it off. And every wheel leaves fresh tyre tracks (the tracks channel) where it actually
 // is, so a drift leaves a curved scuff: on gravel, grass (the verges too) and mud, more when sliding; on tarmac only
 // skid marks do (render/effects/skids.js). Tracks and mud trail are looks only, on a wider grid (WEAR.TCOLS, reaching
 // over the verges). Deterministic, no randomness.
-export const WEAR = { COLS: 28, TCOLS: 40, TMARK: { gravel: 0.45, grass: 0.6, mud: 0.7 }, CELL: 0.5, TRACK: 0.95, DIG: { mud: 0.2, gravel: 0.035, tarmac: 0.006 }, SPREAD: 0.35, TUG: 4.5, SCRUB: 0.4, CARRY: 30, TRAIL: 0.5 };
-const FIRM = { mud: 'mudPacked', gravel: 'gravelSwept' };                          // what each surface wears into
+export const WEAR = { COLS: 28, TCOLS: 40, TMARK: { gravel: 0.45, grass: 0.6, mud: 0.7, snow: 0.55 }, CELL: 0.5, TRACK: 0.95, DIG: { mud: 0.2, gravel: 0.035, tarmac: 0.006, snow: 0.03 }, SPREAD: 0.35, TUG: 4.5, SCRUB: 0.4, CARRY: 30, TRAIL: 0.5 };
+const FIRM = { mud: 'mudPacked', gravel: 'gravelSwept', snow: 'snowPacked' };                          // what each surface wears into
 const row = (tr, s) => s >= tr.NM ? tr.bi(s | 0) : tr.bi(Math.floor(s));
 const colOf = lat => Math.floor(lat / WEAR.CELL + WEAR.COLS / 2), tcolOf = lat => Math.floor(lat / WEAR.CELL + WEAR.TCOLS / 2);
 const at = (g, r, k) => k < 0 || k >= WEAR.COLS ? 0 : g[r * WEAR.COLS + k];

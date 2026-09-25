@@ -4,6 +4,7 @@
 // top may be at most bottom + 30 m long, or the closing section would come out backwards: buildTrack says so).
 import ravenrock from '../stages/ravenrock-gorge.js';
 import summit from '../stages/summit-meadow.js';
+import frostpeak from '../stages/frostpeak.js';
 
 const R = 30;
 /** A rounded-rectangle loop: bottom (the start straight, heading right), right, top, left, back to the start. */
@@ -64,6 +65,10 @@ export const SANDBOXES = {
     bottom: [flat(40), ['s', 30, 3, { yump: 2.8 }], ['s', 40, 0], flat(40)], right: [['s', 66, 0, { whoops: 0.8 }]],
     top: [['s', 40, 0, { mud: true }], ['s', 24, -1, { mud: 'water', far: -1.5, rampF: 6, near: -1.5, rampN: 6 }], flat(30)], left: [flat(20)]
   }, { surface: 'gravel' }),
+  snow: loop('snow', 'a packed-snow road with ice patches: one on a straight, one into a bend, and falling snow', {
+    bottom: [flat(150)], right: [flat(20), ['s', 40, 0, { ice: true }], flat(20)],
+    top: [flat(40), ['s', 40, 0, { ice: true }]], left: [flat(20)]
+  }, { surface: 'snow', light: frostpeak.light, colors: frostpeak.colors, trees: { density: 0.002, pine: 1 }, snowfall: 0.5 }),
   rails: loop('rails', 'a level crossing with trains', {
     bottom: [flat(120)], right: [flat(60)], top: [flat(80)], left: [flat(20)]
   }, { rails: [{ id: 'line', pts: [[60, -80, 0], [60, 80, 0]], speed: 26, cars: 3, body: ravenrock.rails[0].body, coach: ravenrock.rails[0].coach, band: ravenrock.rails[0].band }] })

@@ -7,7 +7,10 @@ export const SURF = {
   mud: { engine: 0.8, latMax: 17, grip: 4.5, drag: 0.12 },       // the mud element's bogs: fresh...
   mudPacked: { engine: 0.95, latMax: 23, grip: 6.5, drag: 0.03 }, // ...and rutted in (features/wear.js blends the two)
   gravelSwept: { engine: 0.97, latMax: 27, grip: 7.6, drag: 0.012 }, // gravel with the loose stuff swept off the line
-  ford: { engine: 0.75, latMax: 16, grip: 5, drag: 0.3 }         // and its water splash
+  ford: { engine: 0.75, latMax: 16, grip: 5, drag: 0.3 },        // and its water splash
+  snow: { engine: 0.9, latMax: 22, grip: 6, drag: 0.04 },        // a packed-snow road (stage surface 'snow')...
+  snowPacked: { engine: 0.95, latMax: 25, grip: 7, drag: 0.02 },  // ...polished into a line as the race goes on
+  ice: { engine: 0.6, latMax: 10, grip: 2.2, drag: 0 }            // the ice element's patches: hardly any grip at all
 };
 export const STEP = 1 / 120;
 // Direction from the ground towards the (orthographic) camera. The renderer builds its camera from this, and

@@ -27,6 +27,8 @@ import { addDrawbridges, updateDrawbridges } from './drawbridge.js';
 import { addMill } from './mill.js';
 import { addMud, newMudRace, updateMud } from './mud.js';
 import { addWear, newWearRace, updateWear } from './wear.js';
+import { addIce } from './ice.js';
+import { addSnowfall, updateSnowfall } from './snowfall.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
 const river = { name: 'river', build(group, tr) { addRiver(group, tr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
@@ -66,7 +68,10 @@ const mill = { name: 'mill', build(group, tr, terr) { addMill(group, tr, terr); 
 
 const mud = { name: 'mud', build(group, tr, terr, stage) { addMud(group, tr, terr, stage); }, newRace() { newMudRace(); }, update(dt) { updateMud(dt); } };
 
+const ice = { name: 'ice', build(group, tr) { addIce(group, tr); } };
+const snowfall = { name: 'snowfall', build(group, tr, terr, stage) { addSnowfall(group, stage); }, update(dt, now) { updateSnowfall(dt, now); } };   // weather (stage.snowfall)
+
 const wear = { name: 'wear', build(group, tr, terr, stage) { addWear(group, tr, terr, stage); }, newRace() { newWearRace(); }, update(dt) { updateWear(dt); } };   // every stage (features/wear.js)
 
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear];
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

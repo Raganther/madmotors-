@@ -34,8 +34,8 @@ New behaviour belongs in elements (`/new-element`), never special cases for this
   report of close passes lists only the ones you meant (bridges over, tunnels under). `buildTrack` errors say how far
   off a closure or branch is: fix the segs, not the error.
 - `npm run terrain -- <n>` → `tools/out/terrain-<n>.png`: banks and cliffs where intended, no road buried or floating.
-- `npm run sandbox -- <n>`: four AI cars lap it. Lap times sane (roughly 60-100 s a lap for a circuit, similar
-  across cars), no wrecks or respawns except where the design wants them (a gap), air where the jumps are.
+- `npm run sandbox -- <n>`: four AI cars lap it. Lap times sane and similar across cars (existing circuits: 37 s
+  Bogwood x3 laps up to 120 s Ravenrock x2; aim for a race of 2-4 minutes), no wrecks or respawns except where the design wants them (a gap), air where the jumps are.
 - `npm run shot -- <n>` (and `npm run shot -- <n> <metres> ...` at each set piece): look at every beat from the
   player's seat. Is it readable at speed? Does it look like the theme? Read the PNGs, don't just generate them.
 - Play-feel sanity: it should be finishable by the AI on every vehicle class that matters (`--vehicle monster`,

@@ -119,7 +119,7 @@ export function genCircuit(stage) {
   const { A, B, hs, ch } = main;
   while (A.length > 2 && Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) < 0.6) { A.pop(); B.pop(); hs.pop(); for (const k in ch) ch[k].pop(); }
   const [xs, zs] = toXZ(A, B);
-  const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width, logs: stage.river.logs || 0 } : null;
+  const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width, logs: stage.river.logs || 0, frozen: !!stage.river.frozen } : null;
   // branches: an alternative route that leaves the main road where main section `from` starts and rejoins it where
   // main section `to` starts. Its own sections must end exactly there, heading the same way.
   const alts = (stage.branches || []).map((br, n) => {
