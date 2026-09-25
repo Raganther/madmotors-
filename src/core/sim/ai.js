@@ -24,7 +24,7 @@ function forkStart(c, tr) {
   if (k > a.g * 0.35) { c.ai.alt = mine; return i; }                                // too late to cross
   return tr.lapU(t, tr.lapOf(i));
 }
-export function aiControl(c, W, cars, dt, hazards) {
+export function aiControl(c, W, cars, dt, hazards, gate) {
   const tr = W.tr, pr = c.pr, i = pr.i, N = tr.N, ai = c.ai;
   // d samples further along the road (along the route this car has picked on stages with branches)
   const G = !!tr.nx; if (G) chooseRoute(c, tr);
@@ -34,6 +34,8 @@ export function aiControl(c, W, cars, dt, hazards) {
   const ka = tr.ks[at(Math.round(8 + sp * 0.45))];
   let lane = ai.lane * 0.6 - clamp(ka * 95, -1, 1) * 3.3;
   { const rl = rutLane(W, c, 6); if (rl !== null) lane = lane * 0.3 + rl * 0.7; }   // in a bog, follow the ruts
+  // a checkpoint gate coming up: line up for it, as well as this driver can judge it (the error is fixed per gate)
+  if (gate && gate.open) { const ahead = gate.s - c.progress; if (ahead > 0 && ahead < 80) { const h = Math.sin(gate.n * 12.9898 + (c.def.num || 1) * 78.233) * 43758.5453, err = ((h - Math.floor(h)) * 2 - 1) * (3.2 + (1 - ai.skill) * 26); lane = lane * 0.15 + (gate.lat + err) * 0.85; } }
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); let minLane = -HALF;
   for (const o of cars) {
     if (o === c || o.ghost > 0) continue;

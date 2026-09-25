@@ -16,7 +16,7 @@ export function hzLeader(R) {
   const live = R.cars.filter(c => !c.finished && !(c.wreckT > 0));
   if (live.length < 2) return null;
   const S = R.sd, byProg = live.slice().sort((a, b) => b.progress - a.progress);
-  if (S) {
+  if (S && S.kind === 'crown') {                                                   // Showdown: the crown holder; checkpoint modes: whoever leads
     if (S.holder < 0) return null;
     const L = R.cars[S.holder], next = byProg.find(c => c !== L);
     return { L, gap: L.progress - next.progress, earned: S.streak >= HZ.SD_HOLD || L.progress - next.progress >= HZ.LEAD };

@@ -23,7 +23,7 @@ export const G = {
   calloutTimer: undefined,
   hintTimer: undefined,
 };
-G.mode = 'race';        // 'race' | 'showdown' (chosen in the menu)
+G.mode = 'race';        // 'race' | 'showdown' | 'deuce' | 'tiebreak' (chosen in the menu)
 G.steer = 'wheel';      // touch steering: 'wheel' | 'arrows' (menu / pause setting)
 G.camMode = 'classic'; G.camZoom = 'normal';   // camera settings (render/camera.js CAM_MODES / CAM_ZOOMS)
 G.vehicle = 'coupe';    // the player's vehicle (data/vehicles.js; the menu's garage)

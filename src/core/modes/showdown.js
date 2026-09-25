@@ -7,19 +7,29 @@
 //   respawns rolling behind or beside the leader (never in front, so a blow-up can't hand you the crown).
 // Nothing ever stops or regroups. Deterministic: its own seeded generator, never R.rnd, so the race features' random
 // sequence is untouched.
+// The same pack rules (camera on the leader, blow up off screen, rejoin around the leader) drive two checkpoint
+// modes, R.sd.kind: gates come up one after another along the road ahead (CP.FIRST, then every CP.GAP metres), each
+// CP.HW wide either side of a point CP.LAT off the centre line, left or right at random; the first car to drive
+// through one scores a point (a leader on the wrong line can miss it), win by two like tennis:
+//   'deuce'     a tennis game: first to 4, but two clear of everyone (3-3 is deuce, then advantage...)
+//   'tiebreak'  first to 7, two clear
+// If the road runs out first, the most points wins (ahead on the road breaks a tie). No crown time changes hands.
 import { computeGrad } from '../sim/car.js';
 import { project } from '../track/query.js';
 import { screenOffset } from '../sim/view.js';
 import { mulberry32 } from '../math.js';
 
+export const CP = { FIRST: 160, GAP: 210, TARGET: { deuce: 4, tiebreak: 7 }, END: 30, LAT: 3, HW: 2.6 };
+/** Menu mode -> kind of pack match. */
+export const SD_KINDS = { showdown: 'crown', deuce: 'deuce', tiebreak: 'tiebreak' };
 export const SD = { TARGET: 60, ZMIN: 18, ZMAX: 26, FIT: 5, OFF_SLACK: 2, OFF_TIME: 1.0, BOOM: 1.2, GRACE: 1.5, ROLL: 14, LOOK: 0.3,
   STEAL_GAP: 4.5, STEAL_EDGE: 1.5, STEAL_HOLD: 0.4, BOOM_TAKE: 2, STREAK: [] };   // no streak bonus: it fed runaways
 
 /** View half-extents (metres) for a zoom level: `scale` is the half-extent of the screen's short side. */
 export function sdExtents(scale, aspect) { return aspect >= 1 ? { hw: scale * aspect, hh: scale } : { hw: scale, hh: scale / aspect }; }
 
-export function initShowdown(R) {
-  R.sd = { crown: R.cars.map(() => 0), holder: -1, streak: 0, stealer: -1, stealT: 0, phase: 'run', grace: SD.GRACE, focus: null, snap: true, camSnap: true,
+export function initShowdown(R, kind = 'crown') {
+  R.sd = { kind, points: R.cars.map(() => 0), gate: null, prev: R.cars.map(c => c.progress), crown: R.cars.map(() => 0), holder: -1, streak: 0, stealer: -1, stealT: 0, phase: 'run', grace: SD.GRACE, focus: null, snap: true, camSnap: true,
     scale: SD.ZMIN, view: null, offT: R.cars.map(() => 0), boomT: R.cars.map(() => 0), winner: -1, booms: R.cars.map(() => 0), taken: R.cars.map(() => 0), steals: R.cars.map(() => 0),
     rng: mulberry32(R.cars.length * 7919 + 17), spawns: [] };
   if (!R.aspect) R.aspect = 16 / 9;
@@ -41,6 +51,45 @@ function place(c, W, i, lat) {
 function finish(R, winner) {
   const S = R.sd; S.phase = 'over'; S.winner = R.cars.indexOf(winner);
   R.player.events.push({ t: 'sd-over', winner: S.winner });
+}
+function mostPoints(R) {
+  const P = R.sd.points; let bi = 0;
+  R.cars.forEach((c, k) => { if (P[k] > P[bi] || (P[k] === P[bi] && c.progress > R.cars[bi].progress)) bi = k; });
+  return R.cars[bi];
+}
+// where the road splits, a gate would stand on one route only: put it past the rejoin
+const inSplit = (tr, s) => tr.alts.some(a => { const p = s % tr.loopN; return p > a.F - 10 && p < a.M + 25; });
+function nextGate(tr, s) { while (tr.alts.length && inSplit(tr, s)) s += 10; return s < tr.finishIdx - CP.END ? s : Infinity; }
+function newGate(S, tr, s) { S.gate = { s: nextGate(tr, s), lat: (S.rng() < 0.5 ? -1 : 1) * CP.LAT, n: S.gate ? S.gate.n + 1 : 0, open: true }; }
+/** Checkpoint modes: a gate stands on one side of the road; the first car to drive through it scores. Once someone
+ *  has, or the whole pack has gone past it, the next one goes up CP.GAP further on. */
+function cpStep(R, W, L) {
+  const S = R.sd, tr = W.tr, G = S.gate || (newGate(S, tr, L.progress + CP.FIRST), S.gate);
+  let scorer = -1, best = -1;
+  R.cars.forEach((c, k) => {
+    const was = S.prev[k]; S.prev[k] = c.progress;
+    if (!G.open || S.boomT[k] > 0 || !(was < G.s && c.progress >= G.s)) return;
+    if (Math.abs(c.pr.lat - G.lat) <= CP.HW && c.progress > best) { best = c.progress; scorer = k; }   // through it, not past it
+  });
+  if (scorer >= 0) {
+    G.open = false; S.points[scorer]++;
+    const won = cpState(S, scorer) === 'win';
+    R.cars[scorer].events.push({ t: 'cp-point', to: scorer, n: G.n, pts: S.points[scorer], state: cpState(S, scorer) });
+    if (won) { finish(R, R.cars[scorer]); return true; }
+  }
+  if (!G.open || R.cars.every((c, k) => S.boomT[k] > 0 || c.progress > G.s + 2)) {
+    if (G.open) R.player.events.push({ t: 'cp-miss', n: G.n });                    // nobody got through it
+    newGate(S, tr, G.s + CP.GAP);
+  }
+  return false;
+}
+/** How the match stands for car k: 'win' | 'advantage' (one clear, and it would win with one more) | 'deuce' (level at the top) | ''. */
+export function cpState(S, k) {
+  const P = S.points, T = CP.TARGET[S.kind], best = Math.max(...P.filter((v, j) => j !== k)), me = P[k], lead = me - best;
+  if (lead >= 2 && me >= T) return 'win';
+  if (lead >= 1 && me + 1 >= T) return 'advantage';                                   // one more and it's over
+  if (lead === 0 && me >= T - 1) return 'deuce';
+  return '';
 }
 function mostCrown(R) {
   const S = R.sd; let bi = 0;
@@ -97,11 +146,11 @@ export function showdownStep(R, W, dt) {
   else { const k = 1 - Math.exp(-dt * 5); S.focus.x += (tx - S.focus.x) * k; S.focus.y += (L.y - S.focus.y) * k; S.focus.z += (tz - S.focus.z) * k; }
   fitZoom(R, dt);
   if (R.phase !== 'racing') return;
-  if (L.progress >= W.tr.finishIdx) { finish(R, mostCrown(R)); return; }
+  if (L.progress >= W.tr.finishIdx) { finish(R, S.kind === 'crown' ? mostCrown(R) : mostPoints(R)); return; }
 
   // blown-up cars come back once the smoke clears
   R.cars.forEach((c, k) => { if (S.boomT[k] > 0 && (S.boomT[k] -= dt) <= 0) { S.boomT[k] = 0; S.offT[k] = 0; rejoin(R, W, c); } });
-  if (crownStep(R, L, dt)) return;
+  if (S.kind === 'crown' ? crownStep(R, L, dt) : cpStep(R, W, L)) return;
 
   S.grace -= dt; if (S.grace > 0) return;
   // judged against the most zoomed-out view, so the camera always pulls back as far as it can before anyone blows up
@@ -116,9 +165,9 @@ export function showdownStep(R, W, dt) {
   });
   if (!dropped.length) return;
   // left behind: blow up, hand some crown time to the crown holder (to the leader if it was the holder that dropped)
-  const to = dropped.includes(S.holder) ? R.cars.indexOf(L) : S.holder, amts = [];
+  const to = S.kind !== 'crown' || dropped.includes(S.holder) ? R.cars.indexOf(L) : S.holder, amts = [];
   for (const k of dropped) {
-    const c = R.cars[k], amt = Math.min(SD.BOOM_TAKE, S.crown[k]);
+    const c = R.cars[k], amt = S.kind === 'crown' ? Math.min(SD.BOOM_TAKE, S.crown[k]) : 0;   // checkpoint modes: blowing up just costs you the ground
     S.crown[k] -= amt; S.crown[to] += amt; S.taken[to] += amt; S.booms[k]++; amts.push(amt);
     S.offT[k] = 0; S.boomT[k] = SD.BOOM; c.wreckT = 1e9; c.boost = 0; c.driftT = 0; c.events.push({ t: 'wreck' });
   }

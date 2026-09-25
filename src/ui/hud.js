@@ -1,6 +1,6 @@
 import { G } from '../game.js';
 import { screenOffset } from '../core/sim/view.js';
-import { SD, sdLeader, sdMult } from '../core/modes/showdown.js';
+import { CP, SD, cpState, sdLeader, sdMult } from '../core/modes/showdown.js';
 import { AudioSys } from '../audio/audio.js';
 import { TAU, clamp } from '../core/math.js';
 import { ranking } from '../core/sim/race.js';
@@ -68,7 +68,11 @@ export function updateHUD(dt) {
       `<li class="${order[i].isPlayer ? 'me' : ''}"><span class="st-p">${i + 1}</span><span class="chip" style="background:#${order[i].def.color.toString(16).padStart(6, '0')}"></span>${order[i].name}</li>`).join('');
   }
   setTxt('time', fmt(P.finished ? P.finishTime : race.time));
-  if (sd) { $('lap').hidden = true; setTxt('sd-title', (G.world.tr.loopN ? `Crown · first to ${SD.TARGET}s · Lap ${Math.min(G.world.tr.laps, P.lap + 1)}/${G.world.tr.laps}` : `Crown · first to ${SD.TARGET}s`)); }
+  if (sd) {
+    const lap = G.world.tr.loopN ? ` · Lap ${Math.min(G.world.tr.laps, P.lap + 1)}/${G.world.tr.laps}` : '';
+    const gate = sd.gate && sd.gate.open && isFinite(sd.gate.s) ? ` · gate ${Math.max(0, Math.round(sd.gate.s - P.progress))} m` : '';
+    $('lap').hidden = true; setTxt('sd-title', sd.kind === 'crown' ? `Crown · first to ${SD.TARGET}s${lap}` : `First to ${CP.TARGET[sd.kind]}, two clear${gate}`);
+  }
   else if (G.world.tr.loopN) { const L = G.world.tr.laps; $('lap').hidden = false; setTxt('lap', P.finished ? 'Finished' : (P.lap + 1 === L ? 'Final lap' : `Lap ${P.lap + 1} of ${L}`)); } else $('lap').hidden = true;
   const b = best[G.world.idx]; setTxt('best', b ? 'Best ' + fmt(b) : 'No best time yet');
   setTxt('speed', String(Math.round(Math.hypot(P.vx, P.vz) * 4.1)));
@@ -79,8 +83,23 @@ export function updateHUD(dt) {
   $('warn').textContent = wrong ? 'Wrong way' : (P.stuckT > 3 ? (isTouch ? 'Stuck? Tap Reset' : 'Stuck? Press R to reset') : '');
   $('warn').hidden = !(wrong || P.stuckT > 3);
 }
+// checkpoint modes: each car's points as pips toward the target (a bar past it: it's two-clear time), and the call
+function updateCheckpointHUD(sd, P) {
+  const T = CP.TARGET[sd.kind], key = sd.points.join() + '|' + sd.kind;
+  if (key !== G.sdKey) {
+    G.sdKey = key;
+    const hex = c => '#' + c.def.color.toString(16).padStart(6, '0'), top = Math.max(...sd.points);
+    $('sd-rows').innerHTML = race.cars.map((c, k) => {
+      const st = cpState(sd, k), tag = st === 'advantage' ? '<em>AD</em>' : st === 'deuce' ? '<em>D</em>' : '';
+      return `<li class="${c.isPlayer ? 'me' : ''} ${sd.points[k] === top && top > 0 ? 'lead' : ''}"><span class="chip" style="background:${hex(c)}"></span><span class="nm">${c.name}</span><span class="nm-s">${c.name.slice(0, 3)}</span>` +
+        `<span class="sd-bar"><b style="width:${(100 * Math.min(1, sd.points[k] / T)).toFixed(1)}%;background:${hex(c)}"></b></span><span class="sd-t">${sd.points[k]}${tag}</span></li>`;
+    }).join('');
+  }
+  edgeGlow(sd, P);
+}
 function updateShowdownHUD(sd, P) {
-  const L = sdLeader(race), h = sd.holder, key = sd.crown.map(v => Math.floor(v * 4)).join() + '|' + h + '|' + sdMult(sd.streak);
+  if (sd.kind !== 'crown') return updateCheckpointHUD(sd, P);
+  const h = sd.holder, key = sd.crown.map(v => Math.floor(v * 4)).join() + '|' + h + '|' + sdMult(sd.streak);
   if (key !== G.sdKey) {
     G.sdKey = key;
     const hex = c => '#' + c.def.color.toString(16).padStart(6, '0'), m = sdMult(sd.streak);
@@ -88,8 +107,11 @@ function updateShowdownHUD(sd, P) {
     $('sd-rows').innerHTML = race.cars.map((c, k) => `<li class="${c.isPlayer ? 'me' : ''} ${k === h ? 'lead' : ''}"><span class="chip" style="background:${hex(c)}"></span><span class="nm">${c.name}</span><span class="nm-s">${c.name.slice(0, 3)}</span>` +
       `<span class="sd-bar"><b style="width:${(100 * sd.crown[k] / SD.TARGET).toFixed(1)}%;background:${hex(c)}"></b></span><span class="sd-t">${Math.floor(sd.crown[k])}s${k === h && m > 1 ? `<em>×${m}</em>` : ''}</span></li>`).join('');
   }
-  // glow on the screen edge you're about to drop off, stronger the closer the camera is to its zoom limit
-  const edge = $('edge').children, v = sd.view;
+  edgeGlow(sd, P);
+}
+// glow on the screen edge you're about to drop off, stronger the closer the camera is to its zoom limit
+function edgeGlow(sd, P) {
+  const L = sdLeader(race), edge = $('edge').children, v = sd.view;
   if (sd.focus && v && sd.phase === 'run' && L !== P) {
     const tension = clamp((sd.scale - SD.ZMIN) / (SD.ZMAX - SD.ZMIN), 0, 1), [sx, sy] = screenOffset(P.x, P.y, P.z, sd.focus, race.camDir), a = t => clamp((t - 0.72) / 0.28, 0, 1) * (0.25 + 0.75 * tension);
     // last car with the camera maxed out: a ticking warning

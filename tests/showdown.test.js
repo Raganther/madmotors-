@@ -159,3 +159,33 @@ describe('showdown matches (King of the Hill)', () => {
     expect(R.sd.winner).toBe(R.sd.holder);
   });
 });
+
+describe('checkpoint modes (Deuce, Tiebreak)', () => {
+  const st = M.STAGES[9], tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true };
+  it('win by two, like tennis: 3-3 is deuce, 4-3 advantage, 5-3 wins a Deuce; Tiebreak needs 7', () => {
+    const S = { kind: 'deuce', points: [3, 3, 0, 1] };
+    expect(M.cpState(S, 0)).toBe('deuce'); S.points[0] = 4; expect(M.cpState(S, 0)).toBe('advantage');
+    S.points[0] = 5; expect(M.cpState(S, 0)).toBe('win'); S.points = [4, 1, 0, 0]; expect(M.cpState(S, 0)).toBe('win');
+    const T = { kind: 'tiebreak', points: [5, 1, 0, 0] }; expect(M.cpState(T, 0)).toBe(''); T.points[0] = 7; expect(M.cpState(T, 0)).toBe('win');
+    T.points = [7, 6, 0, 0]; expect(M.cpState(T, 0)).toBe('advantage');
+  });
+  it('the first car through the gate scores; passing beside it scores nothing', () => {
+    seedRandom(3); const R = M.createRace(W, DEFS, { mode: 'deuce' }); R.phase = 'racing'; R.autoPlayer = true; R.aspect = 16 / 9; R.camDir = M.CAM_DIR;
+    M.raceStep(R, 1 / 120, W); const G = R.sd.gate; expect(G.open).toBe(true); expect(Math.abs(G.lat)).toBe(M.CP.LAT);
+    const put = (c, s, lat) => { const i = Math.round(s); c.x = tr.xs[i] + tr.rx[i] * lat; c.z = tr.zs[i] + tr.rz[i] * lat; c.pr = M.project(tr, c.x, c.z, i, 3, 3); c.progress = s; };
+    R.cars.forEach((c, k) => { put(c, G.s - 3, 0); R.sd.prev[k] = c.progress; });
+    put(R.cars[0], G.s + 1, -G.lat); M.raceStep(R, 1 / 120, W);                        // car 0: past it, wrong side
+    expect(R.sd.points.every(p => p === 0)).toBe(true);
+    put(R.cars[3], G.s + 1, G.lat); R.sd.prev[3] = G.s - 1; M.raceStep(R, 1 / 120, W);  // car 3: through it
+    expect(R.sd.points).toEqual([0, 0, 0, 1]); expect(R.sd.gate.n).toBe(1); expect(R.sd.gate.s).toBeGreaterThan(G.s + 100);
+  });
+  it('a whole Deuce match ends with a winner two clear (or the road runs out), everyone scoring off the same gates', () => {
+    for (const mode of ['deuce', 'tiebreak']) {
+      seedRandom(4); const R = M.createRace(W, DEFS, { mode }); R.phase = 'racing'; R.autoPlayer = true; R.aspect = 16 / 9; R.camDir = M.CAM_DIR;
+      let t = 0; while (t < 400 && R.sd.phase !== 'over') { M.raceStep(R, 1 / 120, W); t += 1 / 120; }
+      expect(R.sd.phase).toBe('over'); const w = R.sd.winner, P = R.sd.points;
+      expect(P[w]).toBe(Math.max(...P));
+      if (M.cpState(R.sd, w) !== 'win') expect(R.cars[w].progress).toBeGreaterThanOrEqual(tr.finishIdx - 1);   // only the road running out ends it early
+    }
+  });
+});

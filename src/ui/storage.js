@@ -4,7 +4,7 @@ export let best = {};
 try { best = JSON.parse(localStorage.getItem(BEST_KEY) || '{}') || {}; } catch (e) { best = {}; }
 export function saveBest() { try { localStorage.setItem(BEST_KEY, JSON.stringify(best)); } catch (e) { } }
 export const MODE_KEY = 'downhill-rush-mode';
-export function loadMode() { try { const m = localStorage.getItem(MODE_KEY); return m === 'showdown' ? 'showdown' : 'race'; } catch (e) { return 'race'; } }
+export function loadMode() { try { const m = localStorage.getItem(MODE_KEY); return ['showdown', 'deuce', 'tiebreak'].includes(m) ? m : 'race'; } catch (e) { return 'race'; } }
 export function saveMode(m) { try { localStorage.setItem(MODE_KEY, m); } catch (e) { } }
 export const STEER_KEY = 'downhill-rush-steer';
 export function loadSteer() { try { return localStorage.getItem(STEER_KEY) === 'arrows' ? 'arrows' : 'wheel'; } catch (e) { return 'wheel'; } }

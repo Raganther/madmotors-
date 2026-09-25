@@ -82,6 +82,16 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
     await page.evaluate(() => window.__dr.flow.toMenu());
   }
 }
+// the checkpoint modes: a Deuce match runs, the gate stands on the road and the HUD shows the points
+{
+  await page.click('.mode-btn[data-mode="deuce"]');
+  await page.evaluate(() => window.__dr.flow.startRace(10)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 10, null, { timeout: 30000 });
+  const got = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; for (let k = 0; k < 90; k++) d.step(1 / 30);
+    return { kind: d.race.sd && d.race.sd.kind, gate: !!(d.race.sd && d.race.sd.gate), rows: document.querySelectorAll('#sd-rows li').length, title: document.getElementById('sd-title').textContent }; });
+  if (got.kind !== 'deuce' || !got.gate || got.rows !== 4 || !/two clear/.test(got.title)) errors.push('deuce: ' + JSON.stringify(got));
+  console.log(`deuce: ${got.rows} rows, "${got.title}"`);
+  await page.evaluate(() => window.__dr.flow.toMenu()); await page.click('.mode-btn[data-mode="race"]');
+}
 // an element sandbox with the debug overlay: ?sandbox=<name>&debug loads it as the last stage and shows the readout
 for (const sb of ['tunnel', 'town']) {
   await page.goto('file://' + file + `?sandbox=${sb}&debug`); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });

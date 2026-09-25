@@ -3,7 +3,7 @@ import { AudioSys } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { createRace, ranking } from '../core/sim/race.js';
 import { screenOffset } from '../core/sim/view.js';
-import { SD } from '../core/modes/showdown.js';
+import { CP, SD } from '../core/modes/showdown.js';
 import { DEFAULT_RIVALS, MAX_RIVALS, raceDefs } from '../data/cars.js';
 import { vehicleById } from '../data/vehicles.js';
 import { STAGES } from '../data/stages/index.js';
@@ -33,7 +33,7 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const defs = raceDefs(vehicleById(G.vehicle), G.mode === 'showdown' ? DEFAULT_RIVALS : G.rivals); setRoster(defs);                        // the line-up, with the player's pick
+  const defs = raceDefs(vehicleById(G.vehicle), G.mode !== 'race' ? DEFAULT_RIVALS : G.rivals); setRoster(defs);                        // the line-up, with the player's pick
   const r = createRace(G.world.W, defs, { mode: G.mode }); clearProps(); resetBarrierVis(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
   elementHook('newRace', r);
   return r;
@@ -81,9 +81,11 @@ export function handleEvents() {
         case 'lap': if (c.isPlayer) { callout(e.n === G.world.tr.laps ? 'Final lap!' : 'Lap ' + e.n); AudioSys.beep(660, 0.2); } break;
         case 'sd-boom': sdBoom(e); for (const k of e.losers) { const b = race.cars[k]; sdBoomFx(b, b.isPlayer || onScreen(b)); } break;
         case 'sd-crown': sdCrown(e); break;
+        case 'cp-point': cpPoint(e); break;
+        case 'cp-miss': callout('Nobody through the gate'); break;
         case 'sd-streak': if (c.isPlayer) { callout(`Crown streak ×${e.mult}!`); AudioSys.tone(880, 0.1, 0.07, 'triangle', 1.3); } break;
         case 'sd-spawn': sdSpawnFx(c); if (c.isPlayer) { callout(e.slot === 'front' ? 'Back in, ahead!' : e.slot === 'beside' ? 'Back in, alongside!' : 'Back in, behind!'); AudioSys.tone(440, 0.25, 0.08, 'triangle', 2); } break;
-        case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? 'You win the Showdown!' : w.name + ' wins the Showdown'); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
+        case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? `You win the ${MODE_NAME[G.mode]}!` : `${w.name} wins the ${MODE_NAME[G.mode]}`); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
         case 'finish':
           if (c.isPlayer) {
             callout(ordinal(c.place) + ' place!'); AudioSys.beep(880, 0.35);
@@ -105,6 +107,13 @@ function sdBoom(e) {
   else if (e.to === pi) { const got = e.amts.reduce((a, b) => a + b, 0); callout(got > 0 ? `Boom! +${fmtS(got)} crown time` : `${race.cars[e.losers[0]].name} blew up!`); AudioSys.tone(660, 0.12, 0.08, 'triangle', 1.5); }
   else callout(`${race.cars[e.losers[0]].name} blew up!`);
 }
+// a checkpoint gate taken: the scorer, and how the match stands (deuce, advantage)
+function cpPoint(e) {
+  const me = e.to === race.cars.indexOf(race.player), who = race.cars[e.to].name, pts = e.pts + (e.pts === 1 ? ' point' : ' points');
+  const call = e.state === 'advantage' ? (me ? 'Advantage you!' : `Advantage ${who}`) : e.state === 'deuce' ? 'Deuce!' : '';
+  if (e.state !== 'win') callout(call ? (me ? `Checkpoint! ${call}` : call) : me ? `Checkpoint! ${pts}` : `${who} takes the gate`);
+  AudioSys.tone(me ? 988 : 587, 0.16, 0.08, 'triangle', me ? 1.5 : 0.8);
+}
 function sdCrown(e) {
   const pi = race.cars.indexOf(race.player), to = race.cars[e.to];
   if (e.to === pi) { callout('You take the crown!'); AudioSys.tone(784, 0.14, 0.08, 'triangle', 1.5); }
@@ -125,14 +134,20 @@ export function showResults() {
 function showShowdownResults() {
   resultsShown = true; $('results').hidden = false; $('touch').hidden = true;
   const w = race.cars[race.sd.winner], won = w === race.player;
-  $('res-title').innerHTML = `<span class="chip" style="background:#${w.def.color.toString(16).padStart(6, '0')}"></span>` + (won ? 'You won the Showdown' : w.name + ' won the Showdown');
-  const nb = race.sd.booms.reduce((a, b) => a + b, 0), ns = race.sd.steals.reduce((a, b) => a + b, 0);
-  $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name} · ${ns} crown ${ns === 1 ? 'steal' : 'steals'}, ${nb} ${nb === 1 ? 'blow-up' : 'blow-ups'}`;
-  $('res-best').textContent = `Showdown: hold the lead to bank crown time; first to ${SD.TARGET}s wins`;
+  const S = race.sd, name = MODE_NAME[G.mode] || 'Showdown';
+  $('res-title').innerHTML = `<span class="chip" style="background:#${w.def.color.toString(16).padStart(6, '0')}"></span>` + (won ? `You won the ${name}` : `${w.name} won the ${name}`);
+  const nb = S.booms.reduce((a, b) => a + b, 0), ns = S.steals.reduce((a, b) => a + b, 0), ng = S.points.reduce((a, b) => a + b, 0), pl = (n, a) => `${n} ${a}${n === 1 ? '' : 's'}`;
+  $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name} · ` + (S.kind === 'crown' ? `${pl(ns, 'crown steal')}, ${pl(nb, 'blow-up')}` : `${pl(ng, 'gate')} scored, ${pl(nb, 'blow-up')}`);
+  $('res-best').textContent = S.kind === 'crown' ? `Showdown: hold the lead to bank crown time; first to ${SD.TARGET}s wins` : `${name}: first through each gate scores; first to ${CP.TARGET[S.kind]}, two clear`;
   $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
   updateResultsTable(); $('next-btn').focus();
 }
 export function updateResultsTable() {
+  if (race.sd && race.sd.kind !== 'crown') {
+    const S = race.sd, order = race.cars.map((c, k) => ({ c, k, l: S.points[k] })).sort((a, b) => b.l - a.l || b.c.progress - a.c.progress);
+    $('res-table').innerHTML = order.map(({ c, k, l }, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}<span class="rs">blew up ${S.booms[k]}×</span></td><td class="rt">${l} ${l === 1 ? 'pt' : 'pts'}</td></tr>`).join('');
+    return;
+  }
   if (race.sd) {
     const S = race.sd, order = race.cars.map((c, k) => ({ c, k, l: S.crown[k] })).sort((a, b) => b.l - a.l || b.c.progress - a.c.progress);
     $('res-table').innerHTML = order.map(({ c, k, l }, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}<span class="rs">stole the crown ${S.steals[k]}× · blew up ${S.booms[k]}×</span></td><td class="rt">${l.toFixed(1)}s</td></tr>`).join('');
@@ -145,7 +160,7 @@ export let pendingBuild = null;
 export function selectStage(i, cb) {
   selected = i;
   document.querySelectorAll('.stage').forEach((b, k) => b.setAttribute('aria-pressed', k === i ? 'true' : 'false'));
-  $('race-btn').textContent = (G.mode === 'showdown' ? 'Showdown: ' : 'Race ') + STAGES[i].name;
+  $('race-btn').textContent = MODE_BTN[G.mode] + STAGES[i].name;
   if (G.world && G.world.idx === i) { cb && cb(); return; }
   $('loading-text').textContent = 'Building ' + STAGES[i].name; $('loading').hidden = false;
   clearTimeout(pendingBuild);
@@ -175,16 +190,20 @@ export function togglePause() {
   else if (G.state === 'paused') { G.state = pausedFrom; $('pause').hidden = true; G.lastT = performance.now() / 1000; }
 }
 export function refreshBest() { STAGES.forEach((s, i) => { const el = $('best-' + i); if (el) el.textContent = best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet'; }); }
+const MODE_BTN = { race: 'Race ', showdown: 'Showdown: ', deuce: 'Deuce: ', tiebreak: 'Tiebreak: ' };
+export const MODE_NAME = { showdown: 'Showdown', deuce: 'Deuce', tiebreak: 'Tiebreak' };
 const MODE_DESC = {
   race: () => G.rivals === 1 ? 'Beat your rival to the line.' : `Beat ${G.rivals} rivals to the line${G.rivals > 3 ? ', starting from the back of the grid' : ''}.`,
-  showdown: 'King of the Hill: the leader wears the crown and banks crown time. Pass clearly to steal it; slipstream helps, and a runaway leader meets cows and oil. Fall off the screen and you blow up, paying the holder 2 s. First to 60 s of crown time wins.'
+  showdown: 'King of the Hill: the leader wears the crown and banks crown time. Pass clearly to steal it; slipstream helps, and a runaway leader meets cows and oil. Fall off the screen and you blow up, paying the holder 2 s. First to 60 s of crown time wins.',
+  deuce: 'Checkpoints, first to 4. A gate stands on one side of the road: be first through it to score. Win by two, like tennis: 3-3 is deuce. Fall off the screen and you blow up and rejoin behind the leader.',
+  tiebreak: 'Checkpoints, first to 7, win by two. Longer, and every gate counts. Fall off the screen and you blow up and rejoin behind the leader.',
 };
 export function setMode(m) {
   G.mode = m; saveMode(m);
   document.querySelectorAll('.mode-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false'));
   $('mode-desc').textContent = typeof MODE_DESC[m] === 'function' ? MODE_DESC[m]() : MODE_DESC[m];
-  $('race-btn').textContent = (m === 'showdown' ? 'Showdown: ' : 'Race ') + STAGES[selected].name;
-  $('rivals').hidden = m === 'showdown';
+  $('race-btn').textContent = MODE_BTN[m] + STAGES[selected].name;
+  $('rivals').hidden = m !== 'race';
 }
 /** The Race field size (menu stepper): 1..MAX_RIVALS AI cars. */
 export function setRivals(n) {

@@ -1,5 +1,5 @@
 import { FEATURES } from '../features/index.js';
-import { initShowdown, sdLeader, showdownStep } from '../modes/showdown.js';
+import { SD_KINDS, initShowdown, sdLeader, showdownStep } from '../modes/showdown.js';
 import { clamp, mulberry32 } from '../math.js';
 import { aiControl } from './ai.js';
 import { makeBarriers } from './barriers.js';
@@ -12,14 +12,14 @@ export function gridSlots(n) {
   if (n <= 4) return [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
   return Array.from({ length: n }, (_, k) => [30 - Math.floor(k / 3) * 6, [-3.5, 0, 3.5][k % 3]]);
 }
-/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'}} [opts] @returns {import('../types.js').Race} */
+/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'|'deuce'|'tiebreak'}} [opts] @returns {import('../types.js').Race} */
 export function createRace(W, defs, opts = {}) {
   W.bar = makeBarriers(W.tr, W.armco);
   const grid = gridSlots(defs.length), cars = defs.map((d, k) => makeCar(W, grid[k][0], grid[k][1], d));
   const R = { cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false, rnd: mulberry32((W.tr.seed || 1) * 31 + 7) };
   for (const f of FEATURES) if (f.init) f.init(R, W);
   R.mode = opts.mode || 'race';
-  if (R.mode === 'showdown') initShowdown(R);
+  if (SD_KINDS[R.mode]) initShowdown(R, SD_KINDS[R.mode]);
   return R;
 }
 /** Advance the whole race by one fixed step (STEP = 1/120 s). @param {import('../types.js').Race} R @param {number} dt @param {import('../types.js').World} W */
@@ -39,7 +39,7 @@ export function raceStep(R, dt, W) {
     c.draft = (c.draft || 0) + (want - (c.draft || 0)) * Math.min(1, dt * 4);
   }
   for (const c of R.cars) {
-    if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt, R.hazards);
+    if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt, R.hazards, R.sd && R.sd.gate);
     if (c.finished && c.progress > tr.finishIdx + 18) { c.inp.throttle = 0; c.inp.brake = c.vf > 0.5 ? 0.7 : 0; c.inp.handbrake = c.vf > 0.5 ? 0 : 1; }   // pull up and stay put (no creeping backwards)
     c.mod = lead ? clamp(1 + (lead.progress - c.progress) / 300, 1, 1.08)                // Showdown: everyone chasing the leader gets a tow
       : c.isPlayer ? 1 : clamp(1 + (P.progress - c.progress) / 1400, 0.93, 1.08);
