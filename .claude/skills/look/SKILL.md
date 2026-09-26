@@ -36,3 +36,5 @@ Visual work is judged by eye, so the loop is: screenshot → change → screensh
 - Dense one-line code: never append a `// comment` to a line and then more statements after it. Everything after the
   `//` is gone (it silently killed the camera zoom once, the weapon-mount recoil another time). Put the comment on
   its own line, or use `/* */`. After an edit to a one-liner, check the setting it touches still does something.
+- A mesh only darkens in shade with `receiveShadow`; `castShadow` alone lets it throw a shadow while staying lit in
+  others' (cars sat bright under trees until render/vehicles.js `inShade`). New objects that move through shade need both.

@@ -35,13 +35,16 @@ export function addCarExtras(v, tails, hw, hl) {
   const blob = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2.7, hl * 2.5).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: G.blobTex, color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
   blob.position.y = 0.05; blob.renderOrder = 1; v.root.add(blob); v.blob = blob;
 }
+// cars take the shade of trees, bridges and each other, not just cast it (the ground blob and glows stay as they are)
+function inShade(root) { root.traverse(o => { if (o.isMesh && !o.material.isMeshBasicMaterial) o.receiveShadow = true; }); }
 export function makeCarMesh(def) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const m = buildCarModel(def, root, body);                                          // one of four bodies (render/carmodels.js)
   scene.add(root);
   const v = { root, body, wheels: m.wheels, steer: m.steer, wr: m.wr, soft: m.soft || 1, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
     dentable: m.dentable, bumper: m.bumper, wing: m.wing, struts: m.struts, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
-  v.anim = m.anim; v.def = def; addCarExtras(v, m.tails, def.hw || CAR_HW, def.hl || CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin), m.wheels); return v;
+  v.anim = m.anim; v.def = def; addCarExtras(v, m.tails, def.hw || CAR_HW, def.hl || CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin), m.wheels);
+  inShade(root); return v;
 }
 // push the bodywork in around a contact point (car-local coords), deterministic per vertex so shared corners stay welded
 export function dentMesh(v, lx, ly, lz, ix, iz, depth, radius) {
@@ -182,7 +185,7 @@ export function makeTrafficMesh(kind) {
     const spin = new THREE.Group(); pivot.add(spin); const w = new THREE.Mesh(wheelG, wheelM); w.castShadow = true; spin.add(w);
     wheels.push(spin); if (sz > 1.5 || (kind === 'hatch' && sz > 0)) steer.push(pivot);
   }
-  root.visible = false; scene.add(root);
+  inShade(root); root.visible = false; scene.add(root);
   const K = TRAFFIC_KINDS.find(k => k.kind === kind);
   const v = { root, body, wheels, steer, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0, wr: S.wr, paint, owner: null,
     dentable, bumper, wing, struts: [], heads, tails, cabin, glassM: cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
