@@ -10,5 +10,10 @@ import redMesa from './red-mesa.js';
 import thunderFalls from './thunder-falls.js';
 import bogwoodRally from './bogwood-rally.js';
 import frostpeak from './frostpeak.js';
+import corkscrewSpire from './corkscrew-spire.js';
+import scrapyardSmash from './scrapyard-smash.js';
+import mesaLeap from './mesa-leap.js';
+import glacierRift from './glacier-rift.js';
+import templeRuins from './temple-ruins.js';
 
-export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak];
+export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins];

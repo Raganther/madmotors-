@@ -8,7 +8,7 @@ export const element = {
   about: 'a loose dirt stretch (off-road shortcuts)',
   tags: { dirt: 'true for a dirt track surface' },
   channels: { dirt: tg => tg.dirt ? 1 : 0 },
-  walls(ctx) { const { N0, ch, kerbL0, kerbR0 } = ctx; for (let i = 0; i < N0; i++) if (ch.dirt[i]) kerbL0[i] = kerbR0[i] = 0; },
+  wallsLast(ctx) { const { ch, kerbL0, kerbR0 } = ctx; for (let i = 0; i < kerbL0.length; i++) if (ch.dirt[i]) kerbL0[i] = kerbR0[i] = 0; },   // branches too
   speeds(ctx) {
     const { NB, ch, vmax0, stage } = ctx, k = Math.sqrt(SURF.gravel.latMax / SURF[stage.surface].latMax);
     if (k < 1) for (let i = 0; i < NB; i++) if (ch.dirt[i]) vmax0[i] *= k;

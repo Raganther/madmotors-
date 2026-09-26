@@ -417,6 +417,196 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Corkscrew Spire": {
+   "samples": 4762,
+   "loopN": 1344,
+   "terrain": [
+    139,
+    129,
+    51302.274
+   ],
+   "times": [
+    138.267,
+    135.483,
+    135.383,
+    134.542
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    4068.223,
+    4101.642,
+    4100.761,
+    4100.111
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 3
+  },
+  "Scrapyard Smash": {
+   "samples": 4395,
+   "loopN": 1203,
+   "terrain": [
+    151,
+    152,
+    42558.761
+   ],
+   "times": [
+    126.858,
+    126.6,
+    128.825,
+    131.942
+   ],
+   "respawns": [
+    0,
+    1,
+    0,
+    2
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3676.163,
+    3676.115,
+    3676.72,
+    3645.257
+   ],
+   "broken": 2,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Mesa Leap": {
+   "samples": 5360,
+   "loopN": 1198,
+   "terrain": [
+    160,
+    153,
+    24079.494
+   ],
+   "times": [
+    115.208,
+    115.075,
+    118.333,
+    117.008
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3661.098,
+    3661.609,
+    3630.121,
+    3661.311
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Glacier Rift": {
+   "samples": 3918,
+   "loopN": 1068,
+   "terrain": [
+    116,
+    154,
+    31561.728
+   ],
+   "times": [
+    123.208,
+    120.4,
+    128.767,
+    123.267
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3266.159,
+    3266.832,
+    3240.017,
+    3266.612
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Temple Ruins": {
+   "samples": 4662,
+   "loopN": 1352,
+   "terrain": [
+    145,
+    171,
+    30537.312
+   ],
+   "times": [
+    136.225,
+    132.525,
+    145.792,
+    144.958
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    4119.252,
+    4117.822,
+    4092.275,
+    4116.44
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {
