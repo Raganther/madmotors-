@@ -4,7 +4,7 @@ import { FX, getCrackTex, makeCloudTex } from './materials.js';
 import { $, isTouchDevice } from '../ui/dom.js';
 
 export let contextLost = false;
-export let renderer, scene, camera, sun, hemi;
+export let renderer, scene, camera, pcamera, sun, hemi;   // camera: the orthographic race view; pcamera: the perspective views (render/camera.js sets G.persp)
 // ---------- graphics quality ----------
 // Auto scales the render resolution with the frame rate; the fixed levels trade sharpness and shadow detail for speed.
 export const QUALITY = {
@@ -85,12 +85,13 @@ export function initPost() {
   post = { rt, mat, pscene, pcam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), size: new THREE.Vector2() };
 }
 export function renderFrame() {
-  if (!postWanted()) { renderer.render(scene, camera); return; }
+  const cam = G.persp ? pcamera : camera;
+  if (!postWanted()) { renderer.render(scene, cam); return; }
   if (!post) initPost();
   renderer.getDrawingBufferSize(post.size);
   if (post.rt.width !== post.size.x || post.rt.height !== post.size.y) { post.rt.setSize(post.size.x, post.size.y); post.mat.uniforms.uRes.value.copy(post.size); }
-  post.mat.uniforms.uSat.value = grade.sat; post.mat.uniforms.uBlur.value = renderer.getPixelRatio();
-  renderer.setRenderTarget(post.rt); renderer.render(scene, camera);
+  post.mat.uniforms.uSat.value = grade.sat; post.mat.uniforms.uBlur.value = renderer.getPixelRatio() * (G.persp ? 0.45 : 1);   // less tilt-shift behind the car: it's not a model village from there
+  renderer.setRenderTarget(post.rt); renderer.render(scene, cam);
   renderer.setRenderTarget(null); renderer.render(post.pscene, post.pcam);
 }
 // ---------- renderer ----------
@@ -119,7 +120,7 @@ export function initRenderer() {
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   $('game').appendChild(renderer.domElement);
   scene = new THREE.Scene(); scene.background = new THREE.Color(0xBFE3F2); scene.fog = new THREE.Fog(0xBFE3F2, 330, 620);
-  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 900);
+  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 900); pcamera = new THREE.PerspectiveCamera(60, 1, 0.3, 900);
   hemi = new THREE.HemisphereLight(0xE8F4FF, 0x6B7A4A, 0.62); scene.add(hemi);
   sun = new THREE.DirectionalLight(0xFFF1DC, 0.9); sun.castShadow = true;
   sun.shadow.mapSize.set(1536, 1536); const sc = sun.shadow.camera; sc.left = -75; sc.right = 75; sc.top = 75; sc.bottom = -75; sc.near = 1; sc.far = 260;

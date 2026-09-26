@@ -1,6 +1,6 @@
 // Screenshots from the player's seat on the production build (run `npm run build` first). The player car drives
 // itself (AI) to each race distance and the frame is saved, so wear, mud and dirt have built up the way they would.
-//   node tools/shot.mjs <stage|sandbox:name> [metres ...] [--vehicle id] [--rivals n] [--mode race|showdown|deuce|tiebreak] [--debug] [--w 1100 --h 620]
+//   node tools/shot.mjs <stage|sandbox:name> [metres ...] [--vehicle id] [--rivals n] [--mode race|showdown|deuce|tiebreak] [--camera classic|behind|follow|heli|bonnet|tv|...] [--zoom close|near|normal|far] [--debug] [--w 1100 --h 620]
 //   --eval '<js>' runs in the page once the race is built (window.__dr as d), e.g. to recolour something to find it
 //   node tools/shot.mjs garage              the garage, top and bottom, once every vehicle's picture is drawn
 // Stage is a 1-based number or (part of) its name. Metres are from the start line (1 sample = 1 m; past one lap on a circuit is lap 2).
@@ -14,11 +14,11 @@ import { SANDBOXES } from '../src/data/sandboxes/index.js';
 
 const args = process.argv.slice(2), opt = (k, d) => { const i = args.indexOf('--' + k); if (i < 0) return d; const v = args[i + 1]; args.splice(i, 2); return v; };
 const flag = k => { const i = args.indexOf('--' + k); if (i < 0) return false; args.splice(i, 1); return true; };
-const evalJs = opt('eval', ''), rivals = +opt('rivals', 3), mode = opt('mode', 'race'), vehicle = opt('vehicle', 'coupe'), W = +opt('w', 1100), H = +opt('h', 620), debug = flag('debug');
+const evalJs = opt('eval', ''), camMode = opt('camera', 'classic'), camZoom = opt('zoom', 'normal'), rivals = +opt('rivals', 3), mode = opt('mode', 'race'), vehicle = opt('vehicle', 'coupe'), W = +opt('w', 1100), H = +opt('h', 620), debug = flag('debug');
 const [which = '', ...marks] = args, sb = which.startsWith('sandbox:') ? which.slice(8) : null;
 if (sb && !SANDBOXES[sb]) throw new Error(`no sandbox "${sb}"; sandboxes: ${Object.keys(SANDBOXES).join(', ')}`);
 const garage = which === 'garage';
-const idx = garage ? 0 : sb ? STAGES.length : stageFromArg(which), id = sb ? 'sandbox-' + sb : String(idx + 1);
+const idx = garage ? 0 : sb ? STAGES.length : stageFromArg(which), id = (sb ? 'sandbox-' + sb : String(idx + 1)) + (camMode !== 'classic' ? '-' + camMode : '');
 const q = new URLSearchParams(); if (sb) q.set('sandbox', sb); if (debug) q.set('debug', '');
 mkdirSync('tools/out', { recursive: true });
 
@@ -36,7 +36,7 @@ if (garage) {
   if (errs.length) console.log('page errors:\n  ' + errs.join('\n  '));
   await browser.close(); process.exit(errs.length ? 1 : 0);
 }
-await page.evaluate(([i, v, n, m]) => { window.__dr.G.vehicle = window.__dr.G.defaultVehicle = v; window.__dr.G.stageCars = {}; window.__dr.G.rivals = n; window.__dr.G.mode = m; window.__dr.flow.startRace(i); }, [idx, vehicle, rivals, mode]);
+await page.evaluate(([i, v, n, m, cm, cz]) => { const G = window.__dr.G; G.vehicle = G.defaultVehicle = v; G.stageCars = {}; G.rivals = n; G.mode = m; G.camMode = cm; G.camZoom = cz; window.__dr.flow.startRace(i); }, [idx, vehicle, rivals, mode, camMode, camZoom]);
 await page.waitForFunction(i => window.__dr.race && window.__dr.G.world.idx === i, idx, { timeout: 30000 });
 const info = await page.evaluate(() => {
   const d = window.__dr; window.requestAnimationFrame = () => 0;   // we drive the frames

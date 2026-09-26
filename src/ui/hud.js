@@ -60,11 +60,13 @@ export function updateHUD(dt) {
   else $('edge').className = '';
   const order = ranking(race), place = order.indexOf(P) + 1;
   setTxt('pos-n', String(place)); setTxt('pos-suf', ordinal(place).slice(-2));
-  const key = order.map(c => c.name).join();
+  const key = order.map(c => c.name).join() + isTouch;
   if (key !== G.standingsKey) {
     G.standingsKey = key;
-    // a big field: the top three, then you and whoever is either side of you
-    const show = order.length <= 6 ? order.map((c, i) => i) : [...new Set([0, 1, 2, place - 2, place - 1, place].filter(i => i >= 0 && i < order.length))].sort((a, b) => a - b);
+    // a big field: the top three, then you and whoever is either side of you; on a phone just the leader, the car
+    // you're chasing and you
+    const pick = isTouch ? [0, place - 2, place - 1] : order.length <= 6 ? order.map((c, i) => i) : [0, 1, 2, place - 2, place - 1, place];
+    const show = [...new Set(pick.filter(i => i >= 0 && i < order.length))].sort((a, b) => a - b);
     $('standings').innerHTML = show.map((i, n) => (n && i > show[n - 1] + 1 ? '<li class="gap">&middot;&middot;&middot;</li>' : '') +
       `<li class="${order[i].isPlayer ? 'me' : ''}"><span class="st-p">${i + 1}</span><span class="chip" style="background:#${order[i].def.color.toString(16).padStart(6, '0')}"></span>${order[i].name}</li>`).join('');
   }
@@ -86,7 +88,7 @@ export function updateHUD(dt) {
     el.hidden = false; el.className = lock ? 'lock' : it || firing ? '' : 'reload';
     setTxt('wpn-state', lock ? 'Missile incoming!' : firing ? 'Firing!' : it ? ITEM_NAME[it] + (P.wpn.uses > 1 ? ` ×${P.wpn.uses}` : '') + (isTouch ? '' : ' · F') : 'Grab a ? crate');
     const fw = (firing ? 100 * P.wpn.gunT / WPN.GUN_T : it ? 100 : 0).toFixed(0) + '%', ff = $('wpn-fill'); if (ff._w !== fw) { ff._w = fw; ff.style.width = fw; }
-    $('wpn-fire').classList.toggle('ready', !!it); setTxt('wpn-fire', it ? { missile: 'Missile', gun: 'Guns', oil: 'Oil', pulse: 'Pulse', harpoon: 'Hook' }[it] : 'Fire');
+    $('wpn-fire').classList.toggle('ready', !!it); $('wpn-fire').classList.toggle('lock', lock);   // on touch the Fire button is the weapon panel setTxt('wpn-fire', it ? { missile: 'Missile', gun: 'Guns', oil: 'Oil', pulse: 'Pulse', harpoon: 'Hook' }[it] : 'Fire');
   } else $('wpn').hidden = true;
   $('touch').classList.toggle('nowpn', !race.weapons);
   const wrong = P.wrongT > 1;

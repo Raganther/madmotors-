@@ -208,7 +208,7 @@ export function startRace(idx) {
     $('menu').hidden = true; $('garage').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
     $('stage-name').textContent = `Stage ${idx + 1}: ${STAGES[idx].name}`;
     racesStarted++; G.hintTimer = racesStarted <= 2 ? 7 : 0;
-    $('hint').textContent = isTouch ? G.steer === 'wheel' ? 'Point the wheel where to go. Slide Gas down to drift' : 'Slide Gas down to drift, back up to boost' : 'Hold Space through a corner to drift, then let go for a boost';
+    $('hint').textContent = isTouch ? G.steer === 'wheel' ? 'Point the wheel where to go. Slide Gas down to drift, up to fire' : 'Slide Gas down to drift, up to fire' : 'Hold Space through a corner to drift, then let go for a boost';
     updateCamera(0, true);
   });
 }

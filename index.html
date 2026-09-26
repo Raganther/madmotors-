@@ -117,7 +117,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 #touch{position:fixed;inset:auto 0 0 0;height:0;pointer-events:none}
 #touch .tz{position:fixed;bottom:0;width:46%;height:50%;pointer-events:auto;touch-action:none}
 #steer-zone{left:0} #pedal-zone{right:0}
-#wpn-touch{position:fixed;right:var(--rgt);bottom:calc(50% + 6px);display:flex;gap:10px;pointer-events:auto} #wpn-touch button{width:62px;height:62px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(28,35,64,.62);color:#fff;font-weight:700;font-size:13px;touch-action:none} #wpn-touch button.ready{border-color:var(--yellow);color:var(--yellow)} #touch.nowpn #wpn-touch{display:none}
+#wpn-touch{position:fixed;right:var(--rgt);bottom:calc(var(--bot) + var(--pd,96px) + 12px);display:flex;flex-direction:row-reverse;align-items:flex-end;gap:10px;pointer-events:auto;z-index:2}   /* right above Gas: slide the thumb up onto Fire */ #wpn-touch button{width:56px;height:56px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(28,35,64,.62);color:#fff;font-weight:700;font-size:13px;touch-action:none} #wpn-touch #wpn-fire{width:var(--pd,96px);height:64px;border-radius:18px;font-size:15px} #wpn-fire.hit{background:var(--yellow);color:var(--ink)} #wpn-fire.lock{background:rgba(190,30,30,.85);border-color:#fff;animation:wpnflash .3s steps(2) infinite} .touch #wpn{display:none} #wpn-touch button.ready{border-color:var(--yellow);color:var(--yellow)} #touch.nowpn #wpn-touch{display:none}
 #arrows{position:absolute;left:var(--lft);bottom:var(--bot);display:flex;gap:12px}
 #arrows i{width:var(--ab,82px);height:var(--ab,82px);border-radius:20px;background:rgba(28,35,64,.62);color:#fff;font-style:normal;font-size:30px;display:grid;place-items:center;transition:background .08s}
 #arrows i.on{background:rgba(255,199,44,.9);color:var(--ink)}
@@ -192,6 +192,9 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   :root{--wh:118px;--pd:86px;--ab:72px}
 }
 .touch #hint{white-space:normal;width:max-content;max-width:calc(100% - 32px);text-align:center}
+@media (orientation: portrait){ .touch #hint{bottom:calc(var(--bot) + var(--pd,96px) + 150px)} }   /* clear of Fire and Door above Gas */
+/* phones: a slim standings list (leader, the car ahead, you) and the lap under your position, clear of the profile */
+.touch #pos-block{display:flex;flex-direction:column;align-items:flex-start;gap:4px} .touch #lap{margin:0} .touch #standings{width:max-content;margin-top:0}
 .touch #speed-block{position:relative;left:auto;bottom:auto;transform:none;min-width:0;padding:3px 10px 6px 34px;border-radius:10px} .touch #speed{font-size:24px} .touch .unit{font-size:11px} .touch #boost{height:5px;margin-top:3px} .touch #dmg{left:9px;width:15px;height:26px}
 /* landscape phones: short screens, so keep the HUD in a thin band along the top and the thumbs free below */
 @media (max-height:520px){
@@ -264,7 +267,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 <div id="touch" hidden>
   <div id="steer-zone" class="tz"><div id="arrows" hidden aria-label="Steer left or right: slide between the arrows"><i data-d="-1">◀</i><i data-d="1">▶</i></div><div id="wheel" aria-label="Steering wheel: point your thumb where you want to go"><svg viewBox="-50 -50 100 100" aria-hidden="true"><g id="wheel-g" fill="none" stroke="#fff" stroke-linecap="round"><circle r="40" stroke-width="9" stroke-opacity=".9"/><path d="M-36 4 L-10 6 M36 4 L10 6 M0 12 L0 37" stroke-width="8" stroke-opacity=".75"/><circle r="11" fill="rgba(255,255,255,.85)" stroke="none"/><path d="M-7 -41 L7 -41" stroke="#FFC72C" stroke-width="9"/></g></svg></div></div>
   <div id="wpn-touch"><button id="wpn-fire" type="button" aria-label="Fire weapon">Fire</button><button id="wpn-door" type="button" aria-label="Door bash">Door</button></div>
-  <div id="pedal-zone" class="tz"><div id="pedal" aria-label="Gas: hold; slide down to drift, left to brake">Gas<i class="p-hb">▼ Drift</i><i class="p-brk">◀ Brake</i></div></div>
+  <div id="pedal-zone" class="tz"><div id="pedal" aria-label="Gas: hold; slide down to drift, left to brake, up to fire">Gas<i class="p-hb">▼ Drift</i><i class="p-brk">◀ Brake</i></div></div>
 </div>
 
 <div id="garage" class="overlay" hidden>

@@ -135,11 +135,23 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   console.log(`weapons: fired ${used.join(', ')}; door swung; ${got.crates} crates on the road`);
   await page.evaluate(() => window.__dr.flow.toMenu());
 }
+// every camera: a Race draws from each (the perspective ones really are perspective), Showdown modes stay top-down
+{
+  await page.evaluate(() => window.__dr.flow.startRace(6)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 6, null, { timeout: 30000 });
+  const got = await page.evaluate(() => { const d = window.__dr, out = []; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; d.step(4);
+    for (const m of ['classic', 'overhead', 'low', 'chase', 'behind', 'follow', 'heli', 'bonnet', 'tv']) { d.G.camMode = m; d.step(0.4); out.push([m, d.G.persp, d.G.camDir.every(Number.isFinite)]); }
+    d.G.camMode = 'classic'; return out; });
+  for (const [m, persp, ok] of got) if (!ok || persp !== ['behind', 'follow', 'heli', 'bonnet', 'tv'].includes(m)) errors.push(`camera ${m}: persp ${persp}, finite ${ok}`);
+  console.log('cameras: ' + got.map(([m, p]) => m + (p ? '*' : '')).join(' ') + '  (* perspective)');
+  await page.screenshot({ path: path.join(outDir, 'camera-tv.png') });
+  await page.evaluate(() => window.__dr.flow.toMenu());
+}
 // the checkpoint modes: a Deuce match runs, the gate stands on the road and the HUD shows the points
 {
   await page.click('.mode-btn[data-mode="deuce"]');
   await page.evaluate(() => window.__dr.flow.startRace(10)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 10, null, { timeout: 30000 });
-  const got = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; for (let k = 0; k < 90; k++) d.step(1 / 30);
+  const got = await page.evaluate(() => { const d = window.__dr; d.G.camMode = 'behind'; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; for (let k = 0; k < 90; k++) d.step(1 / 30);
+    const flat = !d.G.persp; d.G.camMode = 'classic'; if (!flat) return { persp: true };
     return { kind: d.race.sd && d.race.sd.kind, gate: !!(d.race.sd && d.race.sd.gate), rows: document.querySelectorAll('#sd-rows li').length, title: document.getElementById('sd-title').textContent }; });
   if (got.kind !== 'deuce' || !got.gate || got.rows !== 4 || !/two clear/.test(got.title)) errors.push('deuce: ' + JSON.stringify(got));
   console.log(`deuce: ${got.rows} rows, "${got.title}"`);
@@ -184,8 +196,11 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   const w = await box('wheel'), p = await box('pedal');
   // phone HUD: the speedo sits under the timer, clear of it and of the Reset/Pause buttons
   const clash = await tp.evaluate(() => { const r = q => document.querySelector(q).getBoundingClientRect(), hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-    const sp = r('#speed-block'); return ['#time', '.hud-btns', '#best'].filter(q => hit(sp, r(q))); });
-  if (clash.length) errors.push('phone HUD: speed block overlaps ' + clash.join(', '));
+    const sp = r('#speed-block'), out = ['#time', '.hud-btns', '#best'].filter(q => hit(sp, r(q)));
+    for (const q of ['#wpn-fire', '#wpn-door']) if (hit(r(q), r('#pedal'))) out.push(q + ' (on Gas)');
+    if (r('#wpn-fire').bottom > r('#pedal').top + 1 || r('#wpn-fire').top < r('#pedal').top - 140) out.push('#wpn-fire (not just above Gas)');
+    return out; });
+  if (clash.length) errors.push('phone HUD: overlaps / misplaced: ' + clash.join(', '));
   const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
   // frames are slow under SwiftShader, so wait (up to 3 s) for the player's inputs to reach the expected state
   const expect = async (name, pred, arg = null, timeout = 3000) => { const ok = await tp.waitForFunction(pred, arg, { timeout }).then(() => true, () => false); checks.push([name, ok]); };
@@ -205,6 +220,11 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   await expect('slide down drifts', () => { const r = window.__dr.race.player.inp; return r.throttle === 1 && r.handbrake === 1; });
   await touch('touchMove', [[w.x - 35, w.y - 35], [p.x - 45, p.y]]);
   await expect('slide left brakes', () => { const r = window.__dr.race.player.inp; return r.brake === 1 && r.throttle === 0 && !r.handbrake; });
+  // slide the Gas thumb up onto Fire: it fires, still on the gas
+  await touch('touchMove', [[w.x - 35, w.y - 35], [p.x, p.y]]);
+  await tp.evaluate(() => { const P = window.__dr.race.player; window.__dr.race.weapons = true; P.wpn.item = 'oil'; P.wpn.uses = 1; });
+  await touch('touchMove', [[w.x - 35, w.y - 35], [p.x, p.y - 30]]); await touch('touchMove', [[w.x - 35, w.y - 35], [p.x, p.y - 70]]);
+  await expect('slide up fires, gas still on', () => { const P = window.__dr.race.player; return !P.wpn.item && P.inp.throttle === 1; });
   await touch('touchEnd', []);
   await expect('release', () => { const r = window.__dr.race.player.inp; return !r.throttle && !r.brake && !r.handbrake && Math.abs(r.steer) < 0.05; });
   await tp.screenshot({ path: path.join(outDir, 'touch-landscape.png') });

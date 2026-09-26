@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { _c, _e, _m, _p, _q, _s } from '../geometry.js';
 import { scene } from '../renderer.js';
+import { G } from '../../game.js';
 
 // ---------- particles & skids ----------
 export const PMAX = 500;
@@ -25,7 +26,7 @@ export function updateParticles(dt) {
     if (p.age >= p.life) { _m.makeScale(0, 0, 0); pMesh.setMatrixAt(i, _m); continue; }
     p.vy -= p.g * dt; const dr = Math.exp(-dt * 2.2); p.vx *= dr; p.vz *= dr;
     p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
-    const t = p.age / p.life, s = p.s * Math.min(1, t * 8) * (1 - t) * 1.4;
+    const t = p.age / p.life, s = p.s * Math.min(1, t * 8) * (1 - t) * (G.persp ? 0.6 : 1.4);   // sized for the high camera; up close they'd fill the screen
     _e.set(p.age * 3, p.age * 2, 0); _q.setFromEuler(_e); _p.set(p.x, p.y, p.z); _s.set(s, s, s); _m.compose(_p, _q, _s); pMesh.setMatrixAt(i, _m);
   }
   pMesh.instanceMatrix.needsUpdate = true; if (pColorDirty) { pMesh.instanceColor.needsUpdate = true; pColorDirty = false; }

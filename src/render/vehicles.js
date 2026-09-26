@@ -270,7 +270,7 @@ export function updateCarVisuals(dt, now) {
   const P = race.player;
   const L = sd && G.state !== 'menu' && sd.holder >= 0 ? race.cars[sd.holder] : null;   // the crown sits on its holder
   marker.position.set(P.dx ?? P.x, (P.dy ?? P.y) + (L === P ? 5.4 : 3.6) + Math.sin(now * 4) * 0.25, P.dz ?? P.z); marker.rotation.y = now * 1.5;
-  marker.visible = G.state !== 'menu';
+  marker.visible = G.state !== 'menu' && !(G.persp && G.camMode !== 'heli' && G.camMode !== 'tv');   // from behind the car you know which one is you
   crown.visible = !!L;
   if (L) { crown.position.set(L.dx ?? L.x, (L.dy ?? L.y) + 3.1 + Math.sin(now * 3) * 0.15, L.dz ?? L.z); crown.rotation.y = now * 0.8; }
 }

@@ -47,7 +47,14 @@ On phones (portrait or landscape) the left thumb points a steering wheel: the ca
 the thumb points from the wheel's centre (`groundDir` in `core/sim/view.js`). The
 right thumb rests on Gas: slide it down to drift, left to brake/reverse, without lifting it (`src/ui/input.js`).
 "Steering: Wheel / Arrows" (menu and pause screen, touch devices only) swaps the wheel for left/right arrows;
-slide between them without lifting. The choice is remembered.
+slide between them without lifting. The choice is remembered. Fire and Door sit right above Gas: slide the Gas thumb
+up onto Fire to fire without letting off (`src/ui/input.js`); the Fire button shows what you hold and flashes red on
+a missile lock. Phones get a slim standings list (the leader, the car ahead, you).
+
+**Cameras** (C, or the menu / pause buttons; `src/render/camera.js`): the top-down orthographic views Classic,
+Overhead, Low and Chase, and perspective views Behind (close behind the car), Follow, Heli, Bonnet and TV (trackside
+cameras up the road). Zoom (Close, Near, Normal, Far) scales the view or the distance behind the car. Showdown, Deuce
+and Tiebreak judge "off the screen" on the top-down view, so there the perspective views fall back to Chase.
 
 ## Quick start
 

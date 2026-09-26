@@ -10,6 +10,7 @@ import { toggleOverlay } from '../render/overlay.js';
 import { saveCamera, saveSteer } from './storage.js';
 import { CAM_MODES, CAM_ZOOMS } from '../render/camera.js';
 import { race, selected, startRace, togglePause } from './flow.js';
+import { callout } from './hud.js';
 
 // ---------- input ----------
 export const keys = {}, touch = { dir: null, wheel: false, left: false, right: false, gas: false, brake: false, hb: false };
@@ -26,7 +27,7 @@ addEventListener('keydown', e => {
     if (e.code === 'KeyF') race.player.inp.fire = true;
     if (e.code === 'KeyQ' || e.code === 'KeyE') race.player.inp.door = 1;          // the side is picked for you: wherever a car is
   }
-  if (e.code === 'KeyC' && G.state !== 'menu') setCamera(nextCamera());           // cycle the camera
+  if (e.code === 'KeyC' && G.state !== 'menu') { setCamera(nextCamera()); callout('Camera: ' + CAM_MODES[G.camMode].name); }   // cycle the camera
   if (e.code === 'Backquote') toggleOverlay();                              // debug overlay (render/overlay.js)
   if (e.code === 'Enter' && G.state === 'menu' && $('loading').hidden && $('league').hidden && document.activeElement === document.body) startRace(selected);
 });
@@ -77,14 +78,19 @@ export function setSteer(m) {
   wheel.hidden = G.steer !== 'wheel'; arrows.hidden = G.steer !== 'arrows';
   for (const b of document.querySelectorAll('.steer-btn')) b.textContent = 'Steering: ' + (G.steer === 'wheel' ? 'Wheel' : 'Arrows');
 }
-// pedal: holding is gas; slide down to drift (gas stays on), slide left to brake/reverse. The anchor follows the finger
-// up and right, so the slides are always measured from the thumb's resting spot.
+// pedal: holding is gas; slide down to drift (gas stays on), slide left to brake/reverse, slide up onto the Fire button
+// (right above Gas) to fire, still on the gas. The anchor follows the finger up and right, so the slides are always
+// measured from the thumb's resting spot; `up` adds up the climb, and fires once per slide (come back down to re-arm).
+let up = 0;
 thumbZone($('pedal-zone'), (dx, dy) => {
   const down = dy > SLIDE * (touch.hb ? 0.6 : 1), left = -dx > SLIDE * (touch.brake ? 0.6 : 1);
   touch.hb = down && dy >= -dx; touch.brake = left && !touch.hb; touch.gas = !touch.brake;
   pedal.classList.toggle('on', touch.gas && !touch.hb); pedal.classList.toggle('hb', touch.hb); pedal.classList.toggle('brk', touch.brake);
+  if (dy < 0) up += dy; else if (dy > 12) up = Math.min(0, up + dy);
+  if (up < -SLIDE * 1.6 && up > -1e4) { up = -1e5; if (G.state === 'racing' && race && race.weapons) race.player.inp.fire = true; $('wpn-fire').classList.add('hit'); setTimeout(() => $('wpn-fire').classList.remove('hit'), 180); }
+  else if (up <= -1e4 && dy > 12) up = 0;                                                   // back down: armed again
   return dx > 0 || dy < 0 ? [Math.max(0, dx), Math.min(0, dy)] : null;
-}, () => { touch.gas = touch.brake = touch.hb = false; pedal.className = ''; });
+}, () => { touch.gas = touch.brake = touch.hb = false; pedal.className = ''; up = 0; });
 export function readInput(dt) {
   const P = race.player, gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g) : null;
   let st = (keys.ArrowRight || keys.KeyD || touch.right ? 1 : 0) - (keys.ArrowLeft || keys.KeyA || touch.left ? 1 : 0);
