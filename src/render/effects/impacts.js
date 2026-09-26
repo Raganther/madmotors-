@@ -30,17 +30,17 @@ export function paintChips(car, x, y, z, n, dirx, dirz, hint) {
 export function glassBits(x, y, z, n, hint) { for (let k = 0; k < n; k++) { const s = 0.08 + Math.random() * 0.12; debris(x, y + 1.2, z, (Math.random() - 0.5) * 10, 3 + Math.random() * 5, (Math.random() - 0.5) * 10, 0xBFE6F5, s, s, s, 1.2 + Math.random(), hint); } }
 export function impactFx(c, e, isPlayer, near) {
   const v = e.v, fx = wallFx(e.w), mag = clamp(v / 18, 0.15, 1.6), hint = c.pr.i;
-  const n = Math.round((10 + v * 1.5) * fx.n * (near ? 1 : 0.5));
+  const n = Math.round((6 + v * 0.8) * fx.n * (near ? 1 : 0.5));
   for (let k = 0; k < n; k++) {
     const [lo, hi] = fx.size, s = (lo + Math.random() * (hi - lo)) * 1.3, sp = 4 + Math.random() * (4 + v * 0.7);
     const sx = fx.splinter ? s * 2.4 : s, sz = fx.splinter ? s * 0.35 : s;
     debris(e.x, e.y + 0.7, e.z, -e.nx * sp * 0.7 + c.vx * 0.45 + (Math.random() - 0.5) * 9, 4 + Math.random() * (4 + v * 0.45), -e.nz * sp * 0.7 + c.vz * 0.45 + (Math.random() - 0.5) * 9,
       fx.cols[k % fx.cols.length], sx, s * (fx.splinter ? 0.3 : 0.8), sz, 1.6 + Math.random() * 1.8, hint);
   }
-  if (v > 7) paintChips(c, e.x, e.y, e.z, Math.round(v * 0.35), -e.nx, -e.nz, hint);
-  if (v > 16) glassBits(e.x, e.y, e.z, 6, hint);
-  if (fx.sparks) sparks(e.x, e.y, e.z, Math.round(v * 0.9 * fx.sparks), (c.vx - e.nx * 3) / (Math.hypot(c.vx, c.vz) + 3), (c.vz - e.nz * 3) / (Math.hypot(c.vx, c.vz) + 3));
-  for (let k = 0; k < 6 + v * 0.4; k++) emit(e.x, e.y + 0.5, e.z, (Math.random() - 0.5) * 6 - e.nx * 2, 1 + Math.random() * 3, (Math.random() - 0.5) * 6 - e.nz * 2, 0.6 + Math.random() * 0.5, 1 + Math.random(), fx.dust, 1);
+  if (v > 7) paintChips(c, e.x, e.y, e.z, Math.round(v * 0.2), -e.nx, -e.nz, hint);
+  if (v > 16) glassBits(e.x, e.y, e.z, 4, hint);
+  if (fx.sparks) sparks(e.x, e.y, e.z, Math.round(v * 0.6 * fx.sparks), (c.vx - e.nx * 3) / (Math.hypot(c.vx, c.vz) + 3), (c.vz - e.nz * 3) / (Math.hypot(c.vx, c.vz) + 3));
+  for (let k = 0; k < 4 + v * 0.25; k++) emit(e.x, e.y + 0.5, e.z, (Math.random() - 0.5) * 6 - e.nx * 2, 1 + Math.random() * 3, (Math.random() - 0.5) * 6 - e.nz * 2, 0.6 + Math.random() * 0.5, 1 + Math.random(), fx.dust, 1);
   shockwave(e.x, e.y, e.z, 2 + mag * 4, fx.sparks > 1 ? 0xFFE08A : 0xFFFFFF);
   const vis = visOf(c); if (vis) vis.wobble = Math.min(0.3, (vis.wobble || 0) + mag * 0.12);
   if (v > 14) c.smokeT = Math.max(c.smokeT || 0, 1.8);
@@ -49,10 +49,10 @@ export function impactFx(c, e, isPlayer, near) {
 }
 export function carCrashFx(e, playerInvolved, near) {
   const v = e.v, A = e.a, B = e.b, mag = clamp(v / 16, 0.2, 1.5), hint = A.pr.i;
-  paintChips(A, e.x, e.y, e.z, Math.round(4 + v * 0.5), -e.nx, -e.nz, hint);
-  paintChips(B, e.x, e.y, e.z, Math.round(4 + v * 0.5), e.nx, e.nz, hint);
-  if (v > 10) glassBits(e.x, e.y, e.z, 4 + Math.round(v * 0.2), hint);
-  sparks(e.x, e.y, e.z, Math.round(8 + v * 1.1), -e.nz, e.nx); sparks(e.x, e.y, e.z, Math.round(4 + v * 0.5), e.nz, -e.nx);   // sprayed both ways along the contact
+  paintChips(A, e.x, e.y, e.z, Math.round(2 + v * 0.3), -e.nx, -e.nz, hint);
+  paintChips(B, e.x, e.y, e.z, Math.round(2 + v * 0.3), e.nx, e.nz, hint);
+  if (v > 10) glassBits(e.x, e.y, e.z, 2 + Math.round(v * 0.12), hint);
+  sparks(e.x, e.y, e.z, Math.round(5 + v * 0.7), -e.nz, e.nx); sparks(e.x, e.y, e.z, Math.round(2 + v * 0.3), e.nz, -e.nx);   // sprayed both ways along the contact
   shockwave(e.x, e.y, e.z, 2 + mag * 3.5, 0xFFFFFF);
   for (const car of [A, B]) { const vis = visOf(car); if (vis) vis.wobble = Math.min(0.3, (vis.wobble || 0) + mag * 0.14); if (v > 13) car.smokeT = Math.max(car.smokeT || 0, 1.4); }
   if (playerInvolved) { G.shake = Math.min(1.4, G.shake + mag * 0.8); if (v > 13) G.slowmo = Math.max(G.slowmo, 0.2); }
@@ -61,6 +61,6 @@ export function carCrashFx(e, playerInvolved, near) {
 // sparks: bright streaks, plus a few glowing embers for body
 export function sparks(x, y, z, n, dx = 0, dz = 0) {
   sparkBurst(x, y + 0.6, z, Math.round(n * 1.4), dx, dz, 12 + n * 0.1);
-  for (let i = 0; i < n * 0.3; i++) emit(x, y + 0.6, z, (Math.random() - 0.5) * 12, 3 + Math.random() * 6, (Math.random() - 0.5) * 12, 0.3 + Math.random() * 0.25, 0.3, Math.random() < 0.5 ? 0xFFF4B0 : 0xFF8A2E, 26);
+  for (let i = 0; i < n * 0.2; i++) emit(x, y + 0.6, z, (Math.random() - 0.5) * 12, 3 + Math.random() * 6, (Math.random() - 0.5) * 12, 0.3 + Math.random() * 0.25, 0.3, Math.random() < 0.5 ? 0xFFF4B0 : 0xFF8A2E, 26);
 }
 export function dustRing(c, n, col, sp = 5, sz = 1.1) { for (let i = 0; i < n; i++) { const a = i / n * TAU; emit(c.x + Math.cos(a) * 1.4, c.y + 0.2, c.z + Math.sin(a) * 1.4, Math.cos(a) * sp, 1 + Math.random(), Math.sin(a) * sp, 0.7, sz, col, 1); } }

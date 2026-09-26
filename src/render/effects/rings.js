@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { scene } from '../renderer.js';
+import { G } from '../../game.js';
 
 export const rings = [];
 export function initRings() {
@@ -10,4 +11,4 @@ export function initRings() {
 }
 export let ringIdx = 0;
 export function shockwave(x, y, z, size, color) { const r = rings[ringIdx]; ringIdx = (ringIdx + 1) % rings.length; r.m.position.set(x, y + 0.25, z); r.m.material.color.set(color || 0xFFF3C4); r.t = 0; r.max = size; r.m.visible = true; }
-export function updateRings(dt) { for (const r of rings) { if (r.t >= 1) continue; r.t += dt / 0.38; const k = Math.min(1, r.t), e = 1 - Math.pow(1 - k, 3); r.m.scale.setScalar(0.6 + e * r.max); r.m.material.opacity = 0.85 * (1 - k); if (k >= 1) r.m.visible = false; } }
+export function updateRings(dt) { for (const r of rings) { if (r.t >= 1) continue; r.m.material.depthTest = !G.persp; /* from behind the car a ring over everything fills the screen */ r.t += dt / 0.38; const k = Math.min(1, r.t), e = 1 - Math.pow(1 - k, 3); r.m.scale.setScalar(0.6 + e * r.max); r.m.material.opacity = 0.85 * (1 - k); if (k >= 1) r.m.visible = false; } }

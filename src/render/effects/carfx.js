@@ -9,7 +9,7 @@ import { G } from '../../game.js';
 
 // what flies up from the wheels on each surface: dust, grass, clods of mud, a spray of water
 const SURF_FX = { tarmac: { rate: 0, col: 0xE8E8E8, up: 1.5, size: 0.8, back: 0.12 }, gravel: { rate: 1.1, col: 0xD8C29A, up: 1.5, size: 0.8, back: 0.12 }, grass: { rate: 0.6, col: 0x8E9A5B, up: 1.5, size: 0.8, back: 0.12 },
-  mud: { rate: 2.6, col: 0x8A6440, col2: 0x5A3E26, up: 4, size: 0.9, back: 0.35 }, ford: { rate: 3.2, col: 0xF2F8FF, up: 4.5, size: 1.5, back: 0.25 },   // mud: rooster tails of clods
+  mud: { rate: 2.6, col: 0x8A6440, col2: 0x5A3E26, up: 4, size: 0.9, back: 0.35, clods: true }, ford: { rate: 3.2, col: 0xF2F8FF, up: 4.5, size: 1.5, back: 0.25 },   // mud: rooster tails of clods
   snow: { rate: 1.3, col: 0xF6F9FF, col2: 0xDDE8F4, up: 2.2, size: 1, back: 0.2 }, powder: { rate: 1.8, col: 0xFFFFFF, col2: 0xE4EEF8, up: 3.2, size: 1.2, back: 0.25 },
   ice: { rate: 0.25, col: 0xE8F6FF, up: 1, size: 0.5, back: 0.1 } };
 /** What the wheels are in, for looks: off the road on a snow stage it's deep powder, not grass. */
@@ -38,7 +38,7 @@ export function effectsForCar(c, v, dt) {
     v.emitAcc += rate * dt;
     while (v.emitAcc > 1) {
       v.emitAcc -= 1; const s = Math.random() < 0.5 ? 1 : -1;
-      emit(c.x - fx * 1.5 - fz * 0.9 * s, c.y + 0.3, c.z - fz * 1.5 + fx * 0.9 * s, -c.vx * F.back + (Math.random() - 0.5) * 3, F.up + Math.random() * 2.5, -c.vz * F.back + (Math.random() - 0.5) * 3, 0.6 + Math.random() * 0.5, F.size + Math.random() * 0.8, F.col2 && Math.random() < 0.5 ? F.col2 : F.col, 2);
+      emit(c.x - fx * 1.5 - fz * 0.9 * s, c.y + 0.3, c.z - fz * 1.5 + fx * 0.9 * s, -c.vx * F.back + (Math.random() - 0.5) * 3, F.up + Math.random() * 2.5, -c.vz * F.back + (Math.random() - 0.5) * 3, 0.6 + Math.random() * 0.5, F.size + Math.random() * 0.8, ...(F.col2 && Math.random() < 0.5 ? [F.col2, 2, F.clods ? 'solid' : 'soft'] : [F.col, 2]));
     }
   }
   if (c.scrape) {
@@ -61,8 +61,8 @@ export function effectsForCar(c, v, dt) {
   if (c.draft > 0.3 && sp > 15) { v.draftAcc = (v.draftAcc || 0) + c.draft * 22 * dt;
     while (v.draftAcc > 1) { v.draftAcc -= 1; const s = Math.random() < 0.5 ? 1 : -1; emit(c.x + fx * 1.8 - fz * 1.1 * s, c.y + 0.5 + Math.random() * 0.8, c.z + fz * 1.8 + fx * 1.1 * s, c.vx * 0.55, 0, c.vz * 0.55, 0.3, 0.35, 0xF2F6FF, 0); } }
   const wear = carWear(c);
-  if (c.wreckT > 0 && Math.random() < 0.8) emit(c.x + fx * 1.3 + (Math.random() - 0.5), c.y + 1.1, c.z + fz * 1.3 + (Math.random() - 0.5), (Math.random() - 0.5) * 2, 3 + Math.random() * 3, (Math.random() - 0.5) * 2, 0.35 + Math.random() * 0.3, 0.9, Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -3);
-  if (wear > 0.35 && Math.random() < (wear - 0.25) * 1.3) emit(c.x + fx * 1.4 + (Math.random() - 0.5) * 0.6, c.y + 1.0, c.z + fz * 1.4 + (Math.random() - 0.5) * 0.6, -c.vx * 0.15 + (Math.random() - 0.5), 1.5 + Math.random() * 1.5, -c.vz * 0.15 + (Math.random() - 0.5), 0.8 + Math.random() * 0.6, 0.8 + wear, wear > 0.7 ? 0x3C3C3C : 0x9A9A9A, -1.5);
-  if (c.smokeT > 0) { c.smokeT -= dt; if (Math.random() < 0.5) emit(c.x + (Math.random() - 0.5), c.y + 1.2, c.z + (Math.random() - 0.5), -c.vx * 0.1 + (Math.random() - 0.5), 2 + Math.random() * 2, -c.vz * 0.1 + (Math.random() - 0.5), 0.9 + Math.random() * 0.6, 1.1 + Math.random() * 0.8, Math.random() < 0.5 ? 0x4A4A4A : 0x6E6E6E, -1.5); }
+  if (c.wreckT > 0 && Math.random() < 0.45) emit(c.x + fx * 1.3 + (Math.random() - 0.5), c.y + 1.1, c.z + fz * 1.3 + (Math.random() - 0.5), (Math.random() - 0.5) * 2, 3 + Math.random() * 3, (Math.random() - 0.5) * 2, 0.35 + Math.random() * 0.3, 0.9, Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -3);
+  if (wear > 0.35 && Math.random() < (wear - 0.25) * 0.6) emit(c.x + fx * 1.4 + (Math.random() - 0.5) * 0.6, c.y + 1.0, c.z + fz * 1.4 + (Math.random() - 0.5) * 0.6, -c.vx * 0.15 + (Math.random() - 0.5), 1.5 + Math.random() * 1.5, -c.vz * 0.15 + (Math.random() - 0.5), 0.8 + Math.random() * 0.6, 0.8 + wear, wear > 0.7 ? 0x3C3C3C : 0x9A9A9A, -1.5);
+  if (c.smokeT > 0) { c.smokeT -= dt; if (Math.random() < 0.3) emit(c.x + (Math.random() - 0.5), c.y + 1.2, c.z + (Math.random() - 0.5), -c.vx * 0.1 + (Math.random() - 0.5), 2 + Math.random() * 2, -c.vz * 0.1 + (Math.random() - 0.5), 0.9 + Math.random() * 0.6, 1.1 + Math.random() * 0.8, Math.random() < 0.5 ? 0x4A4A4A : 0x6E6E6E, -1.5); }
   if (c.boost > 0 && Math.random() < 0.7) emit(c.x - fx * 1.9, c.y + 0.6, c.z - fz * 1.9, -fx * 6 + (Math.random() - 0.5), 0.5, -fz * 6 + (Math.random() - 0.5), 0.25, 0.7, Math.random() < 0.5 ? 0xFFC72C : 0xFF7A2E, 0);
 }

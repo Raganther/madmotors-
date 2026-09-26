@@ -22,13 +22,17 @@ function dirtTex() {
   });
   return tex;
 }
-/** Give a car's panels a dirt layer. */
-export function addDirt(v, panels) {
-  const mat = new THREE.MeshLambertMaterial({ map: dirtTex(), color: 0xB49A74, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
+/** Give a car's panels a dirt layer, and its wheels one of their own: tyres and hubs muck up first and darkest. */
+export function addDirt(v, panels, wheels = []) {
+  const mk = () => new THREE.MeshLambertMaterial({ map: dirtTex(), color: 0xB49A74, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
+  const mat = mk(), wmat = mk();
   for (const m of panels) { const o = new THREE.Mesh(m.geometry, mat); o.renderOrder = 1; m.add(o); }
-  v.dirt = { amt: 0, mat, col: new THREE.Color(0xB49A74), tmp: new THREE.Color() };
+  for (const w of wheels) w.traverse(m => { if (m.isMesh && !m.userData.dirt) { const o = new THREE.Mesh(m.geometry, wmat); o.userData.dirt = true; o.renderOrder = 1; o.scale.setScalar(1.01); m.add(o); } });
+  v.dirt = { amt: 0, mat, wmat, col: new THREE.Color(0xB49A74), tmp: new THREE.Color() };
 }
-export function resetDirt(v) { if (v.dirt) { v.dirt.amt = 0; v.dirt.mat.opacity = 0; } }
+export function resetDirt(v) { if (v.dirt) { v.dirt.amt = 0; v.dirt.mat.opacity = 0; v.dirt.wmat.opacity = 0; } }
+// the body shows the muck at its level; the wheels, which sit in it, at three times that, caked paler than the rubber
+function show(D) { D.mat.color.copy(D.col); D.mat.opacity = Math.min(0.95, D.amt * 1.3); D.wmat.color.copy(D.col).multiplyScalar(1.45); D.wmat.opacity = Math.min(0.97, D.amt * 3); }   /* caked mud dries paler than the tyre under it */
 // following a car through a bog: its rooster tail lands on you
 function inSpray(c) {
   if (!race) return false;
@@ -41,12 +45,12 @@ function inSpray(c) {
 }
 export function updateDirt(c, v, dt) {
   const D = v.dirt; if (!D) return;
-  if (inSpray(c)) { D.amt = Math.min(1, D.amt + 0.35 * dt); D.col.lerp(D.tmp.setHex(MUCK.mud.col), Math.min(1, dt * 2)); D.mat.color.copy(D.col); D.mat.opacity = Math.min(0.95, D.amt * 1.3); }
+  if (inSpray(c)) { D.amt = Math.min(1, D.amt + 0.35 * dt); D.col.lerp(D.tmp.setHex(MUCK.mud.col), Math.min(1, dt * 2)); show(D); }
   if (!c.onGround) return;
   const M = MUCK[fxSurf(c)] || MUCK.tarmac, sp = Math.hypot(c.vx, c.vz); if (sp < 2) return;
   const add = M.rate * dt * Math.min(1.5, sp / 20);
   if (add > 0 && M.col !== null) D.col.lerp(D.tmp.setHex(M.col), Math.min(1, add / (D.amt + add) * 1.5));
   if (c.surface === 'ford') D.amt = Math.max(Math.min(D.amt, 0.35), D.amt + add);   // the splash rinses off the worst of it
   else D.amt = Math.min(1, Math.max(0, D.amt + add));
-  D.mat.color.copy(D.col); D.mat.opacity = Math.min(0.95, D.amt * 1.3);
+  show(D);
 }

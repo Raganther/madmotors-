@@ -36,6 +36,13 @@ the last pick is the default for stages with none yet. The stage list shows each
 vehicles that suit the stage (off-road stats on gravel and snow, speed and grip on tarmac), and the league screen has a
 car button per round.
 
+**Effects and damage** (`src/render/effects/`): particles come in two kinds (`particles.js`): soft, see-through
+puffs for smoke, dust, spray and flame (one point sprite each, swelling as they fade, thinned out when the screen is
+already busy) and small solid lumps for things with weight (mud clods, oil, embers). A wrecked car breaks apart:
+`breakApart` in `pieces.js` throws its real wheels, bumper, wing and lights down the road and the shell drops onto its
+belly until it's repaired; `flingPiece` knocks off a single part (a bumper on a big hit, the wheel on a side stove in).
+It's meant for a destruction derby too. Dirt builds up on the wheels (thickest there) as well as the body (`dirt.js`).
+
 Catch-up, in both modes: a car tucked in 3-20 m behind another gets a slipstream tow (`PHYS.DRAFT`), and once a
 leader pulls clear (35 m, or 8 s holding the crown) leader hazards appear ~3 s ahead of it (`core/features/hazards.js`):
 cows ambling across or an oil slick on one side, always behind a warning sign, always with a gap, 6-9 s apart.

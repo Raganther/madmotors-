@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { breakApart, flingPiece } from './effects/pieces.js';
 import { G } from '../game.js';
 import { AudioSys } from '../audio/audio.js';
 import { CAR_HL, CAR_HW } from '../core/constants.js';
@@ -10,7 +11,6 @@ import { effectsForCar } from './effects/carfx.js';
 import { debris } from './effects/debris.js';
 import { glassBits, sparks } from './effects/impacts.js';
 import { emit } from './effects/particles.js';
-import { spawnProp } from './effects/props.js';
 import { shockwave } from './effects/rings.js';
 import { _p, _q, _s, disposeGroup, flat, radialTex } from './geometry.js';
 import { getCrackTex } from './materials.js';
@@ -41,7 +41,7 @@ export function makeCarMesh(def) {
   scene.add(root);
   const v = { root, body, wheels: m.wheels, steer: m.steer, wr: m.wr, soft: m.soft || 1, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
     dentable: m.dentable, bumper: m.bumper, wing: m.wing, struts: m.struts, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
-  v.anim = m.anim; v.def = def; addCarExtras(v, m.tails, def.hw || CAR_HW, def.hl || CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin)); return v;
+  v.anim = m.anim; v.def = def; addCarExtras(v, m.tails, def.hw || CAR_HW, def.hl || CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin), m.wheels); return v;
 }
 // push the bodywork in around a contact point (car-local coords), deterministic per vertex so shared corners stay welded
 export function dentMesh(v, lx, ly, lz, ix, iz, depth, radius) {
@@ -60,12 +60,9 @@ export function dentMesh(v, lx, ly, lz, ix, iz, depth, radius) {
 }
 export function toCarLocal(c, x, z) { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), dx = x - c.x, dz = z - c.z; return [dx * fz - dz * fx, dx * fx + dz * fz]; }
 export function detachPart(c, v, m) {
-  if (!m.visible) return;
-  const { dims, color } = m.userData.home;
-  m.updateWorldMatrix(true, false); m.matrixWorld.decompose(_p, _q, _s);
+  if (!m || !m.visible) return;
   const r = () => Math.random() - 0.5;
-  spawnProp('box', _p.clone(), _q.clone(), dims, color, c.vx * 0.55 + r() * 5, 3 + Math.random() * 4, c.vz * 0.55 + r() * 5, 9, 'metal');
-  m.visible = false;
+  flingPiece(m, c.vx * 0.55 + r() * 5, 3 + Math.random() * 4, c.vz * 0.55 + r() * 5, 9, { hint: c.pr.i });   // the real part, not a stand-in box
 }
 export function updateCarDamageVis(c, v) {
   const d = c.dmg, P = v.parts;
@@ -82,7 +79,7 @@ export function repairCarVis(v) {
   for (const m of [v.bumper, v.wing, ...v.struts]) { const h = m.userData.home; m.position.copy(h.p); m.rotation.copy(h.r); m.visible = true; }
   v.heads.forEach(m => m.visible = true); v.tails.forEach(m => m.visible = true); v.cabin.material = v.glassM;
   v.parts = { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 }; v.wreckFx = 0;
-  v.flipA = 0; v.flipV = 0; v.wheels.forEach(w => w.visible = true);   // pooled road-car meshes come back whole
+  v.flipA = 0; v.flipV = 0; v.wheels.forEach(w => w.visible = true); v.broken = false; v.sag = 0;   // pooled road-car meshes come back whole
 }
 export function visOf(c) { return c.traffic ? c.vis : carVis[race.cars.indexOf(c)]; }
 export function dentFx(c, e) {
@@ -90,12 +87,17 @@ export function dentFx(c, e) {
   const [lx, lz] = toCarLocal(c, e.x, e.z), [ix, iz] = (() => { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); return [e.ix * fz - e.iz * fx, e.ix * fx + e.iz * fz]; })();
   dentMesh(v, lx, 0.8, lz, ix, iz, clamp(e.amt * 1.4, 0.04, 0.35), 0.8 + clamp(e.v * 0.03, 0, 0.7));
   updateCarDamageVis(c, v);
+  // a side stove right in: the wheel nearest the hit comes off (the car drives on; it's back after a repair)
+  if ((e.zone === 'l' || e.zone === 'r') && c.dmg[e.zone] > 0.8 && e.v > 9) {
+    let best = null, bd = 9; for (const w of v.wheels) { if (!w.visible) continue; w.getWorldPosition(_p); const d = Math.hypot(_p.x - e.x, _p.z - e.z); if (d < bd) { bd = d; best = w; } }
+    if (best) { best.getWorldPosition(_p); const dx = _p.x - c.x, dz = _p.z - c.z, dl = Math.hypot(dx, dz) || 1; flingPiece(best, c.vx * 0.6 + dx / dl * 5, 5 + Math.random() * 3, c.vz * 0.6 + dz / dl * 5, 10, { hint: c.pr.i }); }
+  }
 }
 export function wreckFx(c, isPlayer, near) {
   const v = visOf(c);
-  sparks(c.x, c.y, c.z, 30); shockwave(c.x, c.y, c.z, 7, 0xFFB03A);
-  for (let k = 0; k < 26; k++) emit(c.x + (Math.random() - 0.5) * 2, c.y + 0.8, c.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 7, 2 + Math.random() * 4, (Math.random() - 0.5) * 7, 1 + Math.random(), 1.4 + Math.random(), k % 3 ? 0x3A3A3A : 0xFF8A2E, -1);
-  if (v) { detachPart(c, v, v.bumper); detachPart(c, v, v.wing); v.wreckFx = 1; }
+  sparks(c.x, c.y, c.z, 16); shockwave(c.x, c.y, c.z, 7, 0xFFB03A);
+  for (let k = 0; k < 12; k++) emit(c.x + (Math.random() - 0.5) * 2, c.y + 0.8, c.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 7, 2 + Math.random() * 4, (Math.random() - 0.5) * 7, 1 + Math.random(), 1.4 + Math.random(), k % 3 ? 0x3A3A3A : 0xFF8A2E, -1);
+  if (v) { breakApart(c, v, { power: 1 }); v.wreckFx = 1; }                          // wheels, bumper, wing and lights fly off
   c.smokeT = WRECK_T;
   if (isPlayer) { G.shake = Math.min(1.6, G.shake + 1.2); G.slowmo = Math.max(G.slowmo, 0.3); if (!race.sd) callout('Wrecked!'); }
   if (isPlayer || near) AudioSys.crash('car', isPlayer ? 1 : 0.5);
@@ -105,17 +107,15 @@ export function wreckFx(c, isPlayer, near) {
 export function takedownFx(c, e, isPlayer, near) {
   const v = visOf(c), col = c.def.color, hint = c.pr.i, big = c.def.kind === 'truck' ? 1.4 : c.def.kind === 'van' ? 1.2 : 1;
   shockwave(c.x, c.y, c.z, 10 * big, 0xFFB03A); shockwave(c.x, c.y + 0.5, c.z, 5 * big, 0xFFF1B0);
-  sparks(e.x, e.y, e.z, Math.round(40 + e.v * 1.5), e.nx, e.nz); sparks(c.x, c.y, c.z, 30);
-  for (let k = 0; k < 34 * big; k++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 6; emit(c.x, c.y + 1, c.z, Math.cos(a) * r + c.vx * 0.3, 3 + Math.random() * 7, Math.sin(a) * r + c.vz * 0.3, 0.45 + Math.random() * 0.5, 1.5 + Math.random() * 1.5, k % 3 === 0 ? 0xFFE27A : k % 3 === 1 ? 0xFFB03A : 0xFF5A1E, 3); }
-  for (let k = 0; k < 16; k++) emit(c.x + (Math.random() - 0.5) * 2, c.y + 1.5, c.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2 + c.vx * 0.2, 4 + Math.random() * 4, (Math.random() - 0.5) * 2 + c.vz * 0.2, 1.8 + Math.random(), 2.4 + Math.random() * 1.6, k % 2 ? 0x2E2E2E : 0x4A4A4A, -1.5);
-  // flying parts: its wheels, panels in its paint, trim, glass
-  const S = TRAFFIC_SHAPES[c.def.kind], fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
-  if (S) for (const [sx, sz] of S.wheels) { const wx = c.x + fz * -sx + fx * sz, wz = c.z - fx * -sx + fz * sz; debris(wx, c.y + 0.3, wz, c.vx * 0.6 + (wx - c.x) * 4 + (Math.random() - 0.5) * 6, 5 + Math.random() * 6, c.vz * 0.6 + (wz - c.z) * 4 + (Math.random() - 0.5) * 6, 0x1E1E22, S.wr * 2, S.wr * 2, 0.36, 5 + Math.random() * 2, hint); }
-  for (let k = 0; k < 10 * big; k++) { const s = 0.35 + Math.random() * 0.6; debris(c.x, c.y + 1, c.z, c.vx * 0.5 + e.nx * 6 + (Math.random() - 0.5) * 12, 4 + Math.random() * 8, c.vz * 0.5 + e.nz * 6 + (Math.random() - 0.5) * 12, k % 3 ? col : 0x2B2F3A, s * 1.6, s * 0.18, s, 4 + Math.random() * 2, hint); }
+  sparks(e.x, e.y, e.z, Math.round(24 + e.v * 0.8), e.nx, e.nz); sparks(c.x, c.y, c.z, 14);
+  for (let k = 0; k < 16 * big; k++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 6; emit(c.x, c.y + 1, c.z, Math.cos(a) * r + c.vx * 0.3, 3 + Math.random() * 7, Math.sin(a) * r + c.vz * 0.3, 0.45 + Math.random() * 0.5, 1.5 + Math.random() * 1.5, k % 3 === 0 ? 0xFFE27A : k % 3 === 1 ? 0xFFB03A : 0xFF5A1E, 3); }
+  for (let k = 0; k < 8; k++) emit(c.x + (Math.random() - 0.5) * 2, c.y + 1.5, c.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2 + c.vx * 0.2, 4 + Math.random() * 4, (Math.random() - 0.5) * 2 + c.vz * 0.2, 1.8 + Math.random(), 2.4 + Math.random() * 1.6, k % 2 ? 0x2E2E2E : 0x4A4A4A, -1.5);
+  // flying parts: panels in its paint, trim, glass (its real wheels go with breakApart below)
+  for (let k = 0; k < 6 * big; k++) { const s = 0.35 + Math.random() * 0.6; debris(c.x, c.y + 1, c.z, c.vx * 0.5 + e.nx * 6 + (Math.random() - 0.5) * 12, 4 + Math.random() * 8, c.vz * 0.5 + e.nz * 6 + (Math.random() - 0.5) * 12, k % 3 ? col : 0x2B2F3A, s * 1.6, s * 0.18, s, 4 + Math.random() * 2, hint); }
   glassBits(c.x, c.y, c.z, 10, hint);
   if (v) {
-    detachPart(c, v, v.bumper); detachPart(c, v, v.wing); v.wreckFx = 1;
-    v.paint.color.lerp(_scorch, 0.8); v.wheels.forEach(w => w.visible = false); v.heads.forEach(m => m.visible = false); v.tails.forEach(m => m.visible = false);
+    breakApart(c, v, { power: 1.3 }); v.wreckFx = 1;
+    v.paint.color.lerp(_scorch, 0.8); v.heads.forEach(m => m.visible = false); v.tails.forEach(m => m.visible = false);
     v.flipV = (Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 5) * (1 / big); v.flipA = 0;
   }
   c.smokeT = 1e9;
@@ -125,16 +125,16 @@ export function takedownFx(c, e, isPlayer, near) {
 const _scorch = new THREE.Color(0x1A1612);
 // Showdown blow-up: a fireball and a smoke column on top of the wreck, in the car's colour
 export function sdBoomFx(c, onScreen) {
-  const col = c.def.color;
+  const col = c.def.color; if (onScreen) breakApart(c, visOf(c), { power: 0.7, keep: true });   // bits of it fly; the car itself is already back behind the leader
   shockwave(c.x, c.y, c.z, 11, col); shockwave(c.x, c.y + 0.4, c.z, 6, 0xFFE08A);
-  for (let k = 0; k < 40; k++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 7; emit(c.x, c.y + 1, c.z, Math.cos(a) * r, 4 + Math.random() * 7, Math.sin(a) * r, 0.5 + Math.random() * 0.5, 1.6 + Math.random() * 1.4, k % 4 === 0 ? col : k % 2 ? 0xFFB03A : 0xFFE27A, 4); }
-  for (let k = 0; k < 18; k++) emit(c.x + (Math.random() - 0.5) * 1.5, c.y + 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, 5 + Math.random() * 4, (Math.random() - 0.5) * 1.5, 1.6 + Math.random() * 0.8, 2.2 + Math.random() * 1.5, 0x3A3A3A, -1.5);
+  for (let k = 0; k < 20; k++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 7; emit(c.x, c.y + 1, c.z, Math.cos(a) * r, 4 + Math.random() * 7, Math.sin(a) * r, 0.5 + Math.random() * 0.5, 1.6 + Math.random() * 1.4, k % 4 === 0 ? col : k % 2 ? 0xFFB03A : 0xFFE27A, 4); }
+  for (let k = 0; k < 9; k++) emit(c.x + (Math.random() - 0.5) * 1.5, c.y + 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, 5 + Math.random() * 4, (Math.random() - 0.5) * 1.5, 1.6 + Math.random() * 0.8, 2.2 + Math.random() * 1.5, 0x3A3A3A, -1.5);
   if (onScreen) { G.shake = Math.min(1.8, G.shake + (c.isPlayer ? 1.4 : 0.7)); AudioSys.crash('car', c.isPlayer ? 1 : 0.8); }
 }
 // Showdown respawn: a ring and sparkles in the car's colour so you can see where it came back
 export function sdSpawnFx(c) {
   shockwave(c.x, c.y, c.z, 6, c.def.color);
-  for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; emit(c.x + Math.cos(a) * 1.6, c.y + 0.4, c.z + Math.sin(a) * 1.6, Math.cos(a) * 3, 2 + Math.random() * 2, Math.sin(a) * 3, 0.5, 0.7, k % 2 ? c.def.color : 0xFFFFFF, 2); }
+  for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; emit(c.x + Math.cos(a) * 1.6, c.y + 0.4, c.z + Math.sin(a) * 1.6, Math.cos(a) * 3, 2 + Math.random() * 2, Math.sin(a) * 3, 0.5, 0.7, k % 2 ? c.def.color : 0xFFFFFF, 2, 'solid'); }
 }
 // civilian vehicles: same part names as the race cars so damage visuals work on them too
 export const TRAFFIC_SHAPES = {
@@ -234,7 +234,8 @@ export function drawCar(c, v, dt, now) {
   if (v.flipV) { if (!c.onGround) v.flipA += v.flipV * dt; else { const tgt = Math.round(v.flipA / Math.PI) * Math.PI; v.flipA += (tgt - v.flipA) * Math.min(1, dt * 8); if (Math.abs(tgt - v.flipA) < 0.01) { v.flipA = tgt; v.flipV = 0; } } }
   v.body.rotation.z = clamp(c.vr * 0.016, -0.18, 0.18) + Math.sin(v.wobT * 32) * v.wobble + (v.flipA || 0);
   v.body.rotation.x = (c.onGround ? -clamp((c.acc || 0) * 0.003, -0.07, 0.07) : clamp(-c.vy * 0.012, -0.3, 0.3)) + Math.cos(v.wobT * 27) * v.wobble * 0.6;
-  c.squash *= Math.exp(-dt * 7); v.body.scale.y = 1 - c.squash * 0.22 / (v.soft || 1); v.body.position.y = -c.squash * 0.08 * (v.soft || 1) + (1 - Math.cos(v.flipA || 0)) * 0.85;   // lifted so a flipped shell rests on its roof
+  c.squash *= Math.exp(-dt * 7); v.body.scale.y = 1 - c.squash * 0.22 / (v.soft || 1); v.sag = (v.sag || 0) + ((v.broken ? 1 : 0) - (v.sag || 0)) * Math.min(1, dt * 6);
+  v.body.position.y = -c.squash * 0.08 * (v.soft || 1) + (1 - Math.cos(v.flipA || 0)) * 0.85 - v.sag * (v.wr || 0.42) * 0.8;   // lifted so a flipped shell rests on its roof; dropped when the wheels are gone   // lifted so a flipped shell rests on its roof
   v.spin += c.vf * dt / (v.wr || 0.42); v.wheels.forEach(w => w.rotation.x = v.spin);
   v.steer.forEach(p => p.rotation.y = -c.inp.steer * 0.42);
   const braking = !v.parts.tails && ((c.inp.brake > 0.05 && c.vf > 0.5) || (c.inp.handbrake > 0 && Math.abs(c.vf) > 3));
