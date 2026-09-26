@@ -18,10 +18,13 @@ leader) with checkpoint gates instead of crown time: a gate stands on one side o
 drive *through* it scores (a leader on the wrong line can miss it). Win by two, like tennis: Deuce is first to 4
 (3-3 is deuce, then advantage), Tiebreak first to 7. The rules are in the same file (`R.sd.kind`, `CP`).
 
-**Weapons** (menu: Weapons on/off, every mode; `src/core/features/weapons.js`): every car carries a homing missile
-(F; reloads in 15 s) that locks on to the nearest car ahead and knocks it up, spinning and slowed, and can swing a
-door into a car alongside (Q / E) to shove it off its line. Tuned to needle rather than decide a race; the AI uses
-both. On touch there are Missile and Door buttons; a gamepad uses B and the bumpers.
+**Weapons** (menu: Weapons on/off, every mode; `src/core/features/weapons.js`): drive through a **?** crate with
+nothing in hand to get one of five weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
+tracers), an oil slick (two, dropped behind), a shockwave (blows the cars round you away and cuts their engines) and a
+harpoon (hooks the car ahead: you're reeled in, they're held back). F fires. Crates are offered up the road to every
+racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets
+missiles and harpoons, the front oil and shockwaves). Q swings a door into the car beside you (the side is picked
+for you). The AI uses all of it. On touch there are Fire and Door buttons; a gamepad uses B and the bumpers.
 
 Catch-up, in both modes: a car tucked in 3-20 m behind another gets a slipstream tow (`PHYS.DRAFT`), and once a
 leader pulls clear (35 m, or 8 s holding the crown) leader hazards appear ~3 s ahead of it (`core/features/hazards.js`):

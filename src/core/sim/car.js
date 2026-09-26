@@ -52,6 +52,7 @@ export function stepCar(c, dt, W, racing) {
   const tr = W.tr, inp = c.inp;
   if (c.ghost > 0) c.ghost -= dt;
   if (c.oilT > 0) c.oilT -= dt;
+  if (c.stallT > 0) c.stallT -= dt;                                        // engine knocked out (weapons: shockwave)
   if (c.wreckT > 0) {
     c.wreckT -= dt; inp.throttle = 0; inp.brake = 0; inp.handbrake = 0; inp.steer = 0;
     const f = Math.exp(-2.5 * dt); c.vx *= f; c.vz *= f;
@@ -68,7 +69,7 @@ export function stepCar(c, dt, W, racing) {
   if (c.onGround) {
     let a = 0; const mod = c.mod, wear = carWear(c);
     const V = c.veh, rough = c.surface !== 'tarmac';                              // a vehicle's handling (data/vehicles.js); none = the standard car
-    if (inp.throttle > 0) a += inp.throttle * PHYS.ENGINE * S.engine * mod * (1 - 0.3 * wear) * (V ? V.accel * (rough ? V.off : 1) : 1);
+    if (inp.throttle > 0 && !(c.stallT > 0)) a += inp.throttle * PHYS.ENGINE * S.engine * mod * (1 - 0.3 * wear) * (V ? V.accel * (rough ? V.off : 1) : 1);
     if (inp.brake > 0) { if (vf > 0.5) a -= inp.brake * PHYS.BRAKE; else if (vf > -12) a -= inp.brake * PHYS.REVERSE; }
     if (c.boost > 0) a += PHYS.BOOST;
     if (c.draft > 0) a += c.draft * PHYS.DRAFT;                        // slipstream: tucked in behind another racer

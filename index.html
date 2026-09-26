@@ -222,8 +222,8 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
       <dt>Space</dt><dd>Handbrake drift, release for a boost</dd>
       <dt>R</dt><dd>Reset to the road</dd>
       <dt>C</dt><dd>Change camera</dd>
-      <dt>F</dt><dd>Fire your homing missile</dd>
-      <dt>Q / E</dt><dd>Swing a door into a car alongside</dd>
+      <dt>F</dt><dd>Fire the weapon from a ? crate</dd>
+      <dt>Q</dt><dd>Swing a door into the car beside you</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
     <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button></div>
@@ -246,7 +246,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 
 <div id="touch" hidden>
   <div id="steer-zone" class="tz"><div id="arrows" hidden aria-label="Steer left or right: slide between the arrows"><i data-d="-1">◀</i><i data-d="1">▶</i></div><div id="wheel" aria-label="Steering wheel: point your thumb where you want to go"><svg viewBox="-50 -50 100 100" aria-hidden="true"><g id="wheel-g" fill="none" stroke="#fff" stroke-linecap="round"><circle r="40" stroke-width="9" stroke-opacity=".9"/><path d="M-36 4 L-10 6 M36 4 L10 6 M0 12 L0 37" stroke-width="8" stroke-opacity=".75"/><circle r="11" fill="rgba(255,255,255,.85)" stroke="none"/><path d="M-7 -41 L7 -41" stroke="#FFC72C" stroke-width="9"/></g></svg></div></div>
-  <div id="wpn-touch"><button id="wpn-fire" type="button" aria-label="Fire missile">Missile</button><button id="wpn-door" type="button" aria-label="Door bash">Door</button></div>
+  <div id="wpn-touch"><button id="wpn-fire" type="button" aria-label="Fire weapon">Fire</button><button id="wpn-door" type="button" aria-label="Door bash">Door</button></div>
   <div id="pedal-zone" class="tz"><div id="pedal" aria-label="Gas: hold; slide down to drift, left to brake">Gas<i class="p-hb">▼ Drift</i><i class="p-brk">◀ Brake</i></div></div>
 </div>
 

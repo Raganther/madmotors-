@@ -7,7 +7,7 @@ import { TAU, clamp } from '../core/math.js';
 import { ranking } from '../core/sim/race.js';
 import { roadH } from '../core/track/query.js';
 import { $, isTouch } from './dom.js';
-import { race } from './flow.js';
+import { ITEM_NAME, race } from './flow.js';
 import { fmt, ordinal } from './format.js';
 import { best } from './storage.js';
 
@@ -80,13 +80,13 @@ export function updateHUD(dt) {
   const charge = P.boost > 0 ? 1 : clamp(P.driftT / 1.6, 0, 1);
   { const wv = (charge * 100).toFixed(0) + '%', bf = $('boost-fill'); if (bf._w !== wv) { bf._w = wv; bf.style.width = wv; } } $('boost-fill').classList.toggle('live', P.boost > 0 || P.driftT > 0.6);
   for (const z of ['f', 'b', 'l', 'r']) { const d = P.dmg[z], el = $('dz-' + z), f = d < 0.05 ? '' : `hsl(${Math.round(46 - 42 * d)} 92% ${Math.round(58 - 6 * d)}%)`; if (el._f !== f) { el._f = f; el.style.fill = f; } }
-  // weapons: missile ready / reloading, and a flashing warning while a missile is homing in on you
+  // weapons: what you're holding (and how many), a flashing warning while a missile is homing in on you
   if (race.weapons && P.wpn) {
-    const pi = race.cars.indexOf(P), lock = race.missiles.some(m => m.tgt === pi), el = $('wpn'), ready = P.wpn.ammo > 0;
-    el.hidden = false; el.className = lock ? 'lock' : ready ? '' : 'reload';
-    setTxt('wpn-state', lock ? 'Missile incoming!' : ready ? (isTouch ? 'Missile ready' : 'Missile ready · F') : `Reloading ${Math.ceil(P.wpn.reload)}s`);
-    const fw = (ready ? 100 : 100 * (1 - P.wpn.reload / WPN.RELOAD)).toFixed(0) + '%', ff = $('wpn-fill'); if (ff._w !== fw) { ff._w = fw; ff.style.width = fw; }
-    $('wpn-fire').classList.toggle('ready', ready);
+    const pi = race.cars.indexOf(P), lock = race.missiles.some(m => m.tgt === pi), el = $('wpn'), it = P.wpn.item, firing = P.wpn.gunT > 0;
+    el.hidden = false; el.className = lock ? 'lock' : it || firing ? '' : 'reload';
+    setTxt('wpn-state', lock ? 'Missile incoming!' : firing ? 'Firing!' : it ? ITEM_NAME[it] + (P.wpn.uses > 1 ? ` ×${P.wpn.uses}` : '') + (isTouch ? '' : ' · F') : 'Grab a ? crate');
+    const fw = (firing ? 100 * P.wpn.gunT / WPN.GUN_T : it ? 100 : 0).toFixed(0) + '%', ff = $('wpn-fill'); if (ff._w !== fw) { ff._w = fw; ff.style.width = fw; }
+    $('wpn-fire').classList.toggle('ready', !!it); setTxt('wpn-fire', it ? { missile: 'Missile', gun: 'Guns', oil: 'Oil', pulse: 'Pulse', harpoon: 'Hook' }[it] : 'Fire');
   } else $('wpn').hidden = true;
   $('touch').classList.toggle('nowpn', !race.weapons);
   const wrong = P.wrongT > 1;

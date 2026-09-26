@@ -26,7 +26,7 @@ export { drawState } from './features/drawbridge.js';
 export { WEAR, rutLane } from './features/wear.js';
 export { mudRuns } from './elements/mud.js';
 export { ICE_SLOW } from './elements/ice.js';
-export { WPN, missilePos, missileTarget } from './features/weapons.js';
+export { ITEMS, ITEM_USES, WPN, doorSide, missilePos, missileTarget } from './features/weapons.js';
 export { STAGES } from '../data/stages/index.js';
 export { FEATURES } from './features/index.js';
 export * from './sim/view.js';

@@ -17,7 +17,7 @@ import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
 import { camera, renderer, scene } from '../render/renderer.js';
 import { resetDirt } from '../render/effects/dirt.js';
-import { missileBlast, missilePuff } from '../render/weapons.js';
+import { bulletHitFx, missileBlast, missilePuff, mountKick, oilDropFx, pickupFx, pulseFx } from '../render/weapons.js';
 import { landDust } from '../render/effects/carfx.js';
 import { carVis, setRoster, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
@@ -83,11 +83,16 @@ export function handleEvents() {
         case 'sd-boom': sdBoom(e); for (const k of e.losers) { const b = race.cars[k]; sdBoomFx(b, b.isPlayer || onScreen(b)); } break;
         case 'sd-crown': sdCrown(e); break;
         case 'cp-point': cpPoint(e); break;
-        case 'missile-fire': if (near) AudioSys.whoosh(c.isPlayer ? 1.2 : 0.6); if (c.isPlayer) AudioSys.tone(220, 0.35, 0.08, 'sawtooth', 2.2); break;
+        case 'pickup': pickupFx(e); if (c.isPlayer) { callout(ITEM_NAME[e.item] + '!'); AudioSys.tone(660, 0.12, 0.07, 'triangle', 1.6); AudioSys.tone(990, 0.16, 0.05, 'triangle', 1.3); } else if (near) AudioSys.tone(520, 0.08, 0.03, 'triangle', 1.5); break;
+        case 'use': mountKick(visOf(c)); useFx(c, e.item, near); break;
+        case 'shot': if (near) AudioSys.burst(c.isPlayer ? 0.1 : 0.05, 'highpass', 2200, 0.05); break;
+        case 'bullet-hit': bulletHitFx(e); if (c.isPlayer) { G.shake = Math.min(1, G.shake + 0.12); if (G.calloutTimer <= 0) callout('Taking fire!'); } break;
+        case 'oil-hit': if (c.isPlayer) callout('Oil!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} hit your oil!`); break;
+        case 'pulse-hit': if (c.isPlayer) { callout('Shockwave! Engine out!'); G.shake = Math.min(1.4, G.shake + 0.7); } break;
+        case 'harpoon-hit': { const by = race.cars[e.from]; if (c.isPlayer) callout(`Harpooned by ${by.name}!`); else if (by === race.player) callout(`Hooked ${c.name}!`); if (near) AudioSys.crash('metal', 0.4); break; }
         case 'missile-lock': if (c.isPlayer) { callout(`${race.cars[e.from].name} fired a missile at you!`); AudioSys.beep(1500, 0.1); AudioSys.tone(1200, 0.25, 0.05, 'square', 1.2); } break;
         case 'missile-hit': missileBlast(e); if (near) { AudioSys.crash('car', 1); AudioSys.burst(0.7, 'lowpass', 140, 0.7); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1.1); callout('Hit by a missile!'); } else if (race.cars[e.from] === race.player) callout(`Direct hit on ${c.name}!`); break;
         case 'missile-fizzle': missilePuff(e); break;
-        case 'missile-ready': if (c.isPlayer) AudioSys.tone(660, 0.1, 0.05, 'triangle', 1.5); break;
         case 'door': if (near) AudioSys.burst(0.12, 'bandpass', 1500, 0.12); break;
         case 'door-hit': sparks(e.x, e.y, e.z, 8); if (near) AudioSys.crash('metal', 0.55); { const by = race.cars[e.by]; if (c.isPlayer) { G.shake = Math.min(1.2, G.shake + 0.5); callout(`Door slam from ${by.name}!`); } else if (by === race.player) callout(`Slammed ${c.name}!`); } break;
         case 'cp-miss': callout('Nobody through the gate'); break;
@@ -121,6 +126,15 @@ function cpPoint(e) {
   const call = e.state === 'advantage' ? (me ? 'Advantage you!' : `Advantage ${who}`) : e.state === 'deuce' ? 'Deuce!' : '';
   if (e.state !== 'win') callout(call ? (me ? `Checkpoint! ${call}` : call) : me ? `Checkpoint! ${pts}` : `${who} takes the gate`);
   AudioSys.tone(me ? 988 : 587, 0.16, 0.08, 'triangle', me ? 1.5 : 0.8);
+}
+export const ITEM_NAME = { missile: 'Homing missile', gun: 'Machine gun', oil: 'Oil slick', pulse: 'Shockwave', harpoon: 'Harpoon' };
+// firing: the effect and sound for each weapon
+function useFx(c, item, near) {
+  const v = near ? 1 : 0.4;
+  if (item === 'missile') { AudioSys.whoosh(c.isPlayer ? 1.2 : 0.6 * v); if (c.isPlayer) AudioSys.tone(220, 0.35, 0.08, 'sawtooth', 2.2); }
+  else if (item === 'oil') { oilDropFx(c); if (near) AudioSys.burst(0.2, 'lowpass', 500, 0.25); }
+  else if (item === 'pulse') { pulseFx(c); AudioSys.burst(0.5 * v, 'lowpass', 160, 0.6); AudioSys.tone(180, 0.5, 0.08 * v, 'sine', 3); }
+  else if (item === 'harpoon') { AudioSys.tone(900, 0.2, 0.06 * v, 'triangle', 0.4); AudioSys.burst(0.15 * v, 'bandpass', 1800, 0.15); }
 }
 function sdCrown(e) {
   const pi = race.cars.indexOf(race.player), to = race.cars[e.to];

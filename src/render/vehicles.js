@@ -18,6 +18,7 @@ import { bakeAO, carMat } from './carpaint.js';
 import { scene } from './renderer.js';
 import { buildCarModel } from './carmodels.js';
 import { addDirt, updateDirt } from './effects/dirt.js';
+import { updateMount } from './weapons.js';
 import { race } from '../ui/flow.js';
 import { callout } from '../ui/hud.js';
 
@@ -242,7 +243,7 @@ export function drawCar(c, v, dt, now) {
   v.root.visible = c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
   if (G.state === 'racing') { effectsForCar(c, v, dt); updateDirt(c, v, dt); }
   if (v.anim) v.anim(v, c, now);
-  if (c.wpn) swingDoors(c, v, dt);
+  if (c.wpn) { swingDoors(c, v, dt); updateMount(c, v, dt, now); }
 }
 // door bashing (core/features/weapons.js): a door panel in the car's colour swings out on the side it was flung open,
 // hinged at the front, and closes again. Built the first time a car uses one.
