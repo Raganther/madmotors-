@@ -21,7 +21,7 @@ export const CAM_MODES = {
   chase: { name: 'Chase', el: 0.72 },
   behind: { name: 'Behind', persp: { back: 7.5, up: 3.1, look: 10, lookUp: 1.1, fov: 60, turn: 4 } },
   follow: { name: 'Follow', persp: { back: 15, up: 7, look: 14, lookUp: 0.4, fov: 52, turn: 3 } },
-  heli: { name: 'Heli', persp: { back: 22, up: 26, look: 12, lookUp: 0, fov: 46, turn: 2 } },
+  heli: { name: 'Heli', persp: { back: 16, up: 19, look: 4, lookUp: 0, fov: 46, turn: 2 } },
   bonnet: { name: 'Bonnet', persp: { back: -0.9, up: 1.6, look: 22, lookUp: 0.9, fov: 70, turn: 14, fixed: true } },
   tv: { name: 'TV', tv: true }
 };
@@ -100,7 +100,7 @@ export function updateCamera(dt, snap) {
   G.camDir = [camDir.x, camDir.y, camDir.z]; if (race) race.camDir = G.camDir;   // the touch wheel and Showdown's "on screen" follow it
   const k = snap ? 1 : 1 - Math.exp(-dt * (G.state === 'menu' ? 2.5 : 5));
   camT.x += (tx - camT.x) * k; camT.y += (ty - camT.y) * k; camT.z += (tz - camT.z) * k;
-  const aspect = innerWidth / innerHeight; let vh = 44 + clamp(sp, 0, 45) * 0.3;
+  const aspect = innerWidth / innerHeight; let vh = 38 + clamp(sp, 0, 45) * 0.26;
   if (race && G.state !== 'menu' && race.sd) race.aspect = aspect;   // Showdown: the core picks the zoom (to fit the pack) for this screen shape
   else if (race && G.state !== 'menu') {
     // pull out where the ground falls away in front of the camera (ledges, bridges), pull in through town streets
@@ -108,7 +108,9 @@ export function updateCamera(dt, snap) {
     vh += clamp((drop - 12) * 0.35, 0, 16);
     if (tr.town && tr.town[tr.bi(c.pr.i)]) vh -= 6;
   }
-  if (aspect < 1) vh *= PORTRAIT; if (Math.min(innerWidth, innerHeight) < 520) vh *= 0.85;   // a phone: the cars were specks if (G.state === 'menu') vh = 58; else vh *= (CAM_ZOOMS[G.camZoom] || CAM_ZOOMS.normal).k;
+  if (aspect < 1) vh *= PORTRAIT;
+  if (Math.min(innerWidth, innerHeight) < 520) vh *= 0.85;                            // a phone: the cars were specks
+  if (G.state === 'menu') vh = 58; else vh *= (CAM_ZOOMS[G.camZoom] || CAM_ZOOMS.normal).k;
   if (race && G.state !== 'menu' && race.sd && race.sd.view) G.viewH = 2 * race.sd.view.hh;   // already eased by the core
   else G.viewH += (vh - G.viewH) * (snap ? 1 : 1 - Math.exp(-dt * 2));
   camera.left = -G.viewH * aspect / 2; camera.right = G.viewH * aspect / 2; camera.top = G.viewH / 2; camera.bottom = -G.viewH / 2; camera.updateProjectionMatrix();

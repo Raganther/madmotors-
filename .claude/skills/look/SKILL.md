@@ -33,3 +33,6 @@ Visual work is judged by eye, so the loop is: screenshot → change → screensh
   To find an object on screen, `npm run shot -- <n> <m> --eval "...recolour it red..."`.
 - Big-scale noise reads as dirty stains; fine-scale, low-contrast grain reads as texture.
 - Headless is SwiftShader and slow: wait with `waitForFunction`, never a fixed sleep.
+- Dense one-line code: never append a `// comment` to a line and then more statements after it. Everything after the
+  `//` is gone (it silently killed the camera zoom once, the weapon-mount recoil another time). Put the comment on
+  its own line, or use `/* */`. After an edit to a one-liner, check the setting it touches still does something.
