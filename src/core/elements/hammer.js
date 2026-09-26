@@ -4,7 +4,7 @@
 // is a pure function of race time, so it replays exactly. The AI picks its lane for where the ball will be when it
 // gets there.
 import { HALF } from '../constants.js';
-export const HAMMER = { PERIOD: 3.4, AMP: HALF - 0.6, R: 1.35, LAG: 0.9, HIT_V: 10, DENT: 8 };
+export const HAMMER = { PERIOD: 3.4, AMP: HALF - 0.6, R: 1.35, LAG: 0.9, HIT_V: 10, DENT: 8, SCRUB: 0.5, SPIN: 3.5 };
 /** Where hammer h's ball is across the road at race time t (metres), and how fast it's moving (m/s). */
 export function hammerLat(h, t) { const w = 2 * Math.PI / HAMMER.PERIOD, a = w * t + h.phase; return { lat: HAMMER.AMP * Math.sin(a), v: HAMMER.AMP * w * Math.cos(a) }; }
 export const element = {

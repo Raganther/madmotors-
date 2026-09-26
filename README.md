@@ -66,6 +66,7 @@ npm run check      # lint + tests: run before every commit
 | `npm run golden` | Re-records `tests/golden.json`: only when a change is *meant* to alter gameplay |
 | `npm run layout -- 7` | Top-down plan of stage 7's road: heights, bridges, tunnels, river, railways, near-misses between road sections |
 | `npm run terrain -- gorge` | Shaded relief map of a stage's terrain |
+| `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
 | `npm run bench -- 5 7` | Render-time benchmark for stages 5 and 7 (software renderer: compare runs, not absolute ms) |
 
 Tool output goes to `tools/out/`.

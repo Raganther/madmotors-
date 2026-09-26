@@ -3,9 +3,9 @@ import { damageCar } from '../sim/damage.js';
 import { railAt, trainCars, trainLen } from '../track/rails.js';
 
 // ---------- trains ----------
-// One kinematic train per line. Barriers close 4 s before it reaches a crossing and open once its tail is 8 m past.
+// One kinematic train per line. Barriers close TRAIN_WARN s before it reaches a crossing and open once its tail is 8 m past.
 // Besides the regular timetable, a train is often sent to meet the player at a crossing so it isn't rare.
-export const TRAIN_WARN = 4;
+export const TRAIN_WARN = 2.5;
 export function makeTrains(W, rnd) {
   const rl = W.tr.rails; if (!rl) return [];
   for (const C of rl.crossings) { C.closed = false; C.assist = -1; }
@@ -35,10 +35,10 @@ export function trainStep(R, W, dt) {
     for (const C of L.crossings) {
       const ds = ((C.i - tr.bi(P.pr.i)) % N0 + N0) % N0, eta = ds / psp;
       if (ds > 400) { C.assist = -1; continue; }
-      if (C.assist === -1 && eta > 5 && eta < 8) {
-        C.assist = rnd() < 0.65 ? 1 : 0;
+      if (C.assist === -1 && eta > 5 && eta < 8 && R.time > 12) {                    // not onto the grid: the pack is still bunched up
+        C.assist = rnd() < 0.5 ? 1 : 0;
         if (C.assist === 1) {
-          const dir = rnd() < 0.5 ? 1 : -1, arrive = eta - 3 + rnd() * 4;
+          const dir = rnd() < 0.5 ? 1 : -1, arrive = eta - 2 + rnd() * 2.5;                // across just ahead of you: a show, and a short wait at most
           let s0 = C.s - dir * sp * arrive;
           s0 = dir > 0 ? Math.max(s0, -30) : Math.min(s0, L.len + 30);           // can't start further back than the line's end
           dispatchTrain(T, dir, s0);
@@ -54,6 +54,8 @@ export function trainStep(R, W, dt) {
     const ahead = (C.s - T.s) * T.dir;
     C.closed = ahead < T.L.speed * TRAIN_WARN && ahead > -(T.len + 8);
   }
+  // queuing at lowered barriers isn't being stuck
+  for (const c of R.cars) if (c.stuckT > 0 && closedCrossingAhead(W, c.pr.i) < 40) c.stuckT = 0;
   // collisions: a train always wins
   const cars = R.cars.concat(R.traffic, R.parked);
   for (const T of R.trains) {

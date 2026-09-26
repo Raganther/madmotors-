@@ -20,9 +20,9 @@ import { damageCar } from '../sim/damage.js';
 // The AI uses all of it, the keener drivers more. Deterministic, with its own seeded generator, never R.rnd, so the race
 // features' random sequence is untouched; and with weapons off nothing here runs at all.
 export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_S: 2.4, HIT_LAT: 1.9, ARM: 0.12, SLOW: 0.35, POP: 6, SPIN: 5,
-  DOOR_T: 0.45, DOOR_COOL: 2.5, SHOVE: 4.5, KICK: 1.2, REACH: 4.2,
+  DOOR_T: 0.45, DOOR_COOL: 2.5, SHOVE: 6, KICK: 1.2, REACH: 4.2, DOOR_SCRUB: 0.92,
   CRATE_EVERY: 7, CRATE_AHEAD: [60, 100], CRATE_R: 1.9, CRATE_LIFE: 40,
-  GUN_T: 2.5, GUN_RATE: 7, BULLET_V: 95, BULLET_LIFE: 0.9, BULLET_SLOW: 0.955, OIL_R: 2.8, OIL_T: 1.0, OIL_LIFE: 16, OIL_HITS: 3,
+  GUN_T: 3, GUN_RATE: 7, BULLET_V: 95, BULLET_LIFE: 0.9, BULLET_SLOW: 0.95, OIL_R: 2.8, OIL_T: 1.4, OIL_SPIN: 2.6, OIL_SCRUB: 0.85, OIL_LIFE: 16, OIL_HITS: 3,
   PULSE_R: 13, PULSE_V: 8, STALL: 0.8, HARP_R: 70, HARP_V: 70, TOW_T: 2.2, TOW_PULL: 16, TOW_DRAG: 3.5 };
 export const ITEMS = ['missile', 'gun', 'oil', 'pulse', 'harpoon'];
 export const ITEM_USES = { missile: 1, gun: 1, oil: 2, pulse: 1, harpoon: 1 };
@@ -157,7 +157,13 @@ function slicks(R, W, dt) {
     o.t += dt;
     for (const c of R.cars) {
       if (!live(c) || !c.onGround || (idx(R, c) === o.from && o.t < 1.5)) continue;
-      if (Math.abs(c.progress - o.s) < WPN.OIL_R && Math.abs(onRoad(tr, c) - o.lat) < WPN.OIL_R) { if (!(c.oilT > 0)) { c.events.push({ t: 'oil-hit', from: o.from }); o.hits = (o.hits || 0) + 1; } c.oilT = WPN.OIL_T; }
+      if (Math.abs(c.progress - o.s) < WPN.OIL_R && Math.abs(onRoad(tr, c) - o.lat) < WPN.OIL_R) {
+        if (!(c.oilT > 0)) {                                                       // first touch: the tail steps out and the speed goes
+          c.events.push({ t: 'oil-hit', from: o.from }); o.hits = (o.hits || 0) + 1;
+          c.spin += (S.rng() < 0.5 ? -1 : 1) * WPN.OIL_SPIN; c.vx *= WPN.OIL_SCRUB; c.vz *= WPN.OIL_SCRUB;
+        }
+        c.oilT = WPN.OIL_T;
+      }
     }
     return o.t < WPN.OIL_LIFE && !(o.hits >= WPN.OIL_HITS);                       // tyres carry it away: gone after a few cars
   });
@@ -205,7 +211,7 @@ function doors(R, dt) {
       const lat = across(c, o) * w.doorSide, lon = along(c, o);
       if (lat < 0.8 || lat > c.hw + o.hw + WPN.REACH - 2 || Math.abs(lon) > c.hl + o.hl - 0.4) continue;
       const rx = -Math.cos(c.yaw) * w.doorSide, rz = Math.sin(c.yaw) * w.doorSide;   // out of that side
-      o.vx += rx * WPN.SHOVE; o.vz += rz * WPN.SHOVE; o.spin += (lon > 0 ? 1 : -1) * w.doorSide * 0.6;
+      o.vx = o.vx * WPN.DOOR_SCRUB + rx * WPN.SHOVE; o.vz = o.vz * WPN.DOOR_SCRUB + rz * WPN.SHOVE; o.spin += (lon > 0 ? 1 : -1) * w.doorSide * 1.1;
       c.vx -= rx * WPN.KICK; c.vz -= rz * WPN.KICK;
       damageCar(o, c.x + rx * (c.hw + 0.4), c.z + rz * (c.hw + 0.4), 5.5, 1, rx, rz);
       w.doorHit = true; o.events.push({ t: 'door-hit', by: idx(R, c), x: c.x + rx * (c.hw + 0.5), y: c.y + 0.6, z: c.z + rz * (c.hw + 0.5) }); break;

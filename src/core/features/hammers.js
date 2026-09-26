@@ -15,7 +15,7 @@ export const feature = {
         const ds = N ? ((c.pr.i - h.i) % N + N + N / 2) % N - N / 2 : c.pr.i - h.i;
         if (Math.abs(ds) > HAMMER.R + c.hl * 0.6 || Math.abs(c.pr.lat - lat) > HAMMER.R + c.hw) continue;
         const dir = Math.sign(v || (c.pr.lat - lat) || 1), rx = tr.rx[c.pr.i] * dir, rz = tr.rz[c.pr.i] * dir;
-        c.vx += rx * HAMMER.HIT_V; c.vz += rz * HAMMER.HIT_V; c.spin += dir * 2.5; c.hitHam = R.time + 1;
+        c.vx = c.vx * HAMMER.SCRUB + rx * HAMMER.HIT_V; c.vz = c.vz * HAMMER.SCRUB + rz * HAMMER.HIT_V; c.spin += dir * HAMMER.SPIN; c.hitHam = R.time + 1;   // stopped dead and batted sideways
         damageCar(c, c.x - rx * c.hw, c.z - rz * c.hw, HAMMER.DENT, 1, rx, rz);
         c.events.push({ t: 'hammer-hit', x: c.x, y: c.y + 1, z: c.z });
       }

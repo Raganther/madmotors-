@@ -35,3 +35,13 @@ for a timed cycle, `wear.js` for a per-sample grid, `rockfall.js` for spawned ha
 - `npm run sandbox -- <stage or sandbox>`: events show up where expected, AI isn't stuck or wrecked by it.
 - `npm run shot -- <stage> <metres> ...` at the moments it happens.
 - `npm run golden` only for the stages that use it (check the diff lists only those), say so in the commit, `/ship`.
+
+## Traps we've hit
+- An AI told to wait (speed target ~0: a closed crossing, a raised drawbridge, the barge) now stands still, so the
+  feature must also clear `c.stuckT` for cars queuing at it (as `trains.js` and `drawbridge.js` do), or rivals get
+  respawned after 2.5 s. Standing still also means it can't steer: the AI only creeps when it's off its line.
+- Anything "sent to meet the player" (trains, rocks) must skip the first seconds of a race: at the start the grid is
+  slow, so every ETA window matches and the whole pack gets stopped at once.
+- Hazards change finishing orders by luck; measure pace with them off (`tools/balance-vehicles.mjs` drops trains).
+- Rocks and other moving obstacles: predict where they'll be over the moments the car passes, not only on arrival,
+  and pick the clearest of a few lanes (see the wrecking ball and boulder code in `sim/ai.js`).

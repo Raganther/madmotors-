@@ -7,6 +7,7 @@ import { groundAt, project } from '../track/query.js';
 // a few seconds ahead of the player while they are on the ledge.
 export function rockStep(R, W, dt) {
   const tr = W.tr; if (!tr.rockfall) return;
+  W.rocks = R.rocks;                                                                   // the AI watches them (sim/ai.js)
   const N0 = tr.loopN, P = R.player, rnd = R.rnd, pi = tr.bi(P.pr.i) % N0;
   R.rockT -= dt;
   if (R.phase === 'racing' && R.rockT <= 0 && R.rocks.length < 4 && P.pr.i < tr.NM) {

@@ -17,6 +17,7 @@
     "layout": "node tools/layout.mjs",
     "terrain": "node tools/terrain.mjs",
     "sandbox": "node tools/sandbox.mjs",
+    "balance": "node tools/balance-vehicles.mjs && node tools/balance-weapons.mjs",
     "bench": "vite build && node tools/bench.mjs",
     "shot": "vite build --logLevel error && node tools/shot.mjs"
   },

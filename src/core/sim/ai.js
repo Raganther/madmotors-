@@ -47,8 +47,8 @@ export function aiControl(c, W, cars, dt, hazards, gate) {
       continue;
     }
     if (Math.abs(o.y - c.y) > 3) continue;
-    const dx = o.x - c.x, dz = o.z - c.z, ahead = dx * fx + dz * fz;
-    if (ahead > 0 && ahead < 11 + Math.max(0, (c.vx - o.vx) * fx + (c.vz - o.vz) * fz) * 0.9) { const dl = o.pr.lat - pr.lat; if (Math.abs(dl) < 2.8) lane += (dl >= 0 ? -1 : 1) * 3.2; }
+    const dx = o.x - c.x, dz = o.z - c.z, ahead = dx * fx + dz * fz;                // pass it (not while queuing at a standstill)
+    if (sp > 4 && ahead > 0 && ahead < 11 + Math.max(0, (c.vx - o.vx) * fx + (c.vz - o.vz) * fz) * 0.9) { const dl = o.pr.lat - pr.lat; if (Math.abs(dl) < 2.8) lane += (dl >= 0 ? -1 : 1) * 3.2; }
   }
   // leader hazards: steer for the clear side of an oil slick, or between the cows; better drivers see them sooner
   let hzSlow = 99;
@@ -72,6 +72,18 @@ export function aiControl(c, W, cars, dt, hazards, gate) {
     for (const x of [-4.3, -2.2, 0, 2.2, 4.3]) { const m = clear(x); if (m > bm) { bm = m; best = x; } }
     lane = best; if (bm < HAMMER.R + c.hw + 0.4 && d > 6) hamSlow = Math.min(hamSlow, sp * 0.8);
   }
+  // boulders bouncing across the road: of a few lanes, take the one the rock stays furthest from over the moments we
+  // pass it; if none is clear, back off and let it go by
+  let rockSlow = 99;
+  if (W.rocks) for (const o of W.rocks) {
+    const h = o.hint, L0 = tr.loopN, d = L0 ? ((h - i) % L0 + L0) % L0 : h - i; if (d < 2 || d > 18 + ai.skill * 32) continue;
+    const ol = (o.x - tr.xs[h]) * tr.rx[h] + (o.z - tr.zs[h]) * tr.rz[h], ov = o.vx * tr.rx[h] + o.vz * tr.rz[h];
+    const tA = d / Math.max(sp, 6), gap = o.r + c.hw + 0.8;
+    const clear = x => { let m = 99; for (let q = -0.5; q <= 0.5; q += 0.25) m = Math.min(m, Math.abs(ol + ov * Math.max(0, tA + q) - x)); return m; };
+    let best = lane, bm = clear(lane); if (bm >= gap) continue;                        // our line is clear already
+    for (const x of [-4.3, -2.2, 0, 2.2, 4.3]) { const m = clear(x); if (m > bm) { bm = m; best = x; } }
+    lane = best; if (bm < gap && d > 5) rockSlow = Math.min(rockSlow, sp * 0.65);
+  }
   lane = clamp(Math.max(lane, minLane), -HALF + 1.7, HALF - 1.2);
   ai.cur += (lane - ai.cur) * Math.min(1, dt * (minLane > -HALF ? 3 : 1.8));
   const L = at(Math.round(7 + sp * 0.38));
@@ -84,10 +96,11 @@ export function aiControl(c, W, cars, dt, hazards, gate) {
   if (G) { const n = Math.round(sp * 1.7 + 18); for (let d = 0, j = i0; d <= n; d++, j = tr.adv(j, 1, ai.alt ?? -1)) { const vm = tr.vmax[j] * skill * bog(j); const v = Math.sqrt(vm * vm + 56 * d); if (v < target) target = v; } }
   else { const look = Math.min(N - 2, i + Math.round(sp * 1.7 + 18)); for (let j = i; j <= look; j++) { const vm = tr.vmax[j] * skill * bog(j); const v = Math.sqrt(vm * vm + 56 * (j - i)); if (v < target) target = v; } }
   if (Math.abs(pr.lat) > HALF + 0.5) target = Math.min(target, 16);
-  target = Math.min(target, hzSlow, hamSlow);
+  target = Math.min(target, hzSlow, hamSlow, rockSlow);
   target = Math.min(target, ferryTarget(W, c), drawTarget(W, c));                                  // queue for the barge, stop at the front of its deck
   { const dsx = closedCrossingAhead(W, i); if (dsx > 6 && dsx < 120) target = Math.min(target, Math.max(0, (dsx - 16) * 0.7)); }   // wait at lowered barriers
-  if (sp > target + 1.2) { c.inp.throttle = 0; c.inp.brake = clamp((sp - target) / 5, 0.25, 1); }
+  if (target < 0.5 && Math.abs(pr.lat - ai.cur) < 1.2) { c.inp.throttle = 0; c.inp.brake = 1; }   // told to wait: stand still (only creep to steer back onto the line)
+  else if (sp > target + 1.2) { c.inp.throttle = 0; c.inp.brake = clamp((sp - target) / 5, 0.25, 1); }
   else { c.inp.brake = 0; c.inp.throttle = sp < target - 1.5 ? 1 : 0.35; }
   c.inp.handbrake = 0;
   const dr = ai.drift;

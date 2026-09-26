@@ -39,7 +39,7 @@ export function drawTarget(W, c) {
   for (const d of W.draws) {
     const dist = d.a - b; if (dist < -0.5 || dist > 150) continue;
     const a = drawState(d, W.drawT + dist / Math.max(sp, 4)).ang;
-    if (a < 0.1 || (a < DRAW.AJUMP * 0.8 && sp > 21)) return 99;
+    if (a < (sp < 15 ? 0.015 : 0.1) || (a < DRAW.AJUMP * 0.8 && sp > 21)) return 99;   // from a standstill, wait till it's right down: a slow car drops into the gap between the tips
     const stop = dist - 1.5 - c.hl; return stop <= 0 ? 0 : Math.sqrt(stop * 12);
   }
   return 99;
