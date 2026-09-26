@@ -12,6 +12,13 @@ Top-down racer, three.js r128, plain JS modules, Vite. Read README.md for the la
 - `npm run bench -- <n>`: render benchmark (SwiftShader here, so only compare against a previous run).
 - Headless Chromium lives at /opt/pw-browsers (don't `playwright install`); pass `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`.
 
+## Notes from the user
+The published game has a Note button (N): the user taps a spot on a track and types what they'd change. Notes land in
+the artifact's database: `ArtifactData` `list` of collection `notes` on the artifact URL (fields: stage, metres from the
+start line, lat, x/y/z, text, camera, status, and `shot`, an asset id: `Artifact` `read` with `path` = that id to see
+their view). Go to the spot with `npm run shot -- "<stage>" <metres>`. Answer each by `update` on `notes/<id>` with
+`{ reply: "...", status: "done" }`: the reply shows in the game's Notes list and the pin turns green.
+
 ## Skills (.claude/skills)
 `/new-stage`, `/new-element`, `/new-vehicle`, `/new-feature`, `/look` (visual changes), `/ship` (verify, commit, push, publish). Each holds the workflow, the done-checks and traps we've hit; the README holds the how. When you hit a new trap, add it to the skill it belongs to.
 

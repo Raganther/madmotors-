@@ -6,6 +6,7 @@ import { respawn } from '../core/sim/car.js';
 import { $ } from './dom.js';
 import { closeGarage } from './garage.js';
 import { closeLeagues } from './league.js';
+import { enterNotes, exitNotes } from './notes.js';
 import { toggleOverlay } from '../render/overlay.js';
 import { saveCamera, saveSteer } from './storage.js';
 import { CAM_MODES, CAM_ZOOMS } from '../render/camera.js';
@@ -15,12 +16,16 @@ import { callout } from './hud.js';
 // ---------- input ----------
 export const keys = {}, touch = { dir: null, wheel: false, left: false, right: false, gas: false, brake: false, hb: false };
 addEventListener('keydown', e => {
+  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;   // typing a note, not driving
   keys[e.code] = true;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (e.repeat) return;
   if (e.code === 'KeyR' && G.state === 'racing' && race && !race.player.finished) respawn(race.player, G.world.W);
   if (e.code === 'Escape' && !$('garage').hidden) { closeGarage(); return; }
   if (e.code === 'Escape' && !$('league').hidden) { closeLeagues(); return; }
+  if (e.code === 'Escape' && !$('notes').hidden) { $('notes').hidden = true; return; }
+  if (e.code === 'Escape' && G.noteMode) { exitNotes(); return; }
+  if (e.code === 'KeyN' && race && G.state !== 'menu') { G.noteMode ? exitNotes() : enterNotes(); return; }
   if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
   if (e.code === 'KeyM') AudioSys.toggle();
   if (G.state === 'racing' && race && race.weapons) {                              // weapons: F fires what you're holding, Q (or E) swings a door

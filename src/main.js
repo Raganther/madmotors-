@@ -6,6 +6,7 @@ import { loadCamera, loadMode, loadRivals, loadSteer, loadVehicle, loadWeapons, 
 import { DEFAULT_RIVALS, MAX_RIVALS } from './data/cars.js';
 import { closeGarage, openGarage, showVehicle } from './ui/garage.js';
 import { wireLeagues, leagueNext } from './ui/league.js';
+import { initNotes } from './ui/notes.js';
 import { AudioSys } from './audio/audio.js';
 import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
@@ -83,7 +84,7 @@ export function wireUI() {
   $('wpn-btn').addEventListener('click', () => setWeapons(!G.weapons));
   $('gfx-btn').addEventListener('click', () => { if (renderer) cycleQuality(); });
   for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
-  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
+  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); initNotes(); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
   for (const b of document.querySelectorAll('.cam-btn')) b.addEventListener('click', () => setCamera(nextCamera()));
   for (const b of document.querySelectorAll('.zoom-btn')) b.addEventListener('click', () => setCamera(G.camMode, nextZoom()));
 }

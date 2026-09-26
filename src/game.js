@@ -36,6 +36,7 @@ G.league = null;        // the league run being raced (ui/league.js), or null
 G.weapons = true;       // missiles and door bashing (menu: Weapons on/off; core/features/weapons.js)
 G.rivals = 3;           // how many AI cars a Race has (menu; data/cars.js MAX_RIVALS). Showdown always has three
 G.camDir = null;        // where the camera looks from, [x, y, z] (set each frame by the camera)
+G.noteMode = false;     // placing notes on the track for Claude (ui/notes.js); the race is frozen meanwhile
 G.persp = false; G.perspWas = false;   // a perspective view (Behind, Follow, Heli, Bonnet, TV) is drawing this frame
 G.sdOverAt = 0;
 G.sdTick = 0;        // next Showdown danger tick (race time)

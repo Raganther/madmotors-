@@ -135,6 +135,23 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   console.log(`weapons: fired ${used.join(', ')}; door swung; ${got.crates} crates on the road`);
   await page.evaluate(() => window.__dr.flow.toMenu());
 }
+// notes for Claude: N freezes the race, a tap on the road opens the note box, saving keeps it (here, no database: in
+// this browser) and lists it; Done unfreezes
+{
+  await page.evaluate(() => { localStorage.removeItem('downhill-rush-notes'); window.__dr.flow.startRace(4); }); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 4, null, { timeout: 30000 });
+  await page.evaluate(() => { const d = window.__dr; for (const e of ['hint', 'countdown']) document.getElementById(e).hidden = true; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; d.step(4); });
+  await page.keyboard.press('KeyN'); await page.waitForFunction(() => window.__dr.G.noteMode && window.__dr.G.state === 'paused', null, { timeout: 5000 });
+  const at = await page.evaluate(() => { const r = document.querySelector('#game canvas').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height * 0.55]; });   // about where the player's car is
+  await page.mouse.click(at[0], at[1]);
+  const opened = await page.waitForFunction(() => !document.getElementById('note-form').hidden, null, { timeout: 5000 }).then(() => true, () => false);
+  if (opened) { await page.fill('#note-text', 'e2e: a note'); await page.click('#note-save'); }
+  const got = await page.evaluate(() => { const n = JSON.parse(localStorage.getItem('downhill-rush-notes') || '[]'); return { n: n.length, note: n[0] }; });
+  await page.click('#note-done');
+  const after = await page.evaluate(() => [window.__dr.G.state, window.__dr.G.noteMode]);
+  if (!opened || got.n !== 1 || got.note.stage !== 'Mountain Loop' || !(got.note.metres >= 0) || after[1] || after[0] === 'paused') errors.push('notes: ' + JSON.stringify({ opened, got, after }));
+  console.log(`notes: saved "${got.note && got.note.text}" at ${got.note && got.note.metres} m; after Done: ${after[0]}`);
+  await page.evaluate(() => { localStorage.removeItem('downhill-rush-notes'); window.__dr.flow.toMenu(); });
+}
 // every camera: a Race draws from each (the perspective ones really are perspective), Showdown modes stay top-down
 {
   await page.evaluate(() => window.__dr.flow.startRace(6)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 6, null, { timeout: 30000 });

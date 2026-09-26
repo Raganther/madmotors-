@@ -159,6 +159,16 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .gs i{height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden} .gs b{display:block;height:100%;background:var(--yellow);border-radius:3px}
 @media (max-width:520px){ .garage-grid{grid-template-columns:1fr 1fr;gap:8px} .g-blurb{display:none} .gs{grid-template-columns:62px 1fr;font-size:11px} .g-name{font-size:14px} }
 .btn-row button{flex:1;min-width:120px}
+#note-bar{position:fixed;left:50%;top:calc(var(--top) + 104px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;background:var(--panel);border-radius:14px;padding:8px 12px;max-width:calc(100% - 24px);box-sizing:border-box;font-size:15px}
+#note-bar small{display:block;color:var(--mist);font-size:12px} #note-bar .btn,#note-bar .cta{padding:8px 14px;font-size:15px;min-width:0}
+#note-form{position:fixed;left:50%;bottom:calc(var(--bot) + 8px);transform:translateX(-50%);width:min(460px,calc(100% - 24px));z-index:5} #note-form b{font-size:15px;color:var(--yellow)}
+#note-text{width:100%;box-sizing:border-box;border-radius:10px;border:2px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:#fff;font:inherit;font-size:16px;padding:8px}
+#note-toast{pointer-events:none;position:fixed;left:50%;top:40%;transform:translateX(-50%);background:var(--yellow);color:var(--ink);font-weight:700;border-radius:999px;padding:8px 16px;z-index:6}
+.notes-card{width:min(620px,100%);max-height:calc(100vh - 32px);box-sizing:border-box;background:rgba(22,28,52,.97)} .notes-body{overflow-y:auto;min-height:0}
+.notes-body h3{margin:10px 0 4px;font-family:var(--display);font-weight:400;font-size:17px;color:var(--yellow)} .nl{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.nl li{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:start;background:rgba(255,255,255,.05);border-radius:9px;padding:6px 8px} .nl li.done{box-shadow:inset 3px 0 0 #2FB36B}
+.nl-n{font-family:var(--display);color:var(--yellow);text-align:center} .nl li.done .nl-n{color:#2FB36B} .nl-t{font-size:15px} .nl-t em{display:block;font-style:normal;color:#7BD88F;margin-top:3px}
+.nl-del{background:transparent;border:0;color:var(--mist);font-size:15px;padding:2px 6px}
 .league-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 12px} .league-btn small{font-weight:500;font-size:13px;color:var(--mist)}
 .garage-for{font-size:15px!important} .g-suits{display:none;align-self:flex-start;font-size:11px;font-weight:700;color:var(--ink);background:#7BD88F;border-radius:6px;padding:1px 6px} .g-card.suits .g-suits{display:inline-block}
 .league-card{width:min(860px,100%);max-height:calc(100vh - 32px);box-sizing:border-box;background:rgba(22,28,52,.97)}
@@ -246,7 +256,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
       <dt>Q</dt><dd>Swing a door into the car beside you</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
-    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button></div>
+    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button></div>
   </div>
 </div>
 
@@ -255,7 +265,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   <div id="sd-panel" hidden><div class="sd-title" id="sd-title">Showdown</div><ol id="sd-rows"></ol></div>
   <div id="pos-block"><div id="pos"><span id="pos-n">1</span><span id="pos-suf">st</span></div><div id="lap" hidden></div><ol id="standings"></ol></div>
   <div id="profile-wrap"><canvas id="profile" aria-label="Stage profile showing each car's position on the descent"></canvas><div id="stage-name"></div></div>
-  <div id="time-block"><div id="time">0:00.00</div><div id="best"></div><div class="hud-btns"><button id="reset-btn" type="button">Reset</button><button id="pause-btn" type="button">Pause</button></div></div>
+  <div id="time-block"><div id="time">0:00.00</div><div id="best"></div><div class="hud-btns"><button id="note-btn" type="button" title="Leave a note on the track for Claude (N)">Note</button><button id="reset-btn" type="button">Reset</button><button id="pause-btn" type="button">Pause</button></div></div>
   <div id="wpn" hidden><b id="wpn-state">Missile ready</b><span id="wpn-bar"><i id="wpn-fill"></i></span></div>
   <div id="speed-block"><svg id="dmg" viewBox="0 0 24 40" role="img" aria-label="Car damage"><rect x="7" y="9" width="10" height="22" rx="2" fill="rgba(255,255,255,.12)"/><rect id="dz-f" x="4" y="0" width="16" height="7" rx="2"/><rect id="dz-b" x="4" y="33" width="16" height="7" rx="2"/><rect id="dz-l" x="0" y="9" width="5" height="22" rx="2"/><rect id="dz-r" x="19" y="9" width="5" height="22" rx="2"/></svg><div id="speed">0</div><div class="unit">km/h</div><div id="boost"><div id="boost-fill"></div></div></div>
   <div id="callout" hidden></div>
@@ -288,10 +298,23 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   </div>
 </div>
 
+<div id="note-bar" hidden><span><b>Notes</b> Tap a spot on the track and say what you'd change there <small id="note-count"></small></span><button id="note-list-btn" class="btn" type="button">All notes</button><button id="note-done" class="cta" type="button">Done</button></div>
+<div id="note-form" class="card" hidden><b id="note-where"></b><textarea id="note-text" rows="3" maxlength="2000" placeholder="What would you change here? (a corner too tight, a jump that doesn't work, a place for a shortcut...)"></textarea><div class="btn-row"><button id="note-save" class="cta" type="button">Save note</button><button id="note-cancel" class="btn" type="button">Cancel</button></div></div>
+<div id="note-toast" hidden></div>
+<div id="notes" class="overlay" hidden>
+  <div class="card notes-card" role="dialog" aria-labelledby="notes-title">
+    <h2 id="notes-title">Notes for Claude</h2>
+    <p id="notes-sub"></p>
+    <div id="notes-body" class="notes-body"></div>
+    <div class="btn-row"><button id="notes-copy" class="btn" type="button">Copy notes</button><button id="notes-close" class="cta" type="button">Close</button></div>
+  </div>
+</div>
+
 <div id="pause" class="overlay" hidden>
   <div class="card">
     <h2>Paused</h2>
     <div class="btn-row"><button id="resume-btn" class="cta" type="button">Resume</button></div>
+    <div class="btn-row"><button id="note-btn2" class="btn" type="button">Add a note here</button></div>
     <div class="btn-row"><button id="restart-btn" class="btn" type="button">Restart stage</button><button id="quit-btn" class="btn" type="button">Choose stage</button></div>
     <div class="btn-row"><button id="steer-btn2" class="btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn2" class="btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn2" class="btn zoom-btn" type="button">Zoom: Normal</button></div>
   </div>
