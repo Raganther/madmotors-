@@ -68,10 +68,10 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   }
   console.log(`garage: raced all ${ids.length} vehicles`);
 }
-// the Rivals setting: a full field of 14 (one of every vehicle), then down to a single rival; the meshes follow
+// the Rivals setting: a full field of 19 (one of every vehicle), then down to a single rival; the meshes follow
 {
   await page.evaluate(() => window.__dr.flow.toMenu()); await page.evaluate(() => { document.getElementById('garage').hidden = true; });
-  for (const [btn, want] of [['#rivals-more', 14], ['#rivals-less', 2]]) {
+  for (const [btn, want] of [['#rivals-more', 19], ['#rivals-less', 2]]) {
     while (await page.$eval(btn, b => !b.disabled)) await page.click(btn);
     await page.evaluate(() => window.__dr.flow.startRace(0)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 0, null, { timeout: 30000 });
     const got = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; for (let k = 0; k < 30; k++) d.step(1 / 30);

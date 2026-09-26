@@ -301,6 +301,103 @@ const MODELS = {
     const W = [];
     for (const z of [1.25, 0, -1.25]) for (const s of [-1, 1]) W.push([s * 0.98, z, 0.4, 0.3]);
     return { bumper, wing, struts: [], heads, tails, cabin, anim, soft: 2.0, ...K.wheels(W, { knobbly: true, hub: CHROME }) };
+  },
+  // Hovercraft: a rounded hull on a fat black rubber skirt, a glass bubble cockpit up front and a big caged fan on the
+  // back that spins with the throttle (anim). No wheels to speak of: tiny ones hidden under the skirt.
+  hover(K, def) {
+    const skirt = K.box(2.3, 0.5, 3.9, TYRE, 0, 0.32, 0, { seg: [2, 1, 3], shape: (x, y, z) => [x * (Math.abs(z) > 1.6 ? 0.88 : 1), y, z * (Math.abs(x) > 0.9 ? 0.94 : 1)] });
+    skirt.userData.home.dims = [2.3, 0.5, 3.9];
+    K.panel(2.0, 0.36, 3.5, def.color, 0, 0.74, 0.05, { seg: [3, 1, 5], shape: (x, y, z) => [x * (z > 1.2 ? 0.8 : 1), y, z] });
+    const cabin = K.panel(1.2, 0.5, 1.2, GLASS, 0, 1.15, 0.8, { seg: [2, 1, 2], shape: (x, y, z) => [y > 0 ? x * 0.7 : x, y, y > 0 ? z * 0.7 : z] });
+    K.number(0.6, 0.93, -0.3);
+    for (const s of [-1, 1]) K.box(0.08, 0.06, 3.0, def.accent, s * 0.98, 0.92, 0.05);     // side rubbing strakes
+    const fanRing = K.part(flat(new THREE.TorusGeometry(0.72, 0.09, 6, 16)), DARK, 0, 1.55, -1.4, [1.6, 1.6, 0.2]);
+    const fan = K.group(0, 1.55, -1.45);
+    for (let k = 0; k < 3; k++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.3, 0.04), new THREE.MeshLambertMaterial({ color: 0xE8E8E8 })); bl.rotation.z = k * Math.PI / 3; fan.add(bl); }
+    for (const s of [-1, 1]) K.box(0.08, 0.9, 0.08, DARK, s * 0.72, 1.1, -1.4);             // fan stands
+    const rudder = K.box(0.06, 0.8, 0.5, def.accent, 0, 1.5, -1.95);
+    const bumper = K.box(1.6, 0.14, 0.2, def.accent, 0, 0.72, 1.92);
+    const heads = [-1, 1].map(s => K.lamp(0.12, s * 0.5, 0.82, 1.82)), tails = [-1, 1].map(s => K.light(false, 0.2, 0.12, s * 0.8, 0.8, -1.72));
+    const anim = (v, c, now) => { fan.rotation.z = now * (6 + (c.inp.throttle || 0) * 30); rudder.rotation.y = -(c.inp.steer || 0) * 0.5; };
+    return { bumper, wing: rudder, struts: [fanRing], heads, tails, cabin, anim, soft: 1.6, ...K.wheels([[0.7, 1.2, 0.2, 0.2], [-0.7, 1.2, 0.2, 0.2], [0.7, -1.2, 0.2, 0.2], [-0.7, -1.2, 0.2, 0.2]]) };
+  },
+  // Snowcat: a boxy orange cab on two wide rubber tracks (road wheels showing through), a snow blade on the front, a
+  // roof light bar and a beacon that turns (anim).
+  snowcat(K, def) {
+    for (const s of [-1, 1]) {
+      K.box(0.62, 0.72, 3.7, TYRE, s * 0.92, 0.4, 0, { seg: [1, 1, 2], shape: (x, y, z) => [x, y, Math.abs(z) > 1.5 && y < 0 ? z * 0.86 : z] });
+      for (let k = 0; k < 9; k++) K.box(0.64, 0.06, 0.1, 0x3A3A40, s * 0.92, 0.78, -1.6 + k * 0.4);   // track cleats
+    }
+    K.box(1.2, 0.3, 3.2, DARK, 0, 0.62, 0);
+    K.panel(1.9, 0.9, 2.3, def.color, 0, 1.28, -0.3, { seg: [3, 2, 3] });
+    const cabin = K.panel(1.8, 0.62, 1.2, GLASS, 0, 1.98, 0.1, { seg: [2, 1, 2] });
+    K.panel(1.9, 0.1, 1.4, def.color, 0, 2.34, 0.05, { seg: [2, 1, 2] });
+    K.number(0.66, 2.4, -0.1);
+    const bar = K.box(1.4, 0.12, 0.2, DARK, 0, 2.44, 0.6);
+    const beacon = K.glow(0.24, 0.22, 0.24, 0xFFA020, 0, 2.52, -0.5);
+    const bumper = K.box(2.5, 0.6, 0.18, def.accent, 0, 0.55, 2.05, { rx: -0.25 });          // snow blade
+    for (const s of [-1, 1]) K.box(0.1, 0.1, 0.6, DARK, s * 0.6, 0.6, 1.72);
+    const wing = K.box(1.5, 0.5, 0.5, def.accent, 0, 1.0, -1.7);                              // rear box
+    const heads = [-0.45, -0.15, 0.15, 0.45].map(x => K.lamp(0.1, x, 2.44, 0.72)), tails = [-1, 1].map(s => K.light(false, 0.2, 0.2, s * 0.7, 1.1, -1.96));
+    const anim = (v, c, now) => { beacon.rotation.y = now * 6; beacon.material.color.setHex(Math.floor(now * 3) % 2 ? 0xFFA020 : 0x7A4A10); };
+    return { bumper, wing, struts: [bar], heads, tails, cabin, anim, soft: 0.8, ...K.wheels([[0.92, 1.3, 0.3, 0.5], [-0.92, 1.3, 0.3, 0.5], [0.92, -1.3, 0.3, 0.5], [-0.92, -1.3, 0.3, 0.5], [0.92, 0, 0.3, 0.5], [-0.92, 0, 0.3, 0.5]]) };
+  },
+  // Stretch limo: absurdly long and low, two-tone with gold trim, a row of tinted windows, a sunroof with a flag and a
+  // hood ornament.
+  limo(K, def) {
+    K.box(1.96, 0.28, 5.3, DARK, 0, 0.42, 0);
+    K.panel(1.94, 0.48, 5.3, def.color, 0, 0.8, 0, { seg: [3, 2, 8] });
+    const cabin = K.panel(1.7, 0.42, 3.6, GLASS, 0, 1.24, -0.45, { seg: [2, 1, 5], shape: (x, y, z) => [y > 0 ? x * 0.9 : x, y, y > 0 && z > 1.5 ? z - 0.3 : z] });
+    K.panel(1.62, 0.08, 3.3, def.color, 0, 1.48, -0.55, { seg: [2, 1, 4] });
+    for (const s of [-1, 1]) K.box(0.02, 0.06, 5.2, def.accent, s * 0.975, 0.98, 0);          // gold waistline
+    K.box(0.9, 0.04, 0.9, GLASS, 0, 1.53, 0.1);                                                  // sunroof
+    K.number(0.6, 1.53, -1.4);
+    K.box(0.1, 0.16, 0.2, def.accent, 0, 1.08, 2.45);                                            // hood ornament
+    const bumper = K.box(1.98, 0.16, 0.18, CHROME, 0, 0.6, 2.7);
+    K.box(1.98, 0.14, 0.16, CHROME, 0, 0.6, -2.7);
+    const wing = K.box(0.04, 0.5, 0.04, CHROME, 0.5, 1.8, 0.1); const flag = K.box(0.02, 0.24, 0.36, def.accent, 0.5, 1.95, -0.09);
+    const heads = [-0.7, -0.45, 0.45, 0.7].map(x => K.lamp(0.1, x, 0.84, 2.66)), tails = [-1, 1].map(s => K.light(false, 0.5, 0.1, s * 0.62, 0.88, -2.66));
+    const anim = (v, c, now) => { flag.rotation.y = Math.sin(now * 9) * 0.3; };
+    return { bumper, wing, struts: [flag], heads, tails, cabin, anim, ...K.wheels([[0.94, 1.8, 0.4, 0.3], [-0.94, 1.8, 0.4, 0.3], [0.94, -1.8, 0.4, 0.3], [-0.94, -1.8, 0.4, 0.3]]) };
+  },
+  // Sidecar: a big-bore motorbike with its rider on one side, a bullet-shaped sidecar with a passenger (hanging out
+  // on the bends: anim) on the other, joined by a chrome frame.
+  sidecar(K, def) {
+    K.box(0.4, 0.4, 2.2, DARK, -0.55, 0.62, 0);                                                  // bike frame
+    K.panel(0.46, 0.34, 0.9, def.color, -0.55, 0.96, 0.35, { seg: [1, 1, 2] });                  // tank
+    K.box(0.4, 0.14, 0.7, TYRE, -0.55, 1.02, -0.35);                                             // seat
+    K.box(0.9, 0.06, 0.06, CHROME, -0.55, 1.26, 0.9);                                            // bars
+    const rider = K.group(-0.55, 1.1, -0.25);
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.4), new THREE.MeshLambertMaterial({ color: def.accent })); torso.position.set(0, 0.35, 0.1); torso.rotation.x = 0.5; rider.add(torso);
+    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshLambertMaterial({ color: def.color })); helm.position.set(0, 0.75, 0.35); rider.add(helm);
+    const cabin = K.panel(0.92, 0.46, 2.1, def.color, 0.62, 0.7, 0.05, { seg: [2, 1, 3], shape: (x, y, z) => [x * (1 - 0.35 * Math.max(0, z / 1.05) ** 2), y > 0 && z > 0.4 ? y - 0.16 : y, z] });   // the sidecar tub
+    const pass = K.group(0.62, 0.95, -0.35);
+    const pt = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.5, 0.36), new THREE.MeshLambertMaterial({ color: 0xF4F4F0 })); pt.position.y = 0.25; pass.add(pt);
+    const ph = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8), new THREE.MeshLambertMaterial({ color: def.accent })); ph.position.y = 0.62; pass.add(ph);
+    K.number(0.5, 0.94, 0.55);
+    for (const z of [0.6, -0.6]) K.box(1.1, 0.06, 0.06, CHROME, 0.05, 0.62, z);                 // frame
+    const bumper = K.box(0.5, 0.14, 0.16, CHROME, 0.62, 0.62, 1.12);
+    const wing = K.box(0.36, 0.12, 0.3, def.color, -0.55, 0.94, -1.05);                          // tail hump
+    const heads = [K.lamp(0.14, -0.55, 1.1, 1.15)], tails = [K.light(false, 0.2, 0.12, -0.55, 0.92, -1.2)];
+    const anim = (v, c, now) => { const lean = (c.inp.steer || 0); pass.position.x = 0.62 + lean * 0.45; pass.rotation.z = -lean * 0.4; rider.rotation.z = lean * 0.25; };
+    return { bumper, wing, struts: [], heads, tails, cabin, anim, soft: 1.2, ...K.wheels([[-0.55, 1.05, 0.38, 0.2], [0.95, 0.3, 0.3, 0.2], [-0.55, -1.0, 0.4, 0.26]]) };
+  },
+  // Cement mixer: a heavy yellow cab and chassis carrying a striped drum that turns as it drives (anim), a chute at
+  // the back, six wheels.
+  mixer(K, def) {
+    K.box(2.0, 0.34, 4.9, DARK, 0, 0.55, 0);
+    K.panel(2.0, 1.2, 1.3, def.color, 0, 1.3, 1.75, { seg: [3, 2, 2] });
+    const cabin = K.panel(1.9, 0.5, 0.5, GLASS, 0, 1.6, 2.2, { seg: [2, 1, 1], shape: (x, y, z) => [x, y, y > 0 ? z - 0.15 : z] });
+    K.number(0.66, 1.92, 1.6);
+    const drum = K.group(0, 1.7, -0.6); drum.rotation.x = 0.18;
+    const dm = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.95, 2.8, 14).rotateX(Math.PI / 2), new THREE.MeshLambertMaterial({ color: def.accent })); dm.castShadow = true; drum.add(dm);
+    for (let k = 0; k < 4; k++) { const st = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.06, 4, 14, Math.PI), new THREE.MeshLambertMaterial({ color: def.color })); st.rotation.set(0, Math.PI / 2, k * Math.PI / 2); st.position.z = -0.8 + k * 0.5; drum.add(st); }
+    for (const s of [-1, 1]) K.box(0.2, 1.0, 0.2, DARK, s * 0.7, 1.1, -0.6);
+    const wing = K.box(0.5, 0.12, 0.9, 0x8A8F96, 0, 1.1, -2.6, { rx: 0.5 });                     // chute
+    const bumper = K.box(2.04, 0.3, 0.22, DARK, 0, 0.66, 2.46);
+    const heads = [-1, 1].map(s => K.lamp(0.13, s * 0.72, 0.92, 2.42)), tails = [-1, 1].map(s => K.light(false, 0.24, 0.2, s * 0.8, 0.9, -2.46));
+    const anim = (v, c, now) => { drum.rotation.z = now * 1.6; };
+    return { bumper, wing, struts: [], heads, tails, cabin, anim, soft: 0.8, ...K.wheels([[1.0, 1.75, 0.48, 0.4], [-1.0, 1.75, 0.48, 0.4], [1.0, -1.0, 0.48, 0.4], [-1.0, -1.0, 0.48, 0.4], [1.0, -1.95, 0.48, 0.4], [-1.0, -1.95, 0.48, 0.4]]) };
   }
 };
 /** Build a racer's body onto root/body. Returns the parts the damage and drawing code use. */

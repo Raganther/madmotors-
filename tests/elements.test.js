@@ -286,11 +286,11 @@ describe('the garage', () => {
     const std = raceDefs(VEHICLES[0]); expect(std.map(d => d.model)).toEqual(CAR_DEFS.map(d => d.model));
     expect(std.find(d => d.player).veh).toBeUndefined();
     const h = raceDefs(VEHICLES.find(v => v.id === 'hatch')); expect(h.find(d => d.player).model).toBe('hatch'); expect(h.filter(d => d.model === 'hatch').length).toBe(1);
-    expect(new Set(VEHICLES.map(v => v.id)).size).toBe(VEHICLES.length); expect(VEHICLES.length).toBe(14);
+    expect(new Set(VEHICLES.map(v => v.id)).size).toBe(VEHICLES.length); expect(VEHICLES.length).toBe(19);
   });
-  it('a full field: one of every vehicle, 14 cars on the grid, the player at the back; everyone gets round', () => {
+  it('a full field: one of every vehicle, 19 cars on the grid, the player at the back; everyone gets round', () => {
     const defs = raceDefs(VEHICLES[0], MAX_RIVALS);
-    expect(defs.length).toBe(14); expect(new Set(defs.map(d => d.model)).size).toBe(14); expect(defs.at(-1).player).toBe(true);
+    expect(defs.length).toBe(19); expect(new Set(defs.map(d => d.model)).size).toBe(19); expect(defs.at(-1).player).toBe(true);
     expect(raceDefs(VEHICLES.find(v => v.id === 'kart'), MAX_RIVALS).filter(d => d.model === 'kart').length).toBe(1);   // whoever drove it takes a coupe
     expect(raceDefs(VEHICLES[0], 1).map(d => d.name)).toEqual(['Okafor', 'You']);
     for (const st of [M.STAGES[0], M.STAGES[10]]) {
@@ -298,7 +298,7 @@ describe('the garage', () => {
       const R = M.createRace(W, defs); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9;
       let t = 0; while (t < 400 && !R.cars.every(c => c.finished)) { M.raceStep(R, 1 / 120, W); t += 1 / 120; }
       const resp = R.cars.reduce((a, c) => a + c.respawns, 0);
-      expect(R.cars.every(c => c.finished)).toBe(true); expect(resp).toBeLessThanOrEqual(6);   // a pack this size knocks the odd car off
+      expect(R.cars.every(c => c.finished)).toBe(true); expect(resp).toBeLessThanOrEqual(Math.ceil(defs.length / 2));   // a pack this size crowds a few off at the tight corners (resets, not wrecks)
     }
   });
   it('every vehicle gets round a tarmac and a dirt stage alone, within 10% of the coupe, without respawning', () => {

@@ -29,7 +29,12 @@ export const MORE_RIVALS = [
   { name: 'Achterberg', vehicle: 'rocket', num: 88, skill: 0.92, flick: 0.24, driftK: 1 / 50 },
   { name: 'Patel', vehicle: 'tuktuk', num: 4, skill: 0.93, flick: 0.32, driftK: 1 / 48 },
   { name: 'Rossi', vehicle: 'icecream', num: 21, skill: 0.92, flick: 0.3, driftK: 1 / 58 },
-  { name: "O'Brien", vehicle: 'firetruck', num: 51, skill: 0.91, flick: 0.28, driftK: 1 / 62 }
+  { name: "O'Brien", vehicle: 'firetruck', num: 51, skill: 0.91, flick: 0.28, driftK: 1 / 62 },
+  { name: 'Okonkwo', vehicle: 'hover', num: 12, skill: 0.93, flick: 0.3, driftK: 1 / 40 },
+  { name: 'Lindgren', vehicle: 'snowcat', num: 44, skill: 0.92, flick: 0.2, driftK: 1 / 70 },
+  { name: 'Duval', vehicle: 'limo', num: 9, skill: 0.95, flick: 0.26, driftK: 1 / 48 },
+  { name: 'Haddad', vehicle: 'sidecar', num: 27, skill: 0.94, flick: 0.36, driftK: 1 / 36 },
+  { name: 'Moretti', vehicle: 'mixer', num: 60, skill: 0.91, flick: 0.4, driftK: 1 / 66 }
 ];
 export const MAX_RIVALS = 3 + MORE_RIVALS.length, DEFAULT_RIVALS = 3;
 const asVehicle = (d, v) => ({ ...d, model: v.model, color: v.color, accent: v.accent, hw: v.hw, hl: v.hl, im: v.veh ? v.veh.im : undefined, veh: v.veh, vehicle: v.id });
