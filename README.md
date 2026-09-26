@@ -222,6 +222,11 @@ points over a lap). `npm run shot -- garage` shoots the vehicle picker.
    overlaps by accident, then play it with `npm run dev`.
 4. `npm run golden` to record the new stage, then `npm run check`.
 
+In the game, the menu's **Track editor** (`src/ui/editor.js`, geometry in `src/core/track/editing.js`) edits the same
+`segs` on a plan view: pick a section, change its length / radius / turn / height / element tags, "Close the loop"
+(sets the last corner so the lap turns whole circles, then stretches two straights to land on the start), and
+"Test drive" installs it as a temporary stage. "Send to Claude" stores it in the artifact's `tracks` collection.
+
 ## Adding a vehicle
 
 1. A body builder in `src/render/carmodels.js` (`MODELS.<name>`): outline, wheels (`K.wheels`), the damage parts, and

@@ -159,6 +159,25 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .gs i{height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden} .gs b{display:block;height:100%;background:var(--yellow);border-radius:3px}
 @media (max-width:520px){ .garage-grid{grid-template-columns:1fr 1fr;gap:8px} .g-blurb{display:none} .gs{grid-template-columns:62px 1fr;font-size:11px} .g-name{font-size:14px} }
 .btn-row button{flex:1;min-width:120px}
+#editor{position:fixed;inset:0;background:#141A30;display:flex;flex-direction:column;z-index:4;color:#fff}
+.ed-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 12px;background:var(--panel);font-size:14px} .ed-title{font-family:var(--display);font-weight:400;color:var(--yellow);font-size:18px}
+.ed-bar label{display:flex;align-items:center;gap:6px} .ed-bar input,.ed-bar select,.ed-f input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:4px 6px;font:inherit} #ed-laps{width:48px} #ed-name{width:150px}
+.ed-bar .btn,.ed-bar .cta{padding:7px 12px;font-size:14px;min-width:0} .ed-btns{display:flex;gap:6px;margin-left:auto}
+.ed-status{padding:5px 12px;font-size:14px;color:#7BD88F;background:rgba(0,0,0,.25)} .ed-status.bad{color:#FF8A7A}
+.ed-main{flex:1;display:grid;grid-template-columns:1fr 380px;min-height:0}
+.ed-mapwrap{position:relative;min-height:0} #ed-map{width:100%;height:100%;display:block;touch-action:none;cursor:grab} #ed-legend{position:absolute;left:10px;bottom:8px;color:var(--mist);font-size:12px}
+.ed-zoom{position:absolute;right:10px;top:10px;display:flex;gap:6px} .ed-zoom button{background:var(--panel);border:0;border-radius:8px;min-width:34px;height:34px;font-weight:700;font-size:17px;color:#fff}
+.ed-side{display:flex;flex-direction:column;min-height:0;background:rgba(28,35,64,.7);border-left:1px solid rgba(255,255,255,.1)}
+#ed-sec{padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid rgba(255,255,255,.1)}
+.ed-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .ed-head>button{background:rgba(255,255,255,.1);border:0;border-radius:6px;color:#fff;padding:3px 8px}
+.ed-seg{margin-left:auto;display:flex;background:rgba(255,255,255,.08);border-radius:8px;padding:2px} .ed-seg button{border:0;background:transparent;color:#fff;padding:4px 10px;border-radius:6px;font-weight:600} .ed-seg button.on{background:var(--yellow);color:var(--ink)}
+.ed-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px} .ed-f{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--mist)} .ed-f small{opacity:.8} .ed-f input[type=number]{width:100%;box-sizing:border-box;font-size:15px}
+.ed-inline{flex-direction:row;align-items:center;gap:6px}
+.ed-chips{display:flex;flex-wrap:wrap;gap:5px} .ed-chip{border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:999px;padding:3px 9px;font-size:12px} .ed-chip.on{background:var(--yellow);color:var(--ink);border-color:var(--yellow);font-weight:700}
+.ed-acts{display:flex;flex-wrap:wrap;gap:5px} .ed-acts button{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:8px;padding:4px 8px;font-size:12px} .ed-acts .ed-del{color:#FF8A7A;border-color:rgba(255,138,122,.5)}
+.ed-list{list-style:none;margin:0;padding:6px;overflow-y:auto;flex:1;min-height:0;font-size:13px} .ed-list li{padding:5px 8px;border-radius:7px;cursor:pointer} .ed-list li:hover{background:rgba(255,255,255,.06)} .ed-list li.on{background:rgba(255,199,44,.18)} .ed-list b{color:var(--yellow);margin-right:4px}
+.ed-send{display:flex;gap:6px;padding:8px;border-top:1px solid rgba(255,255,255,.1)} .ed-send textarea{flex:1;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:14px;padding:6px} .ed-send .cta{padding:8px 12px;font-size:14px}
+@media (max-width:760px){ .ed-main{grid-template-columns:1fr;grid-template-rows:44vh 1fr} .ed-side{border-left:0;border-top:1px solid rgba(255,255,255,.1)} .ed-btns{margin-left:0} #ed-name{width:110px} }
 #note-bar{position:fixed;left:50%;top:calc(var(--top) + 104px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;background:var(--panel);border-radius:14px;padding:8px 12px;max-width:calc(100% - 24px);box-sizing:border-box;font-size:15px}
 #note-bar small{display:block;color:var(--mist);font-size:12px} #note-bar .btn,#note-bar .cta{padding:8px 14px;font-size:15px;min-width:0}
 #note-form{position:fixed;left:50%;bottom:calc(var(--bot) + 8px);transform:translateX(-50%);width:min(460px,calc(100% - 24px));z-index:5} #note-form b{font-size:15px;color:var(--yellow)}
@@ -256,7 +275,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
       <dt>Q</dt><dd>Swing a door into the car beside you</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
-    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button></div>
+    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button></div>
   </div>
 </div>
 
@@ -298,6 +317,26 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   </div>
 </div>
 
+<div id="editor" hidden>
+  <div class="ed-bar">
+    <b class="ed-title">Track editor</b>
+    <label>Start from <select id="ed-base"></select></label>
+    <label>Name <input id="ed-name" maxlength="40"></label>
+    <label>Laps <input id="ed-laps" type="number" min="1" max="9"></label>
+    <label>Surface <select id="ed-surface"><option value="tarmac">Tarmac</option><option value="gravel">Gravel</option><option value="snow">Snow</option></select></label>
+    <label class="ed-inline"><input type="checkbox" id="ed-keep" checked> keep shortcuts &amp; railway</label>
+    <span class="ed-btns"><button id="ed-close" class="btn" type="button">Close the loop</button><button id="ed-drive" class="cta" type="button">Test drive</button><button id="ed-exit" class="btn" type="button">Exit</button></span>
+  </div>
+  <div id="ed-status" class="ed-status"></div>
+  <div class="ed-main">
+    <div class="ed-mapwrap"><canvas id="ed-map"></canvas><div class="ed-zoom"><button id="ed-zoomin" type="button" aria-label="Zoom in">+</button><button id="ed-zoomout" type="button" aria-label="Zoom out">&minus;</button><button id="ed-fit" type="button">Fit</button></div><small id="ed-legend"></small></div>
+    <div class="ed-side">
+      <div id="ed-sec"></div>
+      <ol id="ed-list" class="ed-list"></ol>
+      <div class="ed-send"><textarea id="ed-msg" rows="2" maxlength="2000" placeholder="A message for Claude about this track (optional)"></textarea><button id="ed-send" class="cta" type="button">Send to Claude</button></div>
+    </div>
+  </div>
+</div>
 <div id="note-bar" hidden><span><b>Notes</b> Tap a spot on the track and say what you'd change there <small id="note-count"></small></span><button id="note-list-btn" class="btn" type="button">All notes</button><button id="note-done" class="cta" type="button">Done</button></div>
 <div id="note-form" class="card" hidden><b id="note-where"></b><textarea id="note-text" rows="3" maxlength="2000" placeholder="What would you change here? (a corner too tight, a jump that doesn't work, a place for a shortcut...)"></textarea><div class="btn-row"><button id="note-save" class="cta" type="button">Save note</button><button id="note-cancel" class="btn" type="button">Cancel</button></div></div>
 <div id="note-toast" hidden></div>

@@ -19,6 +19,11 @@ start line, lat, x/y/z, text, camera, status, and `shot`, an asset id: `Artifact
 their view). Go to the spot with `npm run shot -- "<stage>" <metres>`. Answer each by `update` on `notes/<id>` with
 `{ reply: "...", status: "done" }`: the reply shows in the game's Notes list and the pin turns green.
 
+The menu's Track editor lets the user lay out a circuit (an existing gorge stage or a blank oval) and "Send to Claude":
+those land in collection `tracks` (name, base, closes, message, `stage` = the stage object with `segs`). Turn one into a
+real stage with `/new-stage` (its segs are already frozen metres; keep them, add the look), then `update`
+`tracks/<id>` with `{ reply, status: "done" }`.
+
 ## Skills (.claude/skills)
 `/new-stage`, `/new-element`, `/new-vehicle`, `/new-feature`, `/look` (visual changes), `/ship` (verify, commit, push, publish). Each holds the workflow, the done-checks and traps we've hit; the README holds the how. When you hit a new trap, add it to the skill it belongs to.
 

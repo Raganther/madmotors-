@@ -193,7 +193,8 @@ export function selectStage(i, cb) {
   const v = G.stageCars[STAGES[i].name] || G.defaultVehicle; if (v !== G.vehicle) showVehicle(v);   // the car picked for this stage
   document.querySelectorAll('.stage').forEach((b, k) => b.setAttribute('aria-pressed', k === i ? 'true' : 'false'));
   $('race-btn').textContent = MODE_BTN[G.mode] + STAGES[i].name;
-  if (G.world && G.world.idx === i) { cb && cb(); return; }
+  if (G.world && G.world.idx === i && !G.forceBuild) { cb && cb(); return; }
+  G.forceBuild = false;
   $('loading-text').textContent = 'Building ' + STAGES[i].name; $('loading').hidden = false;
   clearTimeout(pendingBuild);
   pendingBuild = setTimeout(() => {
@@ -207,7 +208,7 @@ export function startRace(idx) {
     race = newRace(); clearSkids(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0;
     G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; G.sdTick = 0; $('edge').className = '';
     $('menu').hidden = true; $('garage').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
-    $('stage-name').textContent = `Stage ${idx + 1}: ${STAGES[idx].name}`;
+    $('stage-name').textContent = G.editDrive ? `Test drive: ${STAGES[idx].name}` : `Stage ${idx + 1}: ${STAGES[idx].name}`; $('quit-btn').textContent = G.editDrive ? 'Back to editor' : 'Choose stage';
     racesStarted++; G.hintTimer = racesStarted <= 2 ? 7 : 0;
     $('hint').textContent = isTouch ? G.steer === 'wheel' ? 'Point the wheel where to go. Slide Gas down to drift, up to fire' : 'Slide Gas down to drift, up to fire' : 'Hold Space through a corner to drift, then let go for a boost';
     updateCamera(0, true);
@@ -215,6 +216,7 @@ export function startRace(idx) {
 }
 export function toMenu() {
   G.league = null;
+  if (G.editDrive && G.onEditorBack) { G.onEditorBack(); }   // leaving a test drive goes back to the track editor
   G.state = 'menu'; $('hud').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('touch').hidden = true; $('menu').hidden = false; $('countdown').hidden = true;
   race = newRace(); clearSkids(); AudioSys.update(null, 'off'); updateCamera(0, true); $('race-btn').focus();
 }

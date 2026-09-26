@@ -20,6 +20,8 @@ import { makeTerrainMesh } from './terrain.js';
 const TRACKS = [];
 /** The built road for stage idx, built on first use (sandbox stages can be appended to STAGES at boot). */
 export const trackOf = idx => TRACKS[idx] || (TRACKS[idx] = buildTrack(STAGES[idx]));
+/** Drop a cached track (the editor's test drive replaces its stage). */
+export function forgetTrack(idx) { delete TRACKS[idx]; }
 // Where the scenery goes see-through over the player: only long covered stretches (tunnels, the rock gallery)
 // of 40 m or more, plus 12 m either side of the portals. Bridges, arches, houses and short cuttings stay solid.
 function coverMap(tr) {
