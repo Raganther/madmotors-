@@ -11,6 +11,7 @@ export function makeRoadMesh(tr, stage) {
   const mainPos = [], mainCol = [], brPos = [], brCol = [];
   let pos = mainPos, col = mainCol;
   const road = new THREE.Color(C.road), dirt = new THREE.Color(C.dirt).multiplyScalar(0.85), skirt = new THREE.Color(C.dirt).multiplyScalar(0.68);
+  const dirtRoad = new THREE.Color(C.dirtRoad || C.dirt).multiplyScalar(0.95), isDirt = i => tr.dirt && tr.dirt[tr.bi(i)];
   const concrete = new THREE.Color(0xB9BBC0), red = new THREE.Color(0xD8352A), white = new THREE.Color(0xF4F4F0), yel = new THREE.Color(0xFFC72C), blk = new THREE.Color(0x262626), tmp = new THREE.Color();
   const mnL = new Float32Array(N);
   for (let i = 0; i < N; i++) { let m = 1e9; for (let j = i - 3; j <= i + 3; j++) { const jj = loop ? (j + N) % N : clamp(j, 0, N - 1); m = Math.min(m, tr.H[jj]); } mnL[i] = m; }
@@ -44,12 +45,13 @@ export function makeRoadMesh(tr, stage) {
       else if (tr.jump[i] === 1) c = ((i >> 1) & 1) ? yel : blk;                           // painted kickers (natural crests stay dirt)
       else {
         // the driving surface in strips: darker worn wheel tracks in each lane plus the odd repair patch
-        const base = 1 + tr.noise.n2(i * 0.15, 3.3) * 0.08;
+        const dirtHere = isDirt(i), surf = dirtHere ? dirtRoad : road;                  // dirt shortcuts: a rutted dirt track
+        const base = 1 + tr.noise.n2(i * 0.15, 3.3) * (dirtHere ? 0.16 : 0.08);
         for (let q = 0; q < ROAD_STRIPS.length - 1; q++) {
           const pa = ROAD_STRIPS[q], pb = ROAD_STRIPS[q + 1];
-          let k = base * (q === 1 || q === 5 ? 0.9 : q === 3 ? 1.02 : 1);
+          let k = base * (q === 1 || q === 5 ? (dirtHere ? 0.82 : 0.9) : q === 3 ? (dirtHere ? 1.08 : 1.02) : 1);
           const pn = tr.noise.n2(i * 0.045 + q * 0.7, 9.1 + q * 0.3); if (pn > 0.62) k *= tr.surface === 'tarmac' ? 0.86 : 1.08;
-          tmp.copy(road).multiplyScalar(k);
+          tmp.copy(surf).multiplyScalar(k);
           const qa = P(i, pa, tr.H[i] + 0.05), qb = P(i, pb, tr.H[i] + 0.05), qc = P(j, pa, tr.H[j] + 0.05), qd = P(j, pb, tr.H[j] + 0.05);
           quad(...qa, ...qb, ...qc, ...qd, tmp);
         }
@@ -59,7 +61,7 @@ export function makeRoadMesh(tr, stage) {
       const a = P(i, oa, yf(i, s)), b = P(i, ob, yf(i, s + 1)), cc = P(j, oa, yf(j, s)), d = P(j, ob, yf(j, s + 1));
       quad(...a, ...b, ...cc, ...d, c);
     }
-    if (tr.surface === 'tarmac' && !tr.jump[i] && i % 6 < 3 && i > 40 && (loop || i < tr.finishIdx - 4)) {
+    if (tr.surface === 'tarmac' && !isDirt(i) && !tr.jump[i] && i % 6 < 3 && i > 40 && (loop || i < tr.finishIdx - 4)) {
       const a = P(i, -0.18, tr.H[i] + 0.07), b = P(i, 0.18, tr.H[i] + 0.07), cc = P(j, -0.18, tr.H[j] + 0.07), d = P(j, 0.18, tr.H[j] + 0.07);
       quad(...a, ...b, ...cc, ...d, white);
     }

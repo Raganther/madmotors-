@@ -83,6 +83,7 @@ export function handleEvents() {
         case 'sd-boom': sdBoom(e); for (const k of e.losers) { const b = race.cars[k]; sdBoomFx(b, b.isPlayer || onScreen(b)); } break;
         case 'sd-crown': sdCrown(e); break;
         case 'cp-point': cpPoint(e); break;
+        case 'hammer-hit': shockwave(e.x, e.y - 1, e.z, 4, 0xFFC72C); sparks(e.x, e.y, e.z, 14); if (near) { AudioSys.crash('metal', 1); AudioSys.burst(0.5, 'lowpass', 120, 0.4); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1); callout('Wrecking ball!'); } break;
         case 'pickup': pickupFx(e); if (c.isPlayer) { callout(ITEM_NAME[e.item] + '!'); AudioSys.tone(660, 0.12, 0.07, 'triangle', 1.6); AudioSys.tone(990, 0.16, 0.05, 'triangle', 1.3); } else if (near) AudioSys.tone(520, 0.08, 0.03, 'triangle', 1.5); break;
         case 'use': mountKick(visOf(c)); useFx(c, e.item, near); break;
         case 'shot': if (near) AudioSys.burst(c.isPlayer ? 0.1 : 0.05, 'highpass', 2200, 0.05); break;

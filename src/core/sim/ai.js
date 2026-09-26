@@ -4,6 +4,7 @@ import { ferryTarget } from '../features/ferry.js';
 import { drawTarget } from '../features/drawbridge.js';
 import { rutDepth, rutLane } from '../features/wear.js';
 import { clamp } from '../math.js';
+import { HAMMER, hammerLat } from '../elements/hammer.js';
 
 /** Before each fork pick a route, the branch or the main road, at random (stage.branches[k].share = the branch's
  *  chance), so the pack splits. */
@@ -61,6 +62,16 @@ export function aiControl(c, W, cars, dt, hazards, gate) {
       if (Math.abs(cl - lane) < 2.3) lane += (lane >= cl ? 1 : -1) * (2.4 - Math.abs(cl - lane));
     }
   }
+  // wrecking balls: of a few lanes, take the one the ball stays furthest from while we pass under it (the whole window,
+  // not just the moment we arrive); if even that's tight, ease off and arrive later
+  let hamSlow = 99;
+  if (tr.hammers && W.hamT !== undefined) for (const h of tr.hammers) {
+    const L0 = tr.loopN, d = L0 ? ((h.i - i) % L0 + L0) % L0 : h.i - i; if (d < 0 || d > 55) continue;
+    const tA = W.hamT + d / Math.max(sp, 6), clear = x => { let m = 99; for (let q = -0.25; q <= 0.35; q += 0.1) m = Math.min(m, Math.abs(hammerLat(h, tA + q).lat - x)); return m; };
+    let best = lane, bm = clear(lane) + 0.3;
+    for (const x of [-4.3, -2.2, 0, 2.2, 4.3]) { const m = clear(x); if (m > bm) { bm = m; best = x; } }
+    lane = best; if (bm < HAMMER.R + c.hw + 0.4 && d > 6) hamSlow = Math.min(hamSlow, sp * 0.8);
+  }
   lane = clamp(Math.max(lane, minLane), -HALF + 1.7, HALF - 1.2);
   ai.cur += (lane - ai.cur) * Math.min(1, dt * (minLane > -HALF ? 3 : 1.8));
   const L = at(Math.round(7 + sp * 0.38));
@@ -73,7 +84,7 @@ export function aiControl(c, W, cars, dt, hazards, gate) {
   if (G) { const n = Math.round(sp * 1.7 + 18); for (let d = 0, j = i0; d <= n; d++, j = tr.adv(j, 1, ai.alt ?? -1)) { const vm = tr.vmax[j] * skill * bog(j); const v = Math.sqrt(vm * vm + 56 * d); if (v < target) target = v; } }
   else { const look = Math.min(N - 2, i + Math.round(sp * 1.7 + 18)); for (let j = i; j <= look; j++) { const vm = tr.vmax[j] * skill * bog(j); const v = Math.sqrt(vm * vm + 56 * (j - i)); if (v < target) target = v; } }
   if (Math.abs(pr.lat) > HALF + 0.5) target = Math.min(target, 16);
-  target = Math.min(target, hzSlow);
+  target = Math.min(target, hzSlow, hamSlow);
   target = Math.min(target, ferryTarget(W, c), drawTarget(W, c));                                  // queue for the barge, stop at the front of its deck
   { const dsx = closedCrossingAhead(W, i); if (dsx > 6 && dsx < 120) target = Math.min(target, Math.max(0, (dsx - 16) * 0.7)); }   // wait at lowered barriers
   if (sp > target + 1.2) { c.inp.throttle = 0; c.inp.brake = clamp((sp - target) / 5, 0.25, 1); }

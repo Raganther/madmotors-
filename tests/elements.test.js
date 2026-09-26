@@ -28,7 +28,7 @@ describe('element registry and stage validation', () => {
 });
 
 // what each sandbox must contain, by element name
-const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'], rally: ['mud', 'whoops', 'yump'], snow: ['ice'] };
+const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'], rally: ['mud', 'whoops', 'yump'], snow: ['ice'], shortcut: ['dirt', 'whoops'], hammer: ['hammer'] };
 describe('sandboxes', () => {
   it('there is a sandbox listed here for each one defined', () => expect(Object.keys(SANDBOXES).sort()).toEqual(Object.keys(EXPECT).sort()));
   for (const [name, stage] of Object.entries(SANDBOXES)) it(`${name}: builds, closes, has its elements, and four AI cars lap it cleanly`, () => {
@@ -212,6 +212,29 @@ describe('snow and ice', () => {
     let t = 0; while (t < 3) { P.inp.throttle = 1; P.inp.steer = 0; M.raceStep(R, 1 / 120, W); t += 1 / 120; seen.add(P.surface); }
     expect(seen.has('snow')).toBe(true); expect(seen.has('ice')).toBe(true);
     expect(M.SURF.ice.latMax).toBeLessThan(M.SURF.snow.latMax * 0.5);
+  });
+});
+
+describe('dirt shortcuts and wrecking balls', () => {
+  it('a dirt branch is a gravel surface, shorter than the road it cuts off, and the AI takes it sometimes', () => {
+    const st = SANDBOXES.shortcut, tr = M.buildTrack(st), a = tr.alts[0];
+    expect(a.n).toBeLessThan(a.M - a.F);                                                 // shorter than the S it cuts across
+    const W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true };
+    seedRandom(8); const R = M.createRace(W, DEFS); R.phase = 'racing'; R.autoPlayer = true; const surf = new Set(), took = new Set();
+    for (let t = 0; t < 80; t += 1 / 120) { M.raceStep(R, 1 / 120, W); R.cars.forEach((c, k) => { if (c.pr.i >= tr.NM) { took.add(k); surf.add(c.surface); } }); }
+    expect(took.size).toBeGreaterThan(0); expect(surf.has('gravel')).toBe(true);
+    expect(R.cars.every(c => c.lap >= 2)).toBe(true);
+  });
+  it('a wrecking ball bats a car standing in its path sideways; the AI times its run and gets through', () => {
+    const st = SANDBOXES.hammer, tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: true }, h = tr.hammers[0];
+    const R = M.createRace(W, DEFS); R.phase = 'racing'; const P = R.player;
+    let t = 0; while (Math.abs(M.hammerLat(h, t).lat) > 0.5) t += 0.01;                 // the ball crossing the middle
+    R.time = t - 0.05; const i = h.i; P.x = tr.xs[i]; P.z = tr.zs[i]; P.y = tr.H[i]; P.yaw = tr.th[i]; P.vx = P.vz = 0; P.pr = M.project(tr, P.x, P.z, i, 3, 3); P.ghost = 0;
+    for (let k = 0; k < 24; k++) M.raceStep(R, 1 / 120, W);
+    expect(P.events.some(e => e.t === 'hammer-hit')).toBe(true); expect(Math.hypot(P.vx, P.vz)).toBeGreaterThan(5);
+    seedRandom(8); const R2 = M.createRace(W, DEFS); R2.phase = 'racing'; R2.autoPlayer = true; let hits = 0;
+    for (let s = 0; s < 70; s += 1 / 120) { M.raceStep(R2, 1 / 120, W); for (const c of R2.cars) { hits += c.events.filter(e => e.t === 'hammer-hit').length; c.events.length = 0; } }
+    expect(R2.cars.every(c => c.lap >= 2)).toBe(true); expect(hits).toBeLessThanOrEqual(8);   // ~30 passes: most clean, the odd one batted
   });
 });
 

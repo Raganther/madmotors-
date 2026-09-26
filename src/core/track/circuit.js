@@ -217,7 +217,9 @@ export function finishLoop(stage, g, seed) {
   const gorge = !!g.gorge;
   // section markers (kicks, arches...): a branch's are numbered from its own first sample
   const marks = g.marks || {};
-  (g.alts || []).forEach((a, n) => { for (const k in a.marks) marks[k] = (marks[k] || []).concat(a.marks[k].map(v => typeof v === 'number' ? v + AL[n].o : { ...v, i: v.i + AL[n].o })); });
+  // a branch's section marks, moved to its samples: a sample number, [start, end, ...] or an object with i (a, b)
+  const shift = (v, o) => typeof v === 'number' ? v + o : Array.isArray(v) ? v.map((x, j) => j < 2 ? x + o : x) : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, ['i', 'a', 'b'].includes(k) ? x + o : x]));
+  (g.alts || []).forEach((a, n) => { for (const k in a.marks) marks[k] = (marks[k] || []).concat(a.marks[k].map(v => shift(v, AL[n].o))); });
   const ctx = { stage, g, N0, NB, w, nb, u0, xs0, zs0, th0, ks0, H0, ch, jump0, wallL0, wallR0, kerbL0, kerbR0, vmax0, startIdx, gorge, marks, alts: AL, nearCrossing: () => false };
   elementPhase('heights', ctx);                                    // level crossings, then jumps and kickers
   const sbs = NA ? sideBySide(ctx) : null;                          // where a branch runs beside the main road

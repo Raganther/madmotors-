@@ -69,6 +69,12 @@ export const SANDBOXES = {
     bottom: [flat(150)], right: [flat(20), ['s', 40, 0, { ice: true }], flat(20)],
     top: [flat(40), ['s', 40, 0, { ice: true }]], left: [flat(20)]
   }, { surface: 'snow', light: frostpeak.light, colors: frostpeak.colors, trees: { density: 0.002, pine: 1 }, snowfall: 0.5 }),
+  shortcut: loop('shortcut', 'an off-road shortcut: the road swings round a wide S, a dirt track cuts straight across it', {
+    bottom: [flat(40), ['a', 40, 60, 0], ['a', 40, -120, 0], ['a', 40, 60, 0], flat(40)], right: [flat(40)], top: [flat(190)], left: [flat(20)]
+  }, { branches: [{ from: 1, to: 4, name: 'dirt cut', share: 0.4, segs: [['s', 30, 0, { dirt: true }], ['s', 50, 0, { dirt: true, whoops: 0.5 }], ['s', { toA: 178.564 }, 0, { dirt: true }]] }] }),
+  hammer: loop('hammer', 'wrecking balls swinging across the road: time your run', {
+    bottom: [flat(40), ['s', 120, 0, { hammers: 3 }], flat(40)], right: [flat(40)], top: [flat(180)], left: [flat(20)]
+  }),
   rails: loop('rails', 'a level crossing with trains', {
     bottom: [flat(120)], right: [flat(60)], top: [flat(80)], left: [flat(20)]
   }, { rails: [{ id: 'line', pts: [[60, -80, 0], [60, 80, 0]], speed: 26, cars: 3, body: ravenrock.rails[0].body, coach: ravenrock.rails[0].coach, band: ravenrock.rails[0].band }] })
