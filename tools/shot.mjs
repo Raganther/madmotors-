@@ -36,7 +36,7 @@ if (garage) {
   if (errs.length) console.log('page errors:\n  ' + errs.join('\n  '));
   await browser.close(); process.exit(errs.length ? 1 : 0);
 }
-await page.evaluate(([i, v, n, m]) => { window.__dr.G.vehicle = v; window.__dr.G.rivals = n; window.__dr.G.mode = m; window.__dr.flow.startRace(i); }, [idx, vehicle, rivals, mode]);
+await page.evaluate(([i, v, n, m]) => { window.__dr.G.vehicle = window.__dr.G.defaultVehicle = v; window.__dr.G.stageCars = {}; window.__dr.G.rivals = n; window.__dr.G.mode = m; window.__dr.flow.startRace(i); }, [idx, vehicle, rivals, mode]);
 await page.waitForFunction(i => window.__dr.race && window.__dr.G.world.idx === i, idx, { timeout: 30000 });
 const info = await page.evaluate(() => {
   const d = window.__dr; window.requestAnimationFrame = () => 0;   // we drive the frames

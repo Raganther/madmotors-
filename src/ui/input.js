@@ -5,6 +5,7 @@ import { groundDir } from '../core/sim/view.js';
 import { respawn } from '../core/sim/car.js';
 import { $ } from './dom.js';
 import { closeGarage } from './garage.js';
+import { closeLeagues } from './league.js';
 import { toggleOverlay } from '../render/overlay.js';
 import { saveCamera, saveSteer } from './storage.js';
 import { CAM_MODES, CAM_ZOOMS } from '../render/camera.js';
@@ -18,6 +19,7 @@ addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code === 'KeyR' && G.state === 'racing' && race && !race.player.finished) respawn(race.player, G.world.W);
   if (e.code === 'Escape' && !$('garage').hidden) { closeGarage(); return; }
+  if (e.code === 'Escape' && !$('league').hidden) { closeLeagues(); return; }
   if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
   if (e.code === 'KeyM') AudioSys.toggle();
   if (G.state === 'racing' && race && race.weapons) {                              // weapons: F fires what you're holding, Q (or E) swings a door
@@ -26,7 +28,7 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'KeyC' && G.state !== 'menu') setCamera(nextCamera());           // cycle the camera
   if (e.code === 'Backquote') toggleOverlay();                              // debug overlay (render/overlay.js)
-  if (e.code === 'Enter' && G.state === 'menu' && $('loading').hidden && document.activeElement === document.body) startRace(selected);
+  if (e.code === 'Enter' && G.state === 'menu' && $('loading').hidden && $('league').hidden && document.activeElement === document.body) startRace(selected);
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });

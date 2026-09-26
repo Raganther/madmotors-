@@ -6,6 +6,7 @@ import { screenOffset } from '../core/sim/view.js';
 import { CP, SD } from '../core/modes/showdown.js';
 import { DEFAULT_RIVALS, MAX_RIVALS, raceDefs } from '../data/cars.js';
 import { vehicleById } from '../data/vehicles.js';
+import { LEAGUE_RIVALS, standings } from '../data/leagues.js';
 import { STAGES } from '../data/stages/index.js';
 import { updateCamera } from '../render/camera.js';
 import { clearDebris } from '../render/effects/debris.js';
@@ -26,6 +27,8 @@ import { elementHook } from '../render/elements/index.js';
 import { $, isTouch } from './dom.js';
 import { fmt, ordinal } from './format.js';
 import { callout, drawProfile } from './hud.js';
+import { showVehicle } from './garage.js';
+import { leagueResults, resetResultsUI } from './league.js';
 import { best, saveBest, saveMode, saveRivals, saveWeapons } from './storage.js';
 
 export let race = null, pausedFrom = null, selected = 0;
@@ -34,8 +37,11 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const defs = raceDefs(vehicleById(G.vehicle), G.mode !== 'race' ? DEFAULT_RIVALS : G.rivals); setRoster(defs);                        // the line-up, with the player's pick
-  const r = createRace(G.world.W, defs, { mode: G.mode, weapons: G.weapons }); clearProps(); resetBarrierVis(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
+  const lg = G.league, mode = lg ? 'race' : G.mode;                                                                  // a league round is always a Race
+  let defs = raceDefs(vehicleById(G.vehicle), lg ? LEAGUE_RIVALS : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);      // the line-up, with the player's pick
+  if (lg && lg.round > 0) { const order = standings(lg, defs.map(d => d.name)).map(s => s.name).reverse(); defs = order.map(n => defs.find(d => d.name === n)).filter(Boolean); }   // the championship leader starts at the back
+  setRoster(defs);
+  const r = createRace(G.world.W, defs, { mode, weapons: G.weapons }); clearProps(); resetBarrierVis(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
   elementHook('newRace', r);
   return r;
 }
@@ -151,6 +157,7 @@ export function showResults() {
   $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name}`;
   $('res-best').textContent = newBest ? 'New best time on this stage' : 'Best time ' + fmt(best[G.world.idx]);
   $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
+  resetResultsUI(); leagueResults();
   updateResultsTable();
   $('next-btn').focus();
 }
@@ -163,7 +170,7 @@ function showShowdownResults() {
   $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name} · ` + (S.kind === 'crown' ? `${pl(ns, 'crown steal')}, ${pl(nb, 'blow-up')}` : `${pl(ng, 'gate')} scored, ${pl(nb, 'blow-up')}`);
   $('res-best').textContent = S.kind === 'crown' ? `Showdown: hold the lead to bank crown time; first to ${SD.TARGET}s wins` : `${name}: first through each gate scores; first to ${CP.TARGET[S.kind]}, two clear`;
   $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
-  updateResultsTable(); $('next-btn').focus();
+  resetResultsUI(); updateResultsTable(); $('next-btn').focus();
 }
 export function updateResultsTable() {
   if (race.sd && race.sd.kind !== 'crown') {
@@ -181,7 +188,8 @@ export function updateResultsTable() {
 }
 export let pendingBuild = null;
 export function selectStage(i, cb) {
-  selected = i;
+  selected = i; G.stageSel = i;
+  const v = G.stageCars[STAGES[i].name] || G.defaultVehicle; if (v !== G.vehicle) showVehicle(v);   // the car picked for this stage
   document.querySelectorAll('.stage').forEach((b, k) => b.setAttribute('aria-pressed', k === i ? 'true' : 'false'));
   $('race-btn').textContent = MODE_BTN[G.mode] + STAGES[i].name;
   if (G.world && G.world.idx === i) { cb && cb(); return; }
@@ -205,6 +213,7 @@ export function startRace(idx) {
   });
 }
 export function toMenu() {
+  G.league = null;
   G.state = 'menu'; $('hud').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('touch').hidden = true; $('menu').hidden = false; $('countdown').hidden = true;
   race = newRace(); clearSkids(); AudioSys.update(null, 'off'); updateCamera(0, true); $('race-btn').focus();
 }
@@ -212,7 +221,9 @@ export function togglePause() {
   if (G.state === 'countdown' || G.state === 'racing') { if (resultsShown) return; pausedFrom = G.state; G.state = 'paused'; $('pause').hidden = false; AudioSys.update(null, 'off'); $('resume-btn').focus(); }
   else if (G.state === 'paused') { G.state = pausedFrom; $('pause').hidden = true; G.lastT = performance.now() / 1000; }
 }
-export function refreshBest() { STAGES.forEach((s, i) => { const el = $('best-' + i); if (el) el.textContent = best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet'; }); }
+export function refreshBest() {
+  STAGES.forEach((s, i) => { const el = $('best-' + i), v = G.stageCars[s.name]; if (el) el.textContent = (best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet') + (v ? ' · ' + vehicleById(v).name : ''); });
+}
 const MODE_BTN = { race: 'Race ', showdown: 'Showdown: ', deuce: 'Deuce: ', tiebreak: 'Tiebreak: ' };
 export const MODE_NAME = { showdown: 'Showdown', deuce: 'Deuce', tiebreak: 'Tiebreak' };
 const MODE_DESC = {

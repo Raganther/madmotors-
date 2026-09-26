@@ -21,3 +21,10 @@ export function saveRivals(n) { try { localStorage.setItem(RIVALS_KEY, String(n)
 export const VEH_KEY = 'downhill-rush-vehicle';
 export function loadVehicle() { try { return localStorage.getItem(VEH_KEY) || 'coupe'; } catch (e) { return 'coupe'; } }
 export function saveVehicle(id) { try { localStorage.setItem(VEH_KEY, id); } catch (e) { } }
+// the vehicle picked for each stage (by stage name), so the right car is ready when you come back to it
+export const STAGE_VEH_KEY = 'downhill-rush-stage-vehicles';
+export function loadStageVehicles() { try { return JSON.parse(localStorage.getItem(STAGE_VEH_KEY) || '{}') || {}; } catch (e) { return {}; } }
+export function saveStageVehicles(m) { try { localStorage.setItem(STAGE_VEH_KEY, JSON.stringify(m)); } catch (e) { } }
+export const LEAGUE_KEY = 'downhill-rush-league';
+export function loadLeagues() { try { return JSON.parse(localStorage.getItem(LEAGUE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+export function saveLeagues(m) { try { localStorage.setItem(LEAGUE_KEY, JSON.stringify(m)); } catch (e) { } }

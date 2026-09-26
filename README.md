@@ -4,7 +4,7 @@ A top-down alpine racer in the spirit of *Ignition*: breakable barriers, car dam
 crossings, rockfall and a gorge circuit with viaducts. Three.js (r128), plain JavaScript, built with Vite into a
 single self-contained HTML file.
 
-Four modes: **Race** (first to the line, against 1 to 13 rivals: the menu's Rivals setting), **Deuce** and
+Four modes: **Race** (first to the line, against 1 to 18 rivals: the menu's Rivals setting), **Deuce** and
 **Tiebreak** (checkpoint gates, below) and **Showdown**, King of the Hill, Micro Machines style: the camera
 follows the leader and zooms out to keep the pack in shot. The leader wears the crown and banks crown time while
 holding it; the crown only changes hands on a clear pass. A car left off
@@ -25,6 +25,16 @@ harpoon (hooks the car ahead: you're reeled in, they're held back). F fires. Cra
 racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets
 missiles and harpoons, the front oil and shockwaves). Q swings a door into the car beside you (the side is picked
 for you). The AI uses all of it. On touch there are Fire and Door buttons; a gamepad uses B and the bumpers.
+
+**Leagues** (menu: Leagues; `src/data/leagues.js`, `src/ui/league.js`): a championship over a named run of stages
+(Rookie Cup, Circuit Series, Mud & Snow, Wild Cup), raced as Races against a fixed field of seven. Points go
+10-8-6-5-4-3-2-1 by finishing place; from round 2 the grid lines up in reverse championship order, so the leader
+starts at the back. Progress is kept per league in localStorage; leave for the menu and carry on later.
+
+**A car for each stage:** the garage remembers your pick for the selected stage (by stage name, `G.stageCars`), and
+the last pick is the default for stages with none yet. The stage list shows each stage's car, the garage tags the
+vehicles that suit the stage (off-road stats on gravel and snow, speed and grip on tarmac), and the league screen has a
+car button per round.
 
 Catch-up, in both modes: a car tucked in 3-20 m behind another gets a slipstream tow (`PHYS.DRAFT`), and once a
 leader pulls clear (35 m, or 8 s holding the crown) leader hazards appear ~3 s ahead of it (`core/features/hazards.js`):
@@ -74,12 +84,12 @@ src/
     elements/           TRACK ELEMENTS: one module per reusable piece of road (bridge, tunnel, kick, gap, boost, town, ...)
     features/           race systems plugged into the race loop: traffic, trains, parked, rockfall, hazards
     modes/              game modes on top of a race (showdown: King of the Hill, Deuce, Tiebreak)
-  data/                 stages (one file each), sandboxes (a tiny loop per element), car/traffic definitions
+  data/                 stages (one file each), sandboxes (a tiny loop per element), car/traffic definitions, leagues
   render/               three.js: renderer & quality, materials/shaders, world (terrain, road, barriers,
                         scenery), elements/ (each element's and feature's visuals), vehicles (racer bodies: carmodels.js, one builder per `model`; paint, glass, chrome and occlusion: carpaint.js; garage pictures: thumbs.js), effects,
                         camera, overlay.js (debug overlay)
   audio/                Web Audio synth (engine, crashes, horns, bells)
-  ui/                   HUD, menu/flow (countdown, pause, results), input, storage
+  ui/                   HUD, menu/flow (countdown, pause, results), garage, league, input, storage
 tests/                  golden simulation tests, scenarios, browser smoke test
 tools/                  layout / terrain / sandbox / benchmark tools
 ```
@@ -153,7 +163,10 @@ grip from the `FIRM` table there.
 A `gorge` stage can add `branches: [{ from, to, name, share, segs }]`: an alternative route that leaves the main road
 where main section `from` starts and rejoins it where section `to` starts. Its own `segs` must end exactly there
 (position, heading and height, or `buildTrack` says how far off it is). `share` is the chance an AI car takes it.
-Elements marked `onBranch` work on a branch (ground, kick, arch, boost, falls); the others throw if tagged there.
+Elements marked `onBranch` work on a branch (ground, kick, arch, boost, falls, mill, dirt, mud, whoops, yump, ice); the others throw if tagged there.
+The five newest circuits each have an off-road shortcut built this way: a `dirt` branch with whoops, yumps, mud or ice
+(Corkscrew Spire's goat track, Scrapyard Smash's crusher yard, Mesa Leap's wash, Glacier Rift's lake crossing, Temple
+Ruins' path). Balance it with the AI: a shortcut should save a few seconds at most, and less on a loose-surface car.
 The road graph (`src/core/track/route.js`) gives every track the same API: `tr.adv(i, d, alt)` steps along the road,
 `tr.progOf(s)` maps a position to race progress, `tr.bi(i)` / `tr.u0(b)` convert between road and base samples, and
 `tr.all0` lists every sample for drawing. Where the two roads run side by side the barriers between them open, their

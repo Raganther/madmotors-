@@ -68,6 +68,41 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   }
   console.log(`garage: raced all ${ids.length} vehicles`);
 }
+// a car per stage: pick one on stage 3, another on stage 4; each comes back with its stage
+{
+  await page.click('#garage-done'); await page.evaluate(() => window.__dr.flow.toMenu());
+  const pick = async (i, id) => { await page.evaluate(i => window.__dr.flow.selectStage(i), i); await page.click('#veh-btn'); await page.click(`.g-card[data-id="${id}"]`); await page.click('#garage-done'); };
+  await pick(2, 'rover'); await pick(3, 'kart');
+  const back = await page.evaluate(() => { window.__dr.flow.selectStage(2); const a = window.__dr.G.vehicle; window.__dr.flow.selectStage(3); return [a, window.__dr.G.vehicle, document.getElementById('best-2').textContent]; });
+  if (back[0] !== 'rover' || back[1] !== 'kart' || !/Rover|rover/i.test(back[2])) errors.push('car per stage: ' + JSON.stringify(back));
+  console.log(`car per stage: stage 3 ${back[0]}, stage 4 ${back[1]} ("${back[2]}")`);
+}
+// a league: open the Rookie Cup, race round 1 to the flag, the table scores it, Next starts round 2 with the leader at the back
+{
+  await page.evaluate(() => { localStorage.removeItem('downhill-rush-league'); window.__dr.flow.toMenu(); });
+  await page.click('#league-btn'); await page.click('.lg-item[data-id="rookie"]');
+  const cars = await page.$$eval('.lg-car', bs => bs.map(b => b.textContent));
+  await page.click('#lg-actions .cta');
+  await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 0 && window.__dr.G.state === 'countdown', null, { timeout: 30000 });
+  const n = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
+    for (let k = 0; k < 400 && !d.race.player.finished; k++) d.step(0.5); d.flow.showResults(); return d.race.cars.length; });   // the frame loop would show them
+  const res = await page.evaluate(() => ({ shown: !document.getElementById('results').hidden, rows: document.querySelectorAll('#res-league tr').length, next: document.getElementById('next-btn').textContent, again: document.getElementById('again-btn').hidden }));
+  if (n !== 8 || !res.shown || res.rows !== 8 || !/Next round: Pine Forest/.test(res.next) || !res.again) errors.push('league round 1: ' + JSON.stringify({ n, ...res }));
+  await page.click('#next-btn');
+  await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 1, null, { timeout: 30000 });
+  const grid = await page.evaluate(() => { const d = window.__dr, t = JSON.parse(localStorage.getItem('downhill-rush-league')).rookie; const lead = Object.entries(t.pts).sort((a, b) => b[1] - a[1])[0][0];
+    return { round: d.G.league && d.G.league.round, last: d.race.cars[d.race.cars.length - 1].name, lead }; });
+  if (grid.round !== 1 || grid.last !== grid.lead) errors.push('league round 2: ' + JSON.stringify(grid));
+  await page.screenshot({ path: path.join(outDir, 'league-round2.png') });
+  await page.evaluate(() => window.__dr.flow.toMenu()); await page.click('#league-btn');
+  const prog = await page.$eval('.lg-item[data-id="rookie"] em', e => e.textContent); await page.click('.lg-item[data-id="rookie"]');
+  await page.screenshot({ path: path.join(outDir, 'league.png') });
+  if (!/Round 2 of 4/.test(prog)) errors.push('league list progress: ' + prog);
+  const again = await page.$eval('#lg-actions .cta', b => b.textContent);
+  if (!/round 2/.test(again)) errors.push('league screen after round 1: ' + again);
+  await page.keyboard.press('Escape');
+  console.log(`league: cars ${cars.join(', ')}; round 1 scored (${res.rows} in the table), round 2 grid ends with the leader ${grid.lead}; "${again}"`);
+}
 // the Rivals setting: a full field of 19 (one of every vehicle), then down to a single rival; the meshes follow
 {
   await page.evaluate(() => window.__dr.flow.toMenu()); await page.evaluate(() => { document.getElementById('garage').hidden = true; });
