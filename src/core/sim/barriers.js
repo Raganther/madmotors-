@@ -18,12 +18,14 @@ export function wallAt(W, i, side) {
   return W.bar.broken[side > 0 ? 1 : 0][barPiece(W, i)] ? 0 : w;
 }
 export function wallPos(W, i, side) { return W.bar ? WALL + W.bar.bend[side > 0 ? 1 : 0][barPiece(W, i)] : WALL; }
-// A car hit the barrier at sample i with into-wall speed vn. Returns true when it gave way.
-export function hitBarrier(W, i, side, vn, alongSgn, c) {
+// A car hit the barrier at sample i with into-wall speed vn. Returns true when it gave way. From outside (`fromOut`: a car
+// off the road driving back on) it's only loose tyres, a fence or armco's back: any push knocks the piece over.
+export function hitBarrier(W, i, side, vn, alongSgn, c, fromOut = false) {
   const tr = W.tr, B = W.bar, w = wallAt(W, i, side);
   if (!B || !w || w > 3) return false;
   const s = side > 0 ? 1 : 0, p = barPiece(W, i), wrapP = q => tr.loopN ? (q % (B.NP - 1) + (B.NP - 1)) % (B.NP - 1) : clamp(q, 0, B.NP - 1);
-  if (w === 2 && B.armco) {
+  if (fromOut) B.dmg[s][p] = 1e3;
+  else if (w === 2 && B.armco) {
     if (vn > 5) {
       const add = (vn - 5) * 0.06;
       for (const [q, f] of [[p, 1], [p - 1, 0.5], [p + 1, 0.5]]) { const qq = wrapP(q); B.bend[s][qq] = Math.min(ARMCO_BEND, B.bend[s][qq] + add * f); }
@@ -36,7 +38,7 @@ export function hitBarrier(W, i, side, vn, alongSgn, c) {
     B.dmg[s][p] += Math.max(0, vn - 2.5);
     if (B.dmg[s][p] < BAR_HP[w]) return false;
   }
-  const out = [p]; if (vn > 8) out.push(wrapP(p + alongSgn));
+  const out = [p]; if (vn > 8) out.push(wrapP(p + alongSgn)); if (fromOut) out.push(wrapP(p - 1), wrapP(p + 1));   // a gap a car fits through
   for (const q of out) {
     if (B.broken[s][q]) continue;
     B.broken[s][q] = 1;

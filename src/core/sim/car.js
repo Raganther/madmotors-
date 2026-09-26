@@ -31,12 +31,33 @@ export function makeCar(W, idx, lat, def) {
   computeGrad(c, W);
   return c;
 }
+// The player's respawn in a Race: back in beside the nearest bunch of rivals, rolling at their pace. A pack up the
+// road: rejoin at its tail, but never further on than you'd got (so R is no shortcut); a pack behind or around you:
+// rejoin where you left, in a gap. Nobody near: where you left, at a sensible speed for the road.
+export const PACK = { AHEAD: 60, BEHIND: 120, SPREAD: 25, TAIL: 8, VMIN: 12 };
+function packSpot(c, W, i0) {
+  const tr = W.tr, p0 = tr.progOf(i0), reach = Math.max(0, c.progress - p0), near = [];
+  for (const o of W.racers || []) if (o !== c && !o.finished && !(o.wreckT > 0) && !o.destroyed && o.progress > p0 - PACK.BEHIND && o.progress < p0 + PACK.AHEAD + PACK.SPREAD) near.push(o);
+  let i = i0, v = clamp(tr.vmax[i0] * 0.6, PACK.VMIN, 28);
+  if (near.length) {
+    const o = near.reduce((a, b) => Math.abs(b.progress - p0) < Math.abs(a.progress - p0) ? b : a);
+    const pack = near.filter(q => Math.abs(q.progress - o.progress) < PACK.SPREAD), tail = Math.min(...pack.map(q => q.progress));
+    const d = clamp(tail - PACK.TAIL - p0, 0, Math.min(PACK.AHEAD, reach));
+    for (let k = 0; k < 200 && tr.progOf(i) < p0 + d; k++) i = tr.nx ? tr.adv(i, 1) : Math.min(i + 1, tr.N - 10);   // in progress, not samples: a branch is shorter than the road it cuts
+    v = clamp(pack.reduce((a, q) => a + Math.hypot(q.vx, q.vz), 0) / pack.length, PACK.VMIN, Math.max(PACK.VMIN, tr.vmax[i] * 0.9));
+  }
+  // the lane furthest from the cars around the spot
+  const x0 = tr.xs[i], z0 = tr.zs[i]; let lat = 0, best = -1;
+  for (const l of [0, -2.8, 2.8]) { let m = 99; for (const o of W.racers || []) if (o !== c) m = Math.min(m, Math.hypot(o.x - (x0 + tr.rx[i] * l), o.z - (z0 + tr.rz[i] * l))); if (m > best + 0.5) { best = m; lat = l; } }
+  return { i, lat, v };
+}
 export function respawn(c, W) {
   if (c.traffic) { c.dead = true; return; }
-  const tr = W.tr; const i = tr.nx ? Math.max(4, tr.adv(c.lastGood, -10)) : clamp(c.lastGood - 10, 4, tr.N - 10);
-  const lat = c.isPlayer ? 0 : clamp(c.ai.lane, -3, 3);
+  const tr = W.tr; let i = tr.nx ? Math.max(4, tr.adv(c.lastGood, -10)) : clamp(c.lastGood - 10, 4, tr.N - 10);
+  let lat = c.isPlayer ? 0 : clamp(c.ai.lane, -3, 3), v = 8;
+  if (c.isPlayer && W.racers) ({ i, lat, v } = packSpot(c, W, i));                 // a rolling start by the nearest pack
   c.x = tr.xs[i] + tr.rx[i] * lat; c.z = tr.zs[i] + tr.rz[i] * lat; c.y = tr.H[i]; c.yaw = tr.th[i]; c.strandT = 0;
-  c.vx = tr.tx[i] * 8; c.vz = tr.tz[i] * 8; c.vy = 0; c.onGround = true; c.airT = 0; c.boost = 0; c.offT = 0; c.stuckT = 0; c.wrongT = 0;
+  c.vx = tr.tx[i] * v; c.vz = tr.tz[i] * v; c.vy = 0; c.onGround = true; c.airT = 0; c.boost = 0; c.offT = 0; c.stuckT = 0; c.wrongT = 0;
   c.ghost = 2; c.driftT = 0; c.spin = 0; c.lastGood = i; c.pr = project(tr, c.x, c.z, i, 2, 2); c.ai.cur = lat;
   computeGrad(c, W); c.events.push({ t: 'respawn' }); c.respawns++;
 }
@@ -148,7 +169,8 @@ export function stepCar(c, dt, W, racing) {
     if (al <= WL && al > WL - ext) { push = al - (WL - ext); dir = -1; }
     else if (al > WL && al < WL + ext) { push = WL + ext - al; dir = 1; }
     const vn0 = dir ? (c.vx * nx + c.vz * nz) * (-dir) : 0;
-    if (dir && vn0 > 3 && hitBarrier(W, pr.i, side, vn0, Math.sign(c.vx * tr.tx[pr.i] + c.vz * tr.tz[pr.i]) || 1, c)) {
+    // from outside (dir 1: coming back onto the road) a barrier gives way to a gentle push, so you're never shut out
+    if (dir && vn0 > (dir > 0 ? 0.6 : 3) && hitBarrier(W, pr.i, side, vn0, Math.sign(c.vx * tr.tx[pr.i] + c.vz * tr.tz[pr.i]) || 1, c, dir > 0)) {
       // smashed through: no bounce, just lose some speed
       const kk = w === 1 ? 0.82 : w === 3 ? 0.9 : W.bar.armco ? 0.72 : 0.87;
       c.vx *= kk; c.vz *= kk; c.spin += (Math.random() - 0.5) * Math.min(vn0, 20) * 0.03;

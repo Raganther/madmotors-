@@ -314,3 +314,36 @@ describe('the garage', () => {
     }
   });
 });
+
+describe('getting back into the race', () => {
+  const setup = si => {
+    const st = M.STAGES[si], tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: !!st.armco };
+    seedRandom(7); const R = M.createRace(W, raceDefs(VEHICLES[0], 7)); R.phase = 'racing'; R.autoPlayer = true; R.hzT = 1e9;
+    for (let k = 0; k < 120 * 25; k++) M.raceStep(R, 1 / 120, W);
+    return { tr, W, R, P: R.player };
+  };
+  it('a car outside the tyre wall drives straight back on: the barrier gives way to a push from outside', () => {
+    for (const si of [0, 4, 7, 11]) {
+      const { tr, W, R, P } = setup(si);
+      let wi = -1; for (let i = P.pr.i + 20; i < P.pr.i + 400; i++) if (tr.wallR[i] === 1 || tr.wallL[i] === 1) { wi = i; break; }
+      expect(wi, M.STAGES[si].name).toBeGreaterThan(0);
+      const side = tr.wallR[wi] === 1 ? 1 : -1, lat = side * (M.WALL + 2.6), a = 0.9;                      // parked 2.6 m outside, nose 50 degrees back to the road
+      const fx = tr.tx[wi] * Math.cos(a) - side * tr.rx[wi] * Math.sin(a), fz = tr.tz[wi] * Math.cos(a) - side * tr.rz[wi] * Math.sin(a);
+      R.autoPlayer = false; P.x = tr.xs[wi] + tr.rx[wi] * lat; P.z = tr.zs[wi] + tr.rz[wi] * lat; P.yaw = Math.atan2(fx, fz); P.vx = P.vz = 0; P.lastGood = wi; P.pr = M.project(tr, P.x, P.z, wi, 4, 4);
+      let t = 0, back = false; const r0 = P.respawns;
+      while (t < 3 && !back) { P.inp.throttle = 1; P.inp.steer = 0; P.inp.brake = 0; M.raceStep(R, 1 / 120, W); t += 1 / 120; back = Math.abs(P.pr.lat) < M.HALF; }
+      expect(back, M.STAGES[si].name).toBe(true); expect(P.respawns).toBe(r0);
+    }
+  });
+  it('the player respawns rolling, by the nearest pack, and never further on than they had got', () => {
+    for (const si of [4, 11]) {
+      const { tr, W, P } = setup(si);
+      const at = P.progress; M.respawn(P, W);
+      const q = M.project(tr, P.x, P.z, P.lastGood, 4, 4), p = tr.progOf(q.s);
+      expect(Math.hypot(P.vx, P.vz)).toBeGreaterThanOrEqual(M.PACK.VMIN);                           // a rolling start
+      expect(p).toBeLessThanOrEqual(at + 1);
+      let last = p; P.progress = p;
+      for (let k = 0; k < 4; k++) { M.respawn(P, W); const r = M.project(tr, P.x, P.z, P.lastGood, 4, 4); P.progress = tr.progOf(r.s); expect(P.progress).toBeLessThanOrEqual(last + 1); last = P.progress; }   // pressing R again gains nothing
+    }
+  });
+});

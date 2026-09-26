@@ -30,6 +30,7 @@ export function raceStep(R, dt, W) {
   if (racing) R.time += dt;
   const P = R.player, tr = W.tr, all = R.cars.concat(...FEATURES.filter(f => f.vehicles).map(f => f.vehicles(R)));
   const lead = R.sd && sdLeader(R);
+  W.racers = R.sd ? null : R.cars;                                                  // for the player's respawn (sim/car.js packSpot)
   // slipstream: a racer tucked in 3-20 m behind another (roughly in line, both at speed) gets a tow, strongest up close
   for (const c of R.cars) {
     let want = 0; const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), sp = Math.hypot(c.vx, c.vz);
