@@ -2,6 +2,55 @@ import * as THREE from 'three';
 
 // ---------- geometry helpers ----------
 export function flat(g) { const n = g.index ? g.toNonIndexed() : g; n.computeVertexNormals(); return n; }
+/**
+ * A box with its edges rounded off (radius r, k steps per quarter round) for the close-up car bodies. `seg` subdivides
+ * the flat middle of each face (for dents), `shape(x, y, z) -> [x, y, z]` bends it afterwards like a plain box.
+ * UVs are pulled in from the face edges: the panel texture's painted-on edge shading isn't wanted where the edge is real.
+ */
+export function roundBox(w, h, d, r, { seg = [1, 1, 1], shape, k = 2 } = {}) {
+  const S = [w, h, d], n = seg.map(s => s + 2 * k), g = new THREE.BoxGeometry(w, h, d, n[0], n[1], n[2]), p = g.attributes.position, uv = g.attributes.uv;
+  const remap = (v, ax) => {
+    const L = S[ax], N = n[ax], j = Math.round((v / L + 0.5) * N);
+    return j <= k ? -L / 2 + r * j / k : j >= N - k ? L / 2 - r * (N - j) / k : -L / 2 + r + (L - 2 * r) * (j - k) / (N - 2 * k);
+  };
+  const cl = (v, e) => Math.max(-e, Math.min(e, v)), nor = g.attributes.normal, f = shape || ((x, y, z) => [x, y, z]), e = 1e-3;
+  for (let i = 0; i < p.count; i++) {
+    let x = remap(p.getX(i), 0), y = remap(p.getY(i), 1), z = remap(p.getZ(i), 2);
+    const ix = cl(x, w / 2 - r), iy = cl(y, h / 2 - r), iz = cl(z, d / 2 - r), dx = x - ix, dy = y - iy, dz = z - iz, l = Math.hypot(dx, dy, dz);
+    // the exact normal of the rounded box (flat faces stay truly flat), carried through shape() by its Jacobian's cofactors
+    let nx = nor.getX(i), ny = nor.getY(i), nz = nor.getZ(i);
+    if (l > 1e-6) { x = ix + dx / l * r; y = iy + dy / l * r; z = iz + dz / l * r; nx = dx / l; ny = dy / l; nz = dz / l; }
+    if (shape) {
+      const a = f(x + e, y, z), b = f(x - e, y, z), c = f(x, y + e, z), c2 = f(x, y - e, z), q = f(x, y, z + e), q2 = f(x, y, z - e);
+      const J = [0, 1, 2].map(k => [(a[k] - b[k]) / (2 * e), (c[k] - c2[k]) / (2 * e), (q[k] - q2[k]) / (2 * e)]);
+      const C = (r0, c0) => { const R = [0, 1, 2].filter(k => k !== r0), Cc = [0, 1, 2].filter(k => k !== c0); return ((r0 + c0) % 2 ? -1 : 1) * (J[R[0]][Cc[0]] * J[R[1]][Cc[1]] - J[R[0]][Cc[1]] * J[R[1]][Cc[0]]); };
+      const mx = C(0, 0) * nx + C(0, 1) * ny + C(0, 2) * nz, my = C(1, 0) * nx + C(1, 1) * ny + C(1, 2) * nz, mz = C(2, 0) * nx + C(2, 1) * ny + C(2, 2) * nz, ml = Math.hypot(mx, my, mz) || 1;
+      nx = mx / ml; ny = my / ml; nz = mz / ml; [x, y, z] = f(x, y, z);
+    }
+    p.setXYZ(i, x, y, z); nor.setXYZ(i, nx, ny, nz); uv.setXY(i, 0.12 + uv.getX(i) * 0.76, 0.12 + uv.getY(i) * 0.76);
+  }
+  g.userData.smooth = true; g.userData.n0 = Float32Array.from(nor.array); return g;
+}
+/** Vertex normals averaged over every triangle touching the same point, across UV seams (built once, reused after dents). */
+export function smoothNormals(g) {
+  const p = g.attributes.position, N = p.count;
+  let weld = g.userData.weld;
+  if (!weld) {
+    const at = new Map(); weld = new Int32Array(N);
+    for (let i = 0; i < N; i++) { const key = Math.round(p.getX(i) * 1e4) + ',' + Math.round(p.getY(i) * 1e4) + ',' + Math.round(p.getZ(i) * 1e4); let w = at.get(key); if (w === undefined) at.set(key, w = at.size); weld[i] = w; }
+    g.userData.weld = weld;
+  }
+  const acc = new Float32Array(N * 3), idx = g.index ? g.index.array : null, T = idx ? idx.length : N, a = p.array;
+  for (let t = 0; t < T; t += 3) {
+    const i0 = idx ? idx[t] : t, i1 = idx ? idx[t + 1] : t + 1, i2 = idx ? idx[t + 2] : t + 2;
+    const ux = a[i1 * 3] - a[i0 * 3], uy = a[i1 * 3 + 1] - a[i0 * 3 + 1], uz = a[i1 * 3 + 2] - a[i0 * 3 + 2], vx = a[i2 * 3] - a[i0 * 3], vy = a[i2 * 3 + 1] - a[i0 * 3 + 1], vz = a[i2 * 3 + 2] - a[i0 * 3 + 2];
+    const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;   // area-weighted
+    for (const i of [i0, i1, i2]) { const w = weld[i] * 3; acc[w] += cx; acc[w + 1] += cy; acc[w + 2] += cz; }
+  }
+  const nor = g.attributes.normal && g.attributes.normal.count === N ? g.attributes.normal : new THREE.BufferAttribute(new Float32Array(N * 3), 3);
+  for (let i = 0; i < N; i++) { const w = weld[i] * 3, l = Math.hypot(acc[w], acc[w + 1], acc[w + 2]) || 1; nor.setXYZ(i, acc[w] / l, acc[w + 1] / l, acc[w + 2] / l); }
+  g.setAttribute('normal', nor); nor.needsUpdate = true; return g;
+}
 export function merge(geos) {
   let n = 0; for (const g of geos) n += g.attributes.position.count;
   const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3); let o = 0;

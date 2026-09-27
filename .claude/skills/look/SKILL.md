@@ -38,3 +38,8 @@ Visual work is judged by eye, so the loop is: screenshot → change → screensh
   its own line, or use `/* */`. After an edit to a one-liner, check the setting it touches still does something.
 - A mesh only darkens in shade with `receiveShadow`; `castShadow` alone lets it throw a shadow while staying lit in
   others' (cars sat bright under trees until render/vehicles.js `inShade`). New objects that move through shade need both.
+- Car bodies come in two levels (render/carmodels.js): the faceted far body and a rounded near body swapped in when a
+  car is big on screen (vehicles.js `pickDetail`). Change a car's shape in its builder and both follow; a new
+  `K.part` geometry should be given as `detail => geometry` so it gets a near version. Price the near bodies with
+  `RIVALS=13 CAM=behind DETAIL=near node tools/bench.mjs 7`. Rounded boxes need exact normals (`roundBox` sets them):
+  averaged ones streak big flat panels. The sawtooth on the ice-cream van's back is shadow-map aliasing, not normals.

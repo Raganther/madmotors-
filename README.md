@@ -230,7 +230,8 @@ In the game, the menu's **Track editor** (`src/ui/editor.js`, geometry in `src/c
 ## Adding a vehicle
 
 1. A body builder in `src/render/carmodels.js` (`MODELS.<name>`): outline, wheels (`K.wheels`), the damage parts, and
-   optionally `anim(v, c, now)` for moving parts.
+   optionally `anim(v, c, now)` for moving parts. Every `K.box` also gets a rounded close-up version automatically;
+   pass other part geometry as `detail => geometry` (`sph`, `cyl`) so it has one too.
 2. An entry in `src/data/vehicles.js`: name, blurb, livery, and handling next to the standard car (`accel`, `top`,
    `grip`, `off`, `im`; hitbox `hw`/`hl`). The garage lists it, with its picture and stat bars.
 3. An AI rival to drive it in bigger fields: an entry in `MORE_RIVALS` (`src/data/cars.js`; the menu's Rivals setting goes

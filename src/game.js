@@ -26,6 +26,7 @@ export const G = {
 G.mode = 'race';        // 'race' | 'showdown' | 'deuce' | 'tiebreak' (chosen in the menu)
 G.steer = 'wheel';      // touch steering: 'wheel' | 'arrows' (menu / pause setting)
 G.camMode = 'classic'; G.camZoom = 'normal';   // camera settings (render/camera.js CAM_MODES / CAM_ZOOMS)
+G.carDetail = null;   // 'near' / 'far' forces every racer's body detail (tools/bench.mjs); null picks by size on screen
 G.vehicle = 'coupe';    // the player's vehicle for the selected stage (data/vehicles.js; the menu's garage)
 G.defaultVehicle = 'coupe';   // the last pick: used on stages with no pick of their own
 G.stageCars = {};       // stage name -> vehicle id picked for it (ui/garage.js)

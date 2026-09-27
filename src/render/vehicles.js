@@ -15,8 +15,9 @@ import { shockwave } from './effects/rings.js';
 import { _p, _q, _s, disposeGroup, flat, radialTex } from './geometry.js';
 import { getCrackTex } from './materials.js';
 import { bakeAO, carMat } from './carpaint.js';
-import { scene } from './renderer.js';
-import { buildCarModel } from './carmodels.js';
+import { camera, pcamera, quality, scene } from './renderer.js';
+import { buildCarModel, panelGeos, setCarDetail } from './carmodels.js';
+import { smoothNormals } from './geometry.js';
 import { addDirt, updateDirt } from './effects/dirt.js';
 import { updateMount } from './weapons.js';
 import { race } from '../ui/flow.js';
@@ -43,13 +44,13 @@ export function makeCarMesh(def) {
   scene.add(root);
   const v = { root, body, wheels: m.wheels, steer: m.steer, wr: m.wr, soft: m.soft || 1, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
     dentable: m.dentable, bumper: m.bumper, wing: m.wing, struts: m.struts, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
-  v.anim = m.anim; v.def = def; addCarExtras(v, m.tails, def.hw || CAR_HW, def.hl || CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin), m.wheels);
+  v.anim = m.anim; v.def = def; v.lod = m.lod; addCarExtras(v, m.tails, def.hw || CAR_HW, def.hl || CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin), m.wheels);
   inShade(root); return v;
 }
 // push the bodywork in around a contact point (car-local coords), deterministic per vertex so shared corners stay welded
 export function dentMesh(v, lx, ly, lz, ix, iz, depth, radius) {
-  for (const m of v.dentable) {
-    const pos = m.geometry.attributes.position, a = pos.array, o = m.userData.orig, mp = m.position;
+  for (const m of v.dentable) for (const [g, o] of panelGeos(m)) {
+    const pos = g.attributes.position, a = pos.array, mp = m.position;
     for (let k = 0; k < a.length; k += 3) {
       const vx = a[k] + mp.x, vy = a[k + 1] + mp.y, vz = a[k + 2] + mp.z;
       const d = Math.hypot(vx - lx, (vy - ly) * 0.8, vz - lz); if (d >= radius) continue;
@@ -58,9 +59,11 @@ export function dentMesh(v, lx, ly, lz, ix, iz, depth, radius) {
       const ex = a[k] - o[k], ey = a[k + 1] - o[k + 1], ez = a[k + 2] - o[k + 2], el = Math.hypot(ex, ey, ez);
       if (el > 0.42) { const s = 0.42 / el; a[k] = o[k] + ex * s; a[k + 1] = o[k + 1] + ey * s; a[k + 2] = o[k + 2] + ez * s; }
     }
-    pos.needsUpdate = true; m.geometry.computeVertexNormals();
+    pos.needsUpdate = true; renormal(g);
   }
 }
+// the close-up bodies stay smooth-shaded across their seams; the far ones are faceted
+const renormal = g => g.userData.smooth ? smoothNormals(g) : g.computeVertexNormals();
 export function toCarLocal(c, x, z) { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), dx = x - c.x, dz = z - c.z; return [dx * fz - dz * fx, dx * fx + dz * fz]; }
 export function detachPart(c, v, m) {
   if (!m || !m.visible) return;
@@ -78,7 +81,7 @@ export function updateCarDamageVis(c, v) {
   if ((d.f > 0.4 || carWear(c) > 0.35) && !P.crack) { P.crack = 1; if (!v.crackM) v.crackM = new THREE.MeshLambertMaterial({ map: getCrackTex() }); v.cabin.material = v.crackM; }
 }
 export function repairCarVis(v) {
-  for (const m of v.dentable) { m.geometry.attributes.position.array.set(m.userData.orig); m.geometry.attributes.position.needsUpdate = true; m.geometry.computeVertexNormals(); }
+  for (const m of v.dentable) for (const [g, o] of panelGeos(m)) { g.attributes.position.array.set(o); g.attributes.position.needsUpdate = true; if (g.userData.n0) { g.attributes.normal.array.set(g.userData.n0); g.attributes.normal.needsUpdate = true; } else renormal(g); }
   for (const m of [v.bumper, v.wing, ...v.struts]) { const h = m.userData.home; m.position.copy(h.p); m.rotation.copy(h.r); m.visible = true; }
   v.heads.forEach(m => m.visible = true); v.tails.forEach(m => m.visible = true); v.cabin.material = v.glassM;
   v.parts = { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 }; v.wreckFx = 0;
@@ -263,10 +266,22 @@ function swingDoors(c, v, dt) {
     d.p.visible = d.a > 0.03; d.p.rotation.y = d.s * d.a;
   }
 }
+// close-up bodies for the cars that fill enough of the screen: a car's length as a share of the view height, with a
+// little hysteresis so one on the edge doesn't flicker between the two. Graphics: Low keeps the far bodies throughout.
+const NEAR_ON = 0.12, NEAR_OFF = 0.1;
+function pickDetail(v) {
+  if (!v.lod) return;
+  let share = 0;
+  if (quality !== 'low') {
+    if (G.persp) { const d = pcamera.position.distanceTo(v.root.position); share = 4.2 / (2 * Math.max(0.5, d) * Math.tan(pcamera.fov * Math.PI / 360)); }
+    else share = 4.2 / ((camera.top - camera.bottom) / camera.zoom);
+  }
+  setCarDetail(v.lod, G.carDetail ? G.carDetail === 'near' : share > (v.lod.on ? NEAR_OFF : NEAR_ON));
+}
 export function updateCarVisuals(dt, now) {
   if (!race) return;
   const sd = race.sd;
-  race.cars.forEach((c, k) => { drawCar(c, carVis[k], dt, now); if (sd && sd.boomT[k] > 0 && sd.boomT[k] < SD.BOOM - 0.2) carVis[k].root.visible = false; });   // blown to bits
+  race.cars.forEach((c, k) => { drawCar(c, carVis[k], dt, now); pickDetail(carVis[k]); if (sd && sd.boomT[k] > 0 && sd.boomT[k] < SD.BOOM - 0.2) carVis[k].root.visible = false; });   // blown to bits
   syncTrafficVis();
   for (const c of race.traffic) if (c.vis) drawCar(c, c.vis, dt, now);
   for (const v of G.parkVis) v.root.visible = false;

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildCarModel } from './carmodels.js';
+import { buildCarModel, setCarDetail } from './carmodels.js';
 import { disposeGroup } from './geometry.js';
 import { setCarEnvironment } from './carpaint.js';
 
@@ -15,7 +15,7 @@ export function vehicleThumb(v, w = 240, h = 150) {
   const sun = new THREE.DirectionalLight(0xFFF3DE, 0.85); sun.position.set(4, 8, 5); scene.add(sun);
   if (!env) { const s0 = new THREE.Scene(); setCarEnvironment(R, s0, { colors: { sky: 0xBFE3F2 }, light: { ground: 0x4A5040, sun: 0xFFF3DE } }); env = s0.environment; }   // built once
   scene.environment = env;
-  const m = buildCarModel({ ...v, num: 7 }, root, body);
+  const m = buildCarModel({ ...v, num: 7 }, root, body); setCarDetail(m.lod, true);   // the garage shows the close-up body
   if (m.anim) m.anim({}, { inp: { throttle: 0.7 }, boost: 0 }, 0.4);
   const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   const cam = new THREE.PerspectiveCamera(30, w / h, 0.1, 100), d = Math.max(size.x, size.y, size.z) * 2.35;
