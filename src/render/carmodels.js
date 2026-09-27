@@ -10,9 +10,9 @@ import { bakeAO, carMat, grilleTex, lensTex, treadTex } from './carpaint.js';
 // +z is the front, y up, ground at 0. The garage (data/vehicles.js) lists them all.
 const DARK = 0x2B2F3A, GLASS = 0x253450, CHROME = 0xD3D7DD, TYRE = 0x1E1E22, LAMP = 0xFFF6C8;
 
-// Two levels of detail (setCarDetail): the far one is the faceted low-poly look the top-down cameras see; close to the
-// camera each part swaps to a rounded, smooth-shaded version (roundBox, rounder spheres and cylinders) and the wheels
-// to proper tyres with shoulders, rims and spokes. Same parts, same materials: damage and dirt act on both.
+// Two levels of detail (setCarDetail): the near one, used in every camera, has rounded, smooth-shaded parts (roundBox,
+// rounder spheres and cylinders), tyres with shoulders, tread, rims and spokes, grilles and shut lines; the far one is
+// the faceted low-poly body, kept for Graphics: Low. Same parts, same materials: damage and dirt act on both.
 const sph = (r, w, h, ...a) => d => new THREE.SphereGeometry(r, d ? Math.max(24, w * 2) : w, d ? Math.max(16, h * 2) : h, ...a);
 const cyl = (rt, rb, ht, n, turn = g => g) => d => { const g = turn(new THREE.CylinderGeometry(rt, rb, ht, d ? Math.max(28, n * 2) : n)); return d ? g : flat(g); };
 function kit(def, root, body) {

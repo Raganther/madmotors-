@@ -15,7 +15,7 @@ import { shockwave } from './effects/rings.js';
 import { _p, _q, _s, disposeGroup, flat, radialTex } from './geometry.js';
 import { getCrackTex } from './materials.js';
 import { bakeAO, carMat } from './carpaint.js';
-import { camera, pcamera, quality, scene } from './renderer.js';
+import { quality, scene } from './renderer.js';
 import { buildCarModel, panelGeos, setCarDetail } from './carmodels.js';
 import { smoothNormals } from './geometry.js';
 import { addDirt, updateDirt } from './effects/dirt.js';
@@ -266,18 +266,8 @@ function swingDoors(c, v, dt) {
     d.p.visible = d.a > 0.03; d.p.rotation.y = d.s * d.a;
   }
 }
-// close-up bodies for the cars that fill enough of the screen: a car's length as a share of the view height, with a
-// little hysteresis so one on the edge doesn't flicker between the two. Graphics: Low keeps the far bodies throughout.
-const NEAR_ON = 0.12, NEAR_OFF = 0.1;
-function pickDetail(v) {
-  if (!v.lod) return;
-  let share = 0;
-  if (quality !== 'low') {
-    if (G.persp) { const d = pcamera.position.distanceTo(v.root.position); share = 4.2 / (2 * Math.max(0.5, d) * Math.tan(pcamera.fov * Math.PI / 360)); }
-    else share = 4.2 / ((camera.top - camera.bottom) / camera.zoom);
-  }
-  setCarDetail(v.lod, G.carDetail ? G.carDetail === 'near' : share > (v.lod.on ? NEAR_OFF : NEAR_ON));
-}
+// the racers always wear their close-up bodies (rounded, textured); Graphics: Low keeps the faceted ones for speed
+function pickDetail(v) { if (v.lod) setCarDetail(v.lod, G.carDetail ? G.carDetail === 'near' : quality !== 'low'); }
 export function updateCarVisuals(dt, now) {
   if (!race) return;
   const sd = race.sd;
