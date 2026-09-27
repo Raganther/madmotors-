@@ -2,48 +2,27 @@ import * as THREE from 'three';
 import { G } from '../../game.js';
 import { HALF, WALL } from '../../core/constants.js';
 import { TAU, mulberry32 } from '../../core/math.js';
-import { _c, _e, _m, _p, _q, _s, addInstanced, flat, merge } from '../geometry.js';
+import { _c, _e, _m, _p, _q, _s, addInstanced, flat } from '../geometry.js';
 import { withCutaway } from '../materials.js';
+import * as SH from './shapes.js';
+import { debris } from '../effects/debris.js';
 
 export function addScenery(group, tr, terr, stage) {
-  const rnd = mulberry32(stage.seed * 7 + 3), C = stage.colors;
+  const rnd = mulberry32(stage.seed * 7 + 11), C = stage.colors;
   const pick = a => a[Math.floor(rnd() * a.length)];
-  // anything standing high above a nearby road throws its shadow across the road: keep it back from the edge
-  const overhangs = (x, z, q) => { if (!q) return false; const up = terr.at(x, z) - tr.H[q.i]; return up > 4 && q.d < 12 + up * 0.75; };
   const slopeAt = (x, z) => Math.hypot(terr.at(x + 1.5, z) - terr.at(x - 1.5, z), terr.at(x, z + 1.5) - terr.at(x, z - 1.5)) / 3;
-  const x0 = Math.min(-195, tr.minX - 90), x1 = Math.max(195, tr.maxX + 90), z0 = tr.minZ - 80, z1 = tr.maxZ + 110, area = (x1 - x0) * (z1 - z0);
-  const trunks = [], pines = [], rounds = [], rocks = [], bushes = [], houseW = [], houseR = [];
-  const nT = Math.round(area * stage.trees.density);
-  for (let k = 0; k < nT; k++) {
-    const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z);
-    if (q && q.d < HALF + 11) continue; if (slopeAt(x, z) > 0.8 || overhangs(x, z, q)) continue; if (tr.town && q && tr.town[tr.bi(q.i)] && q.d < 32) continue; if (tr.falls && tr.falls.some(f => Math.hypot(x - tr.xs[f.i], z - tr.zs[f.i]) < 32)) continue; { const qt = tr.nearestTun(x, z); if (qt && qt.d < HALF + 16) continue; }
-    const y = terr.at(x, z) - 0.2, s = 0.8 + rnd() * 0.7, ry = rnd() * TAU;
-    trunks.push({ x, y, z, sx: s, sy: s, sz: s, color: 0x6B4A32 });
-    const high = !!stage.alpine && y > stage.alpine.treeLine;
-    if (high || rnd() < stage.trees.pine) pines.push({ x, y, z, sx: s, sy: s * (0.9 + rnd() * 0.4), sz: s, ry, color: pick(C.pine) });
-    else rounds.push({ x, y, z, sx: s, sy: s * (0.85 + rnd() * 0.3), sz: s, ry, color: pick(C.round) });
-  }
-  // saguaro cacti (desert stages)
-  const cacti = [];
-  for (let k = 0, nC = Math.round(area * (stage.cacti || 0)); k < nC; k++) {
-    const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z);
-    if (q && q.d < HALF + 8) continue; if (slopeAt(x, z) > 0.6 || overhangs(x, z, q)) continue;
-    const s = 0.7 + rnd() * 0.6; _c.set(0x5F7F3C).offsetHSL((rnd() - 0.5) * 0.04, 0, (rnd() - 0.5) * 0.08);
-    cacti.push({ x, y: terr.at(x, z) - 0.2, z, sx: s, sy: s * (0.85 + rnd() * 0.4), sz: s, ry: rnd() * TAU, color: _c.getHex() });
-  }
-  const nR = Math.round(area * stage.rocks);
-  for (let k = 0; k < nR; k++) {
-    const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z); if (q && q.d < HALF + 5) continue;
-    if (overhangs(x, z, q)) continue;
-    const s = 0.8 + rnd() * 2.2; _c.set(C.rock).offsetHSL(0, 0, (rnd() - 0.5) * 0.12);
-    rocks.push({ x, y: terr.at(x, z) - 0.2 * s, z, sx: s * (0.8 + rnd() * 0.6), sy: s * (0.5 + rnd() * 0.5), sz: s * (0.8 + rnd() * 0.6), ry: rnd() * TAU, rx: rnd() * 0.4, color: _c.getHex() });
-  }
-  const nB = Math.round(area * stage.bushes);
-  for (let k = 0; k < nB; k++) {
-    const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), q = tr.nearest(x, z); if (q && q.d < HALF + 4) continue; if (overhangs(x, z, q)) continue;
-    if (stage.alpine && terr.at(x, z) > stage.alpine.treeLine) continue;
-    const s = 0.6 + rnd() * 0.8; bushes.push({ x, y: terr.at(x, z) + 0.2 * s, z, sx: s, sy: s * 0.7, sz: s, ry: rnd() * TAU, color: pick(C.round) });
-  }
+  const houseW = [], houseR = [];
+  // trees, cacti, rocks and bushes are placed by the core (track/obstacles.js) because cars can hit them; k = its index
+  const trunks = [], pines = [], rounds = [], rocks = [[], [], []], bushes = [], cacti = [], OB = terr.obst ? terr.obst.items : [];
+  OB.forEach((o, k) => {
+    const base = { k, x: o.x, y: o.y, z: o.z, ry: o.ry };
+    if (o.kind === 0 || o.kind === 1) trunks.push({ ...base, sx: o.s, sy: o.s, sz: o.s, color: 0x6B4A32 });
+    if (o.kind === 0) pines.push({ ...base, sx: o.s, sy: o.sy, sz: o.s, color: o.color });
+    else if (o.kind === 1) rounds.push({ ...base, sx: o.s, sy: o.sy, sz: o.s, color: o.color });
+    else if (o.kind === 2) { _c.set(0x5F7F3C).offsetHSL(o.dh, 0, o.dl); cacti.push({ ...base, sx: o.s, sy: o.sy, sz: o.s, color: _c.getHex() }); }
+    else if (o.kind === 3) { _c.set(C.rock).offsetHSL(0, 0, o.dl); rocks[o.shape].push({ ...base, sx: o.sx, sy: o.sy, sz: o.sz, rx: o.rx, color: _c.getHex() }); }
+    else bushes.push({ ...base, sx: o.s, sy: o.sy, sz: o.s, color: o.color });
+  });
   const tryHouse = (i, side, latMin, latVar) => {
     if (tr.loopN) i = (i % tr.loopN + tr.loopN) % tr.loopN;
     const lat = side * (latMin + rnd() * latVar), x = tr.xs[i] + tr.rx[i] * lat, z = tr.zs[i] + tr.rz[i] * lat, q = tr.nearest(x, z);
@@ -77,20 +56,18 @@ export function addScenery(group, tr, terr, stage) {
     addFan(x, z, Math.atan2(tr.xs[i] - x, tr.zs[i] - z));
   }
   const L = (o) => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, Object.assign({ cloud: true }, o));
-  addInstanced(group, flat(new THREE.CylinderGeometry(0.2, 0.28, 1.6, 5).translate(0, 0.8, 0)), L(), trunks, { cast: true });
-  addInstanced(group, merge([flat(new THREE.ConeGeometry(1.7, 3.2, 7).translate(0, 2.6, 0)), flat(new THREE.ConeGeometry(1.2, 2.4, 7).translate(0, 4.2, 0))]), L({ sway: 1 }), pines, { cast: true });
-  if (stage.surface === 'snow') {                                                    // snow stages: snow lying on the pines' upper slopes
-    const cap = merge([flat(new THREE.ConeGeometry(0.8, 1.5, 7).translate(0, 4.66, 0)), flat(new THREE.CylinderGeometry(0.68, 1.12, 0.8, 7).translate(0, 2.6, 0))]);
-    addInstanced(group, cap, L({ sway: 1 }), pines.map(p => ({ ...p, color: 0xF2F6FA })));
-  }
-  addInstanced(group, flat(new THREE.IcosahedronGeometry(1.7, 0).translate(0, 3.1, 0)), L({ sway: 1 }), rounds, { cast: true });
-  if (cacti.length) {
-    const cyl = (r, h) => new THREE.CylinderGeometry(r, r, h, 6);
-    addInstanced(group, merge([flat(cyl(0.34, 3.6).translate(0, 1.8, 0)), flat(cyl(0.22, 0.9).rotateZ(Math.PI / 2).translate(0.55, 1.5, 0)), flat(cyl(0.22, 1.2).translate(0.95, 2.0, 0)),
-      flat(cyl(0.2, 0.7).rotateZ(Math.PI / 2).translate(-0.45, 2.1, 0)), flat(cyl(0.2, 1.0).translate(-0.75, 2.55, 0))]), L({ sway: 0.3 }), cacti, { cast: true });
-  }
-  addInstanced(group, flat(new THREE.DodecahedronGeometry(1, 0)), L(), rocks, { cast: true, receive: true });
-  addInstanced(group, flat(new THREE.IcosahedronGeometry(1, 0)), L({ sway: 2.2 }), bushes, { cast: true });
+  // the natural scenery: low-poly still, but with enough facets and baked shading (darker underneath and inside, lighter
+  // on top) that it reads as rounded forms rather than a handful of flat faces; render/world/shapes.js builds them
+  const LV = o => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), false, Object.assign({ cloud: true }, o));
+  const snowy = stage.surface === 'snow', mossy = !stage.cacti && !snowy, S = G.sceneryParts = new Map();
+  const add = (geo, mat, list, opts) => { for (const ch of addInstanced(group, geo, mat, list, opts)) ch.list.forEach((it, j) => { if (it.k === undefined) return; let a = S.get(it.k); if (!a) S.set(it.k, a = []); a.push({ mesh: ch.mesh, j, it }); }); };
+  add(SH.trunk(), LV(), trunks, { cast: true });
+  add(SH.pine(), LV({ sway: 1 }), pines, { cast: true });
+  if (snowy) add(SH.pineSnow(), LV({ sway: 1 }), pines.map(p => ({ ...p, color: 0xF2F6FA })));   // snow lying on the pines' tiers
+  add(SH.round(), LV({ sway: 1 }), rounds, { cast: true });
+  if (cacti.length) add(SH.cactus(), LV({ sway: 0.3 }), cacti, { cast: true });
+  rocks.forEach((list, n) => { if (list.length) add(SH.rock(n, mossy ? C.grassB : null), LV(), list, { cast: true, receive: true }); });
+  add(SH.bush(), LV({ sway: 2.2 }), bushes, { cast: true });
   addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), L(), houseW, { cast: true, receive: true });
   addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), L(), houseR, { cast: true });
   G.fans = fans;
@@ -149,3 +126,27 @@ export function updateFans(now, dt = 1 / 60, cars = []) {
     mesh.instanceMatrix.needsUpdate = true;
   }
 }
+// Scenery that was hit (sim/obstacles.js events): a tree rocks away from the blow and settles, shedding leaves; a bush
+// is flattened and springs back up. Each instance's matrix is rebuilt from its placement with the lean added.
+const moving = new Map(), _ax2 = new THREE.Vector3(), _qt = new THREE.Quaternion();
+export function sceneryHit(e, hint = 0) {
+  const parts = G.sceneryParts && G.sceneryParts.get(e.k); if (!parts) return;
+  const it = parts[0].it, m = moving.get(e.k) || { t: 0, amp: 0, nx: 0, nz: 0, bush: e.t === 'bush' };
+  if (m.bush) { m.t = 0; m.amp = 1; } else { m.amp = Math.min(0.32, m.amp * 0.5 + e.v * 0.014); m.t = 0; m.nx = e.nx; m.nz = e.nz; }
+  moving.set(e.k, m);
+  const n = m.bush ? 6 : Math.round(4 + e.v * 0.6), top = it.y + (m.bush ? 0.8 : 3.4) * (it.sy || 1);
+  for (let q = 0; q < n; q++) debris(it.x + (Math.random() - 0.5) * 2, top + Math.random(), it.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 3, 0.5 + Math.random() * 2, (Math.random() - 0.5) * 3, it.color, 0.16, 0.03, 0.12, 2 + Math.random() * 1.5, hint);
+}
+export function updateScenery(dt) {
+  for (const [k, m] of moving) {
+    m.t += dt;
+    const done = m.bush ? m.t > 2.5 : m.t > 3; if (done) moving.delete(k);
+    for (const { mesh, j, it } of G.sceneryParts.get(k)) {
+      _e.set(it.rx || 0, it.ry || 0, it.rz || 0); _q.setFromEuler(_e); _s.set(it.sx ?? 1, it.sy ?? 1, it.sz ?? 1); _p.set(it.x, it.y, it.z);
+      if (done) { /* back as placed */ } else if (m.bush) _s.y *= 0.3 + 0.7 * Math.min(1, m.t / 2.5) ** 2;   // squashed flat, springing back
+      else { _ax2.set(m.nz, 0, -m.nx); _qt.setFromAxisAngle(_ax2, m.amp * Math.exp(-2.2 * m.t) * Math.cos(m.t * 11)); _q.premultiply(_qt); }
+      mesh.setMatrixAt(j, _m.compose(_p, _q, _s)); mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+}
+export function clearSceneryHits() { moving.clear(); }

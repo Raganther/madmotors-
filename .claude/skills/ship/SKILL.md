@@ -29,3 +29,5 @@ Run from the repo root. Stop and fix at the first failure; never commit red.
   silently takes those too. Undo by editing.
 - Never `pkill -f <pattern>` where the pattern also matches your own command line: it kills your shell, and any
   commit queued behind it.
+- Piping `npm run e2e | tail` hides a failure: the pipe's exit code is tail's, and an uncaught exception prints a
+  stack then "Node.js vXX" last. Read for "smoke test passed" (or check `$?` without the pipe) before calling it green.

@@ -1,6 +1,7 @@
 import { CAR_HL, CAR_HW, HALF, PHYS, SURF, WALL } from '../constants.js';
 import { clamp, wrapAngle } from '../math.js';
 import { hitBarrier, wallAt, wallPos } from './barriers.js';
+import { collideObstacles } from './obstacles.js';
 import { carWear, damageCar } from './damage.js';
 import { BOOST_PAD } from '../elements/boost.js';
 import { wornSurf } from '../features/wear.js';
@@ -203,6 +204,7 @@ export function stepCar(c, dt, W, racing) {
       }
     }
   }
+  if (al > HALF) collideObstacles(c, W, dt);   // off the road: trees, rocks, bushes
   c.progress = tr.progOf(pr.s);
   if (c.onGround && al < HALF - 0.5) c.lastGood = pr.i;
   const spd = Math.hypot(c.vx, c.vz);

@@ -94,14 +94,15 @@ src/
   game.js               G: state that several modules write (world, state, shake, renderAlpha, ...)
   core/                 THE SIMULATION: pure JS, no three.js, no DOM (runs in Node for the tests)
     math.js constants.js types.js
-    track/              road generation (downhill, circuit, gorge), terrain, rails, road queries
-    sim/                car physics, AI, barriers, damage, collisions, race loop
+    track/              road generation (downhill, circuit, gorge), terrain, rails, road queries, obstacles.js
+                        (trees, rocks, cacti, bushes: placed here from the stage seed so cars can hit them)
+    sim/                car physics, AI, barriers, scenery hits (obstacles.js), damage, collisions, race loop
     elements/           TRACK ELEMENTS: one module per reusable piece of road (bridge, tunnel, kick, gap, boost, town, ...)
     features/           race systems plugged into the race loop: traffic, trains, parked, rockfall, hazards
     modes/              game modes on top of a race (showdown: King of the Hill, Deuce, Tiebreak)
   data/                 stages (one file each), sandboxes (a tiny loop per element), car/traffic definitions, leagues
   render/               three.js: renderer & quality, materials/shaders, world (terrain, road, barriers,
-                        scenery), elements/ (each element's and feature's visuals), vehicles (racer bodies: carmodels.js, one builder per `model`; paint, glass, chrome and occlusion: carpaint.js; garage pictures: thumbs.js), effects,
+                        scenery: draws core's obstacles with world/shapes.js, spectators, houses), elements/ (each element's and feature's visuals), vehicles (racer bodies: carmodels.js, one builder per `model`; paint, glass, chrome and occlusion: carpaint.js; garage pictures: thumbs.js), effects,
                         camera, overlay.js (debug overlay)
   audio/                Web Audio synth (engine, crashes, horns, bells)
   ui/                   HUD, menu/flow (countdown, pause, results), garage, league, input, storage

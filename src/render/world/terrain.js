@@ -42,7 +42,11 @@ export function makeTerrainMesh(terr, tr, stage) {
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
-  const fg = g.toNonIndexed(); g.dispose(); fg.computeVertexNormals();          // per-face normals keep the faceted look with cheap Lambert lighting
+  // normals half way between per-face (the faceted look) and smooth (light rolls across the slopes instead of breaking
+  // at every triangle): the ground stays low-poly but loses the crinkled-paper look up close
+  g.computeVertexNormals(); const fg = g.toNonIndexed(); g.dispose();
+  const sn = fg.attributes.normal.array.slice(); fg.computeVertexNormals(); const nn = fg.attributes.normal.array;
+  for (let i = 0; i < nn.length; i += 3) { const x = nn[i] * 0.45 + sn[i] * 0.55, y = nn[i + 1] * 0.45 + sn[i + 1] * 0.55, z = nn[i + 2] * 0.45 + sn[i + 2] * 0.55, l = Math.hypot(x, y, z) || 1; nn[i] = x / l; nn[i + 1] = y / l; nn[i + 2] = z / l; }
   const mesh = chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true, { cloud: true, grain: 0.1, strata: stage.strata || 0 }), 60, true);
   // cliffs and banks throw shadows on the ground below them (the rest of the height cue from the top-down cameras); not on
   // Graphics: Low (applyQuality flips it)

@@ -16,6 +16,9 @@ export const WALL_FX = {
   5: { cols: [0x6A6660, 0x5F5C57, 0x807B73], size: [0.15, 0.45], n: 0.8, sparks: 1.2, dust: 0x8E8A84, snd: 'metal' },
   7: { cols: [0x2B2F3A, 0x44474F, 0xB9B6AE], size: [0.12, 0.35], n: 0.6, sparks: 1.0, dust: 0xB9B6AE, snd: 'metal' },
   6: { cols: [0x8E897E, 0x7A756B, 0xA39E92], size: [0.15, 0.5], n: 0.9, sparks: 1.0, dust: 0x9A958A, snd: 'metal' },
+  8: { cols: [0x6B4A32, 0x8A6443, 0x4E7A36], size: [0.1, 0.5], n: 0.9, sparks: 0, dust: 0x8A7A5E, snd: 'wood', splinter: true },   // a tree
+  9: { cols: [0x8E897E, 0x7A756B, 0xA39E92], size: [0.15, 0.45], n: 0.8, sparks: 0.6, dust: 0xA09A8E, snd: 'metal' },               // a rock
+  10: { cols: [0x5F7F3C, 0x4E6B30, 0x7A9A50], size: [0.1, 0.35], n: 0.9, sparks: 0, dust: 0x9A8A60, snd: 'hay' },                       // a cactus
   armco: { cols: [0xCDD2D9, 0x8D939C, 0xB0B6BF], size: [0.1, 0.4], n: 0.7, sparks: 1.4, dust: 0xC0C4CA, snd: 'metal', splinter: true }
 };
 export function wallFx(w) { return (w === 2 && G.world.stage.armco) ? WALL_FX.armco : (WALL_FX[w] || WALL_FX[1]); }

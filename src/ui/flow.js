@@ -1,4 +1,5 @@
 import { G } from '../game.js';
+import { clearSceneryHits, sceneryHit } from '../render/world/scenery.js';
 import { AudioSys } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { createRace, ranking } from '../core/sim/race.js';
@@ -42,7 +43,7 @@ export function newRace() {
   let defs = raceDefs(vehicleById(G.vehicle), lg ? LEAGUE_RIVALS : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);      // the line-up, with the player's pick
   if (lg && lg.round > 0) { const order = standings(lg, defs.map(d => d.name)).map(s => s.name).reverse(); defs = order.map(n => defs.find(d => d.name === n)).filter(Boolean); }   // the championship leader starts at the back
   setRoster(defs);
-  const r = createRace(G.world.W, defs, { mode, weapons: G.weapons }); clearProps(); resetBarrierVis(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
+  const r = createRace(G.world.W, defs, { mode, weapons: G.weapons }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
   elementHook('newRace', r);
   return r;
 }
@@ -64,6 +65,8 @@ export function handleEvents() {
         case 'drift': if (c.isPlayer) { callout(e.amt > 1.6 ? 'Mega drift!' : 'Drift boost!'); AudioSys.whoosh(); } else if (near) AudioSys.whoosh(0.35); break;
         case 'respawn': if (c.isPlayer) callout('Back on track'); break;
         case 'dent': dentFx(c, e); break;
+        case 'tree': sceneryHit(e, c.pr.i); break;
+        case 'bush': sceneryHit(e, c.pr.i); if (c.isPlayer || near) AudioSys.crash('hay', Math.min(1, e.v / 25) * (c.isPlayer ? 0.6 : 0.3)); break;
         case 'wreck': if (!c.destroyed) wreckFx(c, c.isPlayer, near); break;
         case 'hazard': { const d = e.i - race.player.pr.i; if (d > 0 && d < 260) callout(e.kind === 'cows' ? 'Cows on the road!' : 'Oil ahead!'); break; }
         case 'cowhit': dustRing(e, 14, 0xC9B79C, 6, 1.3); for (let k = 0; k < 8; k++) emit(e.x, e.y + 1, e.z, (Math.random() - 0.5) * 6, 3 + Math.random() * 4, (Math.random() - 0.5) * 6, 0.9, 0.5, k % 2 ? 0xF4F1EA : 0x22201E, 12);

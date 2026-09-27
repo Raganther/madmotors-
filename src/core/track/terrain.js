@@ -1,6 +1,7 @@
 import { HALF } from '../constants.js';
 import { clamp, lerp, smoothstep } from '../math.js';
 import { railAt, railProject } from './rails.js';
+import { placeObstacles } from './obstacles.js';
 
 export function riverDist(rv, x, z) {
   let best = 1e9; const P = rv.pts;
@@ -60,5 +61,7 @@ export function buildTerrain(tr, stage) {
     const c = fx | 0, r = fz | 0, u = fx - c, v = fz - r, i = r * cols + c;
     return (h[i] * (1 - u) + h[i + 1] * u) * (1 - v) + (h[i + cols] * (1 - u) + h[i + cols + 1] * u) * v;
   }
-  return { x0, z0, S, cols, rows, h, dist, at };
+  const T = { x0, z0, S, cols, rows, h, dist, at };
+  T.obst = placeObstacles(tr, T, stage);   // trees, rocks, cacti, bushes: drawn by render/world/scenery.js, hit in sim/obstacles.js
+  return T;
 }

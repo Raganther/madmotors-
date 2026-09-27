@@ -44,3 +44,6 @@ Visual work is judged by eye, so the loop is: screenshot → change → screensh
   `RIVALS=13 CAM=behind DETAIL=near node tools/bench.mjs 7`. Rounded boxes need exact normals (`roundBox` sets them):
   averaged ones streak big flat panels. To judge close-up detail, `node tools/closeup.mjs <dir> <vehicle ...>`
   (after a build). The sawtooth on the ice-cream van's back is shadow-map aliasing, not normals.
+- Trees, rocks, cacti and bushes are placed by the core (`core/track/obstacles.js`, cars hit them), not by the
+  renderer: change where they stand there (golden changes); change how they look in `render/world/shapes.js`
+  (rendering only). Their shading is baked into vertex colours, multiplied by each instance's colour.
