@@ -59,3 +59,49 @@ export function setCarEnvironment(renderer, scene, stage) {
   if (st.rt) st.rt.dispose(); st.rt = rt; scene.environment = rt.texture;
   geo.dispose();
 }
+// ---------- close-up detail textures (canvas-drawn once, shared by every car) ----------
+const texCache = {};
+function canvasOnce(key, w, h, draw) {
+  if (texCache[key]) return texCache[key];
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return (texCache[key] = t);
+}
+/**
+ * Tyre tread for the close-up wheel (carmodels.js nearWheel), laid out on its lathe: u runs round the tyre, v across
+ * its profile, with the tread face between v0 and v1 and the shoulders either side. White = rubber, dark = grooves;
+ * the same picture is the bump map, so the grooves sink in.
+ */
+export function treadTex(v0, v1) {
+  return canvasOnce('tread' + v0 + v1, 512, 128, (g, W, H) => {
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+    const y = v => (1 - v) * H, t0 = y(v1), t1 = y(v0), mid = (t0 + t1) / 2, tw = t1 - t0, N = 36;
+    g.fillStyle = '#3a3a3a';
+    for (const f of [0.3, 0.7]) g.fillRect(0, t0 + tw * f - 1.5, W, 3);                  // two grooves round the tyre
+    g.strokeStyle = '#3a3a3a'; g.lineWidth = 2.2;
+    for (let k = 0; k < N; k++) {                                                          // chevron sipes across the face, blocks on the shoulders
+      const x = k / N * W;
+      g.beginPath(); g.moveTo(x, t0 - tw * 0.35); g.lineTo(x + 6, mid); g.lineTo(x, t1 + tw * 0.35); g.stroke();
+    }
+    g.fillStyle = 'rgba(0,0,0,0.12)';                                                      // sidewall: a moulded ring
+    for (const f of [0.1, 0.9]) g.fillRect(0, f * H - 1, W, 2);
+  });
+}
+/** A grille: chrome surround, dark slats. */
+export function grilleTex() {
+  return canvasOnce('grille', 128, 64, (g, W, H) => {
+    g.fillStyle = '#d8dbe0'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#15171b'; g.fillRect(6, 6, W - 12, H - 12);
+    g.fillStyle = '#8c9098'; for (let y = 10; y < H - 8; y += 7) g.fillRect(8, y, W - 16, 2.5);
+    g.fillStyle = '#5a5e66'; for (let x = 16; x < W - 10; x += 16) g.fillRect(x, 8, 2, H - 16);
+  });
+}
+/** Lamp lenses: a bright core in reflector rings (round lamps get the rings, square ones a grid of facets). */
+export function lensTex() {
+  return canvasOnce('lens', 64, 64, (g, W, H) => {
+    const gr = g.createRadialGradient(W / 2, H / 2, 2, W / 2, H / 2, W / 2);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, '#e6e6e6'); gr.addColorStop(1, '#a8a8a8'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(0,0,0,0.16)'; g.lineWidth = 1.5;
+    for (let r = 8; r < W / 2; r += 7) { g.beginPath(); g.arc(W / 2, H / 2, r, 0, Math.PI * 2); g.stroke(); }
+    g.strokeStyle = 'rgba(0,0,0,0.1)'; for (let x = 8; x < W; x += 8) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+  });
+}

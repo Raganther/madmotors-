@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { flat, roundBox } from './geometry.js';
 import { numberTex } from './materials.js';
-import { bakeAO, carMat } from './carpaint.js';
+import { bakeAO, carMat, grilleTex, lensTex, treadTex } from './carpaint.js';
 
 // The racers' bodies, one builder per model (CAR_DEFS[].model). They differ where it shows from the camera, overhead:
 // outline, roof and deck. All share the same footprint (the hitbox is the same for everyone), wheels, lights and the
@@ -19,7 +19,8 @@ function kit(def, root, body) {
   const mats = new Map(), dentable = [], lod = { swap: [], lo: [], hi: [], on: false };
   const kind = c => c === def.color || c === def.accent ? 'paint' : c === GLASS ? 'glass' : c === CHROME ? 'chrome' : c === TYRE ? 'rubber' : 'trim';
   const mat = c => { if (!mats.has(c)) mats.set(c, carMat(kind(c), c)); return mats.get(c); };
-  const hl = new THREE.MeshBasicMaterial({ color: LAMP }), tl = new THREE.MeshBasicMaterial({ color: 0xFF4A3A });
+  const hl = new THREE.MeshBasicMaterial({ color: LAMP, map: lensTex() }), tl = new THREE.MeshBasicMaterial({ color: 0xFF4A3A, map: lensTex() });
+  let tyreM = null, grilleM = null;
   // a mesh whose geometry comes in both levels: `geo` is a geometry (one level only) or detail => geometry
   const both = (m, geo, oy) => { if (typeof geo !== 'function') return; m.userData.lod = [m.geometry, bakeAO(geo(true), oy)]; lod.swap.push(m); };
   const K = {
@@ -37,7 +38,8 @@ function kit(def, root, body) {
         return flat(g);
       };
       const t = Math.min(w, h, d), r = Math.min(0.1, t * 0.3);   // thin trim and stripes stay as they are
-      const m = K.part(t < 0.05 ? lo() : dd => dd ? roundBox(w, h, d, r, { seg, shape }) : lo(), c, x, y, z, [w, h, d]); m.rotation.x = rx; m.userData.home.r.copy(m.rotation); return m;
+      const m = K.part(t < 0.05 ? lo() : dd => dd ? roundBox(w, h, d, r, { seg, shape }) : lo(), c, x, y, z, [w, h, d]); m.rotation.x = rx; m.userData.home.r.copy(m.rotation);
+      m.userData.box = { w, h, d, r, shape, tilted: !!rx }; return m;
     },
     panel(...a) {
       const m = K.box(...a), copy = g => Float32Array.from(g.attributes.position.array);
@@ -53,6 +55,23 @@ function kit(def, root, body) {
     /** A lamp with its own material, for lights that flash or change (anim). */
     glow(w, h, d, c, x, y, z, parent = body) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color: c })); m.position.set(x, y, z); parent.add(m); return m; },
     group(x, y, z) { const g = new THREE.Group(); g.position.set(x, y, z); body.add(g); return g; },
+    /** A grille on the nose, facing forward (close-up only). */
+    grille(w, h, x, y, z) {
+      if (!grilleM) grilleM = new THREE.MeshStandardMaterial({ map: grilleTex(), bumpMap: grilleTex(), bumpScale: 0.5, metalness: 0.6, roughness: 0.4, envMapIntensity: 0.8 });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), grilleM); m.position.set(x, y, z); m.visible = false; body.add(m); lod.hi.push(m); return m;
+    },
+    /** Shut lines where the doors and bonnet meet (close-up only): on the main paint panel, framing the cabin. */
+    seams(main, cabin) {
+      const B = main && main.userData.box, C = cabin && cabin.userData.box;
+      if (!B || B.tilted || !C || C.d < 0.9 || B.d < 2.5) return;
+      const M = new THREE.MeshBasicMaterial({ color: 0x0B0C0F }), p = main.position, add = (w, h, d, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M); m.position.set(x, y, z); m.visible = false; body.add(m); lod.hi.push(m); };
+      const zf = Math.min(cabin.position.z + C.d / 2 - 0.05, p.z + B.d / 2 - 0.5), zr = cabin.position.z - C.d * 0.15, hh = B.h - 2 * B.r - 0.04;
+      // only where the panel's shape leaves the sides and the bonnet flat (a wedge or a taper would leave the lines floating)
+      const f = B.shape || ((x, y, z) => [x, y, z]), flatAt = (x, y, z, k) => Math.abs(f(x, y, z)[k] - [x, y, z][k]) < 0.005;
+      if (![zf, zr].every(z => [-hh / 2, hh / 2].every(y => flatAt(B.w / 2, y, z - p.z, 0) && flatAt(-B.w / 2, y, z - p.z, 0))) || !flatAt(0, B.h / 2, zf + 0.08 - p.z, 1)) return;
+      for (const s of [-1, 1]) for (const z of [zf, zr]) add(0.008, hh, 0.014, p.x + s * (B.w / 2 + 0.002), p.y, z);   // door front and back
+      add(B.w - 2 * B.r - 0.1, 0.008, 0.014, p.x, p.y + B.h / 2 + 0.002, zf + 0.08);                                  // bonnet
+    },
     /** Wheels: [x, z, radius, width] each; the front pair steers. knobbly = off-road tread blocks. */
     wheels(list, { knobbly = false, hub = 0xC9CCD4 } = {}) {
       const wheels = [], steer = [];
@@ -63,7 +82,8 @@ function kit(def, root, body) {
         const t = new THREE.Mesh(bakeAO(flat(new THREE.CylinderGeometry(r, r, wd, knobbly ? 8 : 10).rotateZ(Math.PI / 2)), r), mat(TYRE)); t.castShadow = true; far.add(t);
         far.add(new THREE.Mesh(bakeAO(new THREE.CylinderGeometry(r * 0.48, r * 0.48, wd + 0.02, 6).rotateZ(Math.PI / 2), r), mat(hub)));
         if (knobbly) for (let k = 0; k < 8; k++) { const a = (k + 0.5) / 8 * Math.PI * 2, b = new THREE.Mesh(bakeAO(new THREE.BoxGeometry(wd * 0.9, 0.1, 0.16), r), mat(TYRE)); b.position.set(0, Math.cos(a) * r, Math.sin(a) * r); b.rotation.x = -a; far.add(b); }
-        nearWheel(near, r, wd, knobbly, mat(TYRE), mat(hub), mat(DARK));
+        if (!tyreM) tyreM = new THREE.MeshStandardMaterial({ color: TYRE, vertexColors: true, map: treadTex(TREAD[0], TREAD[1]), bumpMap: treadTex(TREAD[0], TREAD[1]), bumpScale: 0.6, metalness: 0, roughness: 0.92, envMapIntensity: 0.15 });
+        nearWheel(near, r, wd, knobbly, tyreM, mat(TYRE), mat(hub), mat(DARK));
         wheels.push(spin); if (z > 0) steer.push(pivot);
       }
       return { wheels, steer, wr: list[0][2] };
@@ -71,10 +91,13 @@ function kit(def, root, body) {
   };
   return K;
 }
+// the lathe's v for the tread face: points 5 to 9 of 15 (see nearWheel)
+const TREAD = [5 / 14, 9 / 14];
 // the close-up wheel: a tyre turned from a profile with rounded shoulders, a dark rim set into it, five spokes and a cap
-function nearWheel(g, r, wd, knobbly, tyreM, hubM, rimM) {
+function nearWheel(g, r, wd, knobbly, tyreM, blockM, hubM, rimM) {
   const h = wd / 2, ri = r * 0.64, q = Math.min(wd * 0.3, r * 0.24), pts = [new THREE.Vector2(ri, -h)];
   for (let k = 0; k <= 4; k++) { const a = -Math.PI / 2 + k / 4 * Math.PI / 2; pts.push(new THREE.Vector2(r - q + Math.cos(a) * q, -h + q + Math.sin(a) * q)); }
+  for (let k = 1; k <= 3; k++) pts.push(new THREE.Vector2(r, -h + q + (wd - 2 * q) * k / 4));   // the tread face (TREAD: where it sits in v)
   for (let k = 0; k <= 4; k++) { const a = k / 4 * Math.PI / 2; pts.push(new THREE.Vector2(r - q + Math.cos(a) * q, h - q + Math.sin(a) * q)); }
   pts.push(new THREE.Vector2(ri, h));
   const tyre = new THREE.Mesh(bakeAO(new THREE.LatheGeometry(pts, 32).rotateZ(Math.PI / 2), r), tyreM); tyre.castShadow = true; g.add(tyre);
@@ -85,7 +108,7 @@ function nearWheel(g, r, wd, knobbly, tyreM, hubM, rimM) {
     sp.position.set(0, Math.cos(a) * ri * 0.5, Math.sin(a) * ri * 0.5); sp.rotation.x = -a; g.add(sp);
   }
   if (knobbly) for (let k = 0; k < 14; k++) {
-    const a = (k + 0.5) / 14 * Math.PI * 2, b = new THREE.Mesh(bakeAO(roundBox(wd * 0.86, 0.09, r * 0.2, 0.025), r), tyreM);
+    const a = (k + 0.5) / 14 * Math.PI * 2, b = new THREE.Mesh(bakeAO(roundBox(wd * 0.86, 0.09, r * 0.2, 0.025), r), blockM);
     b.position.set(0, Math.cos(a) * (r + 0.01), Math.sin(a) * (r + 0.01)); b.rotation.x = -a; g.add(b);
   }
 }
@@ -113,6 +136,7 @@ const MODELS = {
     const bumper = K.box(2.0, 0.3, 0.3, def.accent, 0, 0.6, 1.7);
     const wing = K.box(1.62, 0.07, 0.3, def.accent, 0, 1.76, -1.36, { rx: 0.25 });
     K.box(1.3, 0.12, 0.12, DARK, 0, 1.17, 1.42);                                     // spotlight bar
+    K.grille(0.84, 0.2, 0, 0.86, 1.625);
     const heads = [-0.48, -0.16, 0.16, 0.48].map(x => K.lamp(0.14, x, 1.26, 1.5));
     for (const s of [-1, 1]) heads.push(K.light(true, 0.34, 0.2, s * 0.64, 0.88, 1.64));
     const tails = [-1, 1].map(s => K.light(false, 0.36, 0.18, s * 0.66, 0.92, -1.64));
@@ -152,6 +176,7 @@ const MODELS = {
     K.box(1.98, 0.14, 0.16, CHROME, 0, 0.6, -1.84);
     const wing = K.box(1.76, 0.08, 0.34, def.color, 0, 1.05, -1.66, { rx: -0.4 });    // ducktail
     for (const s of [-1, 1]) K.box(0.12, 0.12, 0.3, CHROME, s * 0.5, 0.42, -1.86);     // exhausts
+    K.grille(0.56, 0.18, 0, 0.8, 1.805);
     const heads = [-0.72, -0.42, 0.42, 0.72].map(x => K.lamp(0.12, x, 0.84, 1.81));
     const tails = [-1, 1].map(s => K.light(false, 0.56, 0.12, s * 0.6, 0.86, -1.81));
     return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels([[0.94, 1.22, 0.4, 0.3], [-0.94, 1.22, 0.4, 0.3], [1.02, -1.12, 0.46, 0.48], [-1.02, -1.12, 0.46, 0.48]]) };
@@ -190,6 +215,7 @@ const MODELS = {
     for (const s of [-1, 1]) K.box(0.1, 0.6, 0.1, DARK, s * 0.85, Y + 0.7, -0.6);
     const wing = K.box(1.8, 0.1, 0.1, DARK, 0, Y + 1.0, -0.6);                                // roll bar
     const heads = [-0.6, -0.2, 0.2, 0.6].map(x => K.lamp(0.11, x, Y + 1.08, -0.52));
+    K.grille(0.8, 0.3, 0, Y + 0.16, 1.755);
     for (const s of [-1, 1]) heads.push(K.light(true, 0.4, 0.16, s * 0.62, Y + 0.2, 1.76));
     const bumper = K.box(2.1, 0.22, 0.25, CHROME, 0, Y - 0.1, 1.82);
     const tails = [-1, 1].map(s => K.light(false, 0.3, 0.2, s * 0.7, Y + 0.2, -1.76));
@@ -243,6 +269,7 @@ const MODELS = {
     for (const s of [-1, 1]) for (let k = 0; k < 3; k++) struts.push(K.box(0.1, 0.1, 0.4, CHROME, s * 0.66, 1.02, 1.1 - k * 0.3, { rx: -0.5 }));   // zoomies
     const bumper = K.box(1.1, 0.12, 0.14, CHROME, 0, 0.56, 1.72);
     const wing = K.box(1.6, 0.1, 0.16, CHROME, 0, 0.62, -1.8);
+    K.grille(0.76, 0.36, 0, 0.84, 1.655);
     const heads = [-1, 1].map(s => K.lamp(0.16, s * 0.72, 0.9, 1.5)), tails = [-1, 1].map(s => K.light(false, 0.18, 0.18, s * 0.72, 0.9, -1.77));
     const anim = (v, c, now) => { const r = (c.inp.throttle || 0) * 0.025; blower.position.x = Math.sin(now * 70) * r; blower.position.y = 1.2 + Math.abs(Math.cos(now * 55)) * r; };
     return { bumper, wing, struts, heads, tails, cabin, anim, ...K.wheels([[0.86, 1.3, 0.36, 0.26], [-0.86, 1.3, 0.36, 0.26], [0.98, -1.15, 0.5, 0.56], [-0.98, -1.15, 0.5, 0.56]]) };
@@ -258,6 +285,7 @@ const MODELS = {
     const red = K.glow(0.56, 0.16, 0.26, 0xFF2020, -0.34, 1.82, 0.02), blue = K.glow(0.56, 0.16, 0.26, 0x2050FF, 0.34, 1.82, 0.02);
     const bumper = K.box(1.3, 0.4, 0.14, DARK, 0, 0.66, 1.9);                            // push bar
     const wing = K.box(1.7, 0.06, 0.24, def.color, 0, 1.08, -1.72);
+    K.grille(0.76, 0.16, 0, 0.84, 1.805);
     const heads = [-1, 1].map(s => K.light(true, 0.44, 0.14, s * 0.62, 0.86, 1.81)), tails = [-1, 1].map(s => K.light(false, 0.44, 0.14, s * 0.64, 0.9, -1.81));
     const anim = (v, c, now) => { const on = Math.floor(now * 6) % 2; red.material.color.setHex(on ? 0xFF2020 : 0x401010); blue.material.color.setHex(on ? 0x10183A : 0x3366FF); };
     return { bumper, wing, struts: [], heads, tails, cabin, anim, ...K.wheels([[0.97, 1.2, 0.42, 0.34], [-0.97, 1.2, 0.42, 0.34], [0.97, -1.15, 0.42, 0.34], [-0.97, -1.15, 0.42, 0.34]]) };
@@ -305,6 +333,7 @@ const MODELS = {
     for (const [c, y, r] of [[0xFFF4DE, 1.1, 0.46], [0xF08AB4, 1.45, 0.4], [0x8A5230, 1.75, 0.3]]) { const b = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), new THREE.MeshLambertMaterial({ color: c })); b.position.y = y; b.castShadow = true; cone.add(b); }
     const bumper = K.box(2.0, 0.24, 0.2, CHROME, 0, 0.6, 2.1);
     const wing = K.box(1.96, 0.1, 0.3, def.accent, 0, 1.94, -2.0);
+    K.grille(0.9, 0.3, 0, 0.98, 2.105);
     const heads = [-1, 1].map(s => K.lamp(0.14, s * 0.66, 0.95, 2.1)), tails = [-1, 1].map(s => K.light(false, 0.2, 0.36, s * 0.8, 1.2, -2.01));
     const anim = (v, c, now) => { cone.rotation.y = now * 1.5; };
     return { bumper, wing, struts: [], heads, tails, cabin, anim, soft: 1.3, ...K.wheels([[0.97, 1.4, 0.42, 0.34], [-0.97, 1.4, 0.42, 0.34], [0.97, -1.3, 0.42, 0.34], [-0.97, -1.3, 0.42, 0.34]]) };
@@ -324,6 +353,7 @@ const MODELS = {
     const beacons = [-1, 1].map(s => K.glow(0.3, 0.2, 0.3, 0x2050FF, s * 0.8, 1.8, 2.05));
     const bumper = K.box(2.1, 0.3, 0.2, CHROME, 0, 0.62, 2.45);
     const wing = K.box(2.0, 0.2, 0.2, CHROME, 0, 0.66, -2.45);
+    K.grille(1.1, 0.38, 0, 1.0, 2.305);
     const heads = [-1, 1].map(s => K.lamp(0.16, s * 0.75, 0.95, 2.34)), tails = [-1, 1].map(s => K.light(false, 0.26, 0.3, s * 0.85, 1.0, -2.42));
     const anim = (v, c, now) => beacons.forEach((b, k) => b.material.color.setHex(Math.floor(now * 5 + k) % 2 ? 0x3366FF : 0x10183A));
     return { bumper, wing, struts: [], heads, tails, cabin, anim, ...K.wheels([[1.0, 1.7, 0.46, 0.4], [-1.0, 1.7, 0.46, 0.4], [1.0, -1.1, 0.46, 0.4], [-1.0, -1.1, 0.46, 0.4], [1.0, -1.8, 0.46, 0.4], [-1.0, -1.8, 0.46, 0.4]]) };
@@ -384,6 +414,7 @@ const MODELS = {
     const bumper = K.box(2.5, 0.6, 0.18, def.accent, 0, 0.55, 2.05, { rx: -0.25 });          // snow blade
     for (const s of [-1, 1]) K.box(0.1, 0.1, 0.6, DARK, s * 0.6, 0.6, 1.72);
     const wing = K.box(1.5, 0.5, 0.5, def.accent, 0, 1.0, -1.7);                              // rear box
+    K.grille(1.0, 0.42, 0, 1.18, 0.855);
     const heads = [-0.45, -0.15, 0.15, 0.45].map(x => K.lamp(0.1, x, 2.44, 0.72)), tails = [-1, 1].map(s => K.light(false, 0.2, 0.2, s * 0.7, 1.1, -1.96));
     const anim = (v, c, now) => { beacon.rotation.y = now * 6; beacon.material.color.setHex(Math.floor(now * 3) % 2 ? 0xFFA020 : 0x7A4A10); };
     return { bumper, wing, struts: [bar], heads, tails, cabin, anim, soft: 0.8, ...K.wheels([[0.92, 1.3, 0.3, 0.5], [-0.92, 1.3, 0.3, 0.5], [0.92, -1.3, 0.3, 0.5], [-0.92, -1.3, 0.3, 0.5], [0.92, 0, 0.3, 0.5], [-0.92, 0, 0.3, 0.5]]) };
@@ -402,6 +433,7 @@ const MODELS = {
     const bumper = K.box(1.98, 0.16, 0.18, CHROME, 0, 0.6, 2.7);
     K.box(1.98, 0.14, 0.16, CHROME, 0, 0.6, -2.7);
     const wing = K.box(0.04, 0.5, 0.04, CHROME, 0.5, 1.8, 0.1); const flag = K.box(0.02, 0.24, 0.36, def.accent, 0.5, 1.95, -0.09);
+    K.grille(0.64, 0.2, 0, 0.8, 2.655);
     const heads = [-0.7, -0.45, 0.45, 0.7].map(x => K.lamp(0.1, x, 0.84, 2.66)), tails = [-1, 1].map(s => K.light(false, 0.5, 0.1, s * 0.62, 0.88, -2.66));
     const anim = (v, c, now) => { flag.rotation.y = Math.sin(now * 9) * 0.3; };
     return { bumper, wing, struts: [flag], heads, tails, cabin, anim, ...K.wheels([[0.94, 1.8, 0.4, 0.3], [-0.94, 1.8, 0.4, 0.3], [0.94, -1.8, 0.4, 0.3], [-0.94, -1.8, 0.4, 0.3]]) };
@@ -441,6 +473,7 @@ const MODELS = {
     for (const s of [-1, 1]) K.box(0.2, 1.0, 0.2, DARK, s * 0.7, 1.1, -0.6);
     const wing = K.box(0.5, 0.12, 0.9, 0x8A8F96, 0, 1.1, -2.6, { rx: 0.5 });                     // chute
     const bumper = K.box(2.04, 0.3, 0.22, DARK, 0, 0.66, 2.46);
+    K.grille(1.1, 0.4, 0, 1.08, 2.405);
     const heads = [-1, 1].map(s => K.lamp(0.13, s * 0.72, 0.92, 2.42)), tails = [-1, 1].map(s => K.light(false, 0.24, 0.2, s * 0.8, 0.9, -2.46));
     const anim = (v, c, now) => { drum.rotation.z = now * 1.6; };
     return { bumper, wing, struts: [], heads, tails, cabin, anim, soft: 0.8, ...K.wheels([[1.0, 1.75, 0.48, 0.4], [-1.0, 1.75, 0.48, 0.4], [1.0, -1.0, 0.48, 0.4], [-1.0, -1.0, 0.48, 0.4], [1.0, -1.95, 0.48, 0.4], [-1.0, -1.95, 0.48, 0.4]]) };
@@ -449,6 +482,8 @@ const MODELS = {
 /** Build a racer's body onto root/body. Returns the parts the damage and drawing code use. */
 export function buildCarModel(def, root, body) {
   const K = kit(def, root, body), out = (MODELS[def.model] || MODELS.hatch)(K, def);
+  const paint = K.dentable.filter(m => m !== out.cabin && m.userData.home.color === def.color && m.userData.box), vol = m => m.userData.box.w * m.userData.box.h * m.userData.box.d;
+  K.seams(paint.sort((a, b) => vol(b) - vol(a))[0], out.cabin);
   return { ...out, dentable: K.dentable, lod: K.lod };
 }
 export const CAR_MODELS = Object.keys(MODELS);

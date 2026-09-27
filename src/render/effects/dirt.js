@@ -19,6 +19,13 @@ function dirtTex() {
       g.fillStyle = `rgba(255,255,255,${a.toFixed(2)})`; g.beginPath(); g.ellipse(x, y, rad * (1 + r()), rad, r() * 3, 0, Math.PI * 2); g.fill();
       if (r() < 0.25) g.fillRect(x, y, 1 + r() * 2, -8 - r() * 20);                // streaks flicked up the panel
     }
+    // grime gathers first along the panel edges: the outer band for the faceted bodies, the band just inside it for the
+    // rounded close-up ones (their faces use the middle 0.12-0.88 of the picture; geometry.js roundBox)
+    for (const [e0, e1] of [[0, 0.07], [0.12, 0.2]]) for (let k = 0; k < 700; k++) {
+      const side = Math.floor(r() * 4), along = r() * w, depth = (e0 + (e1 - e0) * Math.pow(r(), 1.6)) * w;
+      const [x, y] = side === 0 ? [along, depth] : side === 1 ? [along, h - depth] : side === 2 ? [depth, along] : [w - depth, along];
+      g.fillStyle = `rgba(255,255,255,${(0.18 + r() * 0.3).toFixed(2)})`; g.fillRect(x, y, 1 + r() * 2.5, 1 + r() * 2.5);
+    }
   });
   return tex;
 }

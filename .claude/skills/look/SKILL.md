@@ -42,4 +42,5 @@ Visual work is judged by eye, so the loop is: screenshot → change → screensh
   car is big on screen (vehicles.js `pickDetail`). Change a car's shape in its builder and both follow; a new
   `K.part` geometry should be given as `detail => geometry` so it gets a near version. Price the near bodies with
   `RIVALS=13 CAM=behind DETAIL=near node tools/bench.mjs 7`. Rounded boxes need exact normals (`roundBox` sets them):
-  averaged ones streak big flat panels. The sawtooth on the ice-cream van's back is shadow-map aliasing, not normals.
+  averaged ones streak big flat panels. To judge close-up detail, `node tools/closeup.mjs <dir> <vehicle ...>`
+  (after a build). The sawtooth on the ice-cream van's back is shadow-map aliasing, not normals.
