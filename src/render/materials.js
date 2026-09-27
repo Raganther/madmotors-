@@ -3,7 +3,7 @@ import { G } from '../game.js';
 import { TAU, clamp, lerp, mulberry32, smoothstep } from '../core/math.js';
 import { canvasTex } from './geometry.js';
 
-export const CUT = { car: { value: new THREE.Vector3() }, dir: { value: new THREE.Vector3(1, 1.3, 1).normalize() }, r: { value: 0 } };
+export const CUT = { car: { value: new THREE.Vector3() }, dir: { value: new THREE.Vector3(1, 1.3, 1).normalize() }, r: { value: 0 }, lift: { value: 1.4 } };   // lift: only cut what's this far above the car
 // world effects shared by the scenery shaders: time for wind and the drifting cloud-shadow texture
 export const FX = { time: { value: 0 }, cloud: { value: null }, cloudAmt: { value: 0.3 }, wind: { value: new THREE.Vector2(3.2, 1.6) },
   hazeCol: { value: new THREE.Color(0x9DB8D2) }, hazeTop: { value: 0 }, hazeRange: { value: 40 }, hazeAmt: { value: 0 },
@@ -25,10 +25,10 @@ export function makeCloudTex() {
 // opts: cut (see-through window over the player, default on), cloud (drifting cloud shadows), sway (foliage in the wind),
 // grain (0..1: fine surface detail in world space, two scales of the tileable noise, so ground and road aren't flat colour)
 export function withCutaway(mat, solidInside, opts = {}) {
-  const cut = opts.cut !== false, cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water, grain = opts.grain || 0;
+  const cut = opts.cut !== false, cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water, grain = opts.grain || 0, strata = opts.strata || 0;
   if (solidInside) mat.side = THREE.DoubleSide;
   mat.onBeforeCompile = sh => {
-    sh.uniforms.uCutCar = CUT.car; sh.uniforms.uCutDir = CUT.dir; sh.uniforms.uCutR = CUT.r;
+    sh.uniforms.uCutCar = CUT.car; sh.uniforms.uCutDir = CUT.dir; sh.uniforms.uCutR = CUT.r; sh.uniforms.uCutLift = CUT.lift;
     sh.uniforms.uTime = FX.time; sh.uniforms.uCloud = FX.cloud; sh.uniforms.uCloudAmt = FX.cloudAmt; sh.uniforms.uWind = FX.wind;
     sh.uniforms.uGrain = FX.grain; sh.uniforms.uHazeCol = FX.hazeCol; sh.uniforms.uHazeTop = FX.hazeTop; sh.uniforms.uHazeRange = FX.hazeRange; sh.uniforms.uHazeAmt = FX.hazeAmt;
     let vs = 'varying vec3 vCutW;\nuniform float uTime;\n' + sh.vertexShader;
@@ -48,11 +48,11 @@ export function withCutaway(mat, solidInside, opts = {}) {
         cutP = instanceMatrix * cutP;
       #endif
       vCutW = (modelMatrix * cutP).xyz;`);
-    let fs = 'uniform vec3 uCutCar;\nuniform vec3 uCutDir;\nuniform float uCutR;\nuniform float uTime;\nuniform sampler2D uCloud;\nuniform float uCloudAmt;\nuniform vec2 uWind;\nuniform vec3 uHazeCol;\nuniform float uHazeTop;\nuniform float uHazeRange;\nuniform float uHazeAmt;\nuniform float uGrain;\nvarying vec3 vCutW;\n' + sh.fragmentShader;
+    let fs = 'uniform vec3 uCutCar;\nuniform vec3 uCutDir;\nuniform float uCutR;\nuniform float uCutLift;\nuniform float uTime;\nuniform sampler2D uCloud;\nuniform float uCloudAmt;\nuniform vec2 uWind;\nuniform vec3 uHazeCol;\nuniform float uHazeTop;\nuniform float uHazeRange;\nuniform float uHazeAmt;\nuniform float uGrain;\nvarying vec3 vCutW;\n' + sh.fragmentShader;
     if (cut) fs = fs.replace('void main() {', `void main() {
       if (uCutR > 0.0) {
         vec3 cv = vCutW - uCutCar; float ct = dot(cv, uCutDir);
-        if (ct > 1.5 && vCutW.y > uCutCar.y + 1.4) {
+        if (ct > 1.5 && vCutW.y > uCutCar.y + uCutLift) {
           float cp = length(cv - uCutDir * ct);
           float n = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
           if (cp < uCutR - 0.7 + n * 0.7) discard;
@@ -70,10 +70,25 @@ export function withCutaway(mat, solidInside, opts = {}) {
         float gr = texture2D(uCloud, vCutW.xz / 4.1).r * 0.25 + texture2D(uCloud, vCutW.xz / 0.8 + 0.37).r * 0.75;
         diffuseColor.rgb *= 1.0 + ${grain.toFixed(3)} * uGrain * clamp((gr - 0.5) * 1.1, -0.5, 0.5);
       }`);
+    // cliff faces: rock bands every `strata` metres of height (wavering a little), a dark seam between bands and streaks
+    // running down the face, drawn per pixel so they stay crisp however coarse the terrain grid; flat ground is untouched
+    if (strata) fs = fs.replace('#include <color_fragment>', `#include <color_fragment>
+      {
+        vec3 fn = normalize(cross(dFdx(vCutW), dFdy(vCutW)));
+        float cliff = smoothstep(0.82, 0.55, abs(fn.y));
+        if (cliff > 0.0) {
+          float wob = texture2D(uCloud, vCutW.xz / 60.0).r * 1.6, yb = (vCutW.y + wob) / ${strata.toFixed(2)}, band = floor(yb), f = fract(yb);
+          float tone = 0.86 + 0.2 * fract(sin(band * 12.9898) * 43758.5453);
+          float seam = 1.0 - 0.35 * (smoothstep(0.1, 0.0, f) + smoothstep(0.9, 1.0, f));
+          float streak = 0.92 + 0.14 * texture2D(uCloud, vec2(dot(vCutW.xz, vec2(0.7071)) / 5.0, vCutW.y / 40.0)).r;
+          diffuseColor.rgb *= mix(1.0, tone * seam * streak, cliff);
+        }
+      }`);
     if (solidInside) fs = fs.replace('#include <color_fragment>', '#include <color_fragment>\n  if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.23, 0.21, 0.19);');
     sh.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => 'wfx' + (solidInside ? 's' : '') + (cut ? 'c' : '') + (cloud ? 'k' : '') + (water ? 'w' : '') + sway + 'g' + grain;
+  if (strata) mat.extensions = { derivatives: true };
+  mat.customProgramCacheKey = () => 'wfx' + (solidInside ? 's' : '') + (cut ? 'c' : '') + (cloud ? 'k' : '') + (water ? 'w' : '') + sway + 'g' + grain + 't' + strata;
   return mat;
 }
 export function bannerTex(text) {

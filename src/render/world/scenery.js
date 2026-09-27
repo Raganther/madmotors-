@@ -56,12 +56,15 @@ export function addScenery(group, tr, terr, stage) {
   const vEnd = tr.loopN ? tr.startIdx + 60 : tr.N - 2;
   if (!tr.town) for (let i = vStart; i < vEnd; i += stage.village ? 12 : 9) for (const side of [-1, 1]) if (rnd() < 0.75) tryHouse(i, side, HALF + 12, 9);
   // spectators at hairpins and the start/finish
-  const bodies = [], heads = [];
+  const bodies = [], heads = [], arms = [], fans = [];
   const addFan = (x, z, face) => {
-    const y = terr.at(x, z); const col = pick([0xE0402F, 0x2F7DE0, 0xFFC72C, 0xFFFFFF, 0x2FB36B, 0x1C2340, 0xF28C28]);
-    const ph = rnd() * TAU;
-    bodies.push({ x, y: y + 0.6, z, ry: face, color: col, by: y + 0.6, ph });
-    heads.push({ x, y: y + 1.45, z, ry: face, color: pick([0xF1C9A5, 0xD9A47F, 0x9C6B4E, 0x6B4631]), by: y + 1.45, ph });
+    const y = terr.at(x, z), col = pick([0xE0402F, 0x2F7DE0, 0xFFC72C, 0xFFFFFF, 0x2FB36B, 0x1C2340, 0xF28C28]);
+    // how they pass the time: 0 bounce and cheer, 1 wave one arm, 2 shift about with their hands down
+    const f = { x, y, z, ry: face, ph: rnd() * TAU, mode: Math.floor(rnd() * 3), sp: 0.8 + rnd() * 0.5, dive: -1, dx: 0, dz: 0 };
+    fans.push(f);
+    bodies.push({ x, y: y + 0.6, z, ry: face, color: col, f, part: 0 });
+    heads.push({ x, y: y + 1.45, z, ry: face, color: pick([0xF1C9A5, 0xD9A47F, 0x9C6B4E, 0x6B4631]), f, part: 1 });
+    for (const s of [-1, 1]) arms.push({ x, y: y + 1.1, z, ry: face, color: col, f, part: s < 0 ? 2 : 3 });
   };
   for (const hp of tr.hairpins) for (let i = hp.a; i <= hp.b; i += 3) {
     if (rnd() < 0.45) continue;
@@ -90,14 +93,59 @@ export function addScenery(group, tr, terr, stage) {
   addInstanced(group, flat(new THREE.IcosahedronGeometry(1, 0)), L({ sway: 2.2 }), bushes, { cast: true });
   addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), L(), houseW, { cast: true, receive: true });
   addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), L(), houseR, { cast: true });
-  const fans = addInstanced(group, flat(new THREE.BoxGeometry(0.62, 1.2, 0.42)), L(), bodies, { cast: true })
-    .concat(addInstanced(group, flat(new THREE.BoxGeometry(0.42, 0.42, 0.42)), L(), heads, {}));
-  return fans;
+  G.fans = fans;
+  return addInstanced(group, flat(new THREE.BoxGeometry(0.62, 1.2, 0.42)), L(), bodies, { cast: true })
+    .concat(addInstanced(group, flat(new THREE.BoxGeometry(0.42, 0.42, 0.42)), L(), heads, {}))
+    .concat(addInstanced(group, flat(new THREE.BoxGeometry(0.16, 0.66, 0.16).translate(0, -0.3, 0)), L(), arms, {}));   // hung from the shoulder
 }
-G.fanChunks = [];
-export function updateFans(now) {
+G.fanChunks = []; G.fans = [];
+// Spectators: each one idles in its own way, and dives clear when a car is about to reach it (heading its way, under
+// ~0.8 s out), then picks itself up and walks back. Drawn only: the simulation never sees them.
+const DIVE = { OUT: 0.42, DOWN: 1.9, UP: 2.7, BACK: 4.6 }, _mf = new THREE.Matrix4(), _ml = new THREE.Matrix4(), _qa = new THREE.Quaternion(), _ax = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+const ease = t => t * t * (3 - 2 * t);
+function threatened(f, cars) {
+  for (const c of cars) {
+    const sp2 = c.vx * c.vx + c.vz * c.vz; if (sp2 < 36) continue;
+    const rx = f.x - c.x, rz = f.z - c.z, tc = (rx * c.vx + rz * c.vz) / sp2; if (tc < 0 || tc > 0.8) continue;
+    const px = rx - c.vx * tc, pz = rz - c.vz * tc, d = Math.hypot(px, pz); if (d > 3.2) continue;
+    const l = d > 0.3 ? d : 1; f.dx = d > 0.3 ? px / l : c.vz / Math.sqrt(sp2); f.dz = d > 0.3 ? pz / l : -c.vx / Math.sqrt(sp2);   // away from its path
+    return true;
+  }
+  return false;
+}
+export function updateFans(now, dt = 1 / 60, cars = []) {
+  for (const f of G.fans) {
+    if (f.dive < 0) { if (cars.length && threatened(f, cars)) f.dive = 0; } else if ((f.dive += dt) > DIVE.BACK) f.dive = -1;
+    let off = 0, lift = 0, tip = 0, armUp = 0, armSwing = 0, bob = 0;
+    if (f.dive >= 0) {
+      const t = f.dive;
+      if (t < DIVE.OUT) { const k = t / DIVE.OUT; off = 2.4 * ease(k); lift = Math.sin(k * Math.PI) * 0.7; tip = 1.4 * ease(k); armUp = 2.9; }
+      else if (t < DIVE.DOWN) { off = 2.4; tip = 1.4; armUp = 2.9; }
+      else if (t < DIVE.UP) { const k = (t - DIVE.DOWN) / (DIVE.UP - DIVE.DOWN); off = 2.4; tip = 1.4 * (1 - ease(k)); armUp = 2.9 * (1 - k); }
+      else { const k = (t - DIVE.UP) / (DIVE.BACK - DIVE.UP); off = 2.4 * (1 - ease(k)); bob = Math.abs(Math.sin(t * 9)) * 0.06; armSwing = Math.sin(t * 9) * 0.5; }
+    } else {
+      const w = now * 7 * f.sp + f.ph;
+      if (f.mode === 0) { bob = Math.max(0, Math.sin(w)) * 0.22; armUp = 2.6 + Math.sin(w) * 0.3; }
+      else if (f.mode === 1) { bob = Math.max(0, Math.sin(w * 0.5)) * 0.05; armUp = -1; armSwing = Math.sin(w * 0.9) * 0.5; }
+      else { bob = Math.abs(Math.sin(w * 0.3)) * 0.04; armSwing = Math.sin(w * 0.35) * 0.15; }
+    }
+    // the fan's frame: standing at its spot facing the road, thrown `off` metres along (dx, dz), tipped over that way
+    _p.set(f.x + f.dx * off, f.y + lift + bob, f.z + f.dz * off); _e.set(0, f.ry, 0); _q.setFromEuler(_e);
+    if (tip) { _ax.set(f.dz, 0, -f.dx); _qa.setFromAxisAngle(_ax, tip); _q.premultiply(_qa); }
+    f.m = (f.m || new THREE.Matrix4()).compose(_p, _q, _s.set(1, 1, 1)); f.armUp = armUp; f.armSwing = armSwing;
+  }
   for (const { mesh, list } of G.fanChunks) {
-    for (let j = 0; j < list.length; j++) { const it = list[j]; const b = Math.max(0, Math.sin(now * 7 + it.ph)) * 0.22; _e.set(0, it.ry, 0); _q.setFromEuler(_e); _p.set(it.x, it.by + b, it.z); _s.set(1, 1, 1); _m.compose(_p, _q, _s); mesh.setMatrixAt(j, _m); }
+    for (let j = 0; j < list.length; j++) {
+      const it = list[j], f = it.f; if (!f.m) continue;
+      if (it.part === 0) _ml.makeTranslation(0, 0.6, 0);
+      else if (it.part === 1) _ml.makeTranslation(0, 1.45, 0);
+      else {
+        const s = it.part === 2 ? -1 : 1, up = f.armUp < 0 ? (s > 0 ? 2.7 : 0) : f.armUp;   // mode 1 waves the right arm only
+        _e.set(f.armSwing * s, 0, s * (up + (f.armUp < 0 && s > 0 ? Math.sin(now * 8 + f.ph) * 0.35 : 0)));
+        _ml.makeRotationFromEuler(_e).setPosition(s * 0.4, 1.12, 0);
+      }
+      mesh.setMatrixAt(j, _mf.multiplyMatrices(f.m, _ml));
+    }
     mesh.instanceMatrix.needsUpdate = true;
   }
 }

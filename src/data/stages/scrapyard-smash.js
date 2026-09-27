@@ -17,7 +17,7 @@ export default { name: 'Scrapyard Smash', blurb: 'Wrecking balls, a crusher kick
       ['a', 25, 90, 4, heap], ['s', 50, 8, heap],                                    // up the scrap mountain
       ['a', 18, -180, 12, heap], ['s', 60, 17, heap], ['a', 18, 180, 21, heap],
       ['s', 40, 24, { ...deck, boost: true }], ['s', 30, 24, { ...deck, kick: 1.6 }],   // flat out along the top deck
-      ['s', 30, 16, { gap: true, far: -26, near: -26, rampF: 3, rampN: 3 }],                                              // and off the end
+      ['s', 24, 16, { gap: true, far: -26, near: -26, rampF: 3, rampN: 3 }],   // and off the end (24 m: clears from ~30 m/s, racing speed is ~40)
       ['s', { toA: -15 }, 10, yard], ['a', 25, 90, 6, yard], ['s', { toB: 25 }, 1, yard], ['a', 25, 90, 0, yard], ['s', { toA: 0 }, 0, yard]
     ];
   })(),

@@ -27,7 +27,9 @@ export default { name: 'Mesa Leap', blurb: 'Leap between mesas, or take the wash
       ['a', 25, 90, -8, wash], ['s', 30, -10, creek],                               // ...through the first creek...
       ['a', 25, -90, -10, wash], ['s', 30, -11, { ...wash, whoops: 0.7 }],          // ...whoops under the leap...
       ['a', 25, 90, -12, wash], ['s', 30, -12, creek], ['a', 25, -45, -12, wash],   // ...the second creek...
-      ['a', 35, -1.0693, -11, wash], ['s', 69.7454, -2, { ...wash, far: 14, rampF: 5, near: 14, rampN: 5 }],   // ...and the climb out
-      ['a', 35, 1.0693, 0, wash], ['a', 25, -90, 4, wash]
+      // ...and the climb out, up to the main road's level before the two run side by side (a low bank between them, the
+      // canyon wall on the outside), so it rises into the junction rather than ducking under the main road's verge
+      ['a', 35, -1.0693, -6, wash], ['s', 69.7454, 3, { ...wash, far: 3, rampF: 5, near: 14, rampN: 5 }],
+      ['a', 35, 1.0693, 4, { ...wash, far: 1, near: 3 }], ['a', 25, -90, 4, { ...wash, far: 1, near: 1 }]
     ];
   })() }] };

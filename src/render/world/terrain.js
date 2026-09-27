@@ -3,6 +3,7 @@ import { HALF } from '../../core/constants.js';
 import { clamp, mulberry32, smoothstep } from '../../core/math.js';
 import { chunkMesh } from '../geometry.js';
 import { withCutaway } from '../materials.js';
+import { quality } from '../renderer.js';
 
 export function makeTerrainMesh(terr, tr, stage) {
   const { cols, rows, S, x0, z0, h, dist } = terr, n = cols * rows, C = stage.colors;
@@ -26,6 +27,10 @@ export function makeTerrainMesh(terr, tr, stage) {
       const snow = smoothstep(0.15, 0.35, tr.noise.fbm(x * 0.06, z * 0.06, 2)) * smoothstep(al.snow[0], al.snow[1], y);
       if (snow > 0) t.lerp(cS, snow * 0.9);
     }
+    // drops read from above: ground at the foot of a rise sits in its shadow, the lip along the top of a drop catches the light
+    let up = 0, down = 0;
+    for (let rr = -2; rr <= 2; rr++) for (let cc = -2; cc <= 2; cc++) { const hh = h[clamp(r + rr, 0, rows - 1) * cols + clamp(c + cc, 0, cols - 1)] - y; if (hh > up) up = hh; if (-hh > down) down = -hh; }
+    t.multiplyScalar(1 - 0.32 * smoothstep(2.5, 12, up) * (1 - steep * 0.5) + 0.12 * smoothstep(2.5, 10, down) * (1 - steep));
     const d = dist[i]; if (d < HALF + 5) t.lerp(cD, 1 - smoothstep(HALF + 2, HALF + 5, d));
     t.offsetHSL(0, 0, (rnd() - 0.5) * 0.035);
     col[i * 3] = t.r; col[i * 3 + 1] = t.g; col[i * 3 + 2] = t.b;
@@ -38,5 +43,9 @@ export function makeTerrainMesh(terr, tr, stage) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
   const fg = g.toNonIndexed(); g.dispose(); fg.computeVertexNormals();          // per-face normals keep the faceted look with cheap Lambert lighting
-  return chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true, { cloud: true, grain: 0.1 }), 60, true);
+  const mesh = chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true, { cloud: true, grain: 0.1, strata: stage.strata || 0 }), 60, true);
+  // cliffs and banks throw shadows on the ground below them (the rest of the height cue from the top-down cameras); not on
+  // Graphics: Low (applyQuality flips it)
+  mesh.traverse(o => { if (o.isMesh) { o.userData.terrain = true; o.castShadow = quality !== 'low'; } });
+  return mesh;
 }
