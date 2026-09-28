@@ -31,3 +31,5 @@ Run from the repo root. Stop and fix at the first failure; never commit red.
   commit queued behind it.
 - Piping `npm run e2e | tail` hides a failure: the pipe's exit code is tail's, and an uncaught exception prints a
   stack then "Node.js vXX" last. Read for "smoke test passed" (or check `$?` without the pipe) before calling it green.
+- Starting new work "from main": `git fetch origin main` first. `git checkout -B <branch> origin/main` on a stale
+  origin/main silently rewinds the working tree to old code (the merged work looks gone until you fetch).

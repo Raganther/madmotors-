@@ -83,13 +83,28 @@ export function addMud(group, tr, terr, stage) {
     const m = new THREE.Mesh(new THREE.CircleGeometry(p.r, 12).rotateX(-Math.PI / 2), pm), [x, y, z] = P(p.i, p.lat, tr.H[p.i] + 0.1);
     m.position.set(x, y, z); m.scale.set(1.6, 1, 1); m.rotation.y = tr.th[p.i] + Math.PI / 2; m.receiveShadow = true; group.add(m);
   }
-  // water splashes: one sheet of water per run, crossing the road and out over the low ground either side
-  const water = withCutaway(new THREE.MeshLambertMaterial({ color: 0x4F8DBA, map: rippleTex(), transparent: true, opacity: 0.88, depthWrite: false }), false, { cut: false, cloud: true, water: true });
+  // water splashes: a sheet of water per run that follows the road 0.4 m above it (wheels in the water, the road bed
+  // showing through), running wide over the low ground either side. Its edges aren't drawn: the sheet slips under the
+  // ground and the road wherever they rise, so the banks make the shoreline, and past the ends of the splash it sinks
+  // below the road along a wavy line rather than stopping square.
+  const water = withCutaway(new THREE.MeshLambertMaterial({ color: 0x4F8DBA, map: rippleTex(), transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }), false, { cut: false, cloud: true, water: true });
+  const wob = (u, v) => Math.sin(u * 0.37 + v * 0.21) * 0.6 + Math.sin(u * 0.13 - v * 0.47 + 1.7) * 0.4;
   for (let k = 0; k < fords.length;) {
     let e = k; while (e + 1 < fords.length && fords[e + 1] === tr.nb0(fords[e], 1)) e++;
-    const a = fords[k], b = fords[e], mid = fords[(k + e) >> 1], len = e - k + 8, h = Math.min(tr.H[a], tr.H[b], tr.H[mid]) + 0.35;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(30, len, 6, 4).rotateX(-Math.PI / 2), water);
-    m.position.set(tr.xs[mid], h, tr.zs[mid]); m.rotation.y = tr.th[mid]; m.renderOrder = 1; group.add(m);
+    const a = fords[k], n = e - k + 1, mid = fords[(k + e) >> 1], EXT = 9, OFF = [];
+    for (let o = -22; o <= 22.01; o += 2.75) OFF.push(o);
+    const pos = [], uv = [], idx = [], rowsN = n + 2 * EXT;
+    for (let t = 0; t < rowsN; t++) {
+      const i = tr.nb0(a, t - EXT), out = t < EXT ? EXT - t : t >= EXT + n ? t - EXT - n + 1 : 0;   // samples past the splash's ends
+      OFF.forEach((o, c) => {
+        const along = out ? Math.max(0, (out + 2.5 * wob(o, t)) / 5) : 0, side = Math.max(0, (Math.abs(o) - HALF - 5 - 5 * (wob(t, o) + 1)) / 4);
+        const [x, , z] = P(i, o, 0); pos.push(x, tr.H[i] + 0.4 - 1.4 * Math.min(1, along + side), z); uv.push(o / 8, t / 8);
+        if (t && c) { const q = t * OFF.length + c, p = q - OFF.length; idx.push(p - 1, q - 1, p, p, q - 1, q); }
+      });
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, water); m.renderOrder = 1; group.add(m);
+    const h = tr.H[mid] + 0.4;
     for (const s of [-1, 1]) for (let q = 0; q < 3; q++) {                          // stepping stones on the banks
       const [x, , z] = P(mid, s * (HALF + 3 + q * 2.4), 0), r = new THREE.Mesh(flat(new THREE.DodecahedronGeometry(0.7 + q * 0.2, 0)), new THREE.MeshLambertMaterial({ color: 0x8C877C }));
       r.position.set(x + (q - 1) * 1.3, Math.max(h - 0.2, terr.at(x, z)), z); r.castShadow = true; group.add(r);
