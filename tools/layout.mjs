@@ -1,11 +1,11 @@
 // Top-down plan of a stage's road: colour = height, white = bridge, black = tunnel, blue = river, orange = railway.
 // Also reports places where two different parts of the road pass close to each other (and how far apart in height).
-//   node tools/layout.mjs [stage]            -> tools/out/layout-<stage>.svg
+//   node tools/layout.mjs [stage | sent-track.json]   -> tools/out/layout-<stage>.svg (a sent track's comments drawn as pins)
 import fs from 'node:fs';
 import { buildTrack, railAt, trackMarkers } from '../src/core/index.js';
 import { stageArg } from './stage-arg.js';
 
-const { stage: st, id: sid } = stageArg(process.argv[2]), tr = buildTrack(st), N = tr.loopN || tr.N;
+const { stage: st, id: sid, comments = [] } = stageArg(process.argv[2]), tr = buildTrack(st), N = tr.loopN || tr.N;
 const X = [], Z = []; for (let i = 0; i < N; i++) { X.push(tr.xs[i]); Z.push(tr.zs[i]); }
 // screen axes: a = right, b = up (the game camera looks from +x+z)
 const A = X.map((x, i) => (x - Z[i]) / Math.SQRT2), B = X.map((x, i) => -(x + Z[i]) / Math.SQRT2);
@@ -38,6 +38,7 @@ for (const a of tr.alts) {
 for (let i = 0; i < N; i += 100) svg += `<text x="${px(A[i]) + 6}" y="${py(B[i]) - 6}" fill="#fff" font-size="12">${i} h${tr.H[i].toFixed(0)}</text>`;
 // every element's markers (tunnel, bridge, kick, crossing...), labelled
 for (const m of trackMarkers(tr)) { const i = m.i < tr.NM ? m.i % N : m.i; svg += `<circle cx="${px(sa(i))}" cy="${py(sb(i))}" r="4" fill="#ffd34a"/><text x="${px(sa(i)) + 6}" y="${py(sb(i)) + 14}" fill="#ffd34a" font-size="11">${m.label}</text>`; }
+for (const c of comments) svg += `<circle cx="${px(c.a)}" cy="${py(c.b)}" r="9" fill="#FFC72C"/><text x="${px(c.a)}" y="${py(c.b) + 4}" fill="#1C2340" font-size="12" font-weight="700" text-anchor="middle">${c.n}</text><text x="${px(c.a) + 13}" y="${py(c.b) + 4}" fill="#FFC72C" font-size="12">${String(c.text).replace(/[<&]/g, '')}</text>`;
 svg += `<circle cx="${px(A[tr.startIdx])}" cy="${py(B[tr.startIdx])}" r="6" fill="#ff0"/><text x="12" y="22" fill="#fff" font-size="15">${st.name}</text></svg>`;
 fs.mkdirSync('tools/out', { recursive: true });
 const out = `tools/out/layout-${sid}.svg`; fs.writeFileSync(out, svg); console.log('wrote', out);
