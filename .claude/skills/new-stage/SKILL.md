@@ -45,3 +45,13 @@ New behaviour belongs in elements (`/new-element`), never special cases for this
 - `npm run golden` (a new stage adds golden entries: say so in the commit), then `/ship` (check + e2e + publish).
 - Tell the user: the stage number and name, the beats, which elements it reuses and anything new, and send 2-4
   screenshots of the set pieces.
+
+## Traps we've hit
+- Roads that cross or pass close (a drawn track that knots, a flyover's approach, the other leg of a hairpin): the
+  terrain, bridge supports and water are shaped by shared rules (core/track/terrain.js keeps the ground under every
+  road, render/elements/bridge.js `supportClear` keeps piers off roads below) and `tests/scenery.test.js` checks every
+  stage for ground above the road, piers on a road and a road over another without a bridge. If it fails on your stage,
+  fix the stage (heights, bridge spans) or, when the rule itself is wrong, the shared rule; never special-case a stage.
+- Planning heights for a self-crossing lap: list the crossings in lap order; stretches closer than ~100 m can't change
+  level, so chains of crossings can need three levels (ground, 9 m, 18 m). Bridge the upper road ±30 m round each
+  crossing and keep grades near 10%.

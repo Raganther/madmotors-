@@ -22,7 +22,7 @@ function pastMouth(tr, i, x, z) {
 export function buildTerrain(tr, stage) {
   const S = tr.gridS || 3, M = tr.margin || 95, x0 = Math.floor(Math.min(-200, tr.minX - M)), x1 = Math.ceil(Math.max(200, tr.maxX + M)), z0 = Math.floor(tr.minZ - Math.max(90, M)), z1 = Math.ceil(tr.maxZ + Math.max(120, M));
   const cols = Math.floor((x1 - x0) / S) + 1, rows = Math.floor((z1 - z0) / S) + 1;
-  const h = new Float32Array(cols * rows), dist = new Float32Array(cols * rows);
+  const h = new Float32Array(cols * rows), dist = new Float32Array(cols * rows), nearI = new Int32Array(cols * rows);
   const noise = tr.noise, amp = stage.hillAmp;
   for (let r = 0; r < rows; r++) {
     const z = z0 + r * S;
@@ -52,7 +52,22 @@ export function buildTerrain(tr, stage) {
       }
       const qt = tr.nearestTun(x, z);
       if (qt && qt.d < HALF + 18 && !pastMouth(tr, qt.i, x, z)) { const roof = tr.H[qt.i] + 11; v = Math.max(v, lerp(roof, tr.H[qt.i] - 1, smoothstep(HALF + 9, HALF + 18, qt.d))); }
-      h[r * cols + c] = v; dist[r * cols + c] = dd;
+      h[r * cols + c] = v; dist[r * cols + c] = dd; nearI[r * cols + c] = q ? q.i : -1;
+    }
+  }
+  // Another stretch of road passing close by (the far end of a flyover, a road under a bridge, the other leg of a knot):
+  // the ground above was shaped for the nearest road only and can stand above this one, poking through it. Keep the
+  // ground under every road: level with it across its width, rising no steeper than 1:1 beyond. Only other stretches:
+  // a road's own banks and cliffs stay as its stage designed them. (tests/scenery.test.js checks every stage.)
+  const RC = HALF + 12, L = tr.loopN || 0;
+  const sameStretch = (a, b) => { if (a < 0) return false; const d = Math.abs(tr.bi(a) - tr.bi(b)); return (L ? Math.min(d, L - d) : d) < 40; };
+  for (let i = 0; i < tr.N; i++) {
+    if (tr.bridge[i] || tr.tunnel[i] || (tr.voidMask && tr.voidMask[tr.bi(i)])) continue;
+    const xi = tr.xs[i], zi = tr.zs[i], c0 = Math.max(0, Math.floor((xi - RC - x0) / S)), c1 = Math.min(cols - 1, Math.ceil((xi + RC - x0) / S)), r0 = Math.max(0, Math.floor((zi - RC - z0) / S)), r1 = Math.min(rows - 1, Math.ceil((zi + RC - z0) / S));
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+      const k = r * cols + c, d = Math.hypot(x0 + c * S - xi, z0 + r * S - zi); if (d > RC || sameStretch(nearI[k], i)) continue;
+      const cap = tr.H[i] - 0.35 + Math.max(0, d - HALF - 1);
+      if (h[k] > cap) { h[k] = cap; if (d < dist[k]) dist[k] = d; }
     }
   }
   function at(x, z) {
