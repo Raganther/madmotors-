@@ -14,7 +14,7 @@ describe('the world stays out of the road', () => {
   for (const { st, tr, terr } of built) it(`${st.name}: no ground above the road`, () => {
     const bad = [];
     for (let i = 0; i < tr.N; i += 2) {
-      if (tr.bridge[i] || tr.tunnel[i] || nearTunnel(tr, i) || (tr.voidMask && tr.voidMask[tr.bi(i)])) continue;
+      if (tr.bridge[i] || tr.tunnel[i] || nearTunnel(tr, i) || (tr.voidMask && tr.voidMask[tr.bi(i)]) || (tr.open && tr.open[tr.bi(i)])) continue;   // open country has no road
       for (const o of [-(HALF - 1), 0, HALF - 1]) { const up = terr.at(tr.xs[i] + tr.rx[i] * o, tr.zs[i] + tr.rz[i] * o) - tr.H[i]; if (up > 0.5) bad.push(`sample ${i} lat ${o}: ${up.toFixed(1)} m`); }
     }
     expect(bad.slice(0, 5)).toEqual([]);

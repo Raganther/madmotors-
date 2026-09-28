@@ -15,5 +15,6 @@ import { feature as drawbridge } from './drawbridge.js';
 import { feature as wear } from './wear.js';
 import { feature as weapons } from './weapons.js';
 import { feature as hammers } from './hammers.js';
+import { feature as gates } from './gates.js';
 
-export const FEATURES = [traffic, trains, parked, rockfall, hazards, ferry, drawbridge, wear, weapons, hammers];
+export const FEATURES = [traffic, trains, parked, rockfall, hazards, ferry, drawbridge, wear, weapons, hammers, gates];

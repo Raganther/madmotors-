@@ -26,6 +26,7 @@ export function drawProfile(cv, tr, cars, dotR, cw, ch) {
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
   if (cars) g.drawImage(cv._cache.off, 0, 0, w, h);
   let mn = Infinity, mx = -Infinity; for (let i = 0; i < span; i += 4) { mn = Math.min(mn, tr.H[i]); mx = Math.max(mx, tr.H[i]); }
+  if (mx - mn < 2) { mn -= 1; mx += 1; }                                                // a flat stage: a flat line, not nothing
   const pad = dotR + 2, X = s => pad + s / (span - 1) * (w - 2 * pad), Y = v => pad + (1 - (v - mn) / (mx - mn)) * (h - 2 * pad);
   if (!cars) {
   g.beginPath(); g.moveTo(X(0), h); for (let i = 0; i < span; i += 6) g.lineTo(X(i), Y(tr.H[i])); g.lineTo(X(span - 1), Y(tr.H[span - 1])); g.lineTo(X(span - 1), h); g.closePath();
@@ -76,7 +77,10 @@ export function updateHUD(dt) {
     const gate = sd.gate && sd.gate.open && isFinite(sd.gate.s) ? ` · gate ${Math.max(0, Math.round(sd.gate.s - P.progress))} m` : '';
     $('lap').hidden = true; setTxt('sd-title', sd.kind === 'crown' ? `Crown · first to ${SD.TARGET}s${lap}` : `First to ${CP.TARGET[sd.kind]}, two clear${gate}`);
   }
-  else if (G.world.tr.loopN) { const L = G.world.tr.laps; $('lap').hidden = false; setTxt('lap', P.finished ? 'Finished' : (P.lap + 1 === L ? 'Final lap' : `Lap ${P.lap + 1} of ${L}`)); } else $('lap').hidden = true;
+  else if (G.world.tr.loopN) {
+    const L = G.world.tr.laps, GT = G.world.tr.gates, per = GT ? GT.length / L : 0, gate = GT && !P.finished ? ` · Gate ${(P.gateK || 0) % per + 1}/${per}` : '';   // off-piste: which gate is next this lap
+    $('lap').hidden = false; setTxt('lap', P.finished ? 'Finished' : (P.lap + 1 === L ? 'Final lap' : `Lap ${P.lap + 1} of ${L}`) + gate);
+  } else $('lap').hidden = true;
   const b = best[G.world.idx]; setTxt('best', b ? 'Best ' + fmt(b) : 'No best time yet');
   setTxt('speed', String(Math.round(Math.hypot(P.vx, P.vz) * 4.1)));
   const charge = P.boost > 0 ? 1 : clamp(P.driftT / 1.6, 0, 1);
@@ -91,9 +95,9 @@ export function updateHUD(dt) {
     $('wpn-fire').classList.toggle('ready', !!it); $('wpn-fire').classList.toggle('lock', lock);   // on touch the Fire button is the weapon panel setTxt('wpn-fire', it ? { missile: 'Missile', gun: 'Guns', oil: 'Oil', pulse: 'Pulse', harpoon: 'Hook' }[it] : 'Fire');
   } else $('wpn').hidden = true;
   $('touch').classList.toggle('nowpn', !race.weapons);
-  const wrong = P.wrongT > 1;
-  $('warn').textContent = wrong ? 'Wrong way' : (P.stuckT > 3 ? (isTouch ? 'Stuck? Tap Reset' : 'Stuck? Press R to reset') : '');
-  $('warn').hidden = !(wrong || P.stuckT > 3);
+  const wrong = P.wrongT > 1, missed = P.gateMiss && !P.finished;
+  $('warn').textContent = missed ? 'Missed a gate: follow the arrow back' : wrong ? 'Wrong way' : (P.stuckT > 3 ? (isTouch ? 'Stuck? Tap Reset' : 'Stuck? Press R to reset') : '');
+  $('warn').hidden = !(missed || wrong || P.stuckT > 3);
 }
 // checkpoint modes: each car's points as pips toward the target (a bar past it: it's two-clear time), and the call
 function updateCheckpointHUD(sd, P) {

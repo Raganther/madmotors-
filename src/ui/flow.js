@@ -89,6 +89,7 @@ export function handleEvents() {
         case 'trainhit': sparks(e.x, e.y, e.z, 45); shockwave(e.x, e.y, e.z, 9, 0xFFFFFF); if (c.isPlayer) { G.shake = 1.8; callout('Hit by a train!'); } if (c.isPlayer || near) AudioSys.crash('metal', c.isPlayer ? 1 : 0.5); break;
         case 'repair': { const v = visOf(c); if (v) repairCarVis(v); break; }
         case 'horn': if (Math.hypot(c.x - race.player.x, c.z - race.player.z) < 70) AudioSys.horn(c.def.kind === 'truck' ? 0.75 : 1); break;
+        case 'gate': if (c.isPlayer) { const per = e.of / G.world.tr.laps, n = (e.n - 1) % per + 1; if (n < per) callout(`Gate ${n}/${per}`); AudioSys.beep(880, 0.12); } break;   // off-piste gates (features/gates.js); the last one each lap leads into the lap callout
         case 'lap': if (c.isPlayer) { callout(e.n === G.world.tr.laps ? 'Final lap!' : 'Lap ' + e.n); AudioSys.beep(660, 0.2); } break;
         case 'sd-boom': sdBoom(e); for (const k of e.losers) { const b = race.cars[k]; sdBoomFx(b, b.isPlayer || onScreen(b)); } break;
         case 'sd-crown': sdCrown(e); break;

@@ -6,6 +6,8 @@ import { carWear, damageCar } from './damage.js';
 import { BOOST_PAD } from '../elements/boost.js';
 import { wornSurf } from '../features/wear.js';
 import { groundAt, project, roadH } from '../track/query.js';
+import { gateStep } from '../features/gates.js';
+import { OPEN } from '../elements/open.js';
 
 export function computeGrad(c, W) {
   const tr = W.tr, pr = c.pr, i = pr.i, e = 0.8;
@@ -54,12 +56,19 @@ function packSpot(c, W, i0) {
 }
 export function respawn(c, W) {
   if (c.traffic) { c.dead = true; return; }
-  const tr = W.tr; let i = tr.nx ? Math.max(4, tr.adv(c.lastGood, -10)) : clamp(c.lastGood - 10, 4, tr.N - 10);
+  const tr = W.tr, sf = c.safe;
+  if (sf && tr.open && tr.open[tr.bi(sf.i)] && sf.d < 100) {                        // open country: back where it was last going well
+    c.x = sf.x; c.z = sf.z; c.yaw = sf.yaw; c.vx = Math.sin(sf.yaw) * 5; c.vz = Math.cos(sf.yaw) * 5; c.vy = 0; c.strandT = 0;
+    c.onGround = true; c.airT = 0; c.boost = 0; c.offT = 0; c.stuckT = 0; c.wrongT = 0; c.ghost = 2; c.driftT = 0; c.spin = 0; c.lastGood = sf.i; c.gAlong = undefined;
+    c.pr = project(tr, c.x, c.z, sf.i, 4, 4); c.y = groundAt(W, c.pr.s, c.pr.lat, c.x, c.z); c.safe = null;
+    computeGrad(c, W); c.events.push({ t: 'respawn' }); c.respawns++; return;
+  }
+  let i = tr.nx ? Math.max(4, tr.adv(c.lastGood, -10)) : clamp(c.lastGood - 10, 4, tr.N - 10);
   let lat = c.isPlayer ? 0 : clamp(c.ai.lane, -3, 3), v = 8;
   if (c.isPlayer && W.racers) ({ i, lat, v } = packSpot(c, W, i));                 // a rolling start by the nearest pack
   c.x = tr.xs[i] + tr.rx[i] * lat; c.z = tr.zs[i] + tr.rz[i] * lat; c.y = tr.H[i]; c.yaw = tr.th[i]; c.strandT = 0;
   c.vx = tr.tx[i] * v; c.vz = tr.tz[i] * v; c.vy = 0; c.onGround = true; c.airT = 0; c.boost = 0; c.offT = 0; c.stuckT = 0; c.wrongT = 0;
-  c.ghost = 2; c.driftT = 0; c.spin = 0; c.lastGood = i; c.pr = project(tr, c.x, c.z, i, 2, 2); c.ai.cur = lat;
+  c.ghost = 2; c.driftT = 0; c.spin = 0; c.lastGood = i; c.pr = project(tr, c.x, c.z, i, 2, 2); c.ai.cur = lat; c.gAlong = undefined;
   computeGrad(c, W); c.events.push({ t: 'respawn' }); c.respawns++;
 }
 /** Where a branch runs alongside the main road (fork and merge), move the car onto whichever route it's clearly
@@ -86,6 +95,8 @@ export function stepCar(c, dt, W, racing) {
   if (tr.mud && al0 < HALF + 1.5) { const m = tr.mud[tr.bi(pr.i)]; if (m) c.surface = m === 2 ? 'ford' : 'mud'; }   // a bog or a water splash
   if (tr.ice && al0 < HALF + 0.4 && tr.ice[tr.bi(pr.i)]) c.surface = 'ice';      // an ice patch
   if (tr.dirt && c.surface === W.surf && tr.dirt[tr.bi(pr.i)]) c.surface = 'gravel';   // a dirt track (off-road shortcuts)
+  const open = tr.open ? tr.open[tr.bi(pr.i)] : 0;                                  // open country (elements/open.js): no road here
+  if (open) c.surface = open === OPEN.stream && al0 < 80 ? 'ford' : 'grass';
   const S = c.rut > 0 ? wornSurf(c) : SURF[c.surface];                  // worn in: rutted mud, swept gravel
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), rx = -fz, rz = fx;
   let vf = c.vx * fx + c.vz * fz, vr = c.vx * rx + c.vz * rz;
@@ -125,7 +136,7 @@ export function stepCar(c, dt, W, racing) {
   c.x += c.vx * dt; c.z += c.vz * dt;
   pr = project(tr, c.x, c.z, pr.i, 6, 10);
   if (tr.twin) pr = pickRoute(tr, c, pr);
-  if (pr.dist > HALF + 12) {
+  if (pr.dist > HALF + 12 && !(tr.open && tr.open[tr.bi(pr.i)])) {
     // off the road (e.g. through a broken barrier): pick the road back up further along if it's closer
     const q = tr.nearest(c.x, c.z);
     if (q && q.d < pr.dist - 3) {
@@ -204,13 +215,18 @@ export function stepCar(c, dt, W, racing) {
       }
     }
   }
-  if (al > HALF) collideObstacles(c, W, dt);   // off the road: trees, rocks, bushes
+  const openHere = tr.open && tr.open[tr.bi(pr.i)];
+  if (al > HALF || openHere) collideObstacles(c, W, dt);   // off the road (or in open country): trees, rocks, bushes
   c.progress = tr.progOf(pr.s);
-  if (c.onGround && al < HALF - 0.5) c.lastGood = pr.i;
-  const spd = Math.hypot(c.vx, c.vz);
-  if (pr.dist > 24) c.offT += dt * (spd > 8 && pr.dist < 70 ? 0.3 : 1); else c.offT = 0;   // a moving car gets time to cut across to the next bit of road
+  gateStep(c, W);                                                                    // a stage with gates: take them in order
+  if (c.onGround && (al < HALF - 0.5 || openHere)) c.lastGood = pr.i;
+  const spd = Math.hypot(c.vx, c.vz), raid = !!tr.gates;
+  // open country: remember where it was last going well (on the ground, moving, nothing hit lately) to reset it there
+  if (openHere && c.onGround && spd > 6 && !c.wallContact && !(c.hitT < 1.5)) { if ((c.safeT = (c.safeT || 0) - dt) <= 0) { c.safeT = 0.5; c.safe = { x: c.x, z: c.z, yaw: Math.atan2(c.vx, c.vz), i: pr.i, d: pr.dist }; } }
+  else if (!openHere && al < HALF) c.safe = null;
+  if (pr.dist > (raid ? 140 : 24)) c.offT += dt * (spd > 8 && pr.dist < 70 ? 0.3 : 1); else c.offT = 0;   // a moving car gets time to cut across to the next bit of road; with gates, only lost cars
   if (racing && !c.finished && spd < 1.2) c.stuckT += dt; else c.stuckT = 0;
-  if (c.isPlayer && racing && !c.finished) {
+  if (c.isPlayer && racing && !c.finished && !openHere) {
     const along = c.vx * tr.tx[pr.i] + c.vz * tr.tz[pr.i];
     if (along < -4) c.wrongT += dt; else c.wrongT = 0;
   }
@@ -230,6 +246,6 @@ export function stepCar(c, dt, W, racing) {
   if (tr.boostPad && c.onGround && al < HALF && tr.boostPad[tr.bi(pr.i)]) { if (!(c.boost > 0.3)) c.events.push({ t: 'boostpad' }); c.boost = Math.max(c.boost, BOOST_PAD); }
   if (c.offT > 0.6 && !c.destroyed) respawn(c, W);   // a smashed road car stays where it lands
   else if (!c.isPlayer && !c.traffic && c.stuckT > 2.5) respawn(c, W);
-  else if (!c.isPlayer && racing && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road
+  else if (!c.isPlayer && racing && !raid && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road (with gates, off the road is fair game)
   if (pr.i >= tr.NM - 6 && pr.i < tr.NM) { c.vx *= 1 - 4 * dt; c.vz *= 1 - 4 * dt; }
 }

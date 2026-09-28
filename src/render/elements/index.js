@@ -28,6 +28,7 @@ import { addMill } from './mill.js';
 import { addMud, newMudRace, updateMud } from './mud.js';
 import { addWear, newWearRace, updateWear } from './wear.js';
 import { addIce } from './ice.js';
+import { addOpen, updateOpen } from './open.js';
 import { initGateVis, updateGateVis } from '../gates.js';
 import { addHammers, updateHammers } from './hammer.js';
 import { initWeaponVis, updateWeaponVis } from '../weapons.js';
@@ -79,5 +80,7 @@ const snowfall = { name: 'snowfall', build(group, tr, terr, stage) { addSnowfall
 
 const wear = { name: 'wear', build(group, tr, terr, stage) { addWear(group, tr, terr, stage); }, newRace() { newWearRace(); }, update(dt) { updateWear(dt); } };   // every stage (features/wear.js)
 
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer];
+const open = { name: 'open', build(group, tr, terr) { addOpen(group, tr, terr); }, update(dt, now) { updateOpen(dt, now); } };   // off-piste gates and streams
+
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

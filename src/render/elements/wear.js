@@ -29,6 +29,7 @@ export function addWear(group, tr, terr, stage) {
   for (const i of tr.all0) {
     const j = tr.nb0(i, 1), b = tr.bi(i); if (j === i) continue;
     if (tr.voidMask && (tr.voidMask[b] || tr.voidMask[tr.bi(j)])) continue;
+    if (tr.open && tr.open[b] && tr.open[tr.bi(j)]) continue;                        // open country: no road to wear
     const deck = tr.bridge[i] || tr.bridge[j] || tr.tunnel[i] || tr.tunnel[j], w = deck ? HALF - 0.2 : SPAN;   // no verges off a bridge
     const base = pos.length / 3;
     for (const [k, v] of [[i, (b + 0.5) / NB], [j, (b + 1.5) / NB]]) for (let n = 0; n < NX; n++) {

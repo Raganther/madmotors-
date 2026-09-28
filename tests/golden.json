@@ -645,6 +645,44 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Open Country": {
+   "samples": 3104,
+   "loopN": 1479,
+   "terrain": [
+    171,
+    196,
+    81327.1
+   ],
+   "times": [
+    157.025,
+    148.283,
+    156.2,
+    152.942
+   ],
+   "respawns": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "wrecks": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "progress": [
+    2994.026,
+    3024.654,
+    3019.976,
+    3024.739
+   ],
+   "broken": 3,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {
