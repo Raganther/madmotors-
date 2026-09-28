@@ -14,7 +14,7 @@ Top-down racer, three.js r128, plain JS modules, Vite. Read README.md for the la
 
 ## Notes from the user
 The published game has a Note button (N): the user taps a spot on a track and types what they'd change. Notes land in
-the artifact's database: `ArtifactData` `list` of collection `notes` on the artifact URL (fields: stage, metres from the
+the artifact's database: `ArtifactData` `list` of collection `notes` on the artifact URL (under Rules) (fields: stage, metres from the
 start line, lat, x/y/z, text, camera, status, and `shot`, an asset id: `Artifact` `read` with `path` = that id to see
 their view). Go to the spot with `npm run shot -- "<stage>" <metres>`. Answer each by `update` on `notes/<id>` with
 `{ reply: "...", status: "done" }`: the reply shows in the game's Notes list and the pin turns green.
@@ -35,4 +35,6 @@ real stage with `/new-stage` (its segs are already frozen metres; keep them, add
 - Cross-module mutable app state goes on `G` (src/game.js), not new loose `let`s shared between modules.
 - `window.__dr` (src/debug.js) exposes `G`, `core`, `flow` and `step(secs)` for browser tests; the game doesn't use it.
 - Match the surrounding style: short explanatory comments on the non-obvious bits, dense one-line helpers are normal here.
-- Publish by building and publishing `dist/index.html` to the existing artifact (same URL); dist is not committed.
+- Publish by building and publishing `dist/index.html` to the existing artifact, https://claude.ai/artifact/VWoYkDJ6JEu65zXEbELwwC
+  (pass it as `url`; it keeps its db + assets capabilities); dist is not committed. The user's notes and tracks live
+  in that artifact's database. Work on a branch off `main` and merge back by pull request.
