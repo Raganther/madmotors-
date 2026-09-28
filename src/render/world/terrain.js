@@ -50,6 +50,7 @@ export function makeTerrainMesh(terr, tr, stage) {
   const mesh = chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true, { cloud: true, grain: 0.1, strata: stage.strata || 0 }), 60, true);
   // cliffs and banks throw shadows on the ground below them (the rest of the height cue from the top-down cameras); not on
   // Graphics: Low (applyQuality flips it)
-  mesh.traverse(o => { if (o.isMesh) { o.userData.terrain = true; o.castShadow = quality !== 'low'; } });
+  // only chunks with real relief in them: flat ground can't shade anything, and every caster is drawn again for the sun
+  mesh.traverse(o => { if (!o.isMesh) return; o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox; if (bb.max.y - bb.min.y < 7) return; o.userData.terrain = true; o.castShadow = quality !== 'low'; });
   return mesh;
 }

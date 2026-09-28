@@ -51,6 +51,21 @@ export function smoothNormals(g) {
   for (let i = 0; i < N; i++) { const w = weld[i] * 3, l = Math.hypot(acc[w], acc[w + 1], acc[w + 2]) || 1; nor.setXYZ(i, acc[w] / l, acc[w + 1] / l, acc[w + 2] / l); }
   g.setAttribute('normal', nor); nor.needsUpdate = true; return g;
 }
+/** Merge geometries (each already placed) into one non-indexed geometry: position, normal, and colour / uv when any has them. */
+export function mergeAll(geos) {
+  geos = geos.map(g => g.index ? g.toNonIndexed() : g);
+  let n = 0; for (const g of geos) n += g.attributes.position.count;
+  const hasC = geos.some(g => g.attributes.color), hasU = geos.some(g => g.attributes.uv);
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = hasC ? new Float32Array(n * 3).fill(1) : null, uv = hasU ? new Float32Array(n * 2) : null; let o = 0;
+  for (const g of geos) {
+    const A = g.attributes; pos.set(A.position.array, o * 3); nor.set(A.normal.array, o * 3);
+    if (col && A.color) col.set(A.color.array, o * 3); if (uv && A.uv) uv.set(A.uv.array, o * 2);
+    o += A.position.count;
+  }
+  const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  if (col) out.setAttribute('color', new THREE.BufferAttribute(col, 3)); if (uv) out.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return out;
+}
 export function merge(geos) {
   let n = 0; for (const g of geos) n += g.attributes.position.count;
   const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3); let o = 0;

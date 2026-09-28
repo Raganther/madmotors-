@@ -47,3 +47,7 @@ Visual work is judged by eye, so the loop is: screenshot → change → screensh
 - Trees, rocks, cacti and bushes are placed by the core (`core/track/obstacles.js`, cars hit them), not by the
   renderer: change where they stand there (golden changes); change how they look in `render/world/shapes.js`
   (rendering only). Their shading is baked into vertex colours, multiplied by each instance's colour.
+- Draw calls: every mesh is one draw, twice if it casts a shadow, and a car used to be 100-290 meshes (750 draws a
+  frame in a full race). Parts nothing acts on alone are merged per material (carmodels.js `mergeStatic`), wheels are
+  a few shared merged meshes, dirt layers aren't drawn while clean. Check `node tools/drawcalls.mjs` after adding
+  detail; SwiftShader's frame times barely move with draw calls, real GPUs do.

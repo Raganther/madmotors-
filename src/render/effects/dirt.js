@@ -32,14 +32,14 @@ function dirtTex() {
 /** Give a car's panels a dirt layer, and its wheels one of their own: tyres and hubs muck up first and darkest. */
 export function addDirt(v, panels, wheels = []) {
   const mk = () => new THREE.MeshLambertMaterial({ map: dirtTex(), color: 0xB49A74, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
-  const mat = mk(), wmat = mk();
+  const mat = mk(), wmat = mk(); mat.visible = wmat.visible = false;   // not drawn at all while the car is clean
   for (const m of panels) { const o = new THREE.Mesh(m.geometry, mat); o.renderOrder = 1; m.add(o); }
   for (const w of wheels) w.traverse(m => { if (m.isMesh && !m.userData.dirt) { const o = new THREE.Mesh(m.geometry, wmat); o.userData.dirt = true; o.renderOrder = 1; o.scale.setScalar(1.01); m.add(o); } });
   v.dirt = { amt: 0, mat, wmat, col: new THREE.Color(0xB49A74), tmp: new THREE.Color() };
 }
-export function resetDirt(v) { if (v.dirt) { v.dirt.amt = 0; v.dirt.mat.opacity = 0; v.dirt.wmat.opacity = 0; } }
+export function resetDirt(v) { if (v.dirt) { v.dirt.amt = 0; v.dirt.mat.opacity = 0; v.dirt.wmat.opacity = 0; v.dirt.mat.visible = v.dirt.wmat.visible = false; } }
 // the body shows the muck at its level; the wheels, which sit in it, at three times that, caked paler than the rubber
-function show(D) { D.mat.color.copy(D.col); D.mat.opacity = Math.min(0.95, D.amt * 1.3); D.wmat.color.copy(D.col).multiplyScalar(1.45); D.wmat.opacity = Math.min(0.97, D.amt * 3); }   /* caked mud dries paler than the tyre under it */
+function show(D) { D.mat.color.copy(D.col); D.mat.opacity = Math.min(0.95, D.amt * 1.3); D.wmat.color.copy(D.col).multiplyScalar(1.45); D.wmat.opacity = Math.min(0.97, D.amt * 3); D.mat.visible = D.mat.opacity > 0.01; D.wmat.visible = D.wmat.opacity > 0.01; }   /* caked mud dries paler than the tyre under it */
 // following a car through a bog: its rooster tail lands on you
 function inSpray(c) {
   if (!race) return false;
