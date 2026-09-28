@@ -13,7 +13,8 @@ New behaviour belongs in elements (`/new-element`), never special cases for this
 - One sentence: what makes it different from the stages we have (`npm run layout` lists them; README table).
 - The run as beats: start, 4-8 set pieces, finish. For each beat name the **existing element** that does it
   (README "Track elements" table: jump, kick, yump, whoops, mud / `mud: 'water'`, bridge, viaduct, tunnel, town,
-  gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill/logs, rails, branches).
+  gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill/logs, rails, branches; `open` + `gate` for
+  off-piste legs across a field, forest, rocks or a stream: copy `open-country.js`).
 - Anything no element covers → a new element (`/new-element`), built and sandboxed first. Say so.
 - Choose the base: `type: 'gorge'` (a hand-laid circuit of `segs`; most flexible; copy `bogwood-rally.js` or
   `thunder-falls.js`) or a generated downhill `plan` (copy `summit-meadow.js`). Fields are in `src/core/types.js`.
@@ -55,3 +56,8 @@ New behaviour belongs in elements (`/new-element`), never special cases for this
 - Planning heights for a self-crossing lap: list the crossings in lap order; stretches closer than ~100 m can't change
   level, so chains of crossings can need three levels (ground, 9 m, 18 m). Bridge the upper road ±30 m round each
   crossing and keep grades near 10%.
+- Off-piste stages (`open` + `gate`): put gates where the route line is where you want cars to pass; keep open legs'
+  hills low (`hillAmp` 3-4) so the ground stays drivable; check `npm run sandbox` for respawns and that every car takes
+  every gate (`tests/offpiste.test.js` does this for Open Country: add yours to it).
+- `tests/scenery.test.js` checks every stage for gaps in the road, open tunnel mouths, ground through bridge decks and
+  piers on roads: if one fails on your stage, fix the segs or the element, not the test.

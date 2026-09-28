@@ -1,6 +1,6 @@
 import { HALF, SURF } from '../constants.js';
 import { clamp } from '../math.js';
-import { GATE, OPEN } from '../elements/open.js';
+import { GATE, OPEN, TRAIL } from '../elements/open.js';
 
 // Finding the way across open country (elements/open.js). For every waypoint (each gate, and each place an open leg
 // rejoins a road) a distance field over a 2 m grid covering the open country: how far it is to drive to the waypoint
@@ -35,7 +35,11 @@ function build(W) {
     if (!o.r) continue;
     stamp(o.x, o.z, o.r + NEAR, (k, d) => { if (d < o.r + BLOCK) cost[k] = Infinity; else cost[k] += 1.5; });
   }
-  for (let i = 0; i < N; i++) if (tr.open[tr.bi(i)] === OPEN.stream) stamp(tr.xs[i], tr.zs[i], 70, k => { cost[k] += 1.5; });
+  for (let i = 0; i < N; i++) if (tr.open[tr.bi(i)] === OPEN.stream) stamp(tr.xs[i], tr.zs[i], 70, k => { cost[k] += 0.3; });   // wading is slow anyway (the ford surface)
+  // the trail (elements/open.js): quicker than the grass either side, so the AI takes it unless cutting across pays
+  const onT = new Uint8Array(n);
+  for (let i = 0; i < N; i++) { const b = tr.bi(i); if (!tr.trail || !tr.open[b]) continue; const o = tr.trail[b]; stamp(tr.xs[i] + tr.rx[i] * o, tr.zs[i] + tr.rz[i] * o, TRAIL.W / 2, k => { onT[k] = 1; }); }
+  for (let k = 0; k < n; k++) if (onT[k] && cost[k] !== Infinity) cost[k] *= 0.7;
   // waypoints: every gate, and where each open leg joins a road again (as a wide gate across the road there)
   const wps = new Map(), gateB = new Set((tr.gates || []).map(i => tr.bi(i)));
   for (const b of gateB) wps.set(b, { b, hw: GATE.W / 2 - 1.2, strict: true });

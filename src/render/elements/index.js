@@ -80,7 +80,7 @@ const snowfall = { name: 'snowfall', build(group, tr, terr, stage) { addSnowfall
 
 const wear = { name: 'wear', build(group, tr, terr, stage) { addWear(group, tr, terr, stage); }, newRace() { newWearRace(); }, update(dt) { updateWear(dt); } };   // every stage (features/wear.js)
 
-const open = { name: 'open', build(group, tr, terr) { addOpen(group, tr, terr); }, update(dt, now) { updateOpen(dt, now); } };   // off-piste gates and streams
+const open = { name: 'open', build(group, tr, terr, stage) { addOpen(group, tr, terr, stage); }, update(dt, now) { updateOpen(dt, now); } };   // off-piste gates and streams
 
 export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

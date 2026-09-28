@@ -45,3 +45,9 @@ for a timed cycle, `wear.js` for a per-sample grid, `rockfall.js` for spawned ha
 - Hazards change finishing orders by luck; measure pace with them off (`tools/balance-vehicles.mjs` drops trains).
 - Rocks and other moving obstacles: predict where they'll be over the moments the car passes, not only on arrival,
   and pick the clearest of a few lanes (see the wrecking ball and boulder code in `sim/ai.js`).
+- Reusing an event name means giving it every field its handler in `ui/flow.js` reads: a `bump` from anything but two
+  cars (it wants `e.a`, `e.b`) throws in the effects. Make a new event instead.
+- Path-finding over a grid (`sim/nav.js`): keep the distances in a Float64Array while searching. Float32 rounding
+  re-queues equal-length paths forever and the heap grows until it crashes.
+- A rule that caps race progress (gates) needs the AI to know about it too: a car that has passed a gate without taking
+  it must be steered back (`c.gateMiss` -> `navControl`), or it drives on and is stuck behind it for the rest of the race.
