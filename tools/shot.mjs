@@ -52,7 +52,7 @@ for (const m of pts) {
     while (P.progress < tgt - 30 && n++ < 60000) { for (let k = 0; k < 4; k++) { d.flow.savePrev(); d.core.raceStep(d.race, d.core.STEP, d.G.world.W); } d.flow.handleEvents(); }   // fast: sim only
     while (P.progress < tgt && n++ < 60000) d.step(1 / 60);                                                                                                      // last stretch drawn, so the camera and effects catch up
     if (d.G.world.W.wear) d.G.world.W.wear.ver++;
-    d.step(0.2); return [Math.round(P.progress - d.G.world.tr.startIdx), d.CUT.r.value, P.x, P.y, P.z, P.pr.i];   // step snaps the camera and the see-through window
+    d.step(0.2); return [Math.round(P.progress - d.G.world.tr.startIdx), d.CUT.r.value, d.CUT.r2.value, d.CUT.dir.value.toArray().map(v => +v.toFixed(2)), P.pr.i];   // step snaps the camera and the see-through window
   }, info.s0 + m);
   const file = `tools/out/shot-${id}-${m}.png`; await page.screenshot({ path: file }); console.log(`${file}  (${info.name}, ${got[0]} m${got[1] > 0.5 ? ', see-through' : ''})`, got.slice(2));
 }

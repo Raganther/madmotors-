@@ -9,11 +9,14 @@ import { _e, _m, _p, _q, _s, addInstanced, flat } from '../geometry.js';
 export let barVis = null;
 export function addBarriers(group, tr, terr, stage) {
   const tyres = [], posts = [], rails = [], bales = [], NB = tr.NB, armco = !!(stage && stage.armco);
+  // barriers stand on the ground at the road's edge, but never below the road: along a drop the ground there falls away
+  // and they'd sink out of sight, just where they're wanted
+  const gy = (i, x, z) => Math.max(terr.at(x, z), tr.H[i] - 0.35);
   const idx = []; for (let i = 0; i < (tr.loopN || tr.N); i++) idx.push(i);
   for (const a of tr.alts) for (let q = 1; q <= a.n; q++) idx.push(a.u + q);            // branches (lap-0 samples)
   for (const i of idx) for (const side of [-1, 1]) {
     const w = side < 0 ? tr.wallL[i] : tr.wallR[i]; if (!w) continue;
-    const x = tr.xs[i] + tr.rx[i] * side * WALL, z = tr.zs[i] + tr.rz[i] * side * WALL, y = terr.at(x, z);
+    const x = tr.xs[i] + tr.rx[i] * side * WALL, z = tr.zs[i] + tr.rz[i] * side * WALL, y = gy(i, x, z);
     const base = { s: side > 0 ? 1 : 0, p: (tr.bi(i) / BAR_P) | 0, nx: tr.rx[i] * side, nz: tr.rz[i] * side, tx: tr.tx[i], tz: tr.tz[i] };
     if (w === 1) {
       const stripe = ((i / 3) | 0) % 5 === 0;
@@ -23,7 +26,7 @@ export function addBarriers(group, tr, terr, stage) {
       posts.push({ ...base, kind: 'post', x, y: y + 0.6, z, color: armco ? 0x8D939C : 0x8A5E3B, dims: [0.2, 1.2, 0.2] });
       const j = tr.loopN ? tr.nb0(i, 3) : i + 3;
       if (j < tr.N && (side < 0 ? tr.wallL[j] : tr.wallR[j]) === 2) {
-        const x2 = tr.xs[j] + tr.rx[j] * side * WALL, z2 = tr.zs[j] + tr.rz[j] * side * WALL, y2 = terr.at(x2, z2);
+        const x2 = tr.xs[j] + tr.rx[j] * side * WALL, z2 = tr.zs[j] + tr.rz[j] * side * WALL, y2 = gy(j, x2, z2);
         const len = Math.hypot(x2 - x, z2 - z), ry = Math.atan2(x2 - x, z2 - z), rxa = -Math.atan2(y2 - y, len);
         const rail = { ...base, kind: 'rail', a: [x, y, z], b: [x2, y2, z2], pa: base.p, pb: (tr.bi(j) / BAR_P) | 0, x: (x + x2) / 2, z: (z + z2) / 2, ry, rx: rxa, sz: len };
         if (armco) rails.push({ ...rail, hh: 0.75, y: (y + y2) / 2 + 0.75, sx: 1.4, sy: 2.6, color: 0xCDD2D9, dims: [0.14, 0.364, len] });

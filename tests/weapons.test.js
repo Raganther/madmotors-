@@ -41,12 +41,12 @@ describe('weapons', () => {
     }
   });
   it('the other weapons: oil makes the car behind slide, the pulse blows neighbours away and stalls them, the harpoon reels you in, the gun chips speed', () => {
-    const setup = (item, lats, gaps) => { const { R, Wd } = race(true), P = R.player; R.cars.forEach((c, k) => put(c, 150 + k * 20, 0, 0)); put(P, 400, 0, 22); R.cars.filter(c => c !== P).forEach((c, k) => put(c, 400 + gaps[k], lats[k], 22)); P.wpn.item = item; P.wpn.uses = M.ITEM_USES[item]; P.inp.fire = true; return { R, Wd, P }; };
+    const setup = (item, lats, gaps, at = 400) => { const { R, Wd } = race(true), P = R.player; R.cars.forEach((c, k) => put(c, 150 + k * 20, 0, 0)); put(P, at, 0, 22); R.cars.filter(c => c !== P).forEach((c, k) => put(c, at + gaps[k], lats[k], 22)); P.wpn.item = item; P.wpn.uses = M.ITEM_USES[item]; P.inp.fire = true; return { R, Wd, P }; };
     { const { R, Wd } = setup('oil', [0, 5, -5], [-14, -60, -60]); let slid = false; for (let k = 0; k < 240; k++) { M.raceStep(R, 1 / 120, Wd); if (R.cars[0].oilT > 0) slid = true; } expect(slid).toBe(true); }
     { const { R, Wd } = setup('pulse', [3.5, 0, -5], [0, 60, -70]); const O = R.cars[0], v0 = Math.hypot(O.vx, O.vz); M.raceStep(R, 1 / 120, Wd); expect(O.stallT).toBeGreaterThan(0); expect(Math.hypot(O.vx, O.vz)).not.toBeCloseTo(v0, 0); expect(R.cars[1].stallT || 0).toBe(0); }
     { const gap = hook => { const { R, Wd, P } = setup('harpoon', [0, 5, -5], [30, -60, -70]); R.autoPlayer = true; if (!hook) P.inp.fire = false; let towed = 0; for (let k = 0; k < 300; k++) { M.raceStep(R, 1 / 120, Wd); if (R.wpn.hooks.some(h => h.tow > 0)) towed++; } return { towed, gap: R.cars[0].progress - P.progress }; };
       const on = gap(true), off = gap(false); expect(on.towed).toBeGreaterThan(60); expect(on.gap).toBeLessThan(off.gap - 5); }
-    { const { R, Wd } = setup('gun', [0, 6, -6], [25, -60, -70]); let hits = 0; for (let k = 0; k < 360; k++) { M.raceStep(R, 1 / 120, Wd); for (const c of R.cars) { hits += c.events.filter(e => e.t === 'bullet-hit').length; c.events.length = 0; } } expect(hits).toBeGreaterThan(3); }
+    { const { R, Wd } = setup('gun', [0, 6, -6], [25, -60, -70], 990); R.autoPlayer = true; /* the gun fires straight where the car points: a straight, and someone driving it */ let hits = 0; for (let k = 0; k < 360; k++) { M.raceStep(R, 1 / 120, Wd); for (const c of R.cars) { hits += c.events.filter(e => e.t === 'bullet-hit').length; c.events.length = 0; } } expect(hits).toBeGreaterThan(3); }
   });
   it('crates turn up ahead of everyone, not just the leader, and the back of the field gets the catch-up weapons', () => {
     const { R, Wd } = race(true); R.autoPlayer = true; const got = [], near = new Set();

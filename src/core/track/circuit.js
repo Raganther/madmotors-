@@ -65,7 +65,7 @@ export function genPass(stage) {
   for (const sg of segs) {
     let [type, p1, p2, p3] = sg;
     if (type === 's') {
-      let len = p1; if (len === 'X') len = b - 50; if (len === 'Y') len = -a - 50;
+      let len = p1; if (len === 'X') len = b - 50; if (len === 'Y') len = -a;   // back to the start line (the corner before it is already walked)
       const n = Math.max(1, Math.round(len)), h0 = h, st = len / n;
       for (let q = 1; q <= n; q++) { a += Math.cos(phi) * st; b += Math.sin(phi) * st; emit(lerp(h0, p2, q / n), p3 === 'tunnel'); }
       h = p2;

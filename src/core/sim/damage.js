@@ -8,8 +8,18 @@ export function damageCar(c, x, z, v, k, ix, iz) {
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), dx = x - c.x, dz = z - c.z;
   const fwd = (dx * fx + dz * fz) / c.hl, rgt = (dx * -fz + dz * fx) / c.hw;
   const zone = Math.abs(fwd) > Math.abs(rgt) ? (fwd > 0 ? 'f' : 'b') : (rgt > 0 ? 'r' : 'l');
-  c.dmg[zone] = Math.min(1, c.dmg[zone] + amt);
+  c.dmg[zone] = Math.min(1, c.dmg[zone] + amt); c.hitT = 0;
   c.events.push({ t: 'dent', zone, amt, x, z, y: c.y, ix, iz, v });
   if (c.dmg[zone] >= 1) { c.wreckT = c.traffic ? 1e9 : WRECK_T; c.wrecks++; c.boost = 0; c.driftT = 0; c.events.push({ t: 'wreck' }); }
 }
 export function carWear(c) { const d = c.dmg; return (d.f + d.b + d.l + d.r) / 4; }
+// Damage mends itself: after HEAL.WAIT s without a knock every zone recovers HEAL.RATE a second (a battered car is
+// good as new in ~20 s), with a 'repair' event once it's whole again. Racers only: road cars stay wrecked.
+export const HEAL = { WAIT: 4, RATE: 0.05 };
+export function healCar(c, dt) {
+  if (c.wreckT > 0 || c.traffic) return;
+  const d = c.dmg; if (!(d.f || d.b || d.l || d.r)) return;
+  if ((c.hitT = (c.hitT || 0) + dt) < HEAL.WAIT) return;
+  for (const k of ['f', 'b', 'l', 'r']) d[k] = Math.max(0, d[k] - HEAL.RATE * dt);
+  if (!(d.f || d.b || d.l || d.r)) c.events.push({ t: 'repair' });
+}

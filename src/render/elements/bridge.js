@@ -15,7 +15,7 @@ export function bridgeMat(opts) { return withCutaway(new THREE.MeshLambertMateri
 export function supportClear(tr, x, z, ry, hw, hl, top) {
   const c = Math.cos(ry), s = Math.sin(ry), mu = hw + HALF - 0.5, mv = hl + HALF - 0.5, R = Math.hypot(mu, mv);
   for (let j = 0; j < tr.N; j++) {
-    if (tr.bridge[j] || tr.H[j] >= top - 1) continue;
+    if (tr.H[j] >= top - 1) continue;                                                 // a lower bridge deck is road too
     const dx = tr.xs[j] - x, dz = tr.zs[j] - z; if (Math.abs(dx) > R || Math.abs(dz) > R) continue;
     if (Math.abs(dx * c - dz * s) < mu && Math.abs(dx * s + dz * c) < mv) return false;
   }
