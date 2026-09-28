@@ -227,6 +227,10 @@ In the game, the menu's **Track editor** (`src/ui/editor.js`, geometry in `src/c
 `segs` on a plan view: pick a section, change its length / radius / turn / height / element tags, "Close the loop"
 (sets the last corner so the lap turns whole circles, then stretches two straights to land on the start), and
 "Test drive" installs it as a temporary stage. "Send to Claude" stores it in the artifact's `tracks` collection.
+"Draw my own" starts a blank plan: the Draw tool turns a freehand stroke into straights and curves
+(`editing.js` `fromStroke`: simplify, round each corner off with an arc, close it if it ends near its start), and
+dragging from the open end carries the track on. The Comment tool pins notes anywhere on the plan, and each section
+has a note box; both go to Claude with the track.
 
 ## Adding a vehicle
 
