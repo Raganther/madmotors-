@@ -52,10 +52,9 @@ for (const m of pts) {
     while (P.progress < tgt - 30 && n++ < 60000) { for (let k = 0; k < 4; k++) { d.flow.savePrev(); d.core.raceStep(d.race, d.core.STEP, d.G.world.W); } d.flow.handleEvents(); }   // fast: sim only
     while (P.progress < tgt && n++ < 60000) d.step(1 / 60);                                                                                                      // last stretch drawn, so the camera and effects catch up
     if (d.G.world.W.wear) d.G.world.W.wear.ver++;
-    d.CUT.car.value.set(P.x, P.y, P.z); d.CUT.r.value = d.G.world.cover[d.G.world.tr.bi(P.pr.i)] ? 8.5 : 0;   // the see-through window, as the game loop sets it
-    d.step(0.2); return Math.round(P.progress - d.G.world.tr.startIdx);
+    d.step(0.2); return [Math.round(P.progress - d.G.world.tr.startIdx), d.CUT.r.value, P.x, P.y, P.z, P.pr.i];   // step snaps the camera and the see-through window
   }, info.s0 + m);
-  const file = `tools/out/shot-${id}-${m}.png`; await page.screenshot({ path: file }); console.log(`${file}  (${info.name}, ${got} m)`);
+  const file = `tools/out/shot-${id}-${m}.png`; await page.screenshot({ path: file }); console.log(`${file}  (${info.name}, ${got[0]} m${got[1] > 0.5 ? ', see-through' : ''})`, got.slice(2));
 }
 if (errs.length) console.log('page errors:\n  ' + errs.join('\n  '));
 await browser.close(); process.exit(errs.length ? 1 : 0);

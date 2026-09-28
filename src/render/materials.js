@@ -53,9 +53,12 @@ export function withCutaway(mat, solidInside, opts = {}) {
       if (uCutR > 0.0) {
         vec3 cv = vCutW - uCutCar; float ct = dot(cv, uCutDir);
         if (ct > 1.5 && vCutW.y > uCutCar.y + uCutLift) {
-          float cp = length(cv - uCutDir * ct);
-          float n = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
-          if (cp < uCutR - 0.7 + n * 0.7) discard;
+          // translucent, not a hole: an ordered (4x4 Bayer) dither drops most pixels near the view line and fewer
+          // towards the edge, so what's in the way thins to a ghost and the car and its surroundings show through
+          float cp = length(cv - uCutDir * ct), f = 1.0 - smoothstep(uCutR * 0.3, uCutR, cp);
+          vec2 bp = floor(gl_FragCoord.xy), bq = floor(bp * 0.5);
+          float by = fract(dot(bq, vec2(0.5, bq.y * 0.75))) * 0.25 + fract(dot(bp, vec2(0.5, bp.y * 0.75)));
+          if (by < f * 0.78) discard;
         }
       }`);
     if (cloud) fs = fs.replace('#include <fog_fragment>', `float cld = texture2D(uCloud, (vCutW.xz + uWind * uTime) / 260.0).r;

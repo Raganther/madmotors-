@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { HALF, WALL } from '../../core/constants.js';
 import { railProject } from '../../core/track/rails.js';
 import { addInstanced, flat } from '../geometry.js';
+import { withCutaway } from '../materials.js';
 
-export function bridgeMat(opts) { return new THREE.MeshLambertMaterial(opts); }
+// bridges thin to see-through like the ground when the player drives under one (camera.js updateCut)
+export function bridgeMat(opts) { return withCutaway(new THREE.MeshLambertMaterial(opts)); }
 /**
  * Can a support stand here? Not if its footprint (a box `hw` across and `hl` along, turned to `ry`) overlaps any road
  * that passes underneath (lower than `top`): a pier on the road below is never right, however far below it runs. Every
