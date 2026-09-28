@@ -20,8 +20,11 @@ their view). Go to the spot with `npm run shot -- "<stage>" <metres>`. Answer ea
 `{ reply: "...", status: "done" }`: the reply shows in the game's Notes list and the pin turns green.
 
 The menu's Track editor lets the user lay out a circuit (an existing gorge stage or a blank oval) and "Send to Claude":
-those land in collection `tracks` (name, base, closes, message, `stage` = the stage object with `segs`). Turn one into a
-real stage with `/new-stage` (its segs are already frozen metres; keep them, add the look), then `update`
+those land in collection `tracks` (name, base, closes, message, `stage` = the stage object with `segs`, `comments` =
+pins the user dropped on the plan `{ n, text, sec, metres, off, a, b }`, `notes` = per-section notes `{ sec, text }`;
+sections are numbered from 1). The user can also draw a track freehand (base "drawn"): it's their design, so follow
+the shape and read every comment and note as the brief for that spot. Turn one into a real stage with `/new-stage`
+(its segs are already frozen metres; keep them, add the look and the set pieces the comments ask for), then `update`
 `tracks/<id>` with `{ reply, status: "done" }`.
 
 ## Skills (.claude/skills)

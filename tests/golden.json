@@ -607,6 +607,44 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Flyover Tangle": {
+   "samples": 4700,
+   "loopN": 1518,
+   "terrain": [
+    128,
+    120,
+    12846.625
+   ],
+   "times": [
+    163.058,
+    159,
+    164.808,
+    161.308
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    4614.487,
+    4616.258,
+    4590.151,
+    4615.427
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

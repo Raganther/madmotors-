@@ -66,3 +66,86 @@ export function closeLoop(segs0, heading = 0, minLen = 3) {
 }
 export const wrapDeg = d => ((d % 360) + 540) % 360 - 180;
 export { TAU };
+
+// ---------- drawing a track freehand ----------
+// A stroke (points in a/b metres, as drawn with the mouse or a finger) becomes sections: it's resampled and smoothed,
+// simplified to a polygon (Ramer-Douglas-Peucker, `tol` metres), and each corner of the polygon is rounded off with an
+// arc as big as its two neighbouring legs allow (minR..maxR), the straights running between them. If the stroke ends
+// back near where it began it's a lap: the polygon is closed and the track starts half way along its first leg, so
+// every corner is a proper curve and the lap turns a whole circle; otherwise it's an open run for the editor to close.
+// `from` = { a, b, phi, h } continues an existing track from its end (the first corner turns off its heading).
+const rdp = (P, tol) => {
+  if (P.length < 3) return P.slice();
+  const [A, B] = [P[0], P[P.length - 1]], dx = B.a - A.a, dy = B.b - A.b, L = Math.hypot(dx, dy) || 1;
+  let k = -1, dm = 0; for (let i = 1; i < P.length - 1; i++) { const d = Math.abs((P[i].a - A.a) * dy - (P[i].b - A.b) * dx) / L; if (d > dm) { dm = d; k = i; } }
+  return dm < tol ? [A, B] : rdp(P.slice(0, k + 1), tol).slice(0, -1).concat(rdp(P.slice(k), tol));
+};
+function cleanStroke(pts, step) {
+  const out = [pts[0]]; let acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const p = out[out.length - 1], q = pts[i], d = Math.hypot(q.a - p.a, q.b - p.b); acc = d;
+    if (acc >= step) { const n = Math.floor(acc / step); for (let k = 1; k <= n; k++) out.push({ a: p.a + (q.a - p.a) * k * step / d, b: p.b + (q.b - p.b) * k * step / d }); }
+  }
+  const last = pts[pts.length - 1]; if (Math.hypot(last.a - out[out.length - 1].a, last.b - out[out.length - 1].b) > step * 0.3) out.push(last);
+  for (let pass = 0; pass < 2; pass++) for (let i = 1; i < out.length - 1; i++) out[i] = { a: (out[i - 1].a + 2 * out[i].a + out[i + 1].a) / 4, b: (out[i - 1].b + 2 * out[i].b + out[i + 1].b) / 4 };
+  return out;
+}
+export function fromStroke(pts, { tol = 3, minR = 14, maxR = 160, closeDist = 45, from = null } = {}) {
+  if (!pts || pts.length < 2) return null;
+  let P = cleanStroke(pts, 3); if (P.length < 2) return null;
+  // a lap if it ends near where it began: closeDist, or an eighth of the stroke for a big one
+  const closed = !from && P.length > 8 && Math.hypot(P[P.length - 1].a - P[0].a, P[P.length - 1].b - P[0].b) < Math.max(closeDist, (P.length - 1) * 3 / 8);
+  let V = rdp(from ? [{ a: from.a, b: from.b }, ...P] : P, tol);
+  if (closed) { V.pop(); if (V.length < 3) return null; }
+  if (V.length < 2) return null;
+  const n = V.length, leg = k => { const p = V[k % n], q = V[(k + 1) % n]; return { len: Math.hypot(q.a - p.a, q.b - p.b), phi: Math.atan2(q.b - p.b, q.a - p.a) }; };
+  const legs = Array.from({ length: closed ? n : n - 1 }, (_, k) => leg(k));
+  if (legs.some(l => l.len < 0.5)) return null;
+  // corners: at each polygon vertex between two legs (closed: all of them, the last at V[0]); continuing: one at the join too
+  const corners = [];
+  const cornerAt = (inPhi, inAvail, outLeg, outAvail) => {
+    const th = wrapDeg((outLeg.phi - inPhi) * 180 / Math.PI), half = Math.tan(Math.abs(th) * Math.PI / 360);
+    if (Math.abs(th) < 1.5) return { th: 0, R: 0, t: 0 };
+    const R = Math.max(minR, Math.min(maxR, Math.min(inAvail, outAvail) / half));
+    return { th, R, t: R * half };
+  };
+  const avail = k => legs[k].len * (closed ? 0.5 : (k === 0 && !from) || k === legs.length - 1 ? 0.9 : 0.5);
+  if (from) corners.push(cornerAt(from.phi, Infinity, legs[0], legs[0].len * (legs.length > 1 ? 0.5 : 0.9)));
+  for (let k = 1; k < legs.length; k++) corners.push(cornerAt(legs[k - 1].phi, avail(k - 1), legs[k], avail(k)));
+  if (closed) corners.push(cornerAt(legs[legs.length - 1].phi, avail(legs.length - 1), legs[0], legs[0].len * 0.5));
+  // walk it into sections: [straight, curve] per leg, heights all h
+  const h = from ? from.h : 0, segs = [], S = (len) => { if (len > 0.5) segs.push(['s', Math.round(len * 100) / 100, h, {}]); }, A = c => { if (c.th) segs.push(['a', Math.round(c.R * 10) / 10, Math.round(c.th * 100) / 100, h, {}]); };
+  if (closed) {
+    // start half way along leg 0; corners[k] sits at the end of leg k (the last one back at V[0], before leg 0)
+    const L = legs.length, cEnd = k => corners[k];   // corner between leg k and leg k+1 (k = L-1: back to leg 0)
+    S(legs[0].len / 2 - cEnd(0).t); A(cEnd(0));
+    for (let k = 1; k < L; k++) { S(legs[k].len - cEnd(k - 1).t - cEnd(k).t); A(cEnd(k)); }
+    S(legs[0].len / 2 - cEnd(L - 1).t);
+    const s0 = { a: (V[0].a + V[1].a) / 2, b: (V[0].b + V[1].b) / 2 };
+    return { segs: tidy(segs), heading: legs[0].phi, start: s0, closed: true };
+  }
+  const off = from ? 1 : 0;   // corners index: corner i (from 'from') precedes leg i - off
+  if (from) A(corners[0]);
+  for (let k = 0; k < legs.length; k++) {
+    const tIn = from ? corners[k].t : (k > 0 ? corners[k - 1].t : 0), tOut = k < legs.length - 1 ? corners[k + off].t : 0;
+    S(legs[k].len - tIn - tOut); if (k < legs.length - 1) A(corners[k + off]);
+  }
+  return { segs: tidy(segs), heading: from ? from.phi : legs[0].phi, start: { a: V[0].a, b: V[0].b }, closed: false };
+}
+// fewer, cleaner sections: curves bending the same way with only a scrap of straight between become one curve (same total
+// turn and length, so the heading comes out the same), and scraps of straight under 3 m go
+function tidy(segs) {
+  const out = [];
+  for (const sg of segs) {
+    const last = out[out.length - 1], prev = out[out.length - 2];
+    if (sg[0] === 's' && sg[1] < 3 && out.length) continue;
+    if (sg[0] === 'a' && last && last[0] === 'a' && Math.sign(last[2]) === Math.sign(sg[2])) { out[out.length - 1] = joinArcs(last, 0, sg); continue; }
+    if (sg[0] === 'a' && last && last[0] === 's' && last[1] < 6 && prev && prev[0] === 'a' && Math.sign(prev[2]) === Math.sign(sg[2])) { out.pop(); out[out.length - 1] = joinArcs(prev, last[1], sg); continue; }
+    out.push(sg);
+  }
+  return out;
+}
+function joinArcs(a, gap, b) {
+  const th = a[2] + b[2], len = a[1] * Math.abs(a[2]) * Math.PI / 180 + gap + b[1] * Math.abs(b[2]) * Math.PI / 180;
+  return ['a', Math.round(len / (Math.abs(th) * Math.PI / 180) * 10) / 10, Math.round(th * 100) / 100, b[3], b[4]];
+}

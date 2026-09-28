@@ -15,5 +15,6 @@ import scrapyardSmash from './scrapyard-smash.js';
 import mesaLeap from './mesa-leap.js';
 import glacierRift from './glacier-rift.js';
 import templeRuins from './temple-ruins.js';
+import flyoverTangle from './flyover-tangle.js';
 
-export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins];
+export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins, flyoverTangle];

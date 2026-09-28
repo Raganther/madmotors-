@@ -152,6 +152,24 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   console.log(`notes: saved "${got.note && got.note.text}" at ${got.note && got.note.metres} m; after Done: ${after[0]}`);
   await page.evaluate(() => { localStorage.removeItem('downhill-rush-notes'); window.__dr.flow.toMenu(); });
 }
+// track editor: draw a lap freehand on a blank plan (it closes by itself), pin a comment, test drive it, come back
+{
+  await page.evaluate(() => localStorage.removeItem('downhill-rush-editor'));
+  await page.click('#editor-btn'); await page.selectOption('#ed-base', 'draw');
+  const box = await page.locator('#ed-map').boundingBox(), cx = box.x + box.width / 2, cy = box.y + box.height / 2, R = Math.min(box.width, box.height) * 0.35;
+  await page.mouse.move(cx + R * 1.3, cy); await page.mouse.down();
+  for (let i = 1; i <= 60; i++) { const t = i / 60 * Math.PI * 2 * 0.96; await page.mouse.move(cx + Math.cos(t) * R * 1.3, cy + Math.sin(t) * R); }
+  await page.mouse.up();
+  const drawn = await page.textContent('#ed-status');
+  await page.click('.ed-tools [data-tool="note"]'); await page.mouse.click(cx, cy); await page.fill('#ed-pintext', 'e2e: a comment'); await page.click('#ed-pinsave');
+  const pins = await page.locator('#ed-pins [data-pin]').count();
+  await page.click('#ed-drive'); const drove = await page.waitForFunction(() => window.__dr.G.editDrive && window.__dr.race, null, { timeout: 30000 }).then(() => true, () => false);
+  await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; d.step(2); d.flow.toMenu(); });
+  const back = await page.evaluate(() => !document.getElementById('editor').hidden);
+  if (!/closes: a lap/.test(drawn) || pins !== 1 || !drove || !back) errors.push('editor drawing: ' + JSON.stringify({ drawn, pins, drove, back }));
+  console.log(`editor: ${drawn} ${pins} comment; test drive ${drove ? 'ran' : 'FAILED'}; back in the editor ${back}`);
+  await page.click('#ed-exit'); await page.evaluate(() => localStorage.removeItem('downhill-rush-editor'));
+}
 // every camera: a Race draws from each (the perspective ones really are perspective), Showdown modes stay top-down
 {
   await page.evaluate(() => window.__dr.flow.startRace(6)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 6, null, { timeout: 30000 });

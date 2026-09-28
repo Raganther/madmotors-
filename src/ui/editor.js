@@ -2,7 +2,7 @@ import { G } from '../game.js';
 import { STAGES } from '../data/stages/index.js';
 import { ELEMENTS } from '../core/elements/index.js';
 import { buildTrack } from '../core/track/build.js';
-import { closeLoop, freeze, sketch } from '../core/track/editing.js';
+import { closeLoop, freeze, fromStroke, sketch } from '../core/track/editing.js';
 import { forgetTrack } from '../render/world/index.js';
 import { $ } from './dom.js';
 import { startRace } from './flow.js';
@@ -12,6 +12,10 @@ import { startRace } from './flow.js';
 // on them (jumps, bridges, tunnels, mud, dirt, whoops, ice, wrecking balls...). "Close the loop" makes the lap meet
 // its start line again; "Test drive" races it straight away; "Send to Claude" puts it in the artifact's database
 // ("tracks") for Claude to turn into a real stage. Drafts are kept in this browser as you go.
+// Tools on the plan: Move (pan, tap a section), Draw (drag out a track freehand: core/track/editing.js fromStroke turns
+// it into straights and curves; end near where you began for a lap, or start at the end of the track to carry it on)
+// and Comment (pin a note anywhere on the plan). Each section can carry a note too. Comments and notes go to Claude
+// with the track; Undo steps back through drawing, clearing, closing and deleting.
 const DRAFT = 'downhill-rush-editor';
 const GROUND = ['far', 'near', 'rampF', 'rampN'];
 // pieces offered as toggles: tag -> value when switched on (numbers get a box to tune them)
@@ -21,7 +25,7 @@ const LABEL = { kick: 'kicker', yump: 'crest jump', whoops: 'whoops', jump: 'aut
 const TAGS = ELEMENTS.flatMap(e => Object.entries(e.tags || {})).filter(([t]) => t in DEFAULTS);
 const OVAL = { name: 'My track', blurb: 'A track made in the editor', type: 'gorge', laps: 3, seed: 1234, surface: 'tarmac', hillAmp: 3, jumps: 0, armco: true,
   segs: [['s', 120, 0, {}], ['a', 40, 180, 0, {}], ['s', 120, 0, {}], ['a', 40, 180, 0, {}]] };
-let E = null, view = { s: 1, x: 0, y: 0 }, drag = null, EDIT_IDX = -1, db = null;
+let E = null, view = { s: 1, x: 0, y: 0 }, drag = null, EDIT_IDX = -1, db = null, stroke = null, pinAt = null, undo = [];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const clone = o => JSON.parse(JSON.stringify(o));
 const gorges = () => STAGES.map((s, i) => [s, i]).filter(([s, i]) => s.type === 'gorge' && i !== EDIT_IDX && !s.name.startsWith('Sandbox'));
@@ -34,15 +38,32 @@ export function initEditor() {
   $('ed-laps').addEventListener('change', e => { E.stage.laps = Math.max(1, Math.min(9, Math.round(+e.target.value || 3))); save(); });
   $('ed-surface').addEventListener('change', e => { E.stage.surface = e.target.value; save(); });
   $('ed-keep').addEventListener('change', e => { E.keep = e.target.checked; save(); status(); });
-  $('ed-close').addEventListener('click', () => { const r = closeLoop(E.stage.segs, E.stage.startHeading || 0); if (r.ok) { E.stage.segs = r.segs; changed(); } status(r.msg, !r.ok); });
+  $('ed-close').addEventListener('click', () => { if (!E.stage.segs.length) return; const r = closeLoop(E.stage.segs, E.stage.startHeading || 0); if (r.ok) { remember(); E.stage.segs = r.segs; changed(); } status(r.msg, !r.ok); });
   $('ed-drive').addEventListener('click', drive);
   $('ed-send').addEventListener('click', send);
   $('ed-sec').addEventListener('click', onSecClick); $('ed-sec').addEventListener('change', onSecInput);
   $('ed-list').addEventListener('click', e => { const li = e.target.closest('[data-n]'); if (li) select(+li.dataset.n); });
   const cv = $('ed-map');
-  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false }; });
-  cv.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.hypot(dx, dy) > 5) drag.moved = true; view.x = drag.vx + dx; view.y = drag.vy + dy; draw(); });
-  cv.addEventListener('pointerup', e => { if (drag && !drag.moved) pickAt(e.clientX, e.clientY); drag = null; });
+  cv.addEventListener('pointerdown', e => {
+    cv.setPointerCapture(e.pointerId); hidePin();
+    if (E.tool === 'draw') { stroke = [toWorld(e.clientX, e.clientY)]; return; }
+    drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false };
+  });
+  cv.addEventListener('pointermove', e => {
+    if (stroke) { const p = toWorld(e.clientX, e.clientY), q = stroke[stroke.length - 1]; if (Math.hypot(p.a - q.a, p.b - q.b) * view.s > 2) { stroke.push(p); draw(); } return; }
+    if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.hypot(dx, dy) > 5) drag.moved = true; view.x = drag.vx + dx; view.y = drag.vy + dy; draw();
+  });
+  cv.addEventListener('pointerup', e => {
+    if (stroke) { const s = stroke; stroke = null; applyStroke(s); return; }
+    if (drag && !drag.moved) { if (E.tool === 'note') notePin(e.clientX, e.clientY); else pickAt(e.clientX, e.clientY); }
+    drag = null;
+  });
+  document.querySelectorAll('.ed-tools [data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+  $('ed-undo').addEventListener('click', () => { const u = undo.pop(); if (!u) return; Object.assign(E.stage, { segs: u.segs, startHeading: u.heading }); E.pins = u.pins; E.sel = Math.min(E.sel, Math.max(0, E.stage.segs.length - 1)); changed(); });
+  $('ed-pinsave').addEventListener('click', () => { const t = $('ed-pintext').value.trim(); if (pinAt) { if (t) { pinAt.text = t; if (!E.pins.includes(pinAt)) E.pins.push(pinAt); } else E.pins = E.pins.filter(p => p !== pinAt); } hidePin(); changed(); });
+  $('ed-pindel').addEventListener('click', () => { remember(); E.pins = E.pins.filter(p => p !== pinAt); hidePin(); changed(); });
+  $('ed-pincancel').addEventListener('click', () => { hidePin(); draw(); });
+  $('ed-pins').addEventListener('click', e => { const d = e.target.closest('[data-pin]'); if (!d) return; const p = E.pins[+d.dataset.pin], r = cv.getBoundingClientRect(); view.x = r.width / 2 - p.a * view.s; view.y = r.height / 2 + p.b * view.s; draw(); openPin(p); });
   cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
   $('ed-zoomin').addEventListener('click', () => { const r = cv.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.3); });
   $('ed-zoomout').addEventListener('click', () => { const r = cv.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1 / 1.3); });
@@ -53,30 +74,83 @@ export function initEditor() {
 }
 export function openEditor(back = false) {
   if (!E) { let d = null; try { d = JSON.parse(localStorage.getItem(DRAFT) || 'null'); } catch (e) { /* no draft */ } if (d && d.stage && d.stage.segs) E = d; else load(gorges()[0] ? 'stage:' + gorges()[0][0].name : 'oval', true); }
+  E.pins = E.pins || []; E.tool = E.tool || 'move';
   G.editDrive = false; $('menu').hidden = true; $('editor').hidden = false;
-  fillBase(); fillFields(); requestAnimationFrame(() => { if (!back || !view.fitted) fit(); draw(); list(); secPanel(); status(); });
+  fillBase(); fillFields(); setTool(E.tool, true); requestAnimationFrame(() => { if (!back || !view.fitted) fit(); draw(); list(); secPanel(); pinList(); status(); });
+}
+function setTool(t, quiet) {
+  E.tool = t; document.querySelectorAll('.ed-tools [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  $('ed-map').className = t === 'move' ? '' : t; hidePin(); if (!quiet) { save(); draw(); status(); }
+}
+// ---------- drawing and commenting ----------
+function toWorld(cx, cy) { const r = $('ed-map').getBoundingClientRect(); return { a: (cx - r.left - view.x) / view.s, b: -(cy - r.top - view.y) / view.s }; }
+function remember() { undo.push(clone({ segs: E.stage.segs, heading: E.stage.startHeading || 0, pins: E.pins })); if (undo.length > 30) undo.shift(); $('ed-undo').disabled = false; }
+function applyStroke(pts) {
+  if (pts.length < 4) { draw(); return; }
+  const k = sk(), segs = E.stage.segs, [ex, ey] = toScr(k.end.a, k.end.b), [px, py] = toScr(pts[0].a, pts[0].b);
+  const extend = segs.length && k.gap > 0.6 && Math.hypot(ex - px, ey - py) < 30;   // started at the open end: carry the track on
+  const r = fromStroke(pts, { tol: Math.max(2, 10 / view.s), closeDist: Math.max(30, 70 / view.s), from: extend ? { a: k.end.a, b: k.end.b, phi: k.end.phi, h: k.end.h } : null });
+  if (!r || !r.segs.length) { status('That line was too short to make a track from: drag out a longer one.', true); draw(); return; }
+  remember();
+  if (extend) { E.stage.segs = segs.concat(r.segs); E.sel = segs.length; }
+  else {
+    // a new track where it was drawn: the plan's origin moves to its start, so shift the view and the comments with it
+    E.stage.segs = r.segs; E.stage.startHeading = r.heading; E.sel = 0;
+    for (const p of E.pins) { p.a -= r.start.a; p.b -= r.start.b; }
+    view.x += r.start.a * view.s; view.y -= r.start.b * view.s;
+    delete E.stage.branches; delete E.stage.rails; delete E.stage.river;   // they belonged to the old sections
+    E.base = 'drawn';
+  }
+  let msg = `${extend ? 'Carried on' : 'Drew'} ${r.segs.length} sections.`;
+  if (r.closed) { const c = closeLoop(E.stage.segs, E.stage.startHeading || 0); if (c.ok) { E.stage.segs = c.segs; msg += ' It closes: a lap.'; } else msg += ` Nearly a lap (${c.msg}).`; }
+  else msg += ' Finish near the start (or press Close the loop) to make it a lap; drag from its end to carry on.';
+  changed(); status(msg);
+}
+function notePin(cx, cy) {
+  const r = $('ed-map').getBoundingClientRect(), hit = E.pins.find(p => { const [x, y] = toScr(p.a, p.b); return Math.hypot(x - (cx - r.left), y - (cy - r.top)) < 16; });
+  openPin(hit || { ...toWorld(cx, cy), text: '' });
+}
+function openPin(p) {
+  pinAt = p; const f = $('ed-pinform'), [x, y] = toScr(p.a, p.b), r = $('ed-map').getBoundingClientRect();
+  f.style.left = Math.max(6, Math.min(r.width - 256, x + 14)) + 'px'; f.style.top = Math.max(50, Math.min(r.height - 130, y - 20)) + 'px';
+  f.hidden = false; $('ed-pintext').value = p.text || ''; $('ed-pindel').hidden = !E.pins.includes(p); $('ed-pintext').focus(); draw();
+}
+function hidePin() { pinAt = null; const f = $('ed-pinform'); if (f) f.hidden = true; }
+// where a comment sits on the lap: the nearest section and how far round the lap that is
+function pinPlace(p) {
+  const k = sk(); let best = null, d0 = Infinity, run = 0;
+  k.pts.forEach((q, i) => { if (i) run += Math.hypot(q.a - k.pts[i - 1].a, q.b - k.pts[i - 1].b); const d = Math.hypot(q.a - p.a, q.b - p.b); if (d < d0) { d0 = d; best = { sec: q.sec + 1, metres: Math.round(run), off: Math.round(d) }; } });
+  return best || { sec: 0, metres: 0, off: 0 };
+}
+function pinList() {
+  $('ed-pins').innerHTML = E.pins.length ? '<h4>Comments</h4>' + E.pins.map((p, n) => { const w = pinPlace(p); return `<div data-pin="${n}"><b>${n + 1}</b>${esc(p.text)} <small>(section ${w.sec}, ${w.metres} m)</small></div>`; }).join('') : '';
 }
 function closeEditor() { $('editor').hidden = true; $('menu').hidden = false; }
 function confirmLose() { return !E || !E.dirty || confirm('Start again from another track? Your changes to this one are kept only if you sent them to Claude.'); }
 function fillBase() {
-  $('ed-base').innerHTML = `<option value="oval">A plain oval</option>` + gorges().map(([s]) => `<option value="stage:${esc(s.name)}">${esc(s.name)}</option>`).join('');
+  $('ed-base').innerHTML = `<option value="draw">Draw my own (blank)</option><option value="oval">A plain oval</option>` + gorges().map(([s]) => `<option value="stage:${esc(s.name)}">${esc(s.name)}</option>`).join('');
   $('ed-base').value = E.baseKey;
 }
 function fillFields() { $('ed-name').value = E.stage.name; $('ed-laps').value = E.stage.laps || 3; $('ed-surface').value = E.stage.surface; $('ed-keep').checked = E.keep; }
 function load(key, quiet) {
   let base = OVAL; if (key.startsWith('stage:')) { const st = STAGES.find(s => s.name === key.slice(6)); if (st) base = st; }
   const stage = clone(base); stage.segs = freeze(stage.segs, stage.startHeading || 0);
+  if (base === OVAL) { const look = STAGES[0]; for (const k of ['light', 'colors', 'trees', 'rocks', 'bushes']) stage[k] = clone(look[k]); }   // the oval / a drawing borrow Summit Meadow's look
   if (base !== OVAL) stage.name = base.name + ' (edit)';
-  E = { baseKey: key, base: base.name, stage, keep: true, sel: 0, dirty: false };
-  if (!quiet) { fillFields(); fit(); changed(false); }
+  if (key === 'draw') { stage.segs = []; stage.name = 'My drawn track'; }
+  E = { baseKey: key, base: key === 'draw' ? 'drawn' : base.name, stage, keep: true, sel: 0, dirty: false, pins: [], tool: key === 'draw' ? 'draw' : 'move' };
+  undo = [];
+  if (!quiet) { fillFields(); setTool(E.tool, true); fit(); changed(false); }
 }
 function save() { try { localStorage.setItem(DRAFT, JSON.stringify(E)); } catch (e) { /* full: fine, it's a draft */ } }
-function changed(dirty = true) { if (dirty) E.dirty = true; save(); draw(); list(); secPanel(); status(); }
+function changed(dirty = true) { if (dirty) E.dirty = true; save(); draw(); list(); secPanel(); pinList(); status(); $('ed-undo').disabled = !undo.length; }
 function select(n) { E.sel = Math.max(0, Math.min(E.stage.segs.length - 1, n)); draw(); list(); secPanel(); const li = $('ed-list').querySelector(`[data-n="${E.sel}"]`); if (li) li.scrollIntoView({ block: 'nearest' }); }
 // ---------- the plan ----------
 function sk() { return sketch(E.stage.segs, E.stage.startHeading || 0, 2); }
 function fit() {
   const cv = $('ed-map'), r = cv.getBoundingClientRect(), k = sk(); if (!r.width) return;
+  // a blank plan: about 700 x 450 m on screen (the size of a real stage), the origin in the middle
+  if (!E.stage.segs.length) { view.s = Math.min(r.width / 700, r.height / 450); view.x = r.width / 2; view.y = r.height / 2; view.fitted = true; return; }
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity; for (const p of k.pts) { x0 = Math.min(x0, p.a); x1 = Math.max(x1, p.a); y0 = Math.min(y0, p.b); y1 = Math.max(y1, p.b); }
   view.s = Math.min((r.width - 40) / Math.max(40, x1 - x0), (r.height - 40) / Math.max(40, y1 - y0)); view.x = r.width / 2 - (x0 + x1) / 2 * view.s; view.y = r.height / 2 + (y0 + y1) / 2 * view.s; view.fitted = true;
 }
@@ -107,19 +181,33 @@ function draw() {
   segs.forEach((sg, n) => {
     const st = k.starts[n], mid = k.pts[Math.min(k.pts.length - 1, Math.round((st.i + (k.starts[n + 1] ? k.starts[n + 1].i : k.pts.length - 1)) / 2))];
     const [sx, sy] = toScr(st.a, st.b); g.fillStyle = 'rgba(28,35,64,.85)'; g.beginPath(); g.arc(sx, sy, 8, 0, Math.PI * 2); g.fill(); g.fillStyle = '#fff'; g.fillText(String(n + 1), sx, sy);
-    const tg = Object.keys(tagsOf(sg)).filter(t => t in DEFAULTS); if (!tg.length || !mid) return;
-    const [mx, my] = toScr(mid.a, mid.b), txt = tg.map(t => LABEL[t] || t).join(', ');
+    const tg = Object.keys(tagsOf(sg)).filter(t => t in DEFAULTS), note = tagsOf(sg).note; if ((!tg.length && !note) || !mid) return;
+    const [mx, my] = toScr(mid.a, mid.b), txt = (note ? '\u{1F4AC} ' : '') + tg.map(t => LABEL[t] || t).join(', ');
     g.fillStyle = 'rgba(255,255,255,.9)'; const w = g.measureText(txt).width + 8; g.fillRect(mx - w / 2, my - 22, w, 14); g.fillStyle = '#1C2340'; g.fillText(txt, mx, my - 15);
   });
-  const [s0x, s0y] = toScr(0, 0); g.fillStyle = '#fff'; g.fillRect(s0x - 4, s0y - 4, 8, 8); g.fillStyle = '#FFC72C'; g.fillText('START', s0x, s0y - 14);
-  if (k.gap > 0.5) { const [ex, ey] = toScr(k.end.a, k.end.b); g.strokeStyle = '#E0402F'; g.setLineDash([6, 5]); g.lineWidth = 2; g.beginPath(); g.moveTo(ex, ey); g.lineTo(s0x, s0y); g.stroke(); g.setLineDash([]); }
-  $('ed-legend').textContent = `height ${lo.toFixed(0)} m (blue) to ${hi.toFixed(0)} m (orange) · drag to move, wheel or +/- to zoom, tap a section to edit it`;
+  const [s0x, s0y] = toScr(0, 0);
+  if (segs.length) { g.fillStyle = '#fff'; g.fillRect(s0x - 4, s0y - 4, 8, 8); g.fillStyle = '#FFC72C'; g.fillText('START', s0x, s0y - 14); }
+  if (segs.length && k.gap > 0.5) {
+    const [ex, ey] = toScr(k.end.a, k.end.b); g.strokeStyle = '#E0402F'; g.setLineDash([6, 5]); g.lineWidth = 2; g.beginPath(); g.moveTo(ex, ey); g.lineTo(s0x, s0y); g.stroke(); g.setLineDash([]);
+    if (E.tool === 'draw') { g.strokeStyle = '#7BD88F'; g.lineWidth = 2; g.beginPath(); g.arc(ex, ey, 12, 0, Math.PI * 2); g.stroke(); g.fillStyle = '#7BD88F'; g.fillText('drag from here to carry on', ex, ey + 22); }
+  }
+  if (!segs.length && !stroke) { g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '600 16px system-ui, sans-serif'; g.fillText('Draw your track: drag it out with the mouse or a finger. End near where you began for a lap.', r.width / 2, r.height / 2); g.font = '600 11px system-ui, sans-serif'; }
+  // the line being drawn
+  if (stroke && stroke.length > 1) { g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 3; g.setLineDash([]); g.beginPath(); stroke.forEach((p, i) => { const [x, y] = toScr(p.a, p.b); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); }
+  // comments pinned on the plan
+  E.pins.forEach((p, n) => {
+    const [x, y] = toScr(p.a, p.b); g.fillStyle = p === pinAt ? '#fff' : '#FFC72C'; g.beginPath(); g.moveTo(x, y); g.lineTo(x - 6, y - 12); g.arc(x, y - 17, 9, Math.PI * 0.8, Math.PI * 2.2); g.closePath(); g.fill();
+    g.fillStyle = '#1C2340'; g.fillText(String(n + 1), x, y - 17);
+    if (view.s > 1.2 && p.text) { const t = p.text.length > 28 ? p.text.slice(0, 27) + '…' : p.text; g.fillStyle = 'rgba(28,35,64,.85)'; const w = g.measureText(t).width + 8; g.fillRect(x + 12, y - 25, w, 15); g.fillStyle = '#fff'; g.textAlign = 'left'; g.fillText(t, x + 16, y - 17); g.textAlign = 'center'; }
+  });
+  $('ed-legend').textContent = (segs.length ? `height ${lo.toFixed(0)} m (blue) to ${hi.toFixed(0)} m (orange) · ` : '') +
+    (E.tool === 'draw' ? 'drag to draw: end near the start for a lap, or start at the green circle to carry on' : E.tool === 'note' ? 'tap anywhere to pin a comment, tap a pin to change it' : 'drag to move, wheel or +/- to zoom, tap a section to edit it');
 }
 // ---------- sections ----------
 function describe(sg) {
   const tg = tagsOf(sg), pieces = Object.keys(tg).filter(t => t in DEFAULTS).map(t => LABEL[t] || t);
   const shape = sg[0] === 's' ? `Straight ${Math.round(sg[1])} m` : `Curve r${Math.round(sg[1])} ${sg[2] > 0 ? 'left' : 'right'} ${Math.abs(Math.round(sg[2]))}°`;
-  return `${shape}, to ${Math.round(sg[0] === 's' ? sg[2] : sg[3])} m${pieces.length ? ' · ' + pieces.join(', ') : ''}`;
+  return `${shape}, to ${Math.round(sg[0] === 's' ? sg[2] : sg[3])} m${pieces.length ? ' · ' + pieces.join(', ') : ''}${tg.note ? ' · \u{1F4AC} ' + tg.note : ''}`;
 }
 function list() { $('ed-list').innerHTML = E.stage.segs.map((sg, n) => `<li data-n="${n}" class="${n === E.sel ? 'on' : ''}"><b>${n + 1}</b> ${esc(describe(sg))}</li>`).join(''); }
 function num(id, label, v, min, max, stepv = 1, hint = '') { return `<label class="ed-f"><span>${label}${hint ? ` <small>${hint}</small>` : ''}</span><input type="number" data-f="${id}" value="${+(+v).toFixed(2)}" min="${min}" max="${max}" step="${stepv}"></label>`; }
@@ -134,6 +222,7 @@ function secPanel() {
       ${num('h', 'Height at the end', isS ? sg[2] : sg[3], -80, 200, 0.5, 'm')}${num('far', 'Ground up-screen', tg.far ?? 0, -120, 120, 1, 'm, + up')}${num('near', 'Ground camera side', tg.near ?? 0, -120, 120, 1, 'm, - drop')}</div>
     <div class="ed-chips">${chips}</div>${vals ? `<div class="ed-grid">${vals}</div>` : ''}
     ${'mud' in tg ? `<label class="ed-f ed-inline"><input type="checkbox" data-f="water" ${tg.mud === 'water' ? 'checked' : ''}> a water splash, not a mud bog</label>` : ''}
+    <label class="ed-f"><span>Note on this section, for Claude <small>(what should happen here)</small></span><textarea data-f="note" rows="2" maxlength="600" placeholder="e.g. a big drop here, with a waterfall on the left">${esc(tg.note || '')}</textarea></label>
     <div class="ed-acts"><button type="button" data-a="addS">+ Straight after</button><button type="button" data-a="addA">+ Curve after</button><button type="button" data-a="up">Move up</button><button type="button" data-a="down">Move down</button><button type="button" data-a="del" class="ed-del">Delete</button></div>`;
 }
 function onSecClick(e) {
@@ -148,7 +237,7 @@ function onSecClick(e) {
   else if (a === 'addA') { segs.splice(n + 1, 0, ['a', 40, 90, h, {}]); E.sel = n + 1; }
   else if (a === 'up' && n > 0) { [segs[n - 1], segs[n]] = [segs[n], segs[n - 1]]; E.sel = n - 1; }
   else if (a === 'down' && n < segs.length - 1) { [segs[n + 1], segs[n]] = [segs[n], segs[n + 1]]; E.sel = n + 1; }
-  else if (a === 'del' && segs.length > 3) { segs.splice(n, 1); E.sel = Math.min(n, segs.length - 1); }
+  else if (a === 'del' && segs.length > 1) { remember(); segs.splice(n, 1); E.sel = Math.min(n, segs.length - 1); }
   else return;
   changed();
 }
@@ -156,6 +245,7 @@ function onSecInput(e) {
   const f = e.target.dataset.f; if (!f) return;
   const sg = E.stage.segs[E.sel], tg = tagsOf(sg), v = +e.target.value;
   if (f === 'water') { tg.mud = e.target.checked ? 'water' : true; changed(); return; }
+  if (f === 'note') { const t = e.target.value.trim(); if (t) tg.note = t; else delete tg.note; changed(); return; }
   if (!isFinite(v)) return;
   if (f === 'len') sg[1] = Math.max(3, v); else if (f === 'R') sg[1] = Math.max(8, v); else if (f === 'deg') sg[2] = Math.max(-300, Math.min(300, v));
   else if (f === 'h') sg[sg[0] === 's' ? 2 : 3] = v;
@@ -166,17 +256,20 @@ function onSecInput(e) {
 // ---------- checking, driving, sending ----------
 function built() {
   const st = clone(E.stage); if (!E.keep) { delete st.branches; delete st.rails; delete st.river; }
-  for (const sg of st.segs) { const tg = tagsOf(sg); for (const t of GROUND) if (tg[t] === undefined) delete tg[t]; }
+  for (const k of ['light', 'colors', 'trees']) if (!st[k]) st[k] = clone(STAGES[0][k]);   // a drawing without a look of its own: Summit Meadow's
+  for (const sg of st.segs) { const tg = tagsOf(sg); for (const t of GROUND) if (tg[t] === undefined) delete tg[t]; delete tg.note; }   // notes are for Claude, not the track builder
   return st;
 }
 function status(msg, bad) {
   const k = sk(), len = Math.round(k.lens.reduce((a, b) => a + b, 0)), open = k.gap > 0.6 || Math.abs(k.turn - Math.round(k.turn / 360) * 360) > 0.5;
   const el = $('ed-status');
+  if (!E.stage.segs.length && !msg) { el.textContent = 'A blank plan: pick Draw and drag out your track.'; el.className = 'ed-status'; return; }
   el.textContent = msg || (open ? `Lap ${len} m · open: the end is ${k.gap.toFixed(0)} m from the start${Math.abs(k.turn - Math.round(k.turn / 360) * 360) > 0.5 ? `, facing ${Math.round(k.turn - Math.round(k.turn / 360) * 360)}° off` : ''}. Close the loop to drive it.` : `Lap ${len} m · closes`);
   el.className = 'ed-status' + (bad || (!msg && open) ? ' bad' : '');
 }
 function drive() {
-  const k = sk(); if (k.gap > 0.6) { status('The lap has to close before you can drive it: press Close the loop.', true); return; }
+  const k = sk(); if (!E.stage.segs.length) { status('Draw a track first.', true); return; }
+  if (k.gap > 0.6) { status('The lap has to close before you can drive it: press Close the loop.', true); return; }
   const st = built(); st.blurb = st.blurb || 'Made in the editor';
   try { buildTrack(st); } catch (err) {
     if (st.branches && /branch/.test(err.message)) { status(`${err.message}. Untick "keep shortcuts & railway" to drive it without them.`, true); return; }
@@ -187,12 +280,17 @@ function drive() {
   $('editor').hidden = true; startRace(EDIT_IDX);
 }
 async function send() {
-  const k = sk(), msg = $('ed-msg').value.trim(), doc = { name: E.stage.name, base: E.base, closes: k.gap < 0.6, stage: built(), message: msg, at: new Date().toISOString(), status: 'sent' };
+  const k = sk(), msg = $('ed-msg').value.trim();
+  if (!E.stage.segs.length) { status('Draw a track first.', true); return; }
+  // comments: where each pin sits (nearest section, metres round the lap, metres off the road); notes: per section
+  const comments = E.pins.map((p, n) => ({ n: n + 1, text: p.text, a: Math.round(p.a), b: Math.round(p.b), ...pinPlace(p) }));
+  const notes = E.stage.segs.map((sg, n) => tagsOf(sg).note ? { sec: n + 1, text: tagsOf(sg).note } : null).filter(Boolean);
+  const doc = { name: E.stage.name, base: E.base, closes: k.gap < 0.6, stage: built(), comments, notes, message: msg, at: new Date().toISOString(), status: 'sent' };
   if (!db) {
     const txt = JSON.stringify(doc);
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => status('Not connected to the shared database here: the track is copied, paste it to Claude.'), () => status('Not connected here: use the published game to send it.', true));
     return;
   }
-  try { await db.collection('tracks').doc('t' + Date.now().toString(36)).set(doc); E.dirty = false; save(); status('Sent to Claude' + (msg ? ' with your message' : '') + '. Ask Claude to look at your track.'); $('ed-msg').value = ''; }
+  try { await db.collection('tracks').doc('t' + Date.now().toString(36)).set(doc); E.dirty = false; save(); status('Sent to Claude' + (msg || comments.length || notes.length ? ` with ${[msg && 'your message', comments.length && comments.length + ' comment' + (comments.length > 1 ? 's' : ''), notes.length && notes.length + ' section note' + (notes.length > 1 ? 's' : '')].filter(Boolean).join(', ')}` : '') + '. Ask Claude to look at your track.'); $('ed-msg').value = ''; }
   catch (err) { status('Could not send it (' + (err.code || 'error') + '); try again in a moment.', true); }
 }

@@ -166,6 +166,12 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .ed-status{padding:5px 12px;font-size:14px;color:#7BD88F;background:rgba(0,0,0,.25)} .ed-status.bad{color:#FF8A7A}
 .ed-main{flex:1;display:grid;grid-template-columns:1fr 380px;min-height:0}
 .ed-mapwrap{position:relative;min-height:0} #ed-map{width:100%;height:100%;display:block;touch-action:none;cursor:grab} #ed-legend{position:absolute;left:10px;bottom:8px;color:var(--mist);font-size:12px}
+.ed-tools{position:absolute;left:10px;top:10px;display:flex;gap:3px;background:var(--panel);border-radius:10px;padding:3px} .ed-tools button{border:0;background:transparent;color:#fff;border-radius:7px;padding:6px 10px;font-weight:700;font-size:14px} .ed-tools button.on{background:var(--yellow);color:var(--ink)} .ed-tools button:disabled{opacity:.35}
+#ed-map.draw{cursor:crosshair} #ed-map.note{cursor:copy}
+#ed-pinform{position:absolute;z-index:2;background:var(--panel);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:8px;width:250px;box-shadow:0 8px 24px rgba(0,0,0,.4)} #ed-pinform textarea{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:14px;padding:6px}
+.ed-pinbtns{display:flex;gap:6px;margin-top:6px} .ed-pinbtns button{padding:5px 10px;font-size:13px;min-width:0}
+.ed-pins{padding:0 10px;font-size:13px} .ed-pins:empty{display:none} .ed-pins h4{margin:8px 0 4px;font-size:13px;color:var(--mist)} .ed-pins div{padding:4px 6px;border-radius:7px;cursor:pointer} .ed-pins div:hover{background:rgba(255,255,255,.06)} .ed-pins b{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:var(--yellow);color:var(--ink);text-align:center;font-size:11px;line-height:18px;margin-right:6px}
+.ed-f textarea{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:4px 6px;font:inherit;font-size:14px}
 .ed-zoom{position:absolute;right:10px;top:10px;display:flex;gap:6px} .ed-zoom button{background:var(--panel);border:0;border-radius:8px;min-width:34px;height:34px;font-weight:700;font-size:17px;color:#fff}
 .ed-side{display:flex;flex-direction:column;min-height:0;background:rgba(28,35,64,.7);border-left:1px solid rgba(255,255,255,.1)}
 #ed-sec{padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid rgba(255,255,255,.1)}
@@ -329,9 +335,13 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   </div>
   <div id="ed-status" class="ed-status"></div>
   <div class="ed-main">
-    <div class="ed-mapwrap"><canvas id="ed-map"></canvas><div class="ed-zoom"><button id="ed-zoomin" type="button" aria-label="Zoom in">+</button><button id="ed-zoomout" type="button" aria-label="Zoom out">&minus;</button><button id="ed-fit" type="button">Fit</button></div><small id="ed-legend"></small></div>
+    <div class="ed-mapwrap"><canvas id="ed-map"></canvas>
+      <div class="ed-tools" role="toolbar" aria-label="Plan tools"><button type="button" data-tool="move" class="on">Move</button><button type="button" data-tool="draw">&#9998; Draw</button><button type="button" data-tool="note">&#128172; Comment</button><button type="button" id="ed-undo" disabled>Undo</button></div>
+      <div id="ed-pinform" hidden><textarea id="ed-pintext" rows="3" maxlength="600" placeholder="Your comment on this spot, for Claude"></textarea><div class="ed-pinbtns"><button id="ed-pinsave" class="cta" type="button">Save</button><button id="ed-pindel" class="btn" type="button">Delete</button><button id="ed-pincancel" class="btn" type="button">Cancel</button></div></div>
+      <div class="ed-zoom"><button id="ed-zoomin" type="button" aria-label="Zoom in">+</button><button id="ed-zoomout" type="button" aria-label="Zoom out">&minus;</button><button id="ed-fit" type="button">Fit</button></div><small id="ed-legend"></small></div>
     <div class="ed-side">
       <div id="ed-sec"></div>
+      <div id="ed-pins" class="ed-pins"></div>
       <ol id="ed-list" class="ed-list"></ol>
       <div class="ed-send"><textarea id="ed-msg" rows="2" maxlength="2000" placeholder="A message for Claude about this track (optional)"></textarea><button id="ed-send" class="cta" type="button">Send to Claude</button></div>
     </div>
