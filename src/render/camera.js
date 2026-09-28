@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { G } from '../game.js';
 import { clamp, wrapAngle } from '../core/math.js';
 import { sdLeader } from '../core/modes/showdown.js';
-import { CAM_DIR as CORE_CAM_DIR } from '../core/constants.js';
+import { CAM_DIR as CORE_CAM_DIR, WALL } from '../core/constants.js';
 import { camera, pcamera, sun } from './renderer.js';
 import { CUT } from './materials.js';
 import { _v1, _v3 } from './vehicles.js';
@@ -64,19 +64,32 @@ export const shakeOff = new THREE.Vector3();
 // ---------- camera ----------
 // the shadow camera's own right/up axes (as lookAt builds them), used to snap it to its texel grid
 export const SUN_Z = new THREE.Vector3(-50, 95, -20).normalize(), SUN_U = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), SUN_Z).normalize(), SUN_V = new THREE.Vector3().crossVectors(SUN_Z, SUN_U);
-// The see-through window (materials.js withCutaway) opens round the player's car in long covered stretches (tunnels,
-// galleries) and wherever the ground between the camera and the car rises above it (a bank or hillside in front of a
-// low camera); it eases open and shut.
+// The see-through window (materials.js withCutaway: whatever is in the way turns translucent) opens round the player's
+// car in long covered stretches (tunnels, galleries), under a bridge, and wherever the ground between the camera and
+// the car rises above it (a bank or hillside in front of a low camera); it eases open and shut.
+const CUT_R = 20;
 function updateCut(dt, snap) {
   if (!race || G.state === 'menu') { CUT.r.value = 0; return; }
   const P = race.player; CUT.car.value.set(P.x, P.y, P.z);
-  const covered = G.world.cover[G.world.tr.bi(P.pr.i)], hill = !covered && hidden(P), want = covered || hill ? 8.5 : 0;
+  const covered = G.world.cover[G.world.tr.bi(P.pr.i)], hill = !covered && hidden(P), want = covered || hill || overBridge(P) ? CUT_R : 0;
   CUT.r.value += (want - CUT.r.value) * (snap ? 1 : Math.min(1, dt * 6));
   if (hill) CUT.lift.value = 0.5; else if (CUT.r.value < 0.5) CUT.lift.value = 1.4;   // a hillside in the way sits low: cut closer to the car's height
 }
 function hidden(P) {
   const T = G.world.W.terr, d = CUT.dir.value, y0 = P.y + 1.2;   // step back along the view line from the car's roof
   for (let t = 2; t < 70; t += 1.5) if (T.at(P.x + d.x * t, P.z + d.z * t) > y0 + d.y * t + 0.3) return true;
+  return false;
+}
+// a bridge deck (another road's) crossing the view line above the car
+let brTr = null, brI = [];
+function overBridge(P) {
+  const tr = G.world.tr; if (brTr !== tr) { brTr = tr; brI = []; for (let i = 0; i < tr.N; i++) if (tr.bridge[i]) brI.push(i); }
+  const d = CUT.dir.value, h = Math.hypot(d.x, d.z) || 1, ux = d.x / h, uz = d.z / h, rise = d.y / h;
+  for (const i of brI) {
+    const dx = tr.xs[i] - P.x, dz = tr.zs[i] - P.z, s = dx * ux + dz * uz; if (s < -WALL || s > 60) continue;   // along the view line, on the ground
+    if (Math.abs(dx * uz - dz * ux) > WALL + 2) continue;
+    if (tr.H[i] - 1 > P.y + 1.2 && tr.H[i] + 1 > P.y + rise * Math.max(0, s - WALL)) return true;          // over the car, and its near edge and parapet reach the line
+  }
   return false;
 }
 export function updateCamera(dt, snap) {
