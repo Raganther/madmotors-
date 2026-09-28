@@ -3,7 +3,7 @@ export const PHYS = { ENGINE: 24, DRAG: 0.019, BRAKE: 46, REVERSE: 14, BOOST: 17
 export const SURF = {
   tarmac: { engine: 1, latMax: 31, grip: 10, drag: 0 },
   gravel: { engine: 0.95, latMax: 25, grip: 7, drag: 0.02 },
-  grass: { engine: 0.6, latMax: 15, grip: 5, drag: 0.35 },
+  grass: { engine: 0.8, latMax: 17, grip: 6, drag: 0.15 },      // off the road: slower (~100 km/h flat out) but not a trap
   mud: { engine: 0.8, latMax: 17, grip: 4.5, drag: 0.12 },       // the mud element's bogs: fresh...
   mudPacked: { engine: 0.95, latMax: 23, grip: 6.5, drag: 0.03 }, // ...and rutted in (features/wear.js blends the two)
   gravelSwept: { engine: 0.97, latMax: 27, grip: 7.6, drag: 0.012 }, // gravel with the loose stuff swept off the line

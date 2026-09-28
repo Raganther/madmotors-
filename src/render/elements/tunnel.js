@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { WALL } from '../../core/constants.js';
+import { BORE_H } from '../../core/track/terrain.js';
 import { addInstanced } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 
@@ -7,7 +8,7 @@ import { withCutaway } from '../materials.js';
 // a rock face at every mouth
 export function addTunnel(group, tr, terr, stage) {
   const N = tr.loopN || tr.N; if (!tr.tunnel.some(v => v)) return;
-  const RT = WALL + 0.7, HT = 7.2, SEG = 14, pos = [], posFar = [], lamps = [], rock = [];
+  const RT = WALL + 0.7, HT = BORE_H, SEG = 14, pos = [], posFar = [], lamps = [], rock = [];
   const ring = i => { const pts = []; for (let k = 0; k <= SEG; k++) { const a = Math.PI * k / SEG, lat = Math.cos(a) * RT, y = tr.H[i] - 0.3 + Math.sin(a) * HT; pts.push([tr.xs[i] + tr.rx[i] * lat, y, tr.zs[i] + tr.rz[i] * lat]); } return pts; };
   for (let i = 0; i < N; i++) {
     const j = (i + 1) % N; if (!tr.tunnel[i] || !tr.tunnel[j]) continue;

@@ -80,6 +80,18 @@ export function updateCarDamageVis(c, v) {
   if (d.b > 0.35 && !P.tails) { P.tails = 1; v.tails.forEach(m => m.visible = false); }
   if ((d.f > 0.4 || carWear(c) > 0.35) && !P.crack) { P.crack = 1; if (!v.crackM) v.crackM = new THREE.MeshLambertMaterial({ map: getCrackTex() }); v.cabin.material = v.crackM; }
 }
+// the car mending itself (core damage.js healCar): the dents ease back out in step with the damage, a few times a second
+function mendDents(c, v) {
+  const w = carWear(c), last = v.wear0 ?? w; v.wear0 = w;
+  if (w >= last || last <= 0) return;
+  v.mend = (v.mend || 0) + (last - w) / last; if (v.mend < 0.04) return;
+  const k = 1 - v.mend; v.mend = 0;
+  for (const m of v.dentable) for (const [g, o] of panelGeos(m)) {
+    const a = g.attributes.position.array; let moved = false;
+    for (let i = 0; i < a.length; i++) { const d = a[i] - o[i]; if (d) { a[i] = o[i] + d * k; moved = true; } }
+    if (moved) { g.attributes.position.needsUpdate = true; renormal(g); }
+  }
+}
 export function repairCarVis(v) {
   for (const m of v.dentable) for (const [g, o] of panelGeos(m)) { g.attributes.position.array.set(o); g.attributes.position.needsUpdate = true; if (g.userData.n0) { g.attributes.normal.array.set(g.userData.n0); g.attributes.normal.needsUpdate = true; } else renormal(g); }
   for (const m of [v.bumper, v.wing, ...v.struts]) { const h = m.userData.home; m.position.copy(h.p); m.rotation.copy(h.r); m.visible = true; }
@@ -248,7 +260,7 @@ export function drawCar(c, v, dt, now) {
   if (v.braking !== braking) { v.braking = braking; v.tailM.color.setHex(braking ? 0xFF4A36 : 0x8E2016); v.glow.forEach(g => g.visible = braking); }
   v.blob.visible = c.onGround;
   v.root.visible = c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
-  if (G.state === 'racing') { effectsForCar(c, v, dt); updateDirt(c, v, dt); }
+  if (G.state === 'racing') { effectsForCar(c, v, dt); updateDirt(c, v, dt); mendDents(c, v); }
   if (v.anim) v.anim(v, c, now);
   if (c.wpn) { swingDoors(c, v, dt); updateMount(c, v, dt, now); }
 }

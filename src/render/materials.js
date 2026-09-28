@@ -3,7 +3,7 @@ import { G } from '../game.js';
 import { TAU, clamp, lerp, mulberry32, smoothstep } from '../core/math.js';
 import { canvasTex } from './geometry.js';
 
-export const CUT = { car: { value: new THREE.Vector3() }, dir: { value: new THREE.Vector3(1, 1.3, 1).normalize() }, r: { value: 0 }, lift: { value: 1.4 } };   // lift: only cut what's this far above the car
+export const CUT = { car: { value: new THREE.Vector3() }, dir: { value: new THREE.Vector3(1, 1.3, 1).normalize() }, r: { value: 0 }, lift: { value: 1.4 }, ahead: { value: new THREE.Vector3() }, r2: { value: 0 } };   // lift: only cut what's this far above the car; ahead/r2: a second window on the road ahead
 // world effects shared by the scenery shaders: time for wind and the drifting cloud-shadow texture
 export const FX = { time: { value: 0 }, cloud: { value: null }, cloudAmt: { value: 0.3 }, wind: { value: new THREE.Vector2(3.2, 1.6) },
   hazeCol: { value: new THREE.Color(0x9DB8D2) }, hazeTop: { value: 0 }, hazeRange: { value: 40 }, hazeAmt: { value: 0 },
@@ -28,7 +28,7 @@ export function withCutaway(mat, solidInside, opts = {}) {
   const cut = opts.cut !== false, cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water, grain = opts.grain || 0, strata = opts.strata || 0;
   if (solidInside) mat.side = THREE.DoubleSide;
   mat.onBeforeCompile = sh => {
-    sh.uniforms.uCutCar = CUT.car; sh.uniforms.uCutDir = CUT.dir; sh.uniforms.uCutR = CUT.r; sh.uniforms.uCutLift = CUT.lift;
+    sh.uniforms.uCutCar = CUT.car; sh.uniforms.uCutDir = CUT.dir; sh.uniforms.uCutR = CUT.r; sh.uniforms.uCutLift = CUT.lift; sh.uniforms.uCutAhead = CUT.ahead; sh.uniforms.uCutR2 = CUT.r2;
     sh.uniforms.uTime = FX.time; sh.uniforms.uCloud = FX.cloud; sh.uniforms.uCloudAmt = FX.cloudAmt; sh.uniforms.uWind = FX.wind;
     sh.uniforms.uGrain = FX.grain; sh.uniforms.uHazeCol = FX.hazeCol; sh.uniforms.uHazeTop = FX.hazeTop; sh.uniforms.uHazeRange = FX.hazeRange; sh.uniforms.uHazeAmt = FX.hazeAmt;
     let vs = 'varying vec3 vCutW;\nuniform float uTime;\n' + sh.vertexShader;
@@ -48,14 +48,18 @@ export function withCutaway(mat, solidInside, opts = {}) {
         cutP = instanceMatrix * cutP;
       #endif
       vCutW = (modelMatrix * cutP).xyz;`);
-    let fs = 'uniform vec3 uCutCar;\nuniform vec3 uCutDir;\nuniform float uCutR;\nuniform float uCutLift;\nuniform float uTime;\nuniform sampler2D uCloud;\nuniform float uCloudAmt;\nuniform vec2 uWind;\nuniform vec3 uHazeCol;\nuniform float uHazeTop;\nuniform float uHazeRange;\nuniform float uHazeAmt;\nuniform float uGrain;\nvarying vec3 vCutW;\n' + sh.fragmentShader;
+    let fs = 'uniform vec3 uCutCar;\nuniform vec3 uCutDir;\nuniform float uCutR;\nuniform vec3 uCutAhead;\nuniform float uCutR2;\nuniform float uCutLift;\nuniform float uTime;\nuniform sampler2D uCloud;\nuniform float uCloudAmt;\nuniform vec2 uWind;\nuniform vec3 uHazeCol;\nuniform float uHazeTop;\nuniform float uHazeRange;\nuniform float uHazeAmt;\nuniform float uGrain;\nvarying vec3 vCutW;\n' + sh.fragmentShader;
     if (cut) fs = fs.replace('void main() {', `void main() {
-      if (uCutR > 0.0) {
+      if (uCutR > 0.0 || uCutR2 > 0.0) {
+        // translucent, not a hole: an ordered (4x4 Bayer) dither drops most pixels near the view line and fewer
+        // towards the edge, so what's in the way thins to a ghost and the car and its surroundings show through. Two
+        // windows: round the car, and round a point on the road ahead when a hillside hides it
+        float f = 0.0;
         vec3 cv = vCutW - uCutCar; float ct = dot(cv, uCutDir);
-        if (ct > 1.5 && vCutW.y > uCutCar.y + uCutLift) {
-          // translucent, not a hole: an ordered (4x4 Bayer) dither drops most pixels near the view line and fewer
-          // towards the edge, so what's in the way thins to a ghost and the car and its surroundings show through
-          float cp = length(cv - uCutDir * ct), f = 1.0 - smoothstep(uCutR * 0.3, uCutR, cp);
+        if (uCutR > 0.0 && ct > 1.5 && vCutW.y > uCutCar.y + uCutLift) f = 1.0 - smoothstep(uCutR * 0.3, uCutR, length(cv - uCutDir * ct));
+        vec3 av = vCutW - uCutAhead; float at = dot(av, uCutDir);
+        if (uCutR2 > 0.0 && at > 1.5 && vCutW.y > uCutAhead.y + 0.5) f = max(f, 1.0 - smoothstep(uCutR2 * 0.3, uCutR2, length(av - uCutDir * at)));
+        if (f > 0.0) {
           vec2 bp = floor(gl_FragCoord.xy), bq = floor(bp * 0.5);
           float by = fract(dot(bq, vec2(0.5, bq.y * 0.75))) * 0.25 + fract(dot(bp, vec2(0.5, bp.y * 0.75)));
           if (by < f * 0.78) discard;

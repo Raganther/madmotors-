@@ -37,8 +37,9 @@ export function initWeaponVis() {
     g.visible = false; scene.add(g); crates.push({ g, b, r });
   }
   // tracer rounds: stretched glowing bars, all in one instanced mesh
-  tracerMat = new THREE.MeshBasicMaterial({ color: 0xFF9A1A, depthTest: false });   // hot orange, not white like the road paint; drawn over kerbs and walls
-  tracers = new THREE.InstancedMesh(new THREE.BoxGeometry(0.34, 0.34, 6), tracerMat, MAXB); tracers.count = 0; tracers.frustumCulled = false; tracers.renderOrder = 8; scene.add(tracers);
+  // thin hot streaks (a round's travel in a frame or so), glowing yellow-orange so they aren't road paint; over kerbs and walls
+  tracerMat = new THREE.MeshBasicMaterial({ color: 0xFFD27A, depthTest: false, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+  tracers = new THREE.InstancedMesh(new THREE.BoxGeometry(0.11, 0.11, 3.2), tracerMat, MAXB); tracers.count = 0; tracers.frustumCulled = false; tracers.renderOrder = 8; scene.add(tracers);
   // oil slicks: a dark glossy splat with a rainbow sheen
   const oilTex = canvasTex(128, 128, (g, w, h) => {
     const blob = (rr0, jag) => { g.beginPath(); for (let a = 0; a <= 24; a++) { const t = a / 24 * Math.PI * 2, rr = rr0 * (0.8 + jag * Math.sin(a * 2.7) + 0.06 * Math.cos(a * 5.3)); g.lineTo(w / 2 + Math.cos(t) * rr, h / 2 + Math.sin(t) * rr); } g.fill(); };
@@ -111,14 +112,14 @@ export function updateWeaponVis(dt, now) {
   let nb = 0;
   for (const b of S.bullets) {
     if (nb >= MAXB) break;
-    const p = roadPos(tr, b.s, b.lat, 1.4), n = roadPos(tr, b.s + 1, b.lat + b.dl / b.v, 1.4);
-    _q.setFromAxisAngle(_y, Math.atan2(n.x - p.x, n.z - p.z)); _m.compose(_p.set(p.x, p.y, p.z), _q, _s.set(1, 1, 1)); tracers.setMatrixAt(nb++, _m);
+    const sp = Math.hypot(b.vx, b.vz) || 1, back = Math.min(1.6, b.t * sp / 2);            // tail behind the round, never back past the gun
+    _q.setFromAxisAngle(_y, Math.atan2(b.vx, b.vz)); _m.compose(_p.set(b.x - b.vx / sp * back, b.y, b.z - b.vz / sp * back), _q, _s.set(1, 1, back / 1.6)); tracers.setMatrixAt(nb++, _m);
   }
   streaks = streaks.filter(k => (k.t -= dt) > 0);                                   // rounds that hit within a frame or two: gun to target
   for (const k of streaks) {
     if (nb >= MAXB) break;
     const dx = k.b.x - k.a.x, dy = k.b.y - k.a.y, dz = k.b.z - k.a.z, L = Math.hypot(dx, dy, dz);
-    _q.setFromAxisAngle(_y, Math.atan2(dx, dz)); _m.compose(_p.set((k.a.x + k.b.x) / 2, (k.a.y + k.b.y) / 2, (k.a.z + k.b.z) / 2), _q, _s.set(1, 1, L / 6)); tracers.setMatrixAt(nb++, _m);
+    _q.setFromAxisAngle(_y, Math.atan2(dx, dz)); _m.compose(_p.set((k.a.x + k.b.x) / 2, (k.a.y + k.b.y) / 2, (k.a.z + k.b.z) / 2), _q, _s.set(1, 1, L / 3.2)); tracers.setMatrixAt(nb++, _m);
   }
   tracers.count = nb;
   if (tracers.count) tracers.instanceMatrix.needsUpdate = true;
@@ -143,6 +144,13 @@ export function missilePuff(e) { flash(e.x, e.y, e.z, 4, 0xFFFFFF, 0.3); for (le
 export function pickupFx(e) { shockwave(e.x, e.y, e.z, 3.5, 0xFFC72C); for (let k = 0; k < 14; k++) emit(e.x, e.y + 1.2, e.z, (Math.random() - 0.5) * 6, 3 + Math.random() * 4, (Math.random() - 0.5) * 6, 0.5, 0.5, k % 2 ? 0xFFC72C : 0x8A5A2B, -3, 'solid'); }
 export function pulseFx(c) { dome(c.x, c.y, c.z, WPN.PULSE_R, 0x6EC8FF); flash(c.x, c.y + 1, c.z, 7, 0x9ADCFF, 0.3); shockwave(c.x, c.y, c.z, WPN.PULSE_R, 0x6EC8FF); shockwave(c.x, c.y + 0.5, c.z, WPN.PULSE_R * 0.6, 0xCFEFFF); for (let k = 0; k < 30; k++) { const a = k / 30 * Math.PI * 2; emit(c.x, c.y + 0.8, c.z, Math.cos(a) * 16, 0.5, Math.sin(a) * 16, 0.4, 0.6, 0x9ADCFF, 0); } }
 export function oilDropFx(c) { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); for (let k = 0; k < 10; k++) emit(c.x - fx * 2.2, c.y + 0.5, c.z - fz * 2.2, (Math.random() - 0.5) * 2, 1 + Math.random() * 2, (Math.random() - 0.5) * 2, 0.5, 0.4, 0x1A1820, -9, 'solid'); }
+/** A round leaving the gun: a bright star at the muzzle, a puff of smoke, and a brass casing kicked out of the side. */
+export function muzzleFx(c) {
+  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), x = (c.dx ?? c.x) + fx * (c.hl + 0.9), y = (c.dy ?? c.y) + 1.35, z = (c.dz ?? c.z) + fz * (c.hl + 0.9);
+  flash(x, y, z, 1.5 + Math.random() * 0.6, 0xFFE9B0, 0.07);
+  if (Math.random() < 0.4) smoke(x, y, z, 0.7, 0xD8D8D8, 0.35, 0.25);
+  if (Math.random() < 0.6) { const s = Math.random() < 0.5 ? 1 : -1; debris(c.x - fz * s * 0.3, y - 0.1, c.z + fx * s * 0.3, c.vx - fz * s * (2 + Math.random() * 2), 2 + Math.random() * 2, c.vz + fx * s * (2 + Math.random() * 2), 0xD4A13A, 0.06, 0.06, 0.16, 0.8, c.pr.i); }
+}
 export function bulletHitFx(e, from) {
   if (from) streaks.push({ a: { x: from.dx ?? from.x, y: (from.dy ?? from.y) + 1.4, z: from.dz ?? from.z }, b: { x: e.x, y: e.y + 0.8, z: e.z }, t: 0.09 }); flash(e.x, e.y + 0.4, e.z, 1.6, 0xFFFFFF, 0.12); for (let k = 0; k < 6; k++) emit(e.x, e.y, e.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.25, 0.25, 0xFFD27A, -4); }
 
@@ -153,7 +161,14 @@ export function bulletHitFx(e, from) {
 function module(item) {
   const g = new THREE.Group(), dark = L(0x2E333B), steel = L(0x9AA3AD), yel = L(0xFFC72C), red = L(0xD8203A);
   if (item === 'missile') { g.add(box(0.9, 0.34, 1.1, dark)); for (const s of [-1, 1]) { g.add(cyl(0.13, 1.2, steel, s * 0.22, 0.02, 0.1)); const tip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 8).rotateX(Math.PI / 2), red); tip.position.set(s * 0.22, 0.02, 0.8); g.add(tip); } g.rotation.x = -0.18; }
-  else if (item === 'gun') { g.add(box(0.5, 0.3, 0.6, dark)); for (const s of [-1, 1]) g.add(cyl(0.07, 1.1, steel, s * 0.14, 0.05, 0.6)); const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xFFD27A, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); fl.scale.set(1.3, 1.3, 1); fl.position.z = 1.3; fl.visible = false; g.add(fl); g.userData.flash = fl; }
+  else if (item === 'gun') {   // a rotary gun: six barrels round a spinning rotor, a shroud and front ring, an ammo box on the side
+    g.add(box(0.5, 0.34, 0.62, dark)); g.add(box(0.26, 0.26, 0.4, L(0x4B5A3A), 0.36, -0.02, -0.05));
+    const rotor = new THREE.Group(); rotor.position.set(0, 0.04, 0.3); g.add(rotor);
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; rotor.add(cyl(0.035, 1.05, steel, Math.cos(a) * 0.09, Math.sin(a) * 0.09, 0.5)); }
+    rotor.add(cyl(0.15, 0.3, dark, 0, 0, 0.12)); const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.025, 6, 14), dark); ring.position.z = 0.9; rotor.add(ring);
+    const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xFFD27A, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); fl.scale.set(1.3, 1.3, 1); fl.position.set(0, 0.04, 1.45); fl.visible = false; g.add(fl);
+    g.userData.flash = fl; g.userData.rotor = rotor;
+  }
   else if (item === 'oil') { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.8, 12).rotateZ(Math.PI / 2), L(0x1C1C22)); g.add(d); g.add(box(0.82, 0.1, 0.72, yel)); g.add(cyl(0.07, 0.5, steel, 0, -0.1, -0.5)); g.position.z = -0.4; }
   else if (item === 'pulse') { const t = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.09, 8, 20).rotateX(Math.PI / 2), steel); g.add(t); const core = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 8), new THREE.MeshBasicMaterial({ color: 0x6EC8FF })); core.position.y = 0.2; g.add(core); g.add(cyl(0.05, 0.5, steel, 0, 0.05, 0).rotateX(Math.PI / 2)); g.userData.core = core; }
   else if (item === 'harpoon') { g.add(box(0.36, 0.32, 0.5, dark)); g.add(cyl(0.12, 1.2, steel, 0, 0.06, 0.4)); const head = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.38, 6).rotateX(Math.PI / 2), L(0x3A3F46)); head.position.set(0, 0.06, 1.12); g.add(head); g.userData.head = head; }
@@ -182,7 +197,11 @@ export function updateMount(c, v, dt, now) {
   const m = M.held && M.mods[M.held]; if (!m) return;
   m.visible = M.up > 0.03; m.position.y = (M.up - 1) * 0.6 + 0.1; m.scale.setScalar((0.3 + 0.7 * M.up) * 1.5);   // a size that reads from the race camera
   m.position.z = (M.held === 'oil' ? -0.4 : 0) - M.kick * 0.35; m.rotation.x = (M.held === 'missile' ? -0.18 : 0) - M.kick * 0.25;   // recoil
-  if (m.userData.flash) m.userData.flash.visible = w.gunT > 0 && Math.floor(now * 30) % 2 === 0;
+  if (m.userData.flash) { const on = w.gunT > 0 && Math.floor(now * 30) % 2 === 0, f = m.userData.flash; f.visible = on; if (on) { const k = 0.9 + Math.random() * 0.9; f.scale.set(k, k, 1); f.material.rotation = Math.random() * 6.3; } }
+  if (m.userData.rotor) {   // spins up while firing and winds down after; the gun shakes as it fires
+    M.spin = (M.spin || 0) + ((w.gunT > 0 ? 38 : 0) - (M.spin || 0)) * Math.min(1, dt * (w.gunT > 0 ? 10 : 2)); m.userData.rotor.rotation.z += M.spin * dt;
+    if (w.gunT > 0) { m.position.z -= Math.random() * 0.06; m.rotation.x += (Math.random() - 0.5) * 0.04; }
+  }
   if (m.userData.core) m.userData.core.scale.setScalar(1 + 0.25 * Math.sin(now * 12));
   if (m.userData.head) m.userData.head.visible = !!w.item;
   if (!want && M.up < 0.03) M.held = null;

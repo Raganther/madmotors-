@@ -1,5 +1,5 @@
 import { HALF } from '../constants.js';
-import { clamp, mulberry32 } from '../math.js';
+import { clamp, mulberry32, wrapAngle } from '../math.js';
 import { damageCar } from '../sim/damage.js';
 
 // ---------- weapons (menu: Weapons on/off; R.weapons) ----------
@@ -7,7 +7,7 @@ import { damageCar } from '../sim/damage.js';
 // where you are in the race (the back of the pack gets the catch-up weapons, the front the defensive ones). Five:
 //   missile  locks on to the nearest car ahead, flies along the road's line and steers across onto it; a hit throws
 //            the car up spinning, kills most of its speed and dents it
-//   gun      a WPN.GUN_T s burst of tracer rounds up the road at whoever's ahead; each hit costs a little speed
+//   gun      a WPN.GUN_T s burst of tracer rounds straight ahead (swung a little at whoever's ahead); each hit costs a little speed
 //   oil      two slicks dropped behind you, one at a time: anyone driving over one loses grip for a moment (a slick
 //            wears away after WPN.OIL_HITS cars)
 //   pulse    a shockwave: everyone within WPN.PULSE_R m is blown away from you and their engine cuts out briefly
@@ -22,7 +22,7 @@ import { damageCar } from '../sim/damage.js';
 export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_S: 2.4, HIT_LAT: 1.9, ARM: 0.12, SLOW: 0.35, POP: 6, SPIN: 5,
   DOOR_T: 0.45, DOOR_COOL: 2.5, SHOVE: 6, KICK: 1.2, REACH: 4.2, DOOR_SCRUB: 0.92,
   CRATE_EVERY: 7, CRATE_AHEAD: [60, 100], CRATE_R: 1.9, CRATE_LIFE: 40,
-  GUN_T: 3, GUN_RATE: 7, BULLET_V: 95, BULLET_LIFE: 0.9, BULLET_SLOW: 0.95, OIL_R: 2.8, OIL_T: 1.4, OIL_SPIN: 2.6, OIL_SCRUB: 0.85, OIL_LIFE: 16, OIL_HITS: 3,
+  GUN_T: 3, GUN_RATE: 7, GUN_SWING: 0.26, GUN_SCATTER: 0.05, BULLET_V: 95, BULLET_LIFE: 0.9, BULLET_SLOW: 0.95, OIL_R: 2.8, OIL_T: 1.4, OIL_SPIN: 2.6, OIL_SCRUB: 0.85, OIL_LIFE: 16, OIL_HITS: 3,
   PULSE_R: 13, PULSE_V: 8, STALL: 0.8, HARP_R: 70, HARP_V: 70, TOW_T: 2.2, TOW_PULL: 16, TOW_DRAG: 3.5 };
 export const ITEMS = ['missile', 'gun', 'oil', 'pulse', 'harpoon'];
 export const ITEM_USES = { missile: 1, gun: 1, oil: 2, pulse: 1, harpoon: 1 };
@@ -129,26 +129,38 @@ function flyMissiles(R, W, dt) {
   }
   R.missiles = R.missiles.filter(m => !m.dead);
 }
-// machine gun: rounds spray up the road towards the target's line, a little scatter; each hit chips speed off
+// machine gun: rounds fly dead straight from the gun on the roof, the way the car is pointing, swung a few degrees
+// towards whoever's ahead (never more: point the car to aim) with a little scatter; each hit chips speed off. A round
+// that misses carries on off the road.
 function guns(R, W, dt) {
-  const tr = W.tr, S = R.wpn;
+  const S = R.wpn;
   for (const c of R.cars) {
     const w = c.wpn; if (!(w.gunT > 0)) continue;
     w.gunT -= dt; w.gunAcc += dt * WPN.GUN_RATE;
     while (w.gunAcc >= 1) {
-      w.gunAcc -= 1; const t = missileTarget(R, c, 90), aim = t >= 0 ? onRoad(tr, R.cars[t]) : onRoad(tr, c);
-      S.bullets.push({ id: S.next++, from: idx(R, c), s: c.progress + c.hl + 0.5, lat: onRoad(tr, c), dl: (aim - onRoad(tr, c)) / 0.5 + (S.rng() - 0.5) * 4, v: WPN.BULLET_V + Math.hypot(c.vx, c.vz), t: 0 });
+      w.gunAcc -= 1; const t = missileTarget(R, c, 90), T = t >= 0 ? R.cars[t] : null;
+      let yaw = c.yaw, vy = 0;
+      if (T) {   // swung at the target (and tipped up or down to its height: the road climbs and falls)
+        const d = Math.hypot(T.x - c.x, T.z - c.z), lead = d / WPN.BULLET_V; yaw += clamp(wrapAngle(Math.atan2(T.x + T.vx * lead - c.x, T.z + T.vz * lead - c.z) - c.yaw), -WPN.GUN_SWING, WPN.GUN_SWING);
+        vy = clamp((T.y - c.y - 0.5) / Math.max(0.05, lead), -12, 12);
+      }
+      yaw += (S.rng() - 0.5) * WPN.GUN_SCATTER;
+      const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), dx = Math.sin(yaw), dz = Math.cos(yaw);
+      S.bullets.push({ id: S.next++, from: idx(R, c), x: c.x + fx * (c.hl + 0.6), y: c.y + 1.3, z: c.z + fz * (c.hl + 0.6), vx: c.vx + dx * WPN.BULLET_V, vy, vz: c.vz + dz * WPN.BULLET_V, t: 0 });
       c.events.push({ t: 'shot' });
     }
   }
   S.bullets = S.bullets.filter(b => {
-    b.t += dt; b.s += b.v * dt; b.lat = clamp(b.lat + b.dl * dt, -HALF - 2, HALF + 2);
+    const x0 = b.x, z0 = b.z; b.t += dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+    const sx = b.x - x0, sz = b.z - z0, L2 = sx * sx + sz * sz || 1;
     for (const c of R.cars) {
-      if (idx(R, c) === b.from || !live(c) || Math.abs(c.progress - b.s) > 2.2 || Math.abs(onRoad(tr, c) - b.lat) > c.hw + 0.3) continue;
-      c.vx *= WPN.BULLET_SLOW; c.vz *= WPN.BULLET_SLOW; damageCar(c, c.x, c.z, 4.6, 1, 0, 0);
-      const p = roadPos(tr, b.s, b.lat); c.events.push({ t: 'bullet-hit', x: p.x, y: p.y, z: p.z, from: b.from }); return false;
+      if (idx(R, c) === b.from || !live(c) || Math.abs(c.y + 0.8 - b.y) > 2.2) continue;
+      const u = clamp(((c.x - x0) * sx + (c.z - z0) * sz) / L2, 0, 1), px = x0 + sx * u, pz = z0 + sz * u;   // nearest point of this step's path
+      if (Math.hypot(c.x - px, c.z - pz) > c.hw + 0.35) continue;
+      c.vx *= WPN.BULLET_SLOW; c.vz *= WPN.BULLET_SLOW; damageCar(c, px, pz, 4.6, 1, 0, 0);
+      c.events.push({ t: 'bullet-hit', x: px, y: c.y, z: pz, from: b.from }); return false;
     }
-    return b.t < WPN.BULLET_LIFE && b.s < tr.xs.length - 3;
+    return b.t < WPN.BULLET_LIFE;
   });
 }
 function slicks(R, W, dt) {

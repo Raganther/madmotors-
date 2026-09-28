@@ -5,6 +5,7 @@ import { aiControl } from './ai.js';
 import { makeBarriers } from './barriers.js';
 import { makeCar, stepCar } from './car.js';
 import { collideCars } from './collide.js';
+import { healCar } from './damage.js';
 
 /** Where each car lines up, [sample, lateral]: two abreast for up to four cars, three abreast in rows 6 m apart for
  *  a bigger field, four abreast past 15 (19 cars still start at sample 6 or later, so a downhill stage has road under
@@ -46,7 +47,7 @@ export function raceStep(R, dt, W) {
     if (c.finished && c.progress > tr.finishIdx + 18) { c.inp.throttle = 0; c.inp.brake = c.vf > 0.5 ? 0.7 : 0; c.inp.handbrake = c.vf > 0.5 ? 0 : 1; }   // pull up and stay put (no creeping backwards)
     c.mod = lead ? clamp(1 + (lead.progress - c.progress) / 300, 1, 1.08)                // Showdown: everyone chasing the leader gets a tow
       : c.isPlayer ? 1 : clamp(1 + (P.progress - c.progress) / 1400, 0.93, 1.08);
-    stepCar(c, dt, W, racing);
+    stepCar(c, dt, W, racing); if (racing) healCar(c, dt);
     if (!c.finished) {
       const slide = Math.abs(c.vr), sp = Math.hypot(c.vx, c.vz);
       if (c.onGround && c.surface !== 'grass' && slide > 4 && sp > 13) c.driftT += dt;

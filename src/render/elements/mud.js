@@ -5,6 +5,7 @@ import { WEAR } from '../../core/features/wear.js';
 import { HALF } from '../../core/constants.js';
 import { canvasTex, flat } from '../geometry.js';
 import { withCutaway } from '../materials.js';
+import { race } from '../../ui/flow.js';
 
 // Mud visuals ('mud' element): bogs get a churned brown layer over the road with glossy puddles; a water splash gets
 // a shallow stream running across the road (wheels in the water). The spray from the wheels is in effects/carfx.js.
@@ -58,8 +59,32 @@ function paintBog(B, grid) {
   }
   B.g.attributes.position.needsUpdate = true; B.g.attributes.color.needsUpdate = true; B.g.computeVertexNormals();
 }
+// Ripples: a car in the water (a splash or a puddle) leaves rings spreading out from its wheels, fading as they grow.
+// A small pool of flat rings, recycled; spawned from each car's wheels every few metres it travels in the water.
+const RIP = 28, RIP_LIFE = 1.3;
+let rips = [], ripK = 0, pools = [], wet = new Map(), wtr = null;
+function makeRipples(group) {
+  const mat = () => new THREE.MeshBasicMaterial({ color: 0xE8F4FF, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
+  rips = Array.from({ length: RIP }, () => { const m = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 32).rotateX(-Math.PI / 2), mat()); m.visible = false; m.renderOrder = 2; group.add(m); return { m, t: RIP_LIFE, size: 1 }; });
+}
+function addRipple(x, y, z, size) { const r = rips[ripK]; ripK = (ripK + 1) % RIP; r.m.position.set(x, y, z); r.t = 0; r.size = size; r.m.visible = true; }
+/** The water surface under (x, z), or null: a water splash on the road, or a puddle. */
+function waterAt(c) {
+  if (c.surface === 'ford') return wtr.H[c.pr.i] + 0.42;
+  for (const p of pools) if (Math.abs(c.x - p.x) < p.r && Math.abs(c.z - p.z) < p.r && Math.hypot(c.x - p.x, c.z - p.z) < p.r) return p.y + 0.02;
+  return null;
+}
 export function updateMud(dt) {
   if (ripple) ripple.offset.x -= dt * 0.12;
+  for (const r of rips) { if (r.t >= RIP_LIFE) continue; r.t += dt; const k = Math.min(1, r.t / RIP_LIFE), e = 1 - Math.pow(1 - k, 2.2); r.m.scale.setScalar(0.3 + e * r.size); r.m.material.opacity = 0.45 * (1 - k) * (1 - k); if (k >= 1) r.m.visible = false; }
+  if (rips.length && race && wtr) for (const c of race.cars.concat(race.traffic || [])) {
+    const sp = Math.hypot(c.vx, c.vz); if (!c.onGround || sp < 1.5) continue;
+    const y = waterAt(c); if (y === null) { wet.delete(c); continue; }
+    const acc = (wet.get(c) || 0) + sp * dt; if (acc < 2.2) { wet.set(c, acc); continue; }
+    wet.set(c, 0);
+    const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), size = 2 + Math.min(3.5, sp * 0.12);
+    for (const s of [-1, 1]) addRipple(c.x - fx * 0.9 - fz * 0.95 * s, y, c.z - fz * 0.9 + fx * 0.95 * s, size);
+  }
   const W = G.world && G.world.W; if (!bogs.length || !W || !W.wear || (redraw -= dt) > 0) return;
   redraw = 0.15; if (W.wear.ver === seen) return;
   seen = W.wear.ver; for (const b of bogs) paintBog(b, W.wear.g);
@@ -67,7 +92,7 @@ export function updateMud(dt) {
 /** A new race: fresh, unrutted bogs. */
 export function newMudRace() { seen = -1; bogs.forEach(b => paintBog(b, null)); }
 export function addMud(group, tr, terr, stage) {
-  bogs = []; if (!tr.mud) return;
+  bogs = []; pools = []; rips = []; wtr = null; if (!tr.mud) return;
   const P = (i, o, y) => [tr.xs[i] + tr.rx[i] * o, y, tr.zs[i] + tr.rz[i] * o];
   let seed = 3; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const puddles = [], fords = [];
@@ -78,10 +103,26 @@ export function addMud(group, tr, terr, stage) {
   }
   const road = new THREE.Color(stage.colors.road);
   bogs = mudRuns(tr).map(([a, b]) => bogMesh(group, tr, a, b, road));
-  const pm = new THREE.MeshLambertMaterial({ color: 0x33373A, emissive: 0x1C2630, polygonOffset: true, polygonOffsetFactor: -2 });   // dark water reflecting the sky
+  // puddles: ragged pools lying on the road (each point at the road's height there, so none sinks half under a slope)
+  // in the same moving water as the splashes, darker where it's deeper in the middle
+  pools = []; wet = new Map(); wtr = tr; makeRipples(group);
+  const ppos = [], puv = [], pcol = [], deep = new THREE.Color(0x2A4254), rim = new THREE.Color(0x56707E), K = 14;
   for (const p of puddles) {
-    const m = new THREE.Mesh(new THREE.CircleGeometry(p.r, 12).rotateX(-Math.PI / 2), pm), [x, y, z] = P(p.i, p.lat, tr.H[p.i] + 0.1);
-    m.position.set(x, y, z); m.scale.set(1.6, 1, 1); m.rotation.y = tr.th[p.i] + Math.PI / 2; m.receiveShadow = true; group.add(m);
+    const [cx, , cz] = P(p.i, p.lat, 0), yc = tr.H[p.i] + 0.2, pt = k => {   // over the bog's churned surface (up to 0.19 m up)
+      const a = k / K * Math.PI * 2, r = p.r * (0.72 + 0.4 * tr.noise.n2(p.i * 0.7 + Math.cos(a), p.lat + Math.sin(a) * 1.3)), al = Math.cos(a) * r * 1.6, lt = Math.sin(a) * r;
+      const j = tr.nb0(p.i, Math.round(al)); return [cx + tr.tx[p.i] * al + tr.rx[p.i] * lt, tr.H[j] + 0.2, cz + tr.tz[p.i] * al + tr.rz[p.i] * lt];
+    };
+    for (let k = 0; k < K; k++) {
+      const a = pt(k), b = pt(k + 1);
+      ppos.push(cx, yc, cz, ...b, ...a); puv.push(cx / 8, cz / 8, b[0] / 8, b[2] / 8, a[0] / 8, a[2] / 8);
+      pcol.push(deep.r, deep.g, deep.b, rim.r, rim.g, rim.b, rim.r, rim.g, rim.b);
+    }
+    pools.push({ x: cx, z: cz, y: yc, r: p.r * 1.35 });
+  }
+  if (ppos.length) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(ppos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(puv, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(pcol, 3)); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, map: rippleTex(), emissive: 0x0E1A24, transparent: true, opacity: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), false, { cut: false, cloud: true, water: true }));
+    m.renderOrder = 1; group.add(m);
   }
   // water splashes: a sheet of water per run that follows the road 0.4 m above it (wheels in the water, the road bed
   // showing through), running wide over the low ground either side. Its edges aren't drawn: the sheet slips under the

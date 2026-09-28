@@ -45,9 +45,10 @@ export function makeTerrainMesh(terr, tr, stage) {
   // normals half way between per-face (the faceted look) and smooth (light rolls across the slopes instead of breaking
   // at every triangle): the ground stays low-poly but loses the crinkled-paper look up close
   g.computeVertexNormals(); const fg = g.toNonIndexed(); g.dispose();
+  if (terr.holes) { const p = fg.attributes.position.array; terr.holes.forEach((v, q) => { if (v) for (let j = q * 18 + 1; j < q * 18 + 18; j += 3) p[j] = Math.min(p[j], terr.holeY[q]); }); }   // tunnel mouths (core terrain.js)
   const sn = fg.attributes.normal.array.slice(); fg.computeVertexNormals(); const nn = fg.attributes.normal.array;
   for (let i = 0; i < nn.length; i += 3) { const x = nn[i] * 0.45 + sn[i] * 0.55, y = nn[i + 1] * 0.45 + sn[i + 1] * 0.55, z = nn[i + 2] * 0.45 + sn[i + 2] * 0.55, l = Math.hypot(x, y, z) || 1; nn[i] = x / l; nn[i + 1] = y / l; nn[i + 2] = z / l; }
-  const mesh = chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true, { cloud: true, grain: 0.1, strata: stage.strata || 0 }), 60, true);
+  const mesh = chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true, { cloud: true, grain: 0.1, strata: stage.strata || 3.4 }), 60, true);   // every stage's cliffs get rock bands (mesas set their own)
   // cliffs and banks throw shadows on the ground below them (the rest of the height cue from the top-down cameras); not on
   // Graphics: Low (applyQuality flips it)
   // only chunks with real relief in them: flat ground can't shade anything, and every caster is drawn again for the sun

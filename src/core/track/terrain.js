@@ -1,4 +1,6 @@
-import { HALF } from '../constants.js';
+import { HALF, WALL } from '../constants.js';
+
+export const BORE_H = 7.2;   // a tunnel bore's height over the road (render/elements/tunnel.js draws it)
 import { clamp, lerp, smoothstep } from '../math.js';
 import { railAt, railProject } from './rails.js';
 import { placeObstacles } from './obstacles.js';
@@ -61,14 +63,27 @@ export function buildTerrain(tr, stage) {
   // a road's own banks and cliffs stay as its stage designed them. (tests/scenery.test.js checks every stage.)
   const RC = HALF + 12, L = tr.loopN || 0;
   const sameStretch = (a, b) => { if (a < 0) return false; const d = Math.abs(tr.bi(a) - tr.bi(b)); return (L ? Math.min(d, L - d) : d) < 40; };
+  // A bridge deck is kept clear of the ground under it too, its own stretch included (the road flattening above levels
+  // the ground to a deck's height, and between grid points that pokes up through it): at least 1.5 m below the deck.
   for (let i = 0; i < tr.N; i++) {
-    if (tr.bridge[i] || tr.tunnel[i] || (tr.voidMask && tr.voidMask[tr.bi(i)])) continue;
+    const deck = tr.bridge[i];
+    if (tr.tunnel[i] || (!deck && tr.voidMask && tr.voidMask[tr.bi(i)])) continue;
     const xi = tr.xs[i], zi = tr.zs[i], c0 = Math.max(0, Math.floor((xi - RC - x0) / S)), c1 = Math.min(cols - 1, Math.ceil((xi + RC - x0) / S)), r0 = Math.max(0, Math.floor((zi - RC - z0) / S)), r1 = Math.min(rows - 1, Math.ceil((zi + RC - z0) / S));
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
-      const k = r * cols + c, d = Math.hypot(x0 + c * S - xi, z0 + r * S - zi); if (d > RC || sameStretch(nearI[k], i)) continue;
-      const cap = tr.H[i] - 0.35 + Math.max(0, d - HALF - 1);
+      const k = r * cols + c, ex = x0 + c * S - xi, ez = z0 + r * S - zi, d = Math.hypot(ex, ez); if (d > RC || (!deck && sameStretch(nearI[k], i))) continue;
+      if (deck && Math.abs(ex * tr.tx[i] + ez * tr.tz[i]) > 1.2) continue;                  // beside the deck only: not the approach road past its ends
+      const cap = deck ? tr.H[i] - 1.5 + Math.max(0, d - WALL - 1) : tr.H[i] - 0.35 + Math.max(0, d - HALF - 1);
       if (h[k] > cap) { h[k] = cap; if (d < dist[k]) dist[k] = d; }
     }
+  }
+  // Tunnel mouths: the grid steps from the road outside up to the hill over the bore inside, so the cells across a mouth
+  // ramp up in front of the opening like a wall. They are drawn sunk under the road instead (the portal and its rock face
+  // frame the opening); tests/scenery.test.js checks every mouth is open.
+  let holes = null, holeY = null;   // holeY: the cell is drawn sunk to this height instead (a floor under the mouth, not a gap)
+  if (tr.tunnel.some(v => v)) for (let r = 0; r < rows - 1; r++) for (let c = 0; c < cols - 1; c++) {
+    const qt = tr.nearestTun(x0 + (c + 0.5) * S, z0 + (r + 0.5) * S); if (!qt || qt.d > WALL - 1.3) continue;                                 // inside the bore's width: nothing to see past it
+    const k = r * cols + c, hs = [h[k], h[k + 1], h[k + cols], h[k + cols + 1]], y = tr.H[qt.i];
+    if (Math.max(...hs) > y + 1 && Math.min(...hs) < y + BORE_H + 1) { if (!holes) { holes = new Uint8Array((cols - 1) * (rows - 1)); holeY = new Float32Array(holes.length); } holes[r * (cols - 1) + c] = 1; holeY[r * (cols - 1) + c] = y - 0.6; }
   }
   function at(x, z) {
     let fx = (x - x0) / S, fz = (z - z0) / S;
@@ -76,7 +91,7 @@ export function buildTerrain(tr, stage) {
     const c = fx | 0, r = fz | 0, u = fx - c, v = fz - r, i = r * cols + c;
     return (h[i] * (1 - u) + h[i + 1] * u) * (1 - v) + (h[i + cols] * (1 - u) + h[i + cols + 1] * u) * v;
   }
-  const T = { x0, z0, S, cols, rows, h, dist, at };
+  const T = { x0, z0, S, cols, rows, h, dist, at, holes, holeY };
   T.obst = placeObstacles(tr, T, stage);   // trees, rocks, cacti, bushes: drawn by render/world/scenery.js, hit in sim/obstacles.js
   return T;
 }

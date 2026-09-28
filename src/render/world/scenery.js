@@ -39,7 +39,7 @@ export function addScenery(group, tr, terr, stage) {
   const addFan = (x, z, face) => {
     const y = terr.at(x, z), col = pick([0xE0402F, 0x2F7DE0, 0xFFC72C, 0xFFFFFF, 0x2FB36B, 0x1C2340, 0xF28C28]);
     // how they pass the time: 0 bounce and cheer, 1 wave one arm, 2 shift about with their hands down
-    const f = { x, y, z, ry: face, ph: rnd() * TAU, mode: Math.floor(rnd() * 3), sp: 0.8 + rnd() * 0.5, dive: -1, dx: 0, dz: 0 };
+    const f = { x, y, z, ry: face, ph: rnd() * TAU, mode: Math.floor(rnd() * 3), sp: 0.8 + rnd() * 0.5, dive: -1, dx: 0, dz: 0, ox: -Math.sin(face), oz: -Math.cos(face) };   // (ox, oz): away from the road
     fans.push(f);
     bodies.push({ x, y: y + 0.6, z, ry: face, color: col, f, part: 0 });
     heads.push({ x, y: y + 1.45, z, ry: face, color: pick([0xF1C9A5, 0xD9A47F, 0x9C6B4E, 0x6B4631]), f, part: 1 });
@@ -77,15 +77,19 @@ export function addScenery(group, tr, terr, stage) {
 }
 G.fanChunks = []; G.fans = [];
 // Spectators: each one idles in its own way, and dives clear when a car is about to reach it (heading its way, under
-// ~0.8 s out), then picks itself up and walks back. Drawn only: the simulation never sees them.
+// ~0.45 s and 16 m out: any sooner and they're on the ground before it's close), always to the side away from the road,
+// then picks itself up and walks back. Drawn only: the simulation never sees them.
 const DIVE = { OUT: 0.42, DOWN: 1.9, UP: 2.7, BACK: 4.6 }, _mf = new THREE.Matrix4(), _ml = new THREE.Matrix4(), _qa = new THREE.Quaternion(), _ax = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
 const ease = t => t * t * (3 - 2 * t);
 function threatened(f, cars) {
   for (const c of cars) {
     const sp2 = c.vx * c.vx + c.vz * c.vz; if (sp2 < 36) continue;
-    const rx = f.x - c.x, rz = f.z - c.z, tc = (rx * c.vx + rz * c.vz) / sp2; if (tc < 0 || tc > 0.8) continue;
+    const rx = f.x - c.x, rz = f.z - c.z, tc = (rx * c.vx + rz * c.vz) / sp2; if (tc < 0 || tc > 0.45 || tc * Math.sqrt(sp2) > 16) continue;
     const px = rx - c.vx * tc, pz = rz - c.vz * tc, d = Math.hypot(px, pz); if (d > 3.2) continue;
-    const l = d > 0.3 ? d : 1; f.dx = d > 0.3 ? px / l : c.vz / Math.sqrt(sp2); f.dz = d > 0.3 ? pz / l : -c.vx / Math.sqrt(sp2);   // away from its path
+    // across the car's path, on the side away from the road; if its path is itself heading off the road, straight back
+    const sp = Math.sqrt(sp2); let ax = c.vz / sp, az = -c.vx / sp; if (ax * f.ox + az * f.oz < 0) { ax = -ax; az = -az; }
+    const k = Math.abs(ax * f.ox + az * f.oz) < 0.35 ? 0.6 : 0; f.dx = ax * (1 - k) + f.ox * k; f.dz = az * (1 - k) + f.oz * k;
+    const l = Math.hypot(f.dx, f.dz) || 1; f.dx /= l; f.dz /= l;
     return true;
   }
   return false;
