@@ -151,6 +151,7 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | dirt | `dirt: true` | a loose dirt track (gravel grip, no kerbs) on any stage; on a branch it's an off-road shortcut |
 | hammer | `hammers: <n>` | wrecking balls swinging across the road from gantries (hits in `features/hammers.js`); the AI times its run |
 | ice | `ice: true` | an ice patch across the road: hardly any grip; the AI slows for it. Best on a snow stage |
+| open | `open: 'field' \| 'forest' \| 'rocks' \| 'stream'`, `gate` | off-piste: a leg with no road (rolling ground, no barriers, no resets for leaving the line) through a meadow, a forest with gaps, a rock garden or a stream; `gate: true` puts a gate at the section's start. See "Off-piste" below |
 
 A core element can declare `tags`, `stageKeys`, per-sample `channels`, a `section()` hook, build phases (`heights`,
 `walls`, `wallsLate`, `wallsLast`), `track()` to add fields to the built track, and `markers()` saying where it is (see
@@ -187,6 +188,21 @@ The road graph (`src/core/track/route.js`) gives every track the same API: `tr.a
 `tr.progOf(s)` maps a position to race progress, `tr.bi(i)` / `tr.u0(b)` convert between road and base samples, and
 `tr.all0` lists every sample for drawing. Where the two roads run side by side the barriers between them open, their
 heights meet, and a car belongs to whichever road it's clearly on. Try `?sandbox=branch`.
+
+### Off-piste (open country and gates)
+
+`core/elements/open.js`: a section tagged `open` has no road. Its centre line is only the route progress is measured
+along; the ground rolls across it (terrain.js stops flattening for a road over `GATE.RAMP` m), cars drive the ground
+itself (`groundAt`), there are no barriers, and the land either side is what the kind says (`track/obstacles.js`
+`placeOpen`: forest trees are kept far enough apart that a car always fits between them). Gates (`gate: true`) must be
+driven through in order, between the posts (`features/gates.js`): a car's progress stops just short of its next gate
+until it takes it, so the standings, laps and finish all wait. With gates on a stage, leaving the road never resets
+you (only getting lost, 140 m from the route, or stuck); in open country a reset puts you back where you were last going
+well. The AI crosses open country with `sim/nav.js`: a distance field per waypoint (each gate, and each place an open
+leg rejoins a road) over a 2 m grid, round trees and boulders and dearer up slopes; it follows the field, slows for
+its bends and drives straight through a gate's mouth. `render/elements/open.js` draws the gates, the streams and the
+arrow over the player's car pointing to the next gate. Stage 18, Open Country, is the example; `tests/offpiste.test.js`
+locks the rules.
 
 ### Screenshots
 

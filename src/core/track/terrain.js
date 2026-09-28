@@ -4,6 +4,7 @@ export const BORE_H = 7.2;   // a tunnel bore's height over the road (render/ele
 import { clamp, lerp, smoothstep } from '../math.js';
 import { railAt, railProject } from './rails.js';
 import { placeObstacles } from './obstacles.js';
+import { OPEN } from '../elements/open.js';
 
 export function riverDist(rv, x, z) {
   let best = 1e9; const P = rv.pts;
@@ -31,17 +32,20 @@ export function buildTerrain(tr, stage) {
     for (let c = 0; c < cols; c++) {
       const x = x0 + c * S;
       const q = tr.nearestT(x, z); const d = q ? q.d : 1e9;
+      // open country (elements/open.js): the ground rolls right across the route instead of flattening for a road
+      const ow = q && tr.openW ? tr.openW[tr.bi(q.i)] : 0;
       const hills = amp * noise.fbm(x * 0.018 + 7.3, z * 0.018 + 2.1, 4) + 1.2 * noise.fbm(x * 0.06 + 1.3, z * 0.06, 2);
-      let v = tr.base(x, z) + hills * smoothstep(HALF + 3, HALF + 30, d);
+      let v = tr.base(x, z) + hills * lerp(smoothstep(HALF + 3, HALF + 30, d), 1, ow);
       if (tr.carve) v -= tr.carve * smoothstep(HALF + 8, HALF + 40, d) * (tr.carveW ? tr.carveW(x, z) : 1);
-      if (d < (tr.edge || HALF + 15)) {
+      if (d < (tr.edge || HALF + 15) && ow < 1) {
         let mn = 1e9;
         if (tr.loopN) { for (let d = -3; d <= 3; d++) mn = Math.min(mn, tr.H[tr.nb0(q.i, d)]); }
         else for (let kk = Math.max(0, q.i - 3); kk <= Math.min(tr.N - 1, q.i + 3); kk++) mn = Math.min(mn, tr.H[kk]);
-        v = lerp(mn - 0.35, v, smoothstep(HALF + 1, tr.edge || HALF + 15, d));
+        v = lerp(lerp(mn - 0.35, v, smoothstep(HALF + 1, tr.edge || HALF + 15, d)), v, ow);
       }
       // a gap or ferry crossing: ground ahead of the lip / behind the landing falls straight away (no flattening into the void)
-      let dd = d;
+      let dd = ow > 0.3 ? 99 : d;                                                                     // no dirt verge in open country
+      if (q && tr.open && tr.open[tr.bi(q.i)] === OPEN.stream) v = Math.min(v, tr.H[q.i] - 0.9);        // a stream: the bed dips under its water
       if (tr.voidMask && q) {
         const b = tr.bi(q.i), i = q.i, along = (x - tr.xs[i]) * tr.tx[i] + (z - tr.zs[i]) * tr.tz[i];
         const V = tr.voidMask, lip = V[tr.nb(b, 1)] && !V[b], land = V[tr.nb(b, -1)] && !V[b];
@@ -67,7 +71,7 @@ export function buildTerrain(tr, stage) {
   // the ground to a deck's height, and between grid points that pokes up through it): at least 1.5 m below the deck.
   for (let i = 0; i < tr.N; i++) {
     const deck = tr.bridge[i];
-    if (tr.tunnel[i] || (!deck && tr.voidMask && tr.voidMask[tr.bi(i)])) continue;
+    if (tr.tunnel[i] || (!deck && tr.voidMask && tr.voidMask[tr.bi(i)]) || (tr.open && tr.open[tr.bi(i)])) continue;   // open country: no road to keep the ground under
     const xi = tr.xs[i], zi = tr.zs[i], c0 = Math.max(0, Math.floor((xi - RC - x0) / S)), c1 = Math.min(cols - 1, Math.ceil((xi + RC - x0) / S)), r0 = Math.max(0, Math.floor((zi - RC - z0) / S)), r1 = Math.min(rows - 1, Math.ceil((zi + RC - z0) / S));
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
       const k = r * cols + c, ex = x0 + c * S - xi, ez = z0 + r * S - zi, d = Math.hypot(ex, ez); if (d > RC || (!deck && sameStretch(nearI[k], i))) continue;

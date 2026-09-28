@@ -1,5 +1,6 @@
 import { HALF } from '../constants.js';
 import { TAU, mulberry32 } from '../math.js';
+import { GATE, OPEN } from '../elements/open.js';
 
 // Scenery you can hit: trees, cacti and rocks are solid, bushes are soft (you plough through, they flatten). Placed
 // once per stage from its seed (render/world/scenery.js draws exactly these), and kept in a coarse grid so a car only
@@ -43,6 +44,7 @@ export function placeObstacles(tr, terr, stage) {
     const s = 0.6 + rnd() * 0.8;
     items.push({ kind: OB.BUSH, x, y: terr.at(x, z) + 0.2 * s, z, s, sy: s * 0.7, ry: rnd() * TAU, color: pick(C.round), r: 0.9 * s, soft: true });
   }
+  if (tr.open) placeOpen(tr, terr, stage, items, rnd, pick);
   const grid = new Map(), key = (cx, cz) => cx * 100003 + cz;
   items.forEach((o, k) => { if (!o.r) return; const g = key(Math.floor(o.x / CELL), Math.floor(o.z / CELL)); let a = grid.get(g); if (!a) grid.set(g, a = []); a.push(k); });
   return {
@@ -54,4 +56,31 @@ export function placeObstacles(tr, terr, stage) {
       return out;
     }
   };
+}
+// Open country (elements/open.js): each leg's land out to ZONE.W m either side of its route. Forest: trees no closer
+// than ZONE.GAP[kind] m (trunk to trunk), so there's always a way through for a car, just not a straight one; rock
+// gardens: boulders to steer round and rubble to drive over; fields: the odd bush. Kept clear round the gates and near
+// the roads, so a gate is never blocked and the road legs keep their verges.
+const ZONE = { W: 55, STEP: 4.5, GAP: { 1: 14, 2: 6.2, 3: 9 }, P: { 1: 0.05, 2: 0.8, 3: 0.35 } };
+function placeOpen(tr, terr, stage, items, rnd, pick) {
+  const C = stage.colors, N = tr.loopN || tr.N, cell = new Map(), key = (x, z) => Math.floor(x / 8) * 100003 + Math.floor(z / 8);
+  const gates = (tr.gates || []).filter(i => i < tr.startIdx + N).map(i => [tr.xs[i], tr.zs[i]]);
+  const clear = (x, z, gap) => { const cx = Math.floor(x / 8), cz = Math.floor(z / 8); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const o of cell.get((cx + a) * 100003 + cz + b) || []) if (Math.hypot(o.x - x, o.z - z) < gap) return false; return true; };
+  for (let i = 0; i < N; i += 3) {
+    const kind = tr.open[tr.bi(i)]; if (!kind || kind === OPEN.stream) continue;
+    for (let o = -ZONE.W; o <= ZONE.W; o += ZONE.STEP) {
+      if (rnd() > ZONE.P[kind]) continue;
+      const x = tr.xs[i] + tr.rx[i] * o + (rnd() - 0.5) * 3.5, z = tr.zs[i] + tr.rz[i] * o + (rnd() - 0.5) * 3.5, q = tr.nearest(x, z);
+      if (!q || !tr.open[tr.bi(q.i)] || tr.open[tr.bi(q.i)] !== kind) continue;              // this leg's own land, not a road's or another leg's
+      if (gates.some(([gx, gz]) => Math.hypot(gx - x, gz - z) < GATE.W)) continue;
+      const g = ZONE.GAP[kind]; if (!clear(x, z, g)) continue;
+      const y = terr.at(x, z), s = 0.9 + rnd() * 0.6, ry = rnd() * TAU; let it;
+      if (kind === OPEN.forest) it = rnd() < stage.trees.pine ? { kind: OB.PINE, x, y: y - 0.2, z, s, sy: s * (0.9 + rnd() * 0.4), ry, color: pick(C.pine), r: 0.75 * s } : { kind: OB.ROUND, x, y: y - 0.2, z, s, sy: s * (0.85 + rnd() * 0.3), ry, color: pick(C.round), r: 0.32 * s };
+      else if (kind === OPEN.rocks) {
+        const k = 1 + rnd() * 1.8, sx = k * (0.8 + rnd() * 0.6), sy = k * (0.5 + rnd() * 0.5), sz = k * (0.8 + rnd() * 0.6);
+        it = { kind: OB.ROCK, x, y: y - 0.2 * k, z, s: k, sx, sy, sz, ry, rx: rnd() * 0.4, dl: (rnd() - 0.5) * 0.12, r: sy > 0.7 ? 0.8 * Math.min(sx, sz) : 0, shape: Math.floor(rnd() * 3) };
+      } else it = { kind: OB.BUSH, x, y: y + 0.2 * s, z, s, sy: s * 0.7, ry, color: pick(C.round), r: 0.9 * s, soft: true };
+      items.push(it); const kk = key(x, z); let a = cell.get(kk); if (!a) cell.set(kk, a = []); a.push(it);
+    }
+  }
 }

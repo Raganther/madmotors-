@@ -5,6 +5,7 @@ import { drawTarget } from '../features/drawbridge.js';
 import { rutDepth, rutLane } from '../features/wear.js';
 import { clamp } from '../math.js';
 import { HAMMER, hammerLat } from '../elements/hammer.js';
+import { navControl } from './nav.js';
 
 /** Before each fork pick a route, the branch or the main road, at random (stage.branches[k].share = the branch's
  *  chance), so the pack splits. */
@@ -26,6 +27,7 @@ function forkStart(c, tr) {
   return tr.lapU(t, tr.lapOf(i));
 }
 export function aiControl(c, W, cars, dt, hazards, gate) {
+  if (W.tr.open && navControl(c, W)) return;                                        // open country: find the way to the next gate
   const tr = W.tr, pr = c.pr, i = pr.i, N = tr.N, ai = c.ai;
   // d samples further along the road (along the route this car has picked on stages with branches)
   const G = !!tr.nx; if (G) chooseRoute(c, tr);

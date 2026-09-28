@@ -27,6 +27,7 @@ export function makeRoadMesh(tr, stage) {
   const seg = (i, j) => {
     const onBridge = tr.bridge[i] || tr.bridge[j];
     if (tr.voidMask && (tr.voidMask[tr.bi(i)] || tr.voidMask[tr.bi(j)])) return;          // a gap or ferry crossing: no road at all
+    if (tr.open && tr.open[tr.bi(i)] && tr.open[tr.bi(j)]) return;                      // open country (elements/open.js): no road
     pos = onBridge ? brPos : mainPos; col = onBridge ? brCol : mainCol;
     for (let s = 0; s < 7; s++) {
       const oa = O[s], ob = O[s + 1];
