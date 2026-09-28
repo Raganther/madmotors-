@@ -56,3 +56,8 @@ New behaviour belongs in elements (`/new-element`), never special cases for this
 - Planning heights for a self-crossing lap: list the crossings in lap order; stretches closer than ~100 m can't change
   level, so chains of crossings can need three levels (ground, 9 m, 18 m). Bridge the upper road ±30 m round each
   crossing and keep grades near 10%.
+- Off-piste stages (`open` + `gate`): put gates where the route line is where you want cars to pass; keep open legs'
+  hills low (`hillAmp` 3-4) so the ground stays drivable; check `npm run sandbox` for respawns and that every car takes
+  every gate (`tests/offpiste.test.js` does this for Open Country: add yours to it).
+- `tests/scenery.test.js` checks every stage for gaps in the road, open tunnel mouths, ground through bridge decks and
+  piers on roads: if one fails on your stage, fix the segs or the element, not the test.
