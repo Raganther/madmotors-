@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { G } from '../../game.js';
-import { GATE, OPEN } from '../../core/elements/open.js';
+import { GATE, OPEN, TRAIL } from '../../core/elements/open.js';
 import { canvasTex } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { race } from '../../ui/flow.js';
@@ -14,8 +14,8 @@ const banner = n => canvasTex(256, 64, (g, w, h) => {
   g.fillStyle = '#1C2340'; g.fillRect(0, 0, w, h); g.fillStyle = '#FFC72C'; g.fillRect(0, 0, w, 6); g.fillRect(0, h - 6, w, 6);
   g.fillStyle = '#FFFFFF'; g.font = 'bold 40px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`GATE ${n}`, w / 2, h / 2 + 2);
 });
-export function addOpen(group, tr, terr) {
-  gates = []; arrow = null; trOf = tr;
+export function addOpen(group, tr, terr, stage) {
+  gates = []; arrow = null; trOf = tr; const stageCol = stage.colors;
   if (tr.gates) {
     const N = tr.loopN || tr.N, stripe = canvasTex(8, 64, (g, w, h) => { for (let y = 0; y < h; y += 16) { g.fillStyle = '#E0402F'; g.fillRect(0, y, w, 8); g.fillStyle = '#F4F4F0'; g.fillRect(0, y + 8, w, 8); } });
     const postM = withCutaway(new THREE.MeshLambertMaterial({ map: stripe })), flagM = new THREE.MeshLambertMaterial({ color: 0xFFC72C, side: THREE.DoubleSide });
@@ -37,6 +37,29 @@ export function addOpen(group, tr, terr) {
     const sh = new THREE.Shape(); sh.moveTo(0, 1.6); sh.lineTo(1.3, -0.4); sh.lineTo(0.45, -0.4); sh.lineTo(0.45, -1.4); sh.lineTo(-0.45, -1.4); sh.lineTo(-0.45, -0.4); sh.lineTo(-1.3, -0.4); sh.closePath();
     arrow = new THREE.Mesh(new THREE.ShapeGeometry(sh).rotateX(-Math.PI / 2).rotateY(Math.PI), new THREE.MeshBasicMaterial({ color: 0xFFC72C, transparent: true, opacity: 0.9, depthTest: false }));
     arrow.renderOrder = 9; arrow.visible = false; group.add(arrow);
+  }
+  // the trails (core elements/open.js TRAIL): a dirt ribbon on the ground, its edges fading into the grass
+  if (tr.trail) {
+    const N = tr.loopN || tr.N, pos = [], col = [], idx = [];
+    const dirt = new THREE.Color(stageCol.dirt).multiplyScalar(0.92), grass = new THREE.Color(stageCol.grassA), mid = dirt.clone().multiplyScalar(0.86);
+    const O = [-TRAIL.W / 2 - 0.9, -TRAIL.W / 2 + 0.4, -0.6, 0.6, TRAIL.W / 2 - 0.4, TRAIL.W / 2 + 0.9], CL = [grass, dirt, mid, mid, dirt, grass];
+    let run = -1;
+    for (let i = 0; i <= N; i++) {
+      const b = tr.bi(i % N), on = i < N && tr.open[b] && tr.open[b] !== OPEN.stream;
+      if (!on) { run = -1; continue; }
+      const base = pos.length / 3;
+      for (let q = 0; q < O.length; q++) {
+        const o = tr.trail[b] + O[q], x = tr.xs[i] + tr.rx[i] * o, z = tr.zs[i] + tr.rz[i] * o;
+        pos.push(x, terr.at(x, z) + 0.06, z); const c = CL[q].clone().offsetHSL(0, 0, tr.noise.n2(i * 0.2, q) * 0.04); col.push(c.r, c.g, c.b);
+      }
+      if (run >= 0) for (let q = 0; q < O.length - 1; q++) { const a = run + q, bb = base + q; idx.push(a, bb, a + 1, a + 1, bb, bb + 1); }
+      run = base;
+    }
+    if (idx.length) {
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+      const m = new THREE.Mesh(g, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), false, { cut: false, cloud: true, grain: 0.14 }));
+      m.receiveShadow = true; group.add(m);
+    }
   }
   // streams: a band of moving water across the leg, its banks the ground rising out of it either side
   if (tr.open) {

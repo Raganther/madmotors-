@@ -1,6 +1,6 @@
 import { HALF } from '../constants.js';
 import { TAU, mulberry32 } from '../math.js';
-import { GATE, OPEN } from '../elements/open.js';
+import { GATE, OPEN, TRAIL, onTrail } from '../elements/open.js';
 
 // Scenery you can hit: trees, cacti and rocks are solid, bushes are soft (you plough through, they flatten). Placed
 // once per stage from its seed (render/world/scenery.js draws exactly these), and kept in a coarse grid so a car only
@@ -18,10 +18,10 @@ export function placeObstacles(tr, terr, stage) {
   // trees: a pine or a round-topped tree on a trunk; r is what a car hits (a pine's low skirt of branches, a trunk)
   for (let k = 0, n = Math.round(area * (stage.trees ? stage.trees.density : 0)); k < n; k++) {
     const [x, z] = at(), q = tr.nearest(x, z);
-    if (q && q.d < HALF + 11) continue; if (slopeAt(x, z) > 0.8 || overhangs(x, z, q)) continue; if (tr.town && q && tr.town[tr.bi(q.i)] && q.d < 32) continue; if (tr.falls && tr.falls.some(f => Math.hypot(x - tr.xs[f.i], z - tr.zs[f.i]) < 32)) continue; { const qt = tr.nearestTun(x, z); if (qt && qt.d < HALF + 16) continue; }
+    if (q && q.d < HALF + 11) continue; if (q && onTrail(tr, tr.bi(q.i), (x - tr.xs[q.i]) * tr.rx[q.i] + (z - tr.zs[q.i]) * tr.rz[q.i], TRAIL.CLEAR)) continue; if (slopeAt(x, z) > 0.8 || overhangs(x, z, q)) continue; if (tr.town && q && tr.town[tr.bi(q.i)] && q.d < 32) continue; if (tr.falls && tr.falls.some(f => Math.hypot(x - tr.xs[f.i], z - tr.zs[f.i]) < 32)) continue; { const qt = tr.nearestTun(x, z); if (qt && qt.d < HALF + 16) continue; }
     const y = terr.at(x, z) - 0.2, s = 0.8 + rnd() * 0.7, ry = rnd() * TAU;
     const pine = (!!stage.alpine && y > stage.alpine.treeLine) || rnd() < stage.trees.pine;
-    if (pine) items.push({ kind: OB.PINE, x, y, z, s, sy: s * (0.9 + rnd() * 0.4), ry, color: pick(C.pine), r: 0.75 * s });
+    if (pine) items.push({ kind: OB.PINE, x, y, z, s, sy: s * (0.9 + rnd() * 0.4), ry, color: pick(C.pine), r: 0.3 * s, brush: 0.75 * s });
     else items.push({ kind: OB.ROUND, x, y, z, s, sy: s * (0.85 + rnd() * 0.3), ry, color: pick(C.round), r: 0.32 * s });
   }
   // saguaro cacti (desert stages): dh / dl shift the hue and lightness of the cactus green
@@ -61,7 +61,7 @@ export function placeObstacles(tr, terr, stage) {
 // than ZONE.GAP[kind] m (trunk to trunk), so there's always a way through for a car, just not a straight one; rock
 // gardens: boulders to steer round and rubble to drive over; fields: the odd bush. Kept clear round the gates and near
 // the roads, so a gate is never blocked and the road legs keep their verges.
-const ZONE = { W: 55, STEP: 4.5, GAP: { 1: 14, 2: 6.2, 3: 9 }, P: { 1: 0.05, 2: 0.8, 3: 0.35 } };
+const ZONE = { W: 55, STEP: 4.5, GAP: { 1: 14, 2: 6.2, 3: 8 }, P: { 1: 0.05, 2: 0.72, 3: 0.4 } };
 function placeOpen(tr, terr, stage, items, rnd, pick) {
   const C = stage.colors, N = tr.loopN || tr.N, cell = new Map(), key = (x, z) => Math.floor(x / 8) * 100003 + Math.floor(z / 8);
   const gates = (tr.gates || []).filter(i => i < tr.startIdx + N).map(i => [tr.xs[i], tr.zs[i]]);
@@ -72,12 +72,14 @@ function placeOpen(tr, terr, stage, items, rnd, pick) {
       if (rnd() > ZONE.P[kind]) continue;
       const x = tr.xs[i] + tr.rx[i] * o + (rnd() - 0.5) * 3.5, z = tr.zs[i] + tr.rz[i] * o + (rnd() - 0.5) * 3.5, q = tr.nearest(x, z);
       if (!q || !tr.open[tr.bi(q.i)] || tr.open[tr.bi(q.i)] !== kind) continue;              // this leg's own land, not a road's or another leg's
+      if (onTrail(tr, tr.bi(q.i), (x - tr.xs[q.i]) * tr.rx[q.i] + (z - tr.zs[q.i]) * tr.rz[q.i], TRAIL.CLEAR)) continue;   // the trail stays clear
       if (gates.some(([gx, gz]) => Math.hypot(gx - x, gz - z) < GATE.W)) continue;
       const g = ZONE.GAP[kind]; if (!clear(x, z, g)) continue;
       const y = terr.at(x, z), s = 0.9 + rnd() * 0.6, ry = rnd() * TAU; let it;
-      if (kind === OPEN.forest) it = rnd() < stage.trees.pine ? { kind: OB.PINE, x, y: y - 0.2, z, s, sy: s * (0.9 + rnd() * 0.4), ry, color: pick(C.pine), r: 0.75 * s } : { kind: OB.ROUND, x, y: y - 0.2, z, s, sy: s * (0.85 + rnd() * 0.3), ry, color: pick(C.round), r: 0.32 * s };
-      else if (kind === OPEN.rocks) {
-        const k = 1 + rnd() * 1.8, sx = k * (0.8 + rnd() * 0.6), sy = k * (0.5 + rnd() * 0.5), sz = k * (0.8 + rnd() * 0.6);
+      if (kind === OPEN.forest && rnd() < 0.22) it = { kind: OB.BUSH, x, y: y + 0.2 * s, z, s: s * 1.1, sy: s * 0.9, ry, color: pick(C.round), r: 0.9 * s, soft: true };   // undergrowth you plough through
+      else if (kind === OPEN.forest) it = rnd() < stage.trees.pine ? { kind: OB.PINE, x, y: y - 0.2, z, s, sy: s * (0.9 + rnd() * 0.4), ry, color: pick(C.pine), r: 0.3 * s, brush: 0.75 * s } : { kind: OB.ROUND, x, y: y - 0.2, z, s, sy: s * (0.85 + rnd() * 0.3), ry, color: pick(C.round), r: 0.32 * s };
+      else if (kind === OPEN.rocks) {   // a few big boulders to steer round; the rest low rubble you drive over
+        const big = rnd() < 0.35, k = big ? 1.9 + rnd() * 1.1 : 0.5 + rnd() * 0.6, sx = k * (0.8 + rnd() * 0.6), sy = k * (big ? 0.75 + rnd() * 0.35 : 0.3 + rnd() * 0.25), sz = k * (0.8 + rnd() * 0.6);
         it = { kind: OB.ROCK, x, y: y - 0.2 * k, z, s: k, sx, sy, sz, ry, rx: rnd() * 0.4, dl: (rnd() - 0.5) * 0.12, r: sy > 0.7 ? 0.8 * Math.min(sx, sz) : 0, shape: Math.floor(rnd() * 3) };
       } else it = { kind: OB.BUSH, x, y: y + 0.2 * s, z, s, sy: s * 0.7, ry, color: pick(C.round), r: 0.9 * s, soft: true };
       items.push(it); const kk = key(x, z); let a = cell.get(kk); if (!a) cell.set(kk, a = []); a.push(it);

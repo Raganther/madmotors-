@@ -194,7 +194,11 @@ heights meet, and a car belongs to whichever road it's clearly on. Try `?sandbox
 `core/elements/open.js`: a section tagged `open` has no road. Its centre line is only the route progress is measured
 along; the ground rolls across it (terrain.js stops flattening for a road over `GATE.RAMP` m), cars drive the ground
 itself (`groundAt`), there are no barriers, and the land either side is what the kind says (`track/obstacles.js`
-`placeOpen`: forest trees are kept far enough apart that a car always fits between them). Gates (`gate: true`) must be
+`placeOpen`: forest trees are kept far enough apart that a car always fits between them; rock gardens are a few big
+boulders among low rubble you drive over). A dirt trail (`tr.trail`, `TRAIL`) winds through every open leg, kept clear of
+trees and boulders and driving like gravel: the flowing line, quicker than cutting across. Hitting scenery is forgiving
+everywhere (`sim/obstacles.js` `FLOW`): a glancing touch slides you past with most of your speed, only pine trunks are
+solid (their low branches just brush), and only a real head-on hit bounces you and dents the car. Gates (`gate: true`) must be
 driven through in order, between the posts (`features/gates.js`): a car's progress stops just short of its next gate
 until it takes it, so the standings, laps and finish all wait. With gates on a stage, leaving the road never resets
 you (only getting lost, 140 m from the route, or stuck); in open country a reset puts you back where you were last going

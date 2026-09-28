@@ -13,7 +13,8 @@ New behaviour belongs in elements (`/new-element`), never special cases for this
 - One sentence: what makes it different from the stages we have (`npm run layout` lists them; README table).
 - The run as beats: start, 4-8 set pieces, finish. For each beat name the **existing element** that does it
   (README "Track elements" table: jump, kick, yump, whoops, mud / `mud: 'water'`, bridge, viaduct, tunnel, town,
-  gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill/logs, rails, branches).
+  gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill/logs, rails, branches; `open` + `gate` for
+  off-piste legs across a field, forest, rocks or a stream: copy `open-country.js`).
 - Anything no element covers → a new element (`/new-element`), built and sandboxed first. Say so.
 - Choose the base: `type: 'gorge'` (a hand-laid circuit of `segs`; most flexible; copy `bogwood-rally.js` or
   `thunder-falls.js`) or a generated downhill `plan` (copy `summit-meadow.js`). Fields are in `src/core/types.js`.

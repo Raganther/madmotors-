@@ -7,7 +7,7 @@ import { BOOST_PAD } from '../elements/boost.js';
 import { wornSurf } from '../features/wear.js';
 import { groundAt, project, roadH } from '../track/query.js';
 import { gateStep } from '../features/gates.js';
-import { OPEN } from '../elements/open.js';
+import { OPEN, onTrail } from '../elements/open.js';
 
 export function computeGrad(c, W) {
   const tr = W.tr, pr = c.pr, i = pr.i, e = 0.8;
@@ -96,7 +96,7 @@ export function stepCar(c, dt, W, racing) {
   if (tr.ice && al0 < HALF + 0.4 && tr.ice[tr.bi(pr.i)]) c.surface = 'ice';      // an ice patch
   if (tr.dirt && c.surface === W.surf && tr.dirt[tr.bi(pr.i)]) c.surface = 'gravel';   // a dirt track (off-road shortcuts)
   const open = tr.open ? tr.open[tr.bi(pr.i)] : 0;                                  // open country (elements/open.js): no road here
-  if (open) c.surface = open === OPEN.stream && al0 < 80 ? 'ford' : 'grass';
+  if (open) c.surface = open === OPEN.stream && al0 < 80 ? 'ford' : onTrail(tr, tr.bi(pr.i), pr.lat) ? 'gravel' : 'grass';   // the dirt trail drives like a gravel road
   const S = c.rut > 0 ? wornSurf(c) : SURF[c.surface];                  // worn in: rutted mud, swept gravel
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), rx = -fz, rz = fx;
   let vf = c.vx * fx + c.vz * fz, vr = c.vx * rx + c.vz * rz;
