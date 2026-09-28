@@ -3,7 +3,7 @@ import { G } from './game.js';
 import { updatePieces } from './render/effects/pieces.js';
 import * as core from './core/index.js';
 import * as flow from './ui/flow.js';
-import { camera, pcamera, renderFrame, applyQuality } from './render/renderer.js';
+import { camera, pcamera, renderer, renderFrame, applyQuality } from './render/renderer.js';
 import { CUT } from './render/materials.js';
 import { carVis, updateCarVisuals } from './render/vehicles.js';
 import { updateCamera } from './render/camera.js';
@@ -22,5 +22,5 @@ window.__dr = {
     for (let n = 0; n < secs * 120; n++) { flow.savePrev(); core.raceStep(R, core.STEP, W); if (n % 2 === 0) { flow.handleEvents(); applyBarrierChanges(); } }
     G.renderAlpha = 1; updatePieces(1 / 60); updateScenery(1 / 60); updateCarVisuals(1 / 60, 0); elementHook('update', 1 / 60, performance.now() / 1000, 1 / 60); updateParticles(1 / 60); updateTrainsVis(); updateCamera(1 / 60, true); G.hudTick = 0; G.profileTick = 0; updateHUD(1 / 60); renderFrame();
   },
-  applyQuality, renderFrame, carVis, updateFans, get camera() { return camera; }, get pcamera() { return pcamera; }
+  applyQuality, renderFrame, carVis, updateFans, get camera() { return camera; }, get pcamera() { return pcamera; }, get renderer() { return renderer; }
 };

@@ -67,7 +67,7 @@ export function addScenery(group, tr, terr, stage) {
   add(SH.round(), LV({ sway: 1 }), rounds, { cast: true });
   if (cacti.length) add(SH.cactus(), LV({ sway: 0.3 }), cacti, { cast: true });
   rocks.forEach((list, n) => { if (list.length) add(SH.rock(n, mossy ? C.grassB : null), LV(), list, { cast: true, receive: true }); });
-  add(SH.bush(), LV({ sway: 2.2 }), bushes, { cast: true });
+  add(SH.bush(), LV({ sway: 2.2 }), bushes, {});   // too low to throw a shadow worth drawing
   addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), L(), houseW, { cast: true, receive: true });
   addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), L(), houseR, { cast: true });
   G.fans = fans;

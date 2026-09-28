@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { flat, roundBox } from './geometry.js';
+import { flat, mergeAll, roundBox } from './geometry.js';
 import { numberTex } from './materials.js';
 import { bakeAO, carMat, grilleTex, lensTex, treadTex } from './carpaint.js';
 
@@ -79,11 +79,10 @@ function kit(def, root, body) {
         const pivot = new THREE.Group(); pivot.position.set(x, r, z); root.add(pivot);
         const spin = new THREE.Group(); pivot.add(spin);
         const far = new THREE.Group(), near = new THREE.Group(); near.visible = false; spin.add(far, near); lod.lo.push(far); lod.hi.push(near);
-        const t = new THREE.Mesh(bakeAO(flat(new THREE.CylinderGeometry(r, r, wd, knobbly ? 8 : 10).rotateZ(Math.PI / 2)), r), mat(TYRE)); t.castShadow = true; far.add(t);
-        far.add(new THREE.Mesh(bakeAO(new THREE.CylinderGeometry(r * 0.48, r * 0.48, wd + 0.02, 6).rotateZ(Math.PI / 2), r), mat(hub)));
-        if (knobbly) for (let k = 0; k < 8; k++) { const a = (k + 0.5) / 8 * Math.PI * 2, b = new THREE.Mesh(bakeAO(new THREE.BoxGeometry(wd * 0.9, 0.1, 0.16), r), mat(TYRE)); b.position.set(0, Math.cos(a) * r, Math.sin(a) * r); b.rotation.x = -a; far.add(b); }
+        const W = wheelGeos(r, wd, knobbly), t = new THREE.Mesh(W.farTyre, mat(TYRE)); t.castShadow = true; far.add(t);
+        far.add(new THREE.Mesh(W.farHub, mat(hub)));
         if (!tyreM) tyreM = new THREE.MeshStandardMaterial({ color: TYRE, vertexColors: true, map: treadTex(TREAD[0], TREAD[1]), bumpMap: treadTex(TREAD[0], TREAD[1]), bumpScale: 0.6, metalness: 0, roughness: 0.92, envMapIntensity: 0.15 });
-        nearWheel(near, r, wd, knobbly, tyreM, mat(TYRE), mat(hub), mat(DARK));
+        for (const [geo, m] of [[W.tyre, tyreM], [W.blocks, mat(TYRE)], [W.rim, mat(DARK)], [W.hub, mat(hub)]]) if (geo) { const o = new THREE.Mesh(geo, m); o.castShadow = m === tyreM; near.add(o); }
         wheels.push(spin); if (z > 0) steer.push(pivot);
       }
       return { wheels, steer, wr: list[0][2] };
@@ -93,24 +92,28 @@ function kit(def, root, body) {
 }
 // the lathe's v for the tread face: points 5 to 9 of 15 (see nearWheel)
 const TREAD = [5 / 14, 9 / 14];
-// the close-up wheel: a tyre turned from a profile with rounded shoulders, a dark rim set into it, five spokes and a cap
-function nearWheel(g, r, wd, knobbly, tyreM, blockM, hubM, rimM) {
+// A wheel's geometry, both levels, built once per size and shared (a wheel is a few merged meshes, not a dozen: every
+// mesh is a draw call, twice over with shadows). Far: a faceted tyre (tread blocks merged in) and a hub. Near: a tyre
+// turned from a profile with rounded shoulders, knobbly blocks, a dark rim set into it, and five spokes with a cap.
+const wheelCache = new Map(), _wm = new THREE.Matrix4(), _wq = new THREE.Quaternion(), _we = new THREE.Euler(), _wp = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1);
+const placed = (g, y, z, a) => g.applyMatrix4(_wm.compose(_wp.set(0, y, z), _wq.setFromEuler(_we.set(-a, 0, 0)), _one));
+function wheelGeos(r, wd, knobbly) {
+  const key = r + ',' + wd + ',' + knobbly; if (wheelCache.has(key)) return wheelCache.get(key);
+  const W = {};
+  const farBlocks = knobbly ? Array.from({ length: 8 }, (_, k) => { const a = (k + 0.5) / 8 * Math.PI * 2; return placed(new THREE.BoxGeometry(wd * 0.9, 0.1, 0.16), Math.cos(a) * r, Math.sin(a) * r, a); }) : [];
+  W.farTyre = bakeAO(mergeAll([flat(new THREE.CylinderGeometry(r, r, wd, knobbly ? 8 : 10).rotateZ(Math.PI / 2)), ...farBlocks.map(flat)]), r);
+  W.farHub = bakeAO(new THREE.CylinderGeometry(r * 0.48, r * 0.48, wd + 0.02, 6).rotateZ(Math.PI / 2), r);
   const h = wd / 2, ri = r * 0.64, q = Math.min(wd * 0.3, r * 0.24), pts = [new THREE.Vector2(ri, -h)];
   for (let k = 0; k <= 4; k++) { const a = -Math.PI / 2 + k / 4 * Math.PI / 2; pts.push(new THREE.Vector2(r - q + Math.cos(a) * q, -h + q + Math.sin(a) * q)); }
   for (let k = 1; k <= 3; k++) pts.push(new THREE.Vector2(r, -h + q + (wd - 2 * q) * k / 4));   // the tread face (TREAD: where it sits in v)
   for (let k = 0; k <= 4; k++) { const a = k / 4 * Math.PI / 2; pts.push(new THREE.Vector2(r - q + Math.cos(a) * q, h - q + Math.sin(a) * q)); }
   pts.push(new THREE.Vector2(ri, h));
-  const tyre = new THREE.Mesh(bakeAO(new THREE.LatheGeometry(pts, 32).rotateZ(Math.PI / 2), r), tyreM); tyre.castShadow = true; g.add(tyre);
-  g.add(new THREE.Mesh(bakeAO(new THREE.CylinderGeometry(ri, ri, wd * 0.8, 28).rotateZ(Math.PI / 2), r), rimM));
-  g.add(new THREE.Mesh(bakeAO(new THREE.CylinderGeometry(r * 0.2, r * 0.2, wd * 0.8 + 0.05, 14).rotateZ(Math.PI / 2), r), hubM));
-  for (let k = 0; k < 5; k++) {
-    const a = k / 5 * Math.PI * 2, sp = new THREE.Mesh(bakeAO(new THREE.BoxGeometry(wd * 0.8 + 0.03, ri * 0.9, r * 0.1), r), hubM);
-    sp.position.set(0, Math.cos(a) * ri * 0.5, Math.sin(a) * ri * 0.5); sp.rotation.x = -a; g.add(sp);
-  }
-  if (knobbly) for (let k = 0; k < 14; k++) {
-    const a = (k + 0.5) / 14 * Math.PI * 2, b = new THREE.Mesh(bakeAO(roundBox(wd * 0.86, 0.09, r * 0.2, 0.025), r), blockM);
-    b.position.set(0, Math.cos(a) * (r + 0.01), Math.sin(a) * (r + 0.01)); b.rotation.x = -a; g.add(b);
-  }
+  W.tyre = bakeAO(new THREE.LatheGeometry(pts, 28).rotateZ(Math.PI / 2), r);
+  W.rim = bakeAO(new THREE.CylinderGeometry(ri, ri, wd * 0.8, 24).rotateZ(Math.PI / 2), r);
+  W.hub = bakeAO(mergeAll([new THREE.CylinderGeometry(r * 0.2, r * 0.2, wd * 0.8 + 0.05, 12).rotateZ(Math.PI / 2),
+    ...Array.from({ length: 5 }, (_, k) => { const a = k / 5 * Math.PI * 2; return placed(new THREE.BoxGeometry(wd * 0.8 + 0.03, ri * 0.9, r * 0.1), Math.cos(a) * ri * 0.5, Math.sin(a) * ri * 0.5, a); })]), r);
+  W.blocks = knobbly ? bakeAO(mergeAll(Array.from({ length: 14 }, (_, k) => { const a = (k + 0.5) / 14 * Math.PI * 2; return placed(roundBox(wd * 0.86, 0.09, r * 0.2, 0.025), Math.cos(a) * (r + 0.01), Math.sin(a) * (r + 0.01), a); })), r) : null;
+  wheelCache.set(key, W); return W;
 }
 /** Swap a car between its far (faceted) and near (rounded) bodies; dirt overlays follow their panel. */
 export function setCarDetail(lod, near) {
@@ -484,6 +487,36 @@ export function buildCarModel(def, root, body) {
   const K = kit(def, root, body), out = (MODELS[def.model] || MODELS.hatch)(K, def);
   const paint = K.dentable.filter(m => m !== out.cabin && m.userData.home.color === def.color && m.userData.box), vol = m => m.userData.box.w * m.userData.box.h * m.userData.box.d;
   K.seams(paint.sort((a, b) => vol(b) - vol(a))[0], out.cabin);
+  mergeStatic(body, out, K);
   return { ...out, dentable: K.dentable, lod: K.lod };
+}
+// Every separate mesh is a draw call (twice with shadows), and a body is dozens of small parts. The ones nothing acts on
+// alone (not the bumper, wing, struts, lamps, cabin or dentable panels, nothing animated) are merged, one mesh per
+// material for each detail level, so a car costs a handful of draws instead of a hundred.
+function mergeStatic(body, out, K) {
+  const keep = new Set(K.dentable);
+  for (const v of Object.values(out)) for (const o of Array.isArray(v) ? v : [v]) if (o && o.isObject3D) keep.add(o);
+  const both = new Map(), hiOnly = new Map();
+  for (const m of [...body.children]) {
+    if (!m.isMesh || keep.has(m) || m.children.length) continue;
+    const hi = K.lod.hi.includes(m);
+    if (!hi && !m.userData.home) continue;                                               // lamps and flashing glows stay separate
+    const map = hi ? hiOnly : both; if (!map.has(m.material)) map.set(m.material, []); map.get(m.material).push(m);
+  }
+  const place = (g, m) => g.clone().applyMatrix4(m.matrix);
+  for (const [mat, list] of both) {
+    if (list.length < 2) continue;
+    list.forEach(m => m.updateMatrix());
+    const lo = mergeAll(list.map(m => place(m.userData.lod ? m.userData.lod[0] : m.geometry, m))), hasHi = list.some(m => m.userData.lod);
+    const g = new THREE.Mesh(lo, mat); g.castShadow = true; body.add(g);
+    if (hasHi) { g.userData.lod = [lo, mergeAll(list.map(m => place(m.userData.lod ? m.userData.lod[1] : m.geometry, m)))]; K.lod.swap.push(g); if (K.lod.on) g.geometry = g.userData.lod[1]; }
+    for (const m of list) { body.remove(m); const i = K.lod.swap.indexOf(m); if (i >= 0) K.lod.swap.splice(i, 1); }
+  }
+  for (const [mat, list] of hiOnly) {
+    if (list.length < 2) continue;
+    list.forEach(m => m.updateMatrix());
+    const g = new THREE.Mesh(mergeAll(list.map(m => place(m.geometry, m))), mat); g.visible = K.lod.on; body.add(g); K.lod.hi.push(g);
+    for (const m of list) { body.remove(m); K.lod.hi.splice(K.lod.hi.indexOf(m), 1); }
+  }
 }
 export const CAR_MODELS = Object.keys(MODELS);
