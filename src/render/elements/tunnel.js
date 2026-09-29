@@ -3,6 +3,7 @@ import { WALL } from '../../core/constants.js';
 import { BORE_H } from '../../core/track/terrain.js';
 import { addInstanced } from '../geometry.js';
 import { withCutaway } from '../materials.js';
+import { kitPack, vcMat } from '../assets/scenery.js';
 
 // bored tunnel: the bore (cut away on the camera side), lamps, a rock curtain and floor behind, concrete portals set in
 // a rock face at every mouth
@@ -40,7 +41,17 @@ export function addTunnel(group, tr, terr, stage) {
     if (tr.tunnel[i] && !tr.tunnel[p] && (tr.loopN || i > 0)) mouths.push([i, 1]);              // entry: the hill is ahead (+t)
     if (tr.tunnel[i] && !tr.tunnel[n] && (tr.loopN || i < N - 1)) mouths.push([i, -1]);         // exit: the hill is behind
   }
-  // portal faces: a thick concrete arch with hazard banding at each mouth
+  // portal faces: Blender's masonry arch (blender/pieces.py portal, modelled for this bore) or a thick concrete arch,
+  // with hazard banding, at each mouth
+  const PK = kitPack('portal');
+  if (PK) {
+    const arch = withCutaway(vcMat()), band = withCutaway(vcMat());
+    for (const [i, into] of mouths) for (const [part, m] of [['arch', arch], ['band', band]]) {
+      const mesh = new THREE.Mesh(PK.geo(part), m); mesh.position.set(tr.xs[i], tr.H[i] - 0.3, tr.zs[i]); mesh.rotation.y = tr.th[i] + (into > 0 ? 0 : Math.PI);   // the masonry runs back into the hill
+      mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh);
+    }
+    return addHeadwalls(group, tr, terr, stage, mouths, RT + 3, HT + 3);
+  }
   const portalMat = withCutaway(new THREE.MeshLambertMaterial({ color: 0xC9C6BE, side: THREE.DoubleSide })), bandMat = withCutaway(new THREE.MeshLambertMaterial({ color: 0xFFC72C, side: THREE.DoubleSide }));
   for (const [i] of mouths) {
     const face = [], band = [];

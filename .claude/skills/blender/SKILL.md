@@ -60,3 +60,9 @@ assets` installs it). Assets are shapes and named parts only; behaviour stays in
 - Scenery taller than 4 m needs `q=4000` (the position step) in `pack`; the pack records it for the decoder.
 - Snow, moss or anything lying on a surface must sit outside it: check the lab and a race shot, not just the numbers.
 - `Object3D.clone()` copies `userData` through JSON: re-attach geometry references (the LOD pair) on a clone.
+- Stripes and bands smear when chosen per vertex on shared edges: `vcol(o, f, per_face=True)`, or build the thing from
+  separate pieces each with its own colour (the gate post is ten stacked bands).
+- Anything placed in hundreds (barrier tyres and posts, spectators) must stay light: the first tyre (20x8 torus) cost
+  Ravenrock ~10% frame time; 14x6 and 1-segment bevels brought it back to Classic's.
+- A piece the game rotates itself (the gate pennant: a quarter turn) must be modelled in the Classic shape's plane.
+- Kit/scenery parts all sit at the origin; give the pack `meta.lab` offsets so the Asset Lab lays them out.

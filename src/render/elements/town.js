@@ -3,6 +3,7 @@ import { HALF, WALL } from '../../core/constants.js';
 import { mulberry32 } from '../../core/math.js';
 import { railProject } from '../../core/track/rails.js';
 import { addInstanced, chunkMesh, flat } from '../geometry.js';
+import { kitPack, vcMat } from '../assets/scenery.js';
 import { withCutaway } from '../materials.js';
 
 // ---------- town: pavements, bollards, lamps and buildings along the town street ----------
@@ -35,7 +36,7 @@ export function addTown(group, tr, terr, stage) {
       if ((tr.wallL[i] === 7 || tr.wallR[i] === 7) && i % 3 === 0 && !nearRail(bx, bz, 4)) bollards.push({ x: bx, y: H + 0.55, z: bz, color: 0x2B2F3A });
       if (i % 16 === 8 && !nearRail(bx, bz, 5)) {
         const lx = tr.xs[i] + tr.rx[i] * side * (WALL + 1.1), lz = tr.zs[i] + tr.rz[i] * side * (WALL + 1.1);
-        lamps.push({ x: lx, y: H + 2.3, z: lz, color: 0x2B2F3A }); lampHeads.push({ x: lx - tr.rx[i] * side * 0.5, y: H + 4.6, z: lz - tr.rz[i] * side * 0.5, color: 0xFFE7A8 });
+        lamps.push({ x: lx, y: H + 2.3, z: lz, color: 0x2B2F3A, foot: H, ry: Math.atan2(-tr.rx[i] * side, -tr.rz[i] * side) }); lampHeads.push({ x: lx - tr.rx[i] * side * 0.5, y: H + 4.6, z: lz - tr.rz[i] * side * 0.5, color: 0xFFE7A8 });
       }
     }
   }
@@ -119,7 +120,13 @@ export function addTown(group, tr, terr, stage) {
   addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff })), [...sills, ...doors], {});
   addInstanced(group, box(), Lm(), chimneys, { cast: true });
   addInstanced(group, flat(new THREE.CylinderGeometry(0.16, 0.2, 1.1, 6)), new THREE.MeshLambertMaterial({ color: 0xffffff }), bollards, { cast: true });
-  addInstanced(group, flat(new THREE.CylinderGeometry(0.09, 0.12, 4.6, 5)), new THREE.MeshLambertMaterial({ color: 0xffffff }), lamps, { cast: true });
-  addInstanced(group, new THREE.BoxGeometry(0.5, 0.25, 0.5), new THREE.MeshBasicMaterial({ color: 0xffffff }), lampHeads, {});
+  const LK = kitPack('lamp');
+  if (LK) {   // Blender street lamps (blender/pieces.py lamp): stood at the kerb, the arm over the road, the lantern lit
+    const at = lamps.map(l => ({ x: l.x, y: l.foot, z: l.z, ry: l.ry }));
+    addInstanced(group, LK.geo('post'), vcMat(), at, { cast: true }); addInstanced(group, LK.geo('glow'), new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true }), at, {});
+  } else {
+    addInstanced(group, flat(new THREE.CylinderGeometry(0.09, 0.12, 4.6, 5)), new THREE.MeshLambertMaterial({ color: 0xffffff }), lamps, { cast: true });
+    addInstanced(group, new THREE.BoxGeometry(0.5, 0.25, 0.5), new THREE.MeshBasicMaterial({ color: 0xffffff }), lampHeads, {});
+  }
   if (pave.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pave, 3)); g.computeVertexNormals(); group.add(chunkMesh(g, withCutaway(new THREE.MeshLambertMaterial({ color: 0xB9B6AE, side: THREE.DoubleSide }), false, { cut: false, cloud: true }), 60, true)); }
 }

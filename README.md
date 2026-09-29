@@ -279,11 +279,13 @@ blender/          the lab: Python run by headless Blender (the `bpy` module; `np
   cars.py         car designs (DESIGNS: one function per model, all 19) and finish(): far level, roles for the game
   scenery.py      instanced scenery (scn-*): pines (+ snow), broadleaf trees, bushes, rocks, cacti, country houses,
                   spectators; several shapes each (parts crown0, crown1...), shading and details in vertex colours
+  pieces.py       kit pieces (kit-*): tunnel portals (fitted to the bore), bridge/viaduct pier shafts and caps, gate
+                  posts and pennants, street lamps, barrier pieces (tyre, post, armco rail, hay bale)
   build.py        builds designs, writes src/assets/gen/<id>.js, index.js and manifest.json
 src/assets/gen/   GENERATED packs (committed so the game builds without Blender)
 src/render/assets/index.js   registry: blenderPack(id) (null = use Classic), decodePack, the Models setting
 src/render/assets/cars.js    a racer from its pack: parts, damage hooks, wheels, RIGS for moving parts
-src/render/assets/scenery.js scenery geometries for instancing (render/world/scenery.js uses them, else the Classic shapes)
+src/render/assets/scenery.js scenery and kit geometries for instancing (sceneryPack / kitPack; each user keeps its Classic shape)
 src/ui/lab.js     the Asset Lab page
 ```
 
@@ -301,6 +303,9 @@ src/ui/lab.js     the Asset Lab page
   model's origin (`pack(..., origin=True)`), carry their shading in vertex colours that the instance colour multiplies,
   and come in variants the game deals out by obstacle index. Houses are modelled at `meta.size` and scaled to their
   plot. The village streets (`elements/town.js`) stay procedural: they are laid out plot by plot.
+- **Kit pieces** work the same way: `render/elements/tunnel.js` (portals), `bridge.js` (piers: a shaft scaled to each,
+  a cap on top), `open.js` (gates), `town.js` (lamps) and `world/barriers.js` ask `kitPack(id)` and keep their Classic
+  shapes without it. Track-shaped things (road, decks, bores, headwalls) stay procedural.
 - Game axes: x right, y up, z forward (+z is the front). Blender is Z-up: `kit.B(x, y, z)` converts.
 - `tests/assets.test.js` holds the contract: every manifest entry is bundled, decodes, has both levels with matching
   part names, fits its triangle/size budget and, for a car, fits its hitbox and names its damage parts. The e2e run

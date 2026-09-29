@@ -674,6 +674,108 @@
    "wing:accent"
   ]
  },
+ "kit-barrier": {
+  "family": "kit",
+  "hiTris": 424,
+  "kb": 14,
+  "loTris": 246,
+  "max": [
+   0.56,
+   0.6,
+   0.749
+  ],
+  "min": [
+   -0.56,
+   -0.6,
+   -0.753
+  ],
+  "parts": [
+   "bale:hay",
+   "post:white",
+   "rail:metal",
+   "tyre:tyre"
+  ]
+ },
+ "kit-gate": {
+  "family": "kit",
+  "hiTris": 844,
+  "kb": 23,
+  "loTris": 430,
+  "max": [
+   0.7,
+   3.4,
+   0.45
+  ],
+  "min": [
+   -0.7,
+   -3.0,
+   -0.45
+  ],
+  "parts": [
+   "flag:yellow",
+   "post:white"
+  ]
+ },
+ "kit-lamp": {
+  "family": "kit",
+  "hiTris": 356,
+  "kb": 13,
+  "loTris": 192,
+  "max": [
+   0.22,
+   5.02,
+   0.82
+  ],
+  "min": [
+   -0.22,
+   0.0,
+   -0.2
+  ],
+  "parts": [
+   "glow:lamp",
+   "post:dark"
+  ]
+ },
+ "kit-pier": {
+  "family": "kit",
+  "hiTris": 1236,
+  "kb": 35,
+  "loTris": 618,
+  "max": [
+   0.57,
+   0.5,
+   0.57
+  ],
+  "min": [
+   -0.57,
+   -0.5,
+   -0.57
+  ],
+  "parts": [
+   "cap:concrete",
+   "shaft:concrete"
+  ]
+ },
+ "kit-portal": {
+  "family": "kit",
+  "hiTris": 1136,
+  "kb": 47,
+  "loTris": 792,
+  "max": [
+   12.7,
+   10.9,
+   1.3
+  ],
+  "min": [
+   -12.7,
+   -0.3,
+   -0.3
+  ],
+  "parts": [
+   "arch:concrete",
+   "band:concrete"
+  ]
+ },
  "scn-broadleaf": {
   "family": "scenery",
   "hiTris": 976,
