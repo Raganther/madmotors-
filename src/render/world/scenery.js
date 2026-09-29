@@ -6,6 +6,7 @@ import { _c, _e, _m, _p, _q, _s, addInstanced, flat } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import * as SH from './shapes.js';
 import { debris } from '../effects/debris.js';
+import { mossy as mossyGeo, sceneryPack, variant } from '../assets/scenery.js';
 
 export function addScenery(group, tr, terr, stage) {
   const rnd = mulberry32(stage.seed * 7 + 11), C = stage.colors;
@@ -16,7 +17,7 @@ export function addScenery(group, tr, terr, stage) {
   const trunks = [], pines = [], rounds = [], rocks = [[], [], []], bushes = [], cacti = [], OB = terr.obst ? terr.obst.items : [];
   OB.forEach((o, k) => {
     const base = { k, x: o.x, y: o.y, z: o.z, ry: o.ry };
-    if (o.kind === 0 || o.kind === 1) trunks.push({ ...base, sx: o.s, sy: o.s, sz: o.s, color: 0x6B4A32 });
+    if (o.kind === 0 || o.kind === 1) trunks.push({ ...base, sx: o.s, sy: o.s, sz: o.s, color: 0x6B4A32, pine: o.kind === 0 });
     if (o.kind === 0) pines.push({ ...base, sx: o.s, sy: o.sy, sz: o.s, color: o.color });
     else if (o.kind === 1) rounds.push({ ...base, sx: o.s, sy: o.sy, sz: o.s, color: o.color });
     else if (o.kind === 2) { _c.set(0x5F7F3C).offsetHSL(o.dh, 0, o.dl); cacti.push({ ...base, sx: o.s, sy: o.sy, sz: o.s, color: _c.getHex() }); }
@@ -28,7 +29,7 @@ export function addScenery(group, tr, terr, stage) {
     const lat = side * (latMin + rnd() * latVar), x = tr.xs[i] + tr.rx[i] * lat, z = tr.zs[i] + tr.rz[i] * lat, q = tr.nearest(x, z);
     if (!q || q.d < HALF + 9 || slopeAt(x, z) > 0.55) return;
     const w = 4 + rnd() * 2.5, d = 3.6 + rnd() * 1.6, h = 2.8 + rnd() * 1.6, rh = 1.8 + rnd() * 0.8, y = terr.at(x, z) - 0.4, ry = tr.th[i];
-    houseW.push({ x, y, z, sx: w, sy: h + 0.4, sz: d, ry, color: pick([0xF3EBDD, 0xFFFFFF, 0xEADBC4, 0xDCE6EA, 0xF2D9C4]) });
+    houseW.push({ x, y, z, sx: w, sy: h + 0.4, sz: d, ry, color: pick([0xF3EBDD, 0xFFFFFF, 0xEADBC4, 0xDCE6EA, 0xF2D9C4]), h, rh });
     houseR.push({ x, y: y + h + 0.4, z, sx: w * 1.12, sy: rh, sz: d * 1.12, ry, color: pick([0xB5523B, 0xA3452F, 0x4B5563, 0x8C3B2E]) });
   };
   const vStart = stage.village ? Math.floor(tr.N * 0.45) : tr.loopN ? tr.startIdx - 110 : tr.finishIdx - 90;
@@ -61,16 +62,41 @@ export function addScenery(group, tr, terr, stage) {
   const LV = o => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), false, Object.assign({ cloud: true }, o));
   const snowy = stage.surface === 'snow', mossy = !stage.cacti && !snowy, S = G.sceneryParts = new Map();
   const add = (geo, mat, list, opts) => { for (const ch of addInstanced(group, geo, mat, list, opts)) ch.list.forEach((it, j) => { if (it.k === undefined) return; let a = S.get(it.k); if (!a) S.set(it.k, a = []); a.push({ mesh: ch.mesh, j, it }); }); };
-  add(SH.trunk(), LV(), trunks, { cast: true });
-  add(SH.pine(), LV({ sway: 1 }), pines, { cast: true });
-  if (snowy) add(SH.pineSnow(), LV({ sway: 1 }), pines.map(p => ({ ...p, color: 0xF2F6FA })));   // snow lying on the pines' tiers
-  add(SH.round(), LV({ sway: 1 }), rounds, { cast: true });
-  if (cacti.length) add(SH.cactus(), LV({ sway: 0.3 }), cacti, { cast: true });
-  rocks.forEach((list, n) => { if (list.length) add(SH.rock(n, mossy ? C.grassB : null), LV(), list, { cast: true, receive: true }); });
-  add(SH.bush(), LV({ sway: 2.2 }), bushes, {});   // too low to throw a shadow worth drawing
-  addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), L(), houseW, { cast: true, receive: true });
-  addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), L(), houseR, { cast: true });
+  // Blender models (blender/scenery.py, Models setting) when there are packs, several shapes of each, else the Classic
+  // shapes; placement, tints, sway and hits are the same either way
+  const B = id => sceneryPack(id), pineB = B('pine'), leafB = B('broadleaf'), rockB = B('rock'), bushB = B('bush'), cactB = B('cactus'), houseB = B('house');
+  const each = (P, list, fn) => { for (let v = 0; v < P.n; v++) { const l = variant(list, P.n, v); if (l.length) fn(v, l); } };
+  if (pineB) {
+    add(pineB.geo('trunk0'), LV(), trunks.filter(t => t.pine), { cast: true });
+    each(pineB, pines, (v, l) => { add(pineB.geo('crown' + v), LV({ sway: 1 }), l, { cast: true }); if (snowy) add(pineB.geo('snow' + v), LV({ sway: 1 }), l.map(p => ({ ...p, color: 0xF2F6FA }))); });
+  } else {
+    add(SH.trunk(), LV(), pineB || leafB ? trunks.filter(t => t.pine) : trunks, { cast: true });
+    add(SH.pine(), LV({ sway: 1 }), pines, { cast: true });
+    if (snowy) add(SH.pineSnow(), LV({ sway: 1 }), pines.map(p => ({ ...p, color: 0xF2F6FA })));   // snow lying on the pines' tiers
+  }
+  if (leafB) {
+    const lt = trunks.filter(t => !t.pine);
+    each(leafB, rounds, (v, l) => { add(leafB.geo('crown' + v), LV({ sway: 1 }), l, { cast: true }); const ks = new Set(l.map(t => t.k)); add(leafB.geo('trunk' + v), LV(), lt.filter(t => ks.has(t.k)), { cast: true }); });
+  } else {
+    if (pineB) add(SH.trunk(), LV(), trunks.filter(t => !t.pine), { cast: true });
+    add(SH.round(), LV({ sway: 1 }), rounds, { cast: true });
+  }
+  if (cacti.length) { if (cactB) each(cactB, cacti, (v, l) => add(cactB.geo('cactus' + v), LV({ sway: 0.3 }), l, { cast: true })); else add(SH.cactus(), LV({ sway: 0.3 }), cacti, { cast: true }); }
+  rocks.forEach((list, n) => { if (list.length) add(rockB ? (mossy ? mossyGeo(rockB.geo('rock' + n), C.grassB) : rockB.geo('rock' + n)) : SH.rock(n, mossy ? C.grassB : null), LV(), list, { cast: true, receive: true }); });
+  if (bushB) each(bushB, bushes, (v, l) => add(bushB.geo('bush' + v), LV({ sway: 2.2 }), l, {}));
+  else add(SH.bush(), LV({ sway: 2.2 }), bushes, {});   // too low to throw a shadow worth drawing
+  if (houseB) {
+    // a Blender house is modelled at meta.size (w, wall height, d) and scaled to its plot; walls and roof share the transform
+    const [W0, H0, D0] = houseB.meta.size, LH = o => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), false, Object.assign({ cloud: true }, o));
+    const hs = houseW.map((w, j) => ({ ...w, k: j, sx: w.sx / W0, sy: (w.h + 0.4) / H0, sz: w.sz / D0, rcolor: houseR[j].color }));
+    each(houseB, hs, (v, l) => { addInstanced(group, houseB.geo('walls' + v), LH(), l, { cast: true, receive: true }); addInstanced(group, houseB.geo('roof' + v), LH(), l.map(h => ({ ...h, color: h.rcolor })), { cast: true }); });
+  } else {
+    addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), L(), houseW, { cast: true, receive: true });
+    addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), L(), houseR, { cast: true });
+  }
   G.fans = fans;
+  const fanB = B('fan');
+  if (fanB) return addInstanced(group, fanB.geo('body'), LV(), bodies, { cast: true }).concat(addInstanced(group, fanB.geo('head'), LV(), heads, {}), addInstanced(group, fanB.geo('arm'), LV(), arms, {}));
   return addInstanced(group, flat(new THREE.BoxGeometry(0.62, 1.2, 0.42)), L(), bodies, { cast: true })
     .concat(addInstanced(group, flat(new THREE.BoxGeometry(0.42, 0.42, 0.42)), L(), heads, {}))
     .concat(addInstanced(group, flat(new THREE.BoxGeometry(0.16, 0.66, 0.16).translate(0, -0.3, 0)), L(), arms, {}));   // hung from the shoulder

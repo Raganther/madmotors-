@@ -673,5 +673,161 @@
    "tail1:tail",
    "wing:accent"
   ]
+ },
+ "scn-broadleaf": {
+  "family": "scenery",
+  "hiTris": 976,
+  "kb": 46,
+  "loTris": 556,
+  "max": [
+   2.059,
+   5.345,
+   1.708
+  ],
+  "min": [
+   -1.905,
+   0.0,
+   -1.525
+  ],
+  "parts": [
+   "crown0:leaf",
+   "crown1:leaf",
+   "trunk0:bark",
+   "trunk1:bark"
+  ]
+ },
+ "scn-bush": {
+  "family": "scenery",
+  "hiTris": 400,
+  "kb": 14,
+  "loTris": 200,
+  "max": [
+   1.336,
+   1.367,
+   1.029
+  ],
+  "min": [
+   -1.318,
+   -1.152,
+   -1.522
+  ],
+  "parts": [
+   "bush0:leaf",
+   "bush1:leaf"
+  ]
+ },
+ "scn-cactus": {
+  "family": "scenery",
+  "hiTris": 1040,
+  "kb": 37,
+  "loTris": 520,
+  "max": [
+   1.11,
+   3.658,
+   0.323
+  ],
+  "min": [
+   -1.06,
+   0.0,
+   -0.323
+  ],
+  "parts": [
+   "cactus0:cactus",
+   "cactus1:cactus"
+  ]
+ },
+ "scn-fan": {
+  "family": "scenery",
+  "hiTris": 1564,
+  "kb": 41,
+  "loTris": 936,
+  "max": [
+   0.29,
+   0.57,
+   0.22
+  ],
+  "min": [
+   -0.29,
+   -0.63,
+   -0.249
+  ],
+  "parts": [
+   "arm:shirt",
+   "body:shirt",
+   "head:skin"
+  ]
+ },
+ "scn-house": {
+  "family": "scenery",
+  "hiTris": 4600,
+  "kb": 134,
+  "loTris": 2784,
+  "max": [
+   3.387,
+   5.8,
+   3.015
+  ],
+  "min": [
+   -3.387,
+   0.0,
+   -3.015
+  ],
+  "parts": [
+   "roof0:roof",
+   "roof1:roof",
+   "roof2:roof",
+   "roof3:roof",
+   "walls0:wall",
+   "walls1:wall",
+   "walls2:wall",
+   "walls2:wood",
+   "walls3:wall"
+  ]
+ },
+ "scn-pine": {
+  "family": "scenery",
+  "hiTris": 1664,
+  "kb": 57,
+  "loTris": 926,
+  "max": [
+   2.097,
+   5.55,
+   2.131
+  ],
+  "min": [
+   -1.894,
+   0.0,
+   -2.021
+  ],
+  "parts": [
+   "crown0:pine",
+   "crown1:pine",
+   "crown2:pine",
+   "snow0:snow",
+   "snow1:snow",
+   "snow2:snow",
+   "trunk0:bark"
+  ]
+ },
+ "scn-rock": {
+  "family": "scenery",
+  "hiTris": 720,
+  "kb": 24,
+  "loTris": 360,
+  "max": [
+   1.306,
+   1.063,
+   1.1
+  ],
+  "min": [
+   -1.373,
+   -0.344,
+   -1.137
+  ],
+  "parts": [
+   "rock0:rock",
+   "rock1:rock",
+   "rock2:rock"
+  ]
  }
 }
