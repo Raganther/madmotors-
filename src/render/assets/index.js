@@ -17,12 +17,12 @@ export const blenderPack = (id, force) => (force || blenderOn()) && PACKS[id] ? 
 export const packIds = () => Object.keys(PACKS);
 export const packOf = id => PACKS[id] || null;
 
-// ---- decoding: positions int16 (1/8000 m), normals int8, indices uint16, optional vertex colours uint8, base64 ----
+// ---- decoding: positions int16 (1/q m: pack.q, 8000 unless the pack says), normals int8, indices uint16, optional vertex colours uint8, base64 ----
 const cache = new Map();
 const bytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)).buffer;
-function geometry(p) {
+function geometry(p, q = 8000) {
   const P = new Int16Array(bytes(p.pos)), N = new Int8Array(bytes(p.nor)), I = new Uint16Array(bytes(p.idx));
-  const pos = Float32Array.from(P, v => v / 8000), nor = Float32Array.from(N, v => v / 127), uv = new Float32Array(pos.length / 3 * 2);
+  const pos = Float32Array.from(P, v => v / q), nor = Float32Array.from(N, v => v / 127), uv = new Float32Array(pos.length / 3 * 2);
   for (let k = 0; k < pos.length / 3; k++) { uv[k * 2] = pos[k * 3] * 0.4 + 0.5; uv[k * 2 + 1] = pos[k * 3 + 2] * 0.28 + 0.5; }   // planar, for the fine surface textures
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(new THREE.BufferAttribute(I, 1));
@@ -33,7 +33,7 @@ function geometry(p) {
  *  Each part's vertices are relative to its pivot. Decoded once. */
 export function decodePack(pack) {
   if (cache.has(pack)) return cache.get(pack);
-  const lvl = parts => { const o = {}; for (const p of parts || []) (o[p.name] = o[p.name] || {})[p.mat] = geometry(p); return o; }, at = {};
+  const lvl = parts => { const o = {}; for (const p of parts || []) (o[p.name] = o[p.name] || {})[p.mat] = geometry(p, pack.q); return o; }, at = {};
   for (const p of pack.hi) at[p.name] = p.at || [0, 0, 0];
   const out = { hi: lvl(pack.hi), lo: pack.lo ? lvl(pack.lo) : null, at, meta: pack.meta || {} }; out.lo = out.lo || out.hi;
   cache.set(pack, out); return out;

@@ -31,6 +31,8 @@ const CSS = `
 #lab-notes .n{border-top:1px solid #333C60;padding:4px 0;font-size:13px} #lab-notes .r{color:#8FE08F}
 #lab-notes ul{max-height:160px;overflow-y:auto;margin:4px 0;padding:0;list-style:none}
 @media (max-width:700px){#lab{flex-direction:column}#lab-side{width:auto;height:30%}#lab-stats{display:none}}`;
+// scenery tints in the lab, as a green stage would give them (the game tints each instance itself)
+const TINT = { pine: 0x3E7447, leaf: 0x4F8A3F, bark: 0x6B4A32, rock: 0xA29E92, wall: 0xEADBC4, roof: 0xB5523B, cactus: 0x5F7F3C, snow: 0xF2F6FA, shirt: 0x2F7DE0, skin: 0xE0B08A };
 // what a car's rig reads (render/carmodels.js anim): a car cruising with a little throttle
 const FAKE = { boost: 0, speed: 20, vx: 0, vz: 20, yaw: 0, inp: { throttle: 0.6, steer: 0 }, dmg: { f: 0, b: 0 } };
 let R, scene, cam, sun, hemi, holder, cur = null, db = null, notes = [];
@@ -101,11 +103,14 @@ function build(it) {
     const v = { root, body, wheels: m.wheels, struts: m.struts || [], dentable: m.dentable, bumper: m.bumper, wing: m.wing, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material };
     return { root, v, lod: m.lod, anim: m.anim, hit: [def.hw || CAR_HW, def.hl || CAR_HL], blender: S.provider === 'blender' && !!packOf(it.pack) };
   }
-  // any other pack: its parts in the palette colours (the families' own game builders come with them)
-  const H = decodePack(packOf(it.pack));
+  // any other pack (scenery): its parts tinted as a typical stage would, variants side by side (parts named <part><n>),
+  // or laid out by the pack's meta.lab offsets (the spectator's body, head and arms)
+  const H = decodePack(packOf(it.pack)), lab = H.meta.lab || {}, n = H.meta.variants || 1, gap = H.meta.size ? H.meta.size[0] + 2.5 : 5;
   for (const name of Object.keys(H.hi)) for (const [mat, g] of Object.entries(H.hi[name])) {
-    const c = HD_COL[mat] ?? 0xA0A4A8, m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, vertexColors: !!g.attributes.color }));
-    m.castShadow = true; m.userData.lod = [H.lo[name] && H.lo[name][mat] || g, g]; body.add(m);
+    const c = TINT[mat] ?? HD_COL[mat] ?? 0xA0A4A8, m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, vertexColors: !!g.attributes.color }));
+    const v = +(name.match(/(\d+)$/) || [0, 0])[1], off = lab[name] || [(v - (n - 1) / 2) * gap, 0, 0];
+    m.position.set(...off); m.castShadow = true; m.userData.lod = [H.lo[name] && H.lo[name][mat] || g, g]; body.add(m);
+    if (lab[name + '2']) { const m2 = m.clone(); m2.userData.lod = m.userData.lod; m2.position.set(...lab[name + '2']); body.add(m2); }   // (clone() copies userData as JSON)
   }
   return { root, v: null, lod: null, hit: null, blender: true };
 }

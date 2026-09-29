@@ -52,3 +52,11 @@ assets` installs it). Assets are shapes and named parts only; behaviour stays in
   the part in, add a screen), not the tolerance.
 - `npm run labshot -- <ids>` (tools/out/labshot.png) puts Blender beside Classic for each asset: read it every round.
 - Cost so far: all 19 cars on a full field bench the same as Classic; the page grew ~2.6 MB (packs are base64 in the bundle).
+  Scenery is instanced in hundreds: the near level cost 12-20% frame time on forest and village stages, so the game
+  instances the far level unless Graphics is High. Bench `MODELS=classic` vs `blender` on stages 2, 4 and 18.
+- Vertex colours over 1.0 wrapped round in a byte (black and purple patches): the packer clamps them now; keep shade
+  functions in 0..1 anyway.
+- A design function named like a builtin (`round`) shadows it for the whole module: name designs for what they are.
+- Scenery taller than 4 m needs `q=4000` (the position step) in `pack`; the pack records it for the decoder.
+- Snow, moss or anything lying on a surface must sit outside it: check the lab and a race shot, not just the numbers.
+- `Object3D.clone()` copies `userData` through JSON: re-attach geometry references (the LOD pair) on a clone.

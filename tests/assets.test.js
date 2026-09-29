@@ -9,7 +9,7 @@ import { CAR_HL, CAR_HW } from '../src/core/constants.js';
 // game's damage and animation hooks look for (render/assets/cars.js).
 const buf = s => Buffer.from(s, 'base64');
 const tris = parts => parts.reduce((a, p) => a + buf(p.idx).length / 6, 0);
-const BUDGET = { cars: { hi: 9000, lo: 4500, kb: 260 } };
+const BUDGET = { cars: { hi: 9000, lo: 4500, kb: 260 }, scenery: { hi: 6000, lo: 3500, kb: 160 }, kit: { hi: 6000, lo: 3500, kb: 160 } };
 
 describe('Blender asset packs', () => {
   it('the bundle holds exactly the manifest', () => {

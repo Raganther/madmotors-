@@ -163,22 +163,23 @@ def _tris(o):
             g[0].append(G(v)); g[1].append(G(n))
             if col: c = col.data[li].color if col.domain == 'CORNER' else col.data[me.loops[li].vertex_index].color; g[2].append(tuple(c[:3]))
     ob.to_mesh_clear(); return groups
-def _pack(pos, nor, col):
-    P = np.round(np.array(pos) * 8000).astype(np.int32); Nn = np.round(np.array(nor) * 127).astype(np.int32)
-    Cc = np.round(np.array(col) * 255).astype(np.int32) if col else None
+def _pack(pos, nor, col, q=8000):
+    P = np.round(np.array(pos) * q).astype(np.int32); Nn = np.round(np.array(nor) * 127).astype(np.int32)
+    Cc = np.round(np.clip(np.array(col), 0, 1) * 255).astype(np.int32) if col else None   # (over 1 would wrap round in a byte)
     key = np.concatenate([P, Nn] + ([Cc] if Cc is not None else []), axis=1)
     uniq, inv = np.unique(key, axis=0, return_inverse=True)
     if len(uniq) > 65535: raise ValueError('too many vertices in one part')
-    if np.abs(P).max() > 32767: raise ValueError('part larger than 4 m from its origin')
+    if np.abs(P).max() > 32767: raise ValueError(f'part larger than {32767 / q:.1f} m from its origin')
     e = lambda a, t: base64.b64encode(a.astype(t).tobytes()).decode()
     out = { 'pos': e(uniq[:, 0:3], np.int16), 'nor': e(uniq[:, 3:6], np.int8), 'idx': e(inv.reshape(-1), np.uint16) }
     if Cc is not None: out['col'] = e(uniq[:, 6:9], np.uint8)
     return out, len(inv) // 3, len(uniq)
-def pack(asset_id, family, levels, meta=None, origin=False):
+def pack(asset_id, family, levels, meta=None, origin=False, q=8000):
     """Write src/assets/gen/<asset_id>.js: levels = { 'hi': [objects], 'lo': [objects] } (lo optional). Each object's
     triangles are grouped by material into parts {name, mat, pos, nor, idx[, col]}. Returns stats for the manifest.
-    origin: every part's pivot is the model's origin (instanced scenery, placed by the game's own transforms)."""
-    os.makedirs(GEN, exist_ok=True); data = { 'id': asset_id, 'family': family, 'meta': meta or {} }; stats = { 'family': family }
+    origin: every part's pivot is the model's origin (instanced scenery, placed by the game's own transforms).
+    q: positions are stored in steps of 1/q m (8000: +-4 m from the pivot; 4000 for bigger things: +-8 m)."""
+    os.makedirs(GEN, exist_ok=True); data = { 'id': asset_id, 'family': family, 'q': q, 'meta': meta or {} }; stats = { 'family': family }
     lo_all, hi_all, piv = [], [], {}
     # every part has a pivot (its `at`, game coords): the object's 'pivot' property if the design set one (a hinge, an
     # axle), else the middle of its near-level bounds. Its vertices are stored relative to it, so the game can swing,
@@ -194,7 +195,7 @@ def pack(asset_id, family, levels, meta=None, origin=False):
                 else: a = np.array([v for g in groups.values() for v in g[0]]); piv[name] = [round(float(v), 4) for v in (a.min(0) + a.max(0)) / 2]
             at = np.array(piv[name])
             for m, (p, n, c) in groups.items():
-                pk, t, _ = _pack(list(np.array(p) - at), n, c); parts.append({ 'name': name, 'mat': m, 'at': piv[name], **pk }); tris += t
+                pk, t, _ = _pack(list(np.array(p) - at), n, c, q); parts.append({ 'name': name, 'mat': m, 'at': piv[name], **pk }); tris += t
                 (hi_all if lvl == 'hi' else lo_all).extend(p)
         data[lvl] = parts; stats[lvl + 'Tris'] = tris
     pts = np.array(hi_all); stats['min'] = [round(v, 3) for v in pts.min(0)]; stats['max'] = [round(v, 3) for v in pts.max(0)]
