@@ -5,6 +5,7 @@ import { clamp } from '../../core/math.js';
 import { BAR_P } from '../../core/sim/barriers.js';
 import { spawnProp } from '../effects/props.js';
 import { _e, _m, _p, _q, _s, addInstanced, flat } from '../geometry.js';
+import { kitPack, vcMat } from '../assets/scenery.js';
 
 export let barVis = null;
 export function addBarriers(group, tr, terr, stage) {
@@ -43,10 +44,12 @@ export function addBarriers(group, tr, terr, stage) {
       list.forEach((it, j) => { it.mesh = mesh; it.j = j; it.on = true; all.push(it); const k = it.s * 1e6 + it.p; let a = map.get(k); if (!a) map.set(k, a = []); a.push(it); });
     }
   };
-  reg(addInstanced(group, flat(new THREE.CylinderGeometry(0.55, 0.55, 0.42, 10)), new THREE.MeshLambertMaterial({ color: 0xffffff }), tyres, { cast: true }));
-  reg(addInstanced(group, flat(new THREE.BoxGeometry(0.2, 1.2, 0.2)), new THREE.MeshLambertMaterial({ color: 0xffffff }), posts, { cast: true }));
-  reg(addInstanced(group, flat(new THREE.BoxGeometry(0.1, 0.14, 1)), new THREE.MeshLambertMaterial({ color: 0xffffff }), rails, { cast: true }));
-  reg(addInstanced(group, flat(new THREE.BoxGeometry(1.0, 0.9, 1.5)), new THREE.MeshLambertMaterial({ color: 0xffffff }), bales, { cast: true }));
+  // the pieces: Blender's (blender/pieces.py barrier: a treaded tyre, a post, a W-beam rail, a bound bale) or the Classic boxes
+  const K = kitPack('barrier'), piece = (part, classic) => K ? [K.geo(part), vcMat()] : [flat(classic), new THREE.MeshLambertMaterial({ color: 0xffffff })];
+  reg(addInstanced(group, ...piece('tyre', new THREE.CylinderGeometry(0.55, 0.55, 0.42, 10)), tyres, { cast: true }));
+  reg(addInstanced(group, ...piece('post', new THREE.BoxGeometry(0.2, 1.2, 0.2)), posts, { cast: true }));
+  reg(addInstanced(group, ...piece('rail', new THREE.BoxGeometry(0.1, 0.14, 1)), rails, { cast: true }));
+  reg(addInstanced(group, ...piece('bale', new THREE.BoxGeometry(1.0, 0.9, 1.5)), bales, { cast: true }));
   barVis = { map, all, armco, NPc: Math.ceil(NB / BAR_P), loop: !!tr.loopN };
 }
 // ---------- barrier damage visuals ----------

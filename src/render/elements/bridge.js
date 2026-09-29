@@ -2,10 +2,18 @@ import * as THREE from 'three';
 import { HALF, WALL } from '../../core/constants.js';
 import { railProject } from '../../core/track/rails.js';
 import { addInstanced, flat } from '../geometry.js';
+import { kitPack } from '../assets/scenery.js';
 import { withCutaway } from '../materials.js';
 
 // bridges thin to see-through like the ground when the player drives under one (camera.js updateCut)
 export function bridgeMat(opts) { return withCutaway(new THREE.MeshLambertMaterial(opts)); }
+// Supports: Blender's pier (blender/pieces.py pier: a shaft scaled to each one, a cornice cap on top) or a plain box
+function addSupports(group, list, color) {
+  const K = kitPack('pier');
+  if (!K) return tagSupports(addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1)), bridgeMat({ color }), list, { cast: true, receive: true }));
+  tagSupports(addInstanced(group, K.geo('shaft'), bridgeMat({ color, vertexColors: true }), list, { cast: true, receive: true }));
+  addInstanced(group, K.geo('cap'), bridgeMat({ color, vertexColors: true }), list.map(p => ({ ...p, y: p.y + p.sy / 2 + 0.2, sy: 1 })), { cast: true });   // caps sit on the supports' tops: not supports themselves
+}
 /**
  * Can a support stand here? Not if its footprint (a box `hw` across and `hl` along, turned to `ry`) overlaps any road
  * that passes underneath (lower than `top`): a pier on the road below is never right, however far below it runs. Every
@@ -68,7 +76,7 @@ export function addBridge(group, tr, terr, stage) {
   addSwept(group, tr, N, [box(-W - 0.6, W + 0.6, -0.95, -0.05)], bridgeMat({ color: 0xA7AAB1, side: THREE.DoubleSide }));
   addSwept(group, tr, N, [box(-W - 0.425, -W + 0.025, 0, 0.9), box(W - 0.025, W + 0.425, 0, 0.9)], bridgeMat({ color: 0xD5D8DE, side: THREE.DoubleSide }));
   addInstanced(group, cube(), bridgeMat({ color: 0xffffff }), stripes, {});
-  tagSupports(addInstanced(group, cube(), bridgeMat({ color: 0x9A9DA5 }), pillars, { cast: true, receive: true }));
+  addSupports(group, pillars, 0x9A9DA5);
 }
 // stone viaducts: deck, solid parapets, piers down to the valley floor and arches between them
 export let archGeo = null;
@@ -104,6 +112,6 @@ export function addViaduct(group, tr, terr) {
   }
   addSwept(group, tr, N, [box(-WALL - 0.8, WALL + 0.8, -1.45, -0.05)], bridgeMat({ color: 0xA39C8F, side: THREE.DoubleSide }));
   addSwept(group, tr, N, [box(-WALL - 0.7, -WALL, -0.05, 1.05), box(WALL, WALL + 0.7, -0.05, 1.05)], bridgeMat({ color: 0xBDB4A4, side: THREE.DoubleSide }));
-  tagSupports(addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1)), bridgeMat({ color: 0xffffff }), piers, { cast: true, receive: true }));
+  addSupports(group, piers, 0xffffff);
   addInstanced(group, archGeo.clone(), bridgeMat({ color: 0xffffff, side: THREE.DoubleSide }), arches, { cast: true });
 }

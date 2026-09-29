@@ -32,7 +32,7 @@ const CSS = `
 #lab-notes ul{max-height:160px;overflow-y:auto;margin:4px 0;padding:0;list-style:none}
 @media (max-width:700px){#lab{flex-direction:column}#lab-side{width:auto;height:30%}#lab-stats{display:none}}`;
 // scenery tints in the lab, as a green stage would give them (the game tints each instance itself)
-const TINT = { pine: 0x3E7447, leaf: 0x4F8A3F, bark: 0x6B4A32, rock: 0xA29E92, wall: 0xEADBC4, roof: 0xB5523B, cactus: 0x5F7F3C, snow: 0xF2F6FA, shirt: 0x2F7DE0, skin: 0xE0B08A };
+const TINT = { hay: 0xE2C265, concrete: 0xC9C6BE, pine: 0x3E7447, leaf: 0x4F8A3F, bark: 0x6B4A32, rock: 0xA29E92, wall: 0xEADBC4, roof: 0xB5523B, cactus: 0x5F7F3C, snow: 0xF2F6FA, shirt: 0x2F7DE0, skin: 0xE0B08A };
 // what a car's rig reads (render/carmodels.js anim): a car cruising with a little throttle
 const FAKE = { boost: 0, speed: 20, vx: 0, vz: 20, yaw: 0, inp: { throttle: 0.6, steer: 0 }, dmg: { f: 0, b: 0 } };
 let R, scene, cam, sun, hemi, holder, cur = null, db = null, notes = [];

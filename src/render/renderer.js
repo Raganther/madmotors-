@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { G } from '../game.js';
 import { FX, getCrackTex, makeCloudTex } from './materials.js';
 import { $, isTouchDevice } from '../ui/dom.js';
+import { setGfx } from './assets/index.js';
 
 export let contextLost = false;
 export let renderer, scene, camera, pcamera, sun, hemi;   // camera: the orthographic race view; pcamera: the perspective views (render/camera.js sets G.persp)
@@ -16,6 +17,7 @@ export const QUALITY = {
 export const Q_ORDER = ['auto', 'high', 'medium', 'low'];
 export let autoPost = !isTouchDevice(), quality = 'auto', dynPR = Math.min(devicePixelRatio || 1, isTouchDevice() ? 1.25 : 1.5), perfAcc = 0, perfN = 0, perfGood = 0, perfCool = 0;
 try { const q = localStorage.getItem('downhill-rush-quality'); if (QUALITY[q]) quality = q; } catch (e) { }
+setGfx(quality);
 export function applyQuality() {
   const Q = QUALITY[quality], dpr = devicePixelRatio || 1;
   const pr = Q.dyn ? dynPR : Math.min(dpr, Q.pr);
@@ -26,7 +28,7 @@ export function applyQuality() {
   const b = $('gfx-btn'); if (b) b.textContent = 'Graphics: ' + Q.label;
 }
 export function cycleQuality() {
-  quality = Q_ORDER[(Q_ORDER.indexOf(quality) + 1) % Q_ORDER.length];
+  quality = Q_ORDER[(Q_ORDER.indexOf(quality) + 1) % Q_ORDER.length]; setGfx(quality);
   try { localStorage.setItem('downhill-rush-quality', quality); } catch (e) { }
   applyQuality();
 }

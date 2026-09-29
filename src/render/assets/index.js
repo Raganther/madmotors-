@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import PACKS from '../../assets/gen/index.js';
-import { quality } from '../renderer.js';
 
 // Assets: every visual thing can come from two providers, the Classic builders (code: render/carmodels.js,
 // world/shapes.js, ...) and Blender (blender/ scripts, packed into src/assets/gen by `npm run assets`). The Models
@@ -11,7 +10,11 @@ export const MODEL_MODES = ['auto', 'blender', 'classic'], MODEL_LABEL = { auto:
 export let modelMode = 'auto';
 try { const m = localStorage.getItem('downhill-rush-models'); if (MODEL_MODES.includes(m)) modelMode = m; } catch (e) { }
 export function setModelMode(m) { modelMode = m; try { localStorage.setItem('downhill-rush-models', m); } catch (e) { } }
-export const blenderOn = () => modelMode === 'blender' || (modelMode === 'auto' && quality !== 'low');
+// the Graphics setting, told us by render/renderer.js (this module stays free of the renderer, so the headless tests
+// that build scenery can import it)
+export let gfx = 'auto';
+export function setGfx(q) { gfx = q; }
+export const blenderOn = () => modelMode === 'blender' || (modelMode === 'auto' && gfx !== 'low');
 /** The packed Blender asset `id` (e.g. 'car-coupe') if Blender assets are on and it exists, else null. force: ignore the setting. */
 export const blenderPack = (id, force) => (force || blenderOn()) && PACKS[id] ? PACKS[id] : null;
 export const packIds = () => Object.keys(PACKS);

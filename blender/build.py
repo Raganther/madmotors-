@@ -1,6 +1,6 @@
 # The Blender lab: build assets headless and pack them for the game.
 #   python3 blender/build.py                 every asset
-#   python3 blender/build.py car-coupe ...   just these (ids: <prefix>-<name>: car-, scn-)
+#   python3 blender/build.py car-coupe ...   just these (ids: <prefix>-<name>: car-, scn-, kit-)
 #   SAMPLES=64 ...                           preview render quality; NORENDER=1 skips the previews
 # Writes src/assets/gen/<id>.js per asset, src/assets/gen/index.js (every packed asset, for the game) and
 # src/assets/gen/manifest.json (triangles, size, parts, bounds per asset: tests/assets.test.js checks them), and
@@ -8,7 +8,7 @@
 import sys, os, json, glob, importlib
 sys.path.insert(0, os.path.dirname(__file__))
 from kit import reset, studio, render, GEN, ROOT
-FAMILIES = { 'cars': 'car', 'scenery': 'scn' }   # module -> asset id prefix
+FAMILIES = { 'cars': 'car', 'scenery': 'scn', 'pieces': 'kit' }   # module -> asset id prefix
 def all_designs():
     out = {}
     for fam in FAMILIES:

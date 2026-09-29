@@ -123,16 +123,16 @@ def by_faces(o, rule):
         if m not in names: o.data.materials.append(mat(m)); names.append(m)
         f.material_index = names.index(m)
     bm.to_mesh(o.data); bm.free()
-def vcol(o, f):
-    """Vertex colours (linear floats, per corner): f(game position, game normal) -> (r, g, b). The game multiplies them by
+def vcol(o, f, per_face=False):
+    """Vertex colours (linear floats, per corner, or per face): f(game position, game normal) -> (r, g, b). The game multiplies them by
     its own colour (the instance's tint for scenery), so shading and fixed details (windows, hair) live here."""
     me = o.data
     for a in list(me.color_attributes): me.color_attributes.remove(a)
     at = me.color_attributes.new('Col', 'FLOAT_COLOR', 'CORNER'); me.color_attributes.active_color = at
     for poly in me.polygons:
-        n = G(poly.normal)
+        n = G(poly.normal); fc = f(G(poly.center), n) if per_face else None   # per_face: one colour a face (stripes, blocks)
         for li in poly.loop_indices:
-            c = f(G(me.vertices[me.loops[li].vertex_index].co), n); at.data[li].color = (c[0], c[1], c[2], 1)
+            c = fc or f(G(me.vertices[me.loops[li].vertex_index].co), n); at.data[li].color = (c[0], c[1], c[2], 1)
     return o
 def smoothstep(a, b, x): t = min(1, max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t)
 def remesh(o, voxel):

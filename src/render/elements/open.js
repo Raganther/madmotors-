@@ -4,6 +4,7 @@ import { GATE, OPEN, TRAIL } from '../../core/elements/open.js';
 import { canvasTex } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { race } from '../../ui/flow.js';
+import { kitPack, vcMat } from '../assets/scenery.js';
 
 // Open country (core/elements/open.js): the gates and the streams; the forest, rocks and bushes are the ordinary
 // scenery (track/obstacles.js placeOpen). A gate is two tall striped posts with pennants and a numbered banner between
@@ -18,13 +19,15 @@ export function addOpen(group, tr, terr, stage) {
   gates = []; arrow = null; trOf = tr; const stageCol = stage.colors;
   if (tr.gates) {
     const N = tr.loopN || tr.N, stripe = canvasTex(8, 64, (g, w, h) => { for (let y = 0; y < h; y += 16) { g.fillStyle = '#E0402F'; g.fillRect(0, y, w, 8); g.fillStyle = '#F4F4F0'; g.fillRect(0, y + 8, w, 8); } });
-    const postM = withCutaway(new THREE.MeshLambertMaterial({ map: stripe })), flagM = new THREE.MeshLambertMaterial({ color: 0xFFC72C, side: THREE.DoubleSide });
+    // Blender's gate (blender/pieces.py gate: a banded post with a ball and plinth, a swallow-tailed pennant) or Classic's
+    const GK = kitPack('gate'), postG = GK ? GK.geo('post') : new THREE.CylinderGeometry(0.22, 0.28, 6, 10), flagG = GK ? GK.geo('flag') : new THREE.PlaneGeometry(1.4, 0.8);
+    const postM = withCutaway(GK ? vcMat() : new THREE.MeshLambertMaterial({ map: stripe })), flagM = GK ? vcMat({ side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ color: 0xFFC72C, side: THREE.DoubleSide });
     tr.gates.forEach((i, n) => {
       if (i >= tr.startIdx + N) return;
       const root = new THREE.Group(), hw = GATE.W / 2, y0 = [-1, 1].map(s => terr.at(tr.xs[i] + tr.rx[i] * s * hw, tr.zs[i] + tr.rz[i] * s * hw));
       for (const [k, s] of [[0, -1], [1, 1]]) {
-        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 6, 10), postM); p.position.set(s * hw, y0[k] - tr.H[i] + 3, 0); p.castShadow = true; root.add(p);
-        const f = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), flagM); f.position.set(s * hw + 0.7 * -s, y0[k] - tr.H[i] + 5.6, 0); f.rotation.y = Math.PI / 2; root.add(f);
+        const p = new THREE.Mesh(postG, postM); p.position.set(s * hw, y0[k] - tr.H[i] + 3, 0); p.castShadow = true; root.add(p);
+        const f = new THREE.Mesh(flagG, flagM); f.position.set(s * hw + 0.7 * -s, y0[k] - tr.H[i] + 5.6, 0); f.rotation.y = Math.PI / 2; root.add(f);
       }
       const top = Math.max(...y0) - tr.H[i] + 5.2, bm = new THREE.MeshBasicMaterial({ map: banner(n + 1), side: THREE.DoubleSide, transparent: true });
       const b = new THREE.Mesh(new THREE.PlaneGeometry(GATE.W - 0.6, 1.5), bm); b.position.y = top; root.add(b);

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { blenderPack, decodePack } from './index.js';
-import { quality } from '../renderer.js';
+import { blenderPack, decodePack, gfx } from './index.js';
 
 // Blender scenery (blender/scenery.py): a pack's parts as single geometries for instancing, every material of a part
 // merged (the vertex colours carry the shading and the baked details; the instance colour tints them). null when
@@ -12,7 +11,7 @@ export const sceneryPack = id => instancePack('scn-' + id);
 export const kitPack = id => instancePack('kit-' + id);
 function instancePack(id) {
   const pack = blenderPack(id); if (!pack) return null;
-  const H = decodePack(pack), cache = {}, L = quality === 'high' ? H.hi : H.lo;
+  const H = decodePack(pack), cache = {}, L = gfx === 'high' ? H.hi : H.lo;
   const geo = part => cache[part] || (cache[part] = merge(Object.values(L[part] || H.hi[part] || {})));
   return { geo, n: H.meta.variants || 1, meta: H.meta, has: part => !!H.hi[part] };
 }
