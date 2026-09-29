@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { flat, mergeAll, roundBox } from './geometry.js';
 import { numberTex } from './materials.js';
 import { bakeAO, carMat, grilleTex, lensTex, treadTex } from './carpaint.js';
+import { decodeModel } from './models/index.js';
+import COUPE_HD from './models/coupe-hd.js';
 
 // The racers' bodies, one builder per model (CAR_DEFS[].model). They differ where it shows from the camera, overhead:
 // outline, roof and deck. All share the same footprint (the hitbox is the same for everyone), wheels, lights and the
@@ -45,6 +47,11 @@ function kit(def, root, body) {
       const m = K.box(...a), copy = g => Float32Array.from(g.attributes.position.array);
       m.userData.orig = copy(m.geometry); if (m.userData.lod) m.userData.origs = m.userData.lod.map(copy);
       dentable.push(m); return m;
+    },
+    /** A part modelled in Blender (render/models): its geometry as it comes, in colour c (a lamp: 'lamp' / 'tail'). */
+    hd(geo, c, dims) {
+      const g = geo.clone(), m = c === 'lamp' || c === 'tail' ? new THREE.Mesh(g, c === 'lamp' ? hl : tl) : new THREE.Mesh(bakeAO(g, 0), mat(c));
+      m.castShadow = c !== 'lamp' && c !== 'tail'; body.add(m); m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims, color: c }; return m;
     },
     light(front, w, h, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), front ? hl : tl); m.position.set(x, y, z); body.add(m); return m; },
     lamp(r, x, y, z) { const geo = cyl(r, r, 0.08, 10, g => g.rotateX(Math.PI / 2)), m = new THREE.Mesh(geo(false), hl); both(m, geo, y); m.position.set(x, y, z); body.add(m); return m; },
@@ -166,7 +173,20 @@ const MODELS = {
   },
   // You: a retro muscle fastback. Long bonnet with a scoop, cabin set back into a sloping fastback, twin racing
   // stripes, chrome bumpers, fat rear tyres, ducktail spoiler.
+  // Muscle Coupe: modelled in Blender (tools/blender/coupe.py): a smooth body with flared arches over fat rear tyres,
+  // a fastback glasshouse under a painted roof, twin stripes, a bonnet scoop, ducktail, chrome bumpers, quad lamps.
   coupe(K, def) {
+    const H = decodeModel(COUPE_HD), C = { paint: def.color, accent: def.accent, glass: GLASS, chrome: CHROME, trim: DARK, lamp: 'lamp', tail: 'tail' };
+    const one = (name, mat, dims) => K.hd(H[name][mat], C[mat], dims);
+    const dent = m => { m.userData.orig = Float32Array.from(m.geometry.attributes.position.array); K.dentable.push(m); return m; };
+    dent(one('body', 'paint', [1.9, 0.6, 3.6])); one('body', 'trim'); one('stripes', 'accent'); dent(one('scoop', 'paint', [0.46, 0.12, 0.72])); one('scoopmouth', 'trim');
+    const cabin = dent(one('cabin', 'glass', [1.6, 0.5, 1.8])); dent(one('cabin', 'paint', [1.2, 0.1, 0.8]));
+    one('grille', 'trim'); one('rbumper', 'chrome'); for (const s of ['exh-1', 'exh1']) one(s, 'chrome');
+    const bumper = one('bumper', 'chrome', [1.96, 0.15, 0.16]), wing = one('wing', 'paint', [1.72, 0.06, 0.34]);
+    const heads = Object.keys(H).filter(n => n.startsWith('Cylinder')).map(n => one(n, 'lamp')), tails = ['tail-1', 'tail1'].map(n => one(n, 'tail'));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels([[0.94, 1.22, 0.4, 0.3], [-0.94, 1.22, 0.4, 0.3], [1.02, -1.12, 0.46, 0.48], [-1.02, -1.12, 0.46, 0.48]]) };
+  },
+  coupeClassic(K, def) {
     K.box(1.94, 0.3, 3.6, DARK, 0, 0.42, 0);
     K.panel(1.9, 0.44, 3.6, def.color, 0, 0.78, 0, { seg: [3, 2, 6], shape: (x, y, z) => [x, y > 0 && z > 1.5 ? y - 0.06 : y, z] });
     for (const s of [-1, 1]) K.panel(0.14, 0.3, 1.0, def.color, s * 1.0, 0.8, -1.12, { seg: [1, 1, 2] });   // rear arches over the fat tyres
