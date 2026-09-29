@@ -82,6 +82,8 @@ npm run check      # lint + tests: run before every commit
 | `npm run terrain -- gorge` | Shaded relief map of a stage's terrain |
 | `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
 | `npm run bench -- 5 7` | Render-time benchmark for stages 5 and 7 (software renderer: compare runs, not absolute ms) |
+| `npm run assets [ids]` | Builds the Blender assets headless (`blender/`) into `src/assets/gen/`; previews in `blender/out/` |
+| `npm run lab` | The Asset Lab on its own: `dist-lab/index.html` (also `?lab`, or the menu's Asset Lab button) |
 
 Tool output goes to `tools/out/`.
 
@@ -263,6 +265,43 @@ has a note box; both go to Claude with the track.
    up to 3 + that many).
 4. `npm run check`: a test races every vehicle alone on a tarmac and a dirt stage and wants it within 10% of the coupe.
 
+## Blender assets (the asset lab)
+
+Every visual asset can come from two providers: the **Classic** builders (code: `render/carmodels.js`,
+`render/world/shapes.js`, ...) and **Blender**. The menu's Models setting picks Blender, Classic, or Auto (Blender
+unless Graphics is on Low); Classic always stays as the fallback and the light option.
+
+```
+blender/          the lab: Python run by headless Blender (the `bpy` module; `npm run assets` installs it)
+  kit.py          shared modelling kit (loft, superellipse sections, rounded boxes, booleans, decals by ray-cast,
+                  palette materials) and the packer; previews (Cycles) to blender/out/
+  cars.py         car designs (DESIGNS: one function per model) and finish(): far level, roles for the game
+  build.py        builds designs, writes src/assets/gen/<id>.js, index.js and manifest.json
+src/assets/gen/   GENERATED packs (committed so the game builds without Blender)
+src/render/assets/index.js   registry: blenderPack(id) (null = use Classic), decodePack, the Models setting
+src/render/assets/cars.js    a racer from its pack: parts, damage hooks, wheels, RIGS for moving parts
+src/ui/lab.js     the Asset Lab page
+```
+
+- **A pack** is shapes only: named parts, one mesh per palette material (`paint` and `accent` take the livery), two
+  levels of detail (`hi` near, `lo` far), each part stored relative to its **pivot** (`at`: the object's `pivot`
+  property in Blender, else its middle), so the game can knock, swing or spin it about the right point. Positions are
+  int16 (1/8000 m), normals int8, base64. `meta` names the roles: for a car `wheels` `[x, z, r, width]`, `dent`
+  (parts that dent), `bumper`, `wing`, `struts`, `cabin` (its glass cracks), `number` `[size, y, z]`, `knobbly`, `hub`, `soft`.
+- **Behaviour stays in code.** Damage, collisions and animation are the game's; moving parts are animated by a rig
+  (`RIGS[model]` in `render/assets/cars.js`) that finds them by name, like the Classic builders' `anim`. Authored
+  loops (keyframes) are baked to data and played by the game.
+- Game axes: x right, y up, z forward (+z is the front). Blender is Z-up: `kit.B(x, y, z)` converts.
+- `tests/assets.test.js` holds the contract: every manifest entry is bundled, decodes, has both levels with matching
+  part names, fits its triangle/size budget and, for a car, fits its hitbox and names its damage parts. The e2e run
+  opens the lab and builds every asset with each provider.
+- **The Asset Lab** (`?lab`, the menu's Asset Lab button, or `npm run lab` for a page of its own): every asset on a
+  turntable, Blender vs Classic, near/far, wireframe, triangles and draw calls, any stage's light, studio or race
+  view, paint colour; cars can be dented, lose bumper and wing, and be repaired. Its notes go to the artifact's
+  database, collection `assetNotes` (`asset`, `provider`, `text`; answer with `reply` + `status: 'done'`).
+- Adding one: a design in `blender/<family>.py`, `npm run assets -- <id>`, look at `blender/out/<id>-34.png` and in the
+  lab, then the game-side builder picks it up by id. See the `/blender` skill.
+
 ## Adding a race feature (a new hazard or system)
 
 1. **Simulation:** `src/core/features/<name>.js` exporting a `feature` object with any of
@@ -275,4 +314,4 @@ has a note box; both go to Claude with the track.
 
 ## Publishing
 
-`npm run build` and publish `dist/index.html` (a single file, ~660 KB, no external scripts). `dist/` is not committed.
+`npm run build` and publish `dist/index.html` (a single file, no external scripts). `dist/` is not committed.

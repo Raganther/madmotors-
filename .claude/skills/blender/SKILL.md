@@ -1,0 +1,43 @@
+---
+name: blender
+description: Make or change a Downhill Rush asset in Blender (a car body, tree, rock, house, spectator or kit piece) through the headless Blender lab, pack it for the game and check it in the Asset Lab. Use for "model X in Blender", "make the trees Blender", "the Blender hatch looks wrong".
+argument-hint: <asset and what it should look like>
+---
+
+# Blender assets
+
+Read README "Blender assets". The lab is Python run by headless Blender (`pip install bpy`, Python 3.11; `npm run
+assets` installs it). Assets are shapes and named parts only; behaviour stays in the game's code.
+
+## 1. Design
+- Look at the Classic version first (Asset Lab `?lab`, or `npm run shot -- garage`) and keep what makes it readable
+  from the race camera: silhouette and colour blocks, not small details.
+- Keep the game's contract: for a car the same wheel positions and radius as its Classic builder, inside the hitbox
+  (`hw`/`hl` in data/vehicles.js, default 1.0 x 1.78), the same damage parts (a front bumper, a rear wing or whatever
+  falls off the back, lamps, tails, cabin glass) and any part its animation moves.
+
+## 2. Build
+1. A design function in `blender/<family>.py` (`@design`), using `kit.py` (loft/superellipse bodies, `rbox`, `cyl`,
+   `cut` for booleans, `by_faces` to paint faces, `stripes` decals) and palette materials only (`kit.PALETTE`).
+   Name parts for their role; set `o['pivot'] = (x, y, z)` (game coords) on a part that swings or spins about a
+   hinge or axle; otherwise its pivot is its middle.
+2. `finish(...)` with roles (cars) or `pack(...)` directly; a far level (`lo`) of about a third the triangles.
+3. `npm run assets -- <id>` → read `blender/out/<id>-34.png` and `-top.png`. Budgets (tests/assets.test.js): a car
+   ≤ 9000 near / 4500 far triangles, ≤ 260 KB.
+4. Moving parts: a rig in `RIGS` (render/assets/cars.js) taking the parts by name, copying what the Classic `anim` does.
+
+## 3. Check (not done before all of these)
+- `npx vitest run tests/assets.test.js` (the contract), then the Asset Lab (`npm run build`, open
+  `dist/index.html?lab`): Blender vs Classic, near and far, wireframe, dent / knock bumper / knock wing / repair,
+  race view. Screenshot it with playwright and look.
+- In a race: `npm run shot -- <stage> --vehicle <id>` and `npm run shot -- garage`.
+- Cost: `npm run bench -- <n>` with a full field, Blender vs Classic (Models setting) when adding many assets.
+- `npm run check`, `npm run e2e` (it builds every asset in the lab with each provider), then `/ship`.
+
+## Traps we've hit
+- Parts must carry a pivot: a Blender part at the car's origin knocked "off" by rotating it swung the whole bumper away.
+- Far copies are separate objects: Blender renames duplicates (`body.001`), so a far part carries `o['part']` = its
+  near part's name; the contract test checks the names match.
+- Painting stripes by face then decimating makes jagged edges: stripes are ray-cast decals on the finished body.
+- Decimate after booleans/subdivision, never before; keep the far level from `lo_copy` (small parts stay as they are).
+- Blender is Z-up, the game Y-up with +z forward: always go through `kit.B` / `kit.G`.

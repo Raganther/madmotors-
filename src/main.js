@@ -21,10 +21,11 @@ import { initParticles, updateParticles } from './render/effects/particles.js';
 import { initSparks, updateSparks } from './render/effects/sparks.js';
 import { initProps, updateProps } from './render/effects/props.js';
 import { initRings, updateRings } from './render/effects/rings.js';
+import { MODEL_LABEL, MODEL_MODES, modelMode, setModelMode } from './render/assets/index.js';
 import { initSkids } from './render/effects/skids.js';
 import { FX } from './render/materials.js';
 import { contextLost, cycleQuality, initRenderer, perfSample, renderFrame, renderer } from './render/renderer.js';
-import { initCars, updateCarVisuals } from './render/vehicles.js';
+import { initCars, updateCarVisuals, rebuildCars } from './render/vehicles.js';
 import { elementHook } from './render/elements/index.js';
 import { applyBarrierChanges } from './render/world/barriers.js';
 import { updateFans, updateScenery } from './render/world/scenery.js';
@@ -34,6 +35,7 @@ import { nextCamera, nextZoom, readInput, setCamera, setSteer } from './ui/input
 
 export function frame(t) {
   requestAnimationFrame(frame);
+  if (G.lab) return;                                                  // the Asset Lab has the screen (ui/lab.js)
   const now = t / 1000, rawDt = Math.max(0, now - G.lastT), dt = Math.min(0.1, rawDt); G.lastT = now;
   if (!G.world || !race) return;
   G.renderAlpha = 1; FX.time.value = now;
@@ -83,13 +85,19 @@ export function wireUI() {
   $('rivals-less').addEventListener('click', () => setRivals(G.rivals - 1)); $('rivals-more').addEventListener('click', () => setRivals(G.rivals + 1));
   $('wpn-btn').addEventListener('click', () => setWeapons(!G.weapons));
   $('gfx-btn').addEventListener('click', () => { if (renderer) cycleQuality(); });
+  // Models: Blender assets, the Classic ones, or Auto (Classic on Graphics: Low); the cars take it at the next race
+  const modelsLabel = () => { $('models-btn').textContent = 'Models: ' + MODEL_LABEL[modelMode]; };
+  $('models-btn').addEventListener('click', () => { setModelMode(MODEL_MODES[(MODEL_MODES.indexOf(modelMode) + 1) % MODEL_MODES.length]); modelsLabel(); rebuildCars(); });
+  modelsLabel();
   for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
-  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); initNotes(); initEditor(); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
+  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); initNotes(); initEditor(); $('lab-btn').addEventListener('click', () => import('./ui/lab.js').then(m => m.startLab())); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
   for (const b of document.querySelectorAll('.cam-btn')) b.addEventListener('click', () => setCamera(nextCamera()));
   for (const b of document.querySelectorAll('.zoom-btn')) b.addEventListener('click', () => setCamera(G.camMode, nextZoom()));
 }
 export async function boot() {
   let step = 'setting up the menu';
+  // the Asset Lab instead of the game: ?lab, or the lab build (npm run lab)
+  if (import.meta.env.MODE === 'lab' || new URLSearchParams(location.search).has('lab')) { $('loading').hidden = true; return import('./ui/lab.js').then(m => m.startLab()); }
   try {
     // ?sandbox=<name>: append that element sandbox (data/sandboxes) as the last stage and select it
     const sbName = new URLSearchParams(location.search).get('sandbox');

@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { flat, mergeAll, roundBox } from './geometry.js';
 import { numberTex } from './materials.js';
 import { bakeAO, carMat, grilleTex, lensTex, treadTex } from './carpaint.js';
-import { decodeModel } from './models/index.js';
-import COUPE_HD from './models/coupe-hd.js';
+import { blenderPack } from './assets/index.js';
+import { buildBlenderCar } from './assets/cars.js';
 
 // The racers' bodies, one builder per model (CAR_DEFS[].model). They differ where it shows from the camera, overhead:
 // outline, roof and deck. All share the same footprint (the hitbox is the same for everyone), wheels, lights and the
@@ -11,6 +11,8 @@ import COUPE_HD from './models/coupe-hd.js';
 // out, cabin glass cracks, dentable panels dent), and optionally anim(v, c, now) for moving parts (lights, flames).
 // +z is the front, y up, ground at 0. The garage (data/vehicles.js) lists them all.
 const DARK = 0x2B2F3A, GLASS = 0x253450, CHROME = 0xD3D7DD, TYRE = 0x1E1E22, LAMP = 0xFFF6C8;
+// the Blender palette's names (blender/kit.py PALETTE) as the kit's colours; paint and accent come from the car
+export const HD_COL = { glass: GLASS, chrome: CHROME, trim: DARK, tyre: TYRE, hub: 0xC9CCD4, metal: 0x8D939C, white: 0xF4F4F0, red: 0xE0402F, yellow: 0xFFC72C, dark: 0x1C2340, wood: 0x8A5E3B, skin: 0xE0B08A };
 
 // Two levels of detail (setCarDetail): the near one, used in every camera, has rounded, smooth-shaded parts (roundBox,
 // rounder spheres and cylinders), tyres with shoulders, tread, rims and spokes, grilles and shut lines; the far one is
@@ -48,10 +50,19 @@ function kit(def, root, body) {
       m.userData.orig = copy(m.geometry); if (m.userData.lod) m.userData.origs = m.userData.lod.map(copy);
       dentable.push(m); return m;
     },
-    /** A part modelled in Blender (render/models): its geometry as it comes, in colour c (a lamp: 'lamp' / 'tail'). */
-    hd(geo, c, dims) {
-      const g = geo.clone(), m = c === 'lamp' || c === 'tail' ? new THREE.Mesh(g, c === 'lamp' ? hl : tl) : new THREE.Mesh(bakeAO(g, 0), mat(c));
-      m.castShadow = c !== 'lamp' && c !== 'tail'; body.add(m); m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims, color: c }; return m;
+    /** A part from a Blender pack (render/assets): colour c ('lamp' / 'tail' light up; a palette name maps to the kit's
+     *  material kinds); far and near geometries (setCarDetail swaps them), placed at its pivot `at`. */
+    hd(lo, c, hi, at) {
+      const col = HD_COL[c] ?? c, lamp = col === 'lamp' || col === 'tail';
+      const m = new THREE.Mesh(lamp ? lo : bakeAO(lo.clone(), at ? at[1] : 0), lamp ? (col === 'lamp' ? hl : tl) : mat(col));
+      if (hi && hi !== lo) { m.userData.lod = [m.geometry, lamp ? hi : bakeAO(hi.clone(), at ? at[1] : 0)]; lod.swap.push(m); }
+      if (at) m.position.set(...at); m.castShadow = !lamp; body.add(m); m.userData.hdMat = c; m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims: [0.6, 0.2, 0.6], color: col }; return m;
+    },
+    /** Make a Blender part dentable (keeps its undented positions for both levels). */
+    dentHD(m) {
+      const copy = g => Float32Array.from(g.attributes.position.array);
+      m.userData.orig = copy(m.geometry); if (m.userData.lod) m.userData.origs = m.userData.lod.map(copy);
+      if (!dentable.includes(m)) dentable.push(m); return m;
     },
     light(front, w, h, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), front ? hl : tl); m.position.set(x, y, z); body.add(m); return m; },
     lamp(r, x, y, z) { const geo = cyl(r, r, 0.08, 10, g => g.rotateX(Math.PI / 2)), m = new THREE.Mesh(geo(false), hl); both(m, geo, y); m.position.set(x, y, z); body.add(m); return m; },
@@ -173,20 +184,7 @@ const MODELS = {
   },
   // You: a retro muscle fastback. Long bonnet with a scoop, cabin set back into a sloping fastback, twin racing
   // stripes, chrome bumpers, fat rear tyres, ducktail spoiler.
-  // Muscle Coupe: modelled in Blender (tools/blender/coupe.py): a smooth body with flared arches over fat rear tyres,
-  // a fastback glasshouse under a painted roof, twin stripes, a bonnet scoop, ducktail, chrome bumpers, quad lamps.
   coupe(K, def) {
-    const H = decodeModel(COUPE_HD), C = { paint: def.color, accent: def.accent, glass: GLASS, chrome: CHROME, trim: DARK, lamp: 'lamp', tail: 'tail' };
-    const one = (name, mat, dims) => K.hd(H[name][mat], C[mat], dims);
-    const dent = m => { m.userData.orig = Float32Array.from(m.geometry.attributes.position.array); K.dentable.push(m); return m; };
-    dent(one('body', 'paint', [1.9, 0.6, 3.6])); one('body', 'trim'); one('stripes', 'accent'); dent(one('scoop', 'paint', [0.46, 0.12, 0.72])); one('scoopmouth', 'trim');
-    const cabin = dent(one('cabin', 'glass', [1.6, 0.5, 1.8])); dent(one('cabin', 'paint', [1.2, 0.1, 0.8]));
-    one('grille', 'trim'); one('rbumper', 'chrome'); for (const s of ['exh-1', 'exh1']) one(s, 'chrome');
-    const bumper = one('bumper', 'chrome', [1.96, 0.15, 0.16]), wing = one('wing', 'paint', [1.72, 0.06, 0.34]);
-    const heads = Object.keys(H).filter(n => n.startsWith('Cylinder')).map(n => one(n, 'lamp')), tails = ['tail-1', 'tail1'].map(n => one(n, 'tail'));
-    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels([[0.94, 1.22, 0.4, 0.3], [-0.94, 1.22, 0.4, 0.3], [1.02, -1.12, 0.46, 0.48], [-1.02, -1.12, 0.46, 0.48]]) };
-  },
-  coupeClassic(K, def) {
     K.box(1.94, 0.3, 3.6, DARK, 0, 0.42, 0);
     K.panel(1.9, 0.44, 3.6, def.color, 0, 0.78, 0, { seg: [3, 2, 6], shape: (x, y, z) => [x, y > 0 && z > 1.5 ? y - 0.06 : y, z] });
     for (const s of [-1, 1]) K.panel(0.14, 0.3, 1.0, def.color, s * 1.0, 0.8, -1.12, { seg: [1, 1, 2] });   // rear arches over the fat tyres
@@ -503,8 +501,9 @@ const MODELS = {
   }
 };
 /** Build a racer's body onto root/body. Returns the parts the damage and drawing code use. */
-export function buildCarModel(def, root, body) {
-  const K = kit(def, root, body), out = (MODELS[def.model] || MODELS.hatch)(K, def);
+export function buildCarModel(def, root, body, provider) {
+  const K = kit(def, root, body), pack = provider !== 'classic' && blenderPack('car-' + def.model, provider === 'blender');
+  const out = pack ? buildBlenderCar(K, def, pack) : (MODELS[def.model] || MODELS.hatch)(K, def);
   const paint = K.dentable.filter(m => m !== out.cabin && m.userData.home.color === def.color && m.userData.box), vol = m => m.userData.box.w * m.userData.box.h * m.userData.box.d;
   K.seams(paint.sort((a, b) => vol(b) - vol(a))[0], out.cabin);
   mergeStatic(body, out, K);

@@ -19,7 +19,9 @@
     "sandbox": "node tools/sandbox.mjs",
     "balance": "node tools/balance-vehicles.mjs && node tools/balance-weapons.mjs",
     "bench": "vite build && node tools/bench.mjs",
-    "shot": "vite build --logLevel error && node tools/shot.mjs"
+    "shot": "vite build --logLevel error && node tools/shot.mjs",
+    "assets": "sh tools/assets.sh",
+    "lab": "vite build --mode lab --outDir dist-lab"
   },
   "dependencies": {
     "three": "0.128.0"
