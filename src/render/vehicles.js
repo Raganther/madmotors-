@@ -220,12 +220,14 @@ export let marker, crown;
 /** Make the racers' meshes match a line-up (new vehicle picked, or a rival swapped cars). */
 export function setRoster(defs) {
   defs.forEach((d, k) => {
-    const v = carVis[k]; if (v && v.def.model === d.model && v.def.color === d.color && v.def.accent === d.accent) return;
+    const v = carVis[k]; if (v && !v.stale && v.def.model === d.model && v.def.color === d.color && v.def.accent === d.accent) return;
     if (v) { scene.remove(v.root); disposeGroup(v.root); }
     carVis[k] = makeCarMesh(d);
   });
   for (const v of carVis.splice(defs.length)) { scene.remove(v.root); disposeGroup(v.root); }   // a smaller field than last time
 }
+/** The Models setting changed (render/assets): every racer is rebuilt at the next line-up. */
+export function rebuildCars() { for (const v of carVis) v.stale = true; }
 export function initCars() {
   CAR_DEFS.forEach(d => carVis.push(makeCarMesh(d)));
   for (const k of Object.keys(trafficPool)) for (let i = 0; i < 5; i++) trafficPool[k].push(makeTrafficMesh(k));

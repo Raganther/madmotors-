@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { flat, mergeAll, roundBox } from './geometry.js';
 import { numberTex } from './materials.js';
 import { bakeAO, carMat, grilleTex, lensTex, treadTex } from './carpaint.js';
+import { blenderPack } from './assets/index.js';
+import { buildBlenderCar } from './assets/cars.js';
 
 // The racers' bodies, one builder per model (CAR_DEFS[].model). They differ where it shows from the camera, overhead:
 // outline, roof and deck. All share the same footprint (the hitbox is the same for everyone), wheels, lights and the
@@ -9,6 +11,8 @@ import { bakeAO, carMat, grilleTex, lensTex, treadTex } from './carpaint.js';
 // out, cabin glass cracks, dentable panels dent), and optionally anim(v, c, now) for moving parts (lights, flames).
 // +z is the front, y up, ground at 0. The garage (data/vehicles.js) lists them all.
 const DARK = 0x2B2F3A, GLASS = 0x253450, CHROME = 0xD3D7DD, TYRE = 0x1E1E22, LAMP = 0xFFF6C8;
+// the Blender palette's names (blender/kit.py PALETTE) as the kit's colours; paint and accent come from the car
+export const HD_COL = { glass: GLASS, chrome: CHROME, trim: DARK, tyre: TYRE, hub: 0xC9CCD4, metal: 0x8D939C, white: 0xF4F4F0, red: 0xE0402F, yellow: 0xFFC72C, dark: 0x1C2340, wood: 0x8A5E3B, skin: 0xE0B08A };
 
 // Two levels of detail (setCarDetail): the near one, used in every camera, has rounded, smooth-shaded parts (roundBox,
 // rounder spheres and cylinders), tyres with shoulders, tread, rims and spokes, grilles and shut lines; the far one is
@@ -45,6 +49,20 @@ function kit(def, root, body) {
       const m = K.box(...a), copy = g => Float32Array.from(g.attributes.position.array);
       m.userData.orig = copy(m.geometry); if (m.userData.lod) m.userData.origs = m.userData.lod.map(copy);
       dentable.push(m); return m;
+    },
+    /** A part from a Blender pack (render/assets): colour c ('lamp' / 'tail' light up; a palette name maps to the kit's
+     *  material kinds); far and near geometries (setCarDetail swaps them), placed at its pivot `at`. */
+    hd(lo, c, hi, at) {
+      const col = HD_COL[c] ?? c, lamp = col === 'lamp' || col === 'tail';
+      const m = new THREE.Mesh(lamp ? lo : bakeAO(lo.clone(), at ? at[1] : 0), lamp ? (col === 'lamp' ? hl : tl) : mat(col));
+      if (hi && hi !== lo) { m.userData.lod = [m.geometry, lamp ? hi : bakeAO(hi.clone(), at ? at[1] : 0)]; lod.swap.push(m); }
+      if (at) m.position.set(...at); m.castShadow = !lamp; body.add(m); m.userData.hdMat = c; m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims: [0.6, 0.2, 0.6], color: col }; return m;
+    },
+    /** Make a Blender part dentable (keeps its undented positions for both levels). */
+    dentHD(m) {
+      const copy = g => Float32Array.from(g.attributes.position.array);
+      m.userData.orig = copy(m.geometry); if (m.userData.lod) m.userData.origs = m.userData.lod.map(copy);
+      if (!dentable.includes(m)) dentable.push(m); return m;
     },
     light(front, w, h, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), front ? hl : tl); m.position.set(x, y, z); body.add(m); return m; },
     lamp(r, x, y, z) { const geo = cyl(r, r, 0.08, 10, g => g.rotateX(Math.PI / 2)), m = new THREE.Mesh(geo(false), hl); both(m, geo, y); m.position.set(x, y, z); body.add(m); return m; },
@@ -483,8 +501,9 @@ const MODELS = {
   }
 };
 /** Build a racer's body onto root/body. Returns the parts the damage and drawing code use. */
-export function buildCarModel(def, root, body) {
-  const K = kit(def, root, body), out = (MODELS[def.model] || MODELS.hatch)(K, def);
+export function buildCarModel(def, root, body, provider) {
+  const K = kit(def, root, body), pack = provider !== 'classic' && blenderPack('car-' + def.model, provider === 'blender');
+  const out = pack ? buildBlenderCar(K, def, pack) : (MODELS[def.model] || MODELS.hatch)(K, def);
   const paint = K.dentable.filter(m => m !== out.cabin && m.userData.home.color === def.color && m.userData.box), vol = m => m.userData.box.w * m.userData.box.h * m.userData.box.d;
   K.seams(paint.sort((a, b) => vol(b) - vol(a))[0], out.cabin);
   mergeStatic(body, out, K);

@@ -10,6 +10,7 @@ Top-down racer, three.js r128, plain JS modules, Vite. Read README.md for the la
 - `npm run shot -- <n|sandbox:name|garage> [metres ...] [--vehicle id] [--debug]`: screenshots from the player's seat (AI drives to each distance) → tools/out/. Look at them.
 - `npm run balance`: every vehicle's pace vs the coupe on tarmac and loose stages, and what each weapon costs its victim (~1 s per use). Run after touching handling or weapon numbers.
 - `npm run bench -- <n>`: render benchmark (SwiftShader here, so only compare against a previous run).
+- `npm run assets [ids]`: build the Blender assets headless (installs `bpy` if missing; ~1 min per car) → `src/assets/gen/` (commit it) and previews in `blender/out/`. Look at them, and in the Asset Lab (`?lab`, `npm run lab`).
 - Headless Chromium lives at /opt/pw-browsers (don't `playwright install`); pass `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`.
 
 ## Notes from the user
@@ -22,13 +23,14 @@ their view). Go to the spot with `npm run shot -- "<stage>" <metres>`. Answer ea
 The menu's Track editor lets the user lay out a circuit (an existing gorge stage or a blank oval) and "Send to Claude":
 those land in collection `tracks` (name, base, closes, message, `stage` = the stage object with `segs`, `comments` =
 pins the user dropped on the plan `{ n, text, sec, metres, off, a, b }`, `notes` = per-section notes `{ sec, text }`;
-sections are numbered from 1). The user can also draw a track freehand (base "drawn"): it's their design, so follow
+sections are numbered from 1).
+The Asset Lab's notes on a model land in collection `assetNotes` (asset, pack, provider, text): answer the same way. The user can also draw a track freehand (base "drawn"): it's their design, so follow
 the shape and read every comment and note as the brief for that spot. Turn one into a real stage with `/new-stage`
 (its segs are already frozen metres; keep them, add the look and the set pieces the comments ask for), then `update`
 `tracks/<id>` with `{ reply, status: "done" }`.
 
 ## Skills (.claude/skills)
-`/new-stage`, `/new-element`, `/new-vehicle`, `/new-feature`, `/look` (visual changes), `/ship` (verify, commit, push, publish). Each holds the workflow, the done-checks and traps we've hit; the README holds the how. When you hit a new trap, add it to the skill it belongs to.
+`/new-stage`, `/new-element`, `/new-vehicle`, `/new-feature`, `/look` (visual changes), `/blender` (Blender assets), `/ship` (verify, commit, push, publish). Each holds the workflow, the done-checks and traps we've hit; the README holds the how. When you hit a new trap, add it to the skill it belongs to.
 
 ## Rules
 - `src/core` and `src/data` must stay free of three.js/DOM/`render`/`ui`/`audio`/`game.js` (ESLint enforces). The simulation talks to the rest only through state and `car.events`.

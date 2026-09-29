@@ -278,6 +278,21 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   for (const [name, ok] of checks) { console.log(`touch ${name}: ${ok ? 'ok' : 'FAILED'}`); if (!ok) errors.push('touch control check failed: ' + name); }
   await ctx.close();
 }
+// the Asset Lab: every asset with each provider it has, near and far, dented and repaired, without errors
+{
+  const lp = await browser.newPage({ viewport: { width: 960, height: 540 } });
+  lp.on('pageerror', e => errors.push('lab: ' + e.message)); lp.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push('lab: ' + m.text()); });
+  await lp.goto('file://' + file + '?lab'); await lp.waitForSelector('#lab-list [data-id]', { timeout: 30000 });
+  const ids = await lp.evaluate(() => [...document.querySelectorAll('#lab-list [data-id]')].map(b => b.dataset.id));
+  for (const id of ids) for (const pr of ['classic', 'blender']) {
+    await lp.click(`[data-id="${id}"]`); if (await lp.$eval(`[data-p=${pr}]`, b => b.disabled)) continue;
+    await lp.click(`[data-p=${pr}]`); await lp.click('#lab-lod');
+    if (!await lp.$eval('#lab-dent', b => b.hidden)) for (const b of ['#lab-dent', '#lab-bump', '#lab-wing', '#lab-fix']) await lp.click(b);
+    await lp.click('#lab-lod');
+  }
+  const blender = await lp.evaluate(() => document.querySelectorAll('#lab-list small:not(:empty)').length);
+  console.log(`asset lab: ${ids.length} assets, ${blender} from Blender`); await lp.screenshot({ path: path.join(outDir, 'asset-lab.png') }); await lp.close();
+}
 await browser.close();
 if (errors.length) { console.error('ERRORS:\n' + errors.join('\n')); process.exit(1); }
 console.log('smoke test passed');
