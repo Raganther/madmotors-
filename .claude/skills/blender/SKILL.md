@@ -27,7 +27,7 @@ assets` installs it). Assets are shapes and named parts only; behaviour stays in
 4. Moving parts: a rig in `RIGS` (render/assets/cars.js) taking the parts by name, copying what the Classic `anim` does.
 
 ## 3. Check (not done before all of these)
-- `npx vitest run tests/assets.test.js` (the contract), then the Asset Lab (`npm run build`, open
+- `npx vitest run tests/assets.test.js` (the contract), `npm run labshot -- <ids>`, then the Asset Lab (`npm run build`, open
   `dist/index.html?lab`): Blender vs Classic, near and far, wireframe, dent / knock bumper / knock wing / repair,
   race view. Screenshot it with playwright and look.
 - In a race: `npm run shot -- <stage> --vehicle <id>` and `npm run shot -- garage`.
@@ -41,3 +41,14 @@ assets` installs it). Assets are shapes and named parts only; behaviour stays in
 - Painting stripes by face then decimating makes jagged edges: stripes are ray-cast decals on the finished body.
 - Decimate after booleans/subdivision, never before; keep the far level from `lo_copy` (small parts stay as they are).
 - Blender is Z-up, the game Y-up with +z forward: always go through `kit.B` / `kit.G`.
+- Part names must be unique: Blender silently renames a duplicate (`lamp0.001`) and the meta would miss it; the packer
+  now fails the build instead. Helpers that make several parts (`lamps`, `tails`, `rects`) take a `name`.
+- Colouring faces with `by_faces` on a face a boolean cut (arches) splits into a fan of triangles gives a ragged
+  patch: model a separate thin panel instead (the fire engine's lockers), or colour before the cut on a mesh with rows.
+- Loft normals can face in: face rules test `abs(n[1])`, not `n[1]`.
+- A new palette name needs a game colour (`HD_COL`) and, if it is a painted surface, `HD_KIND` in render/carmodels.js,
+  or it renders as dark satin trim.
+- `tests/assets.test.js` catches parts outside the hitbox (+0.35 m) and a cabin without glass: fix the design (move
+  the part in, add a screen), not the tolerance.
+- `npm run labshot -- <ids>` (tools/out/labshot.png) puts Blender beside Classic for each asset: read it every round.
+- Cost so far: all 19 cars on a full field bench the same as Classic; the page grew ~2.6 MB (packs are base64 in the bundle).

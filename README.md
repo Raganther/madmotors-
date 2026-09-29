@@ -83,6 +83,7 @@ npm run check      # lint + tests: run before every commit
 | `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
 | `npm run bench -- 5 7` | Render-time benchmark for stages 5 and 7 (software renderer: compare runs, not absolute ms) |
 | `npm run assets [ids]` | Builds the Blender assets headless (`blender/`) into `src/assets/gen/`; previews in `blender/out/` |
+| `npm run labshot -- [ids]` | Asset Lab pictures, Blender beside Classic per asset → `tools/out/labshot.png` |
 | `npm run lab` | The Asset Lab on its own: `dist-lab/index.html` (also `?lab`, or the menu's Asset Lab button) |
 
 Tool output goes to `tools/out/`.
@@ -275,7 +276,7 @@ unless Graphics is on Low); Classic always stays as the fallback and the light o
 blender/          the lab: Python run by headless Blender (the `bpy` module; `npm run assets` installs it)
   kit.py          shared modelling kit (loft, superellipse sections, rounded boxes, booleans, decals by ray-cast,
                   palette materials) and the packer; previews (Cycles) to blender/out/
-  cars.py         car designs (DESIGNS: one function per model) and finish(): far level, roles for the game
+  cars.py         car designs (DESIGNS: one function per model, all 19) and finish(): far level, roles for the game
   build.py        builds designs, writes src/assets/gen/<id>.js, index.js and manifest.json
 src/assets/gen/   GENERATED packs (committed so the game builds without Blender)
 src/render/assets/index.js   registry: blenderPack(id) (null = use Classic), decodePack, the Models setting
@@ -289,7 +290,9 @@ src/ui/lab.js     the Asset Lab page
   int16 (1/8000 m), normals int8, base64. `meta` names the roles: for a car `wheels` `[x, z, r, width]`, `dent`
   (parts that dent), `bumper`, `wing`, `struts`, `cabin` (its glass cracks), `number` `[size, y, z]`, `knobbly`, `hub`, `soft`.
 - **Behaviour stays in code.** Damage, collisions and animation are the game's; moving parts are animated by a rig
-  (`RIGS[model]` in `render/assets/cars.js`) that finds them by name, like the Classic builders' `anim`. Authored
+  (`RIGS[model]` in `render/assets/cars.js`) that finds them by name, like the Classic builders' `anim` (the police
+  lights, the ice-cream cone, the mixer's drum, the sidecar passenger...). Effects stay code too (the rocket's flame).
+  Wheels are the game's own (`K.wheels`, from `meta.wheels`). Authored
   loops (keyframes) are baked to data and played by the game.
 - Game axes: x right, y up, z forward (+z is the front). Blender is Z-up: `kit.B(x, y, z)` converts.
 - `tests/assets.test.js` holds the contract: every manifest entry is bundled, decodes, has both levels with matching

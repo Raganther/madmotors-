@@ -23,7 +23,7 @@ describe('Blender asset packs', () => {
         const n = buf(p.pos).length / 6, I = new Uint16Array(new Uint8Array(buf(p.idx)).buffer), N = new Int8Array(new Uint8Array(buf(p.nor)).buffer);
         expect(buf(p.nor).length / 3).toBe(n); expect(I.length % 3).toBe(0);
         expect(Math.max(...I)).toBeLessThan(n);
-        for (let k = 0; k < N.length; k += 3 * 17) expect(Math.hypot(N[k], N[k + 1], N[k + 2]) / 127).toBeCloseTo(1, 1);
+        { let bad = 0; for (let k = 0; k < N.length; k += 3) if (Math.abs(Math.hypot(N[k], N[k + 1], N[k + 2]) / 127 - 1) > 0.05) bad++; expect(bad, `${p.name}:${p.mat} normals`).toBe(0); }
         if (p.col) expect(buf(p.col).length / 3).toBe(n);
         expect(p.at).toHaveLength(3);
       }
