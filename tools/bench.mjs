@@ -2,12 +2,14 @@
 // stage and times full frames with the GPU synced. Uses software rendering, so compare runs with each other rather
 // than reading the numbers as real frame times.
 //   node tools/bench.mjs [stage ...]         (default: all stages; RIVALS=13 for a full field; CAM=behind [ZOOM=close] for
-//   another camera; DETAIL=near|far to force every car's body detail, e.g. to price the close-up bodies)
+//   another camera; DETAIL=near|far to force every car's body detail, e.g. to price the close-up bodies; MODELS=classic|blender
+//   for the Models setting, e.g. to price the Blender assets)
 import { chromium } from 'playwright';
 import path from 'node:path';
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const url = 'file://' + path.resolve('dist/index.html');
+if (process.env.MODELS) await page.addInitScript(m => localStorage.setItem('downhill-rush-models', m), process.env.MODELS);
 await page.goto(url); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 const n = await page.evaluate(() => window.__dr.core.STAGES.length);
 const stages = process.argv.length > 2 ? process.argv.slice(2).map(a => Number(a) - 1) : [...Array(n).keys()];

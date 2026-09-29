@@ -34,7 +34,7 @@ const CSS = `
 // what a car's rig reads (render/carmodels.js anim): a car cruising with a little throttle
 const FAKE = { boost: 0, speed: 20, vx: 0, vz: 20, yaw: 0, inp: { throttle: 0.6, steer: 0 }, dmg: { f: 0, b: 0 } };
 let R, scene, cam, sun, hemi, holder, cur = null, db = null, notes = [];
-const S = { id: VEHICLES[0].id, provider: 'blender', near: true, wire: false, spin: true, view: 'studio', stage: 0, color: null, a: 0.6 };
+const S = { id: VEHICLES[0].id, provider: 'blender', near: true, wire: false, spin: true, view: 'studio', stage: 0, color: null, a: -0.25 };
 // what can be shown: every vehicle (Classic always, Blender when packed), then any other packed asset
 function items() {
   const out = VEHICLES.map(v => ({ id: v.id, label: v.name, fam: 'cars', pack: 'car-' + v.model, def: v }));

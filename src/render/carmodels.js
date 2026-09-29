@@ -12,7 +12,12 @@ import { buildBlenderCar } from './assets/cars.js';
 // +z is the front, y up, ground at 0. The garage (data/vehicles.js) lists them all.
 const DARK = 0x2B2F3A, GLASS = 0x253450, CHROME = 0xD3D7DD, TYRE = 0x1E1E22, LAMP = 0xFFF6C8;
 // the Blender palette's names (blender/kit.py PALETTE) as the kit's colours; paint and accent come from the car
-export const HD_COL = { glass: GLASS, chrome: CHROME, trim: DARK, tyre: TYRE, hub: 0xC9CCD4, metal: 0x8D939C, white: 0xF4F4F0, red: 0xE0402F, yellow: 0xFFC72C, dark: 0x1C2340, wood: 0x8A5E3B, skin: 0xE0B08A };
+export const HD_COL = { glass: GLASS, chrome: CHROME, trim: DARK, tyre: TYRE, hub: 0xC9CCD4, metal: 0x8D939C, white: 0xF4F4F0, red: 0xE0402F, yellow: 0xFFC72C, dark: 0x1C2340, wood: 0x8A5E3B, skin: 0xE0B08A,
+  wafer: 0xD9A45A, cream: 0xFFF4DE, pink: 0xF08AB4, choc: 0x8A5230, hose: 0xE8C050, solar: 0x2A3A6A, firered: 0xB81E18, engine: 0x5A5E66 };
+// lights a rig switches: each part gets its own unlit material
+// the Blender palette's coloured names are painted surfaces, not the dark satin trim a plain colour gets
+const HD_KIND = Object.fromEntries(['white', 'red', 'yellow', 'wood', 'skin', 'wafer', 'cream', 'pink', 'choc', 'hose', 'solar', 'firered'].map(k => [k, 'paint']));
+const HD_GLOW = { glowred: 0xFF2020, glowblue: 0x2050FF, glowamber: 0xFFA020 };
 
 // Two levels of detail (setCarDetail): the near one, used in every camera, has rounded, smooth-shaded parts (roundBox,
 // rounder spheres and cylinders), tyres with shoulders, tread, rims and spokes, grilles and shut lines; the far one is
@@ -22,7 +27,7 @@ const cyl = (rt, rb, ht, n, turn = g => g) => d => { const g = turn(new THREE.Cy
 function kit(def, root, body) {
   const mats = new Map(), dentable = [], lod = { swap: [], lo: [], hi: [], on: false };
   const kind = c => c === def.color || c === def.accent ? 'paint' : c === GLASS ? 'glass' : c === CHROME ? 'chrome' : c === TYRE ? 'rubber' : 'trim';
-  const mat = c => { if (!mats.has(c)) mats.set(c, carMat(kind(c), c)); return mats.get(c); };
+  const mat = (c, k = kind(c)) => { const key = c + k; if (!mats.has(key)) mats.set(key, carMat(k, c)); return mats.get(key); };
   const hl = new THREE.MeshBasicMaterial({ color: LAMP, map: lensTex() }), tl = new THREE.MeshBasicMaterial({ color: 0xFF4A3A, map: lensTex() });
   let tyreM = null, grilleM = null;
   // a mesh whose geometry comes in both levels: `geo` is a geometry (one level only) or detail => geometry
@@ -53,8 +58,8 @@ function kit(def, root, body) {
     /** A part from a Blender pack (render/assets): colour c ('lamp' / 'tail' light up; a palette name maps to the kit's
      *  material kinds); far and near geometries (setCarDetail swaps them), placed at its pivot `at`. */
     hd(lo, c, hi, at) {
-      const col = HD_COL[c] ?? c, lamp = col === 'lamp' || col === 'tail';
-      const m = new THREE.Mesh(lamp ? lo : bakeAO(lo.clone(), at ? at[1] : 0), lamp ? (col === 'lamp' ? hl : tl) : mat(col));
+      const col = HD_COL[c] ?? c, lamp = col === 'lamp' || col === 'tail' || c in HD_GLOW;
+      const m = new THREE.Mesh(lamp ? lo : bakeAO(lo.clone(), at ? at[1] : 0), c in HD_GLOW ? new THREE.MeshBasicMaterial({ color: HD_GLOW[c] }) : lamp ? (col === 'lamp' ? hl : tl) : mat(col, HD_KIND[c] || kind(col)));
       if (hi && hi !== lo) { m.userData.lod = [m.geometry, lamp ? hi : bakeAO(hi.clone(), at ? at[1] : 0)]; lod.swap.push(m); }
       if (at) m.position.set(...at); m.castShadow = !lamp; body.add(m); m.userData.hdMat = c; m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims: [0.6, 0.2, 0.6], color: col }; return m;
     },

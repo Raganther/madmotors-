@@ -2,7 +2,7 @@
 # cylinders), modifiers (smooth, cut, bevel, decimate), packing a model for the game and rendering previews.
 # Every asset script builds in GAME axes through B(): x right, y up, z forward (front +z); Blender is Z-up, so a game
 # point (x, y, z) sits at Blender (x, -z, y) (a rotation, so faces keep their winding).
-import bpy, bmesh, math, os, json, base64
+import bpy, bmesh, math, os, re, json, base64
 import numpy as np
 from mathutils import Vector
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -22,7 +22,11 @@ PALETTE = { 'paint': (0xFFC72C, 0.1, 0.25), 'accent': (0x1C2340, 0.1, 0.3), 'gla
   'bark': (0x6B4A32, 0, 0.9), 'leaf': (0x4F8A3F, 0, 0.8), 'pine': (0x3E7447, 0, 0.8), 'rock': (0xA29E92, 0, 0.9), 'wall': (0xE9D3B4, 0, 0.8),
   'roof': (0xB5523B, 0, 0.7), 'window': (0x33414F, 0.3, 0.2), 'wood': (0x8A5E3B, 0, 0.8), 'metal': (0x8D939C, 0.7, 0.4), 'white': (0xF4F4F0, 0, 0.6),
   'red': (0xE0402F, 0, 0.5), 'yellow': (0xFFC72C, 0, 0.5), 'dark': (0x1C2340, 0, 0.6), 'cactus': (0x5B8A3A, 0, 0.7), 'skin': (0xE0B08A, 0, 0.7),
-  'shirt': (0x2F7DE0, 0, 0.8), 'concrete': (0xC9C6BE, 0, 0.8), 'snow': (0xF2F6FA, 0, 0.6), 'hay': (0xE2C265, 0, 0.9) }
+  'shirt': (0x2F7DE0, 0, 0.8), 'concrete': (0xC9C6BE, 0, 0.8), 'snow': (0xF2F6FA, 0, 0.6), 'hay': (0xE2C265, 0, 0.9),
+  # car extras; glow* are lights a rig switches (each car gets its own material)
+  'glowred': (0xFF2020, 0, 0.3), 'glowblue': (0x2050FF, 0, 0.3), 'glowamber': (0xFFA020, 0, 0.3), 'wafer': (0xD9A45A, 0, 0.8), 'cream': (0xFFF4DE, 0, 0.7),
+  'pink': (0xF08AB4, 0, 0.7), 'choc': (0x8A5230, 0, 0.7), 'hose': (0xE8C050, 0.2, 0.5), 'solar': (0x2A3A6A, 0.3, 0.2), 'firered': (0xB81E18, 0.1, 0.4),
+  'engine': (0x5A5E66, 0.6, 0.4) }
 M = {}
 def mat(name):
     if name in M: return M[name]
@@ -89,6 +93,22 @@ def cyl(name, r, depth, loc, axis, m, verts=20, r2=None, bevel=0.0):
 def sphere(name, r, loc, m, seg=16, scale=(1, 1, 1)):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=seg, ring_count=max(6, seg // 2), radius=r, location=B(*loc)); o = bpy.context.object; o.name = name
     o.scale = (scale[0], scale[2], scale[1]); bpy.ops.object.transform_apply(scale=True); shade(o); o.data.materials.append(mat(m)); return o
+def tube(name, a, b, r, m, verts=10):
+    """A round bar from game point a to b."""
+    va, vb = Vector(B(*a)), Vector(B(*b)); d = vb - va
+    bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=r, depth=d.length, location=(va + vb) / 2, rotation=d.to_track_quat('Z', 'Y').to_euler())
+    o = bpy.context.object; o.name = name; bpy.ops.object.transform_apply(rotation=True); shade(o); o.data.materials.append(mat(m)); return o
+def torus(name, R, r, loc, axis, m, seg=32, rseg=10):
+    """A ring of radius R (tube r) round a game axis."""
+    rot = { 'x': (0, math.pi / 2, 0), 'y': (0, 0, 0), 'z': (math.pi / 2, 0, 0) }[axis]
+    bpy.ops.mesh.primitive_torus_add(major_radius=R, minor_radius=r, major_segments=seg, minor_segments=rseg, location=B(*loc), rotation=rot)
+    o = bpy.context.object; o.name = name; bpy.ops.object.transform_apply(rotation=True); shade(o); o.data.materials.append(mat(m)); return o
+def warp(o, f):
+    """Move every vertex: f(x, y, z) -> (x, y, z), in game coords (world space; objects here keep identity transforms)."""
+    active(o); bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    for v in o.data.vertices: v.co = Vector(B(*f(*G(v.co))))
+    o.data.update(); return o
+def move(o, dx=0, dy=0, dz=0): return warp(o, lambda x, y, z: (x + dx, y + dy, z + dz))
 def join(name, objs):
     for o in objs: o.select_set(False)
     active(objs[0])
@@ -103,10 +123,30 @@ def by_faces(o, rule):
         if m not in names: o.data.materials.append(mat(m)); names.append(m)
         f.material_index = names.index(m)
     bm.to_mesh(o.data); bm.free()
-def vcolor_ao(o, strength=0.5):
-    """A cheap occlusion term in the vertex colours (step 5 bakes the real thing): darker low down and under overhangs."""
+def vcol(o, f):
+    """Vertex colours (linear floats, per corner): f(game position, game normal) -> (r, g, b). The game multiplies them by
+    its own colour (the instance's tint for scenery), so shading and fixed details (windows, hair) live here."""
     me = o.data
-    if not me.color_attributes: me.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
+    for a in list(me.color_attributes): me.color_attributes.remove(a)
+    at = me.color_attributes.new('Col', 'FLOAT_COLOR', 'CORNER'); me.color_attributes.active_color = at
+    for poly in me.polygons:
+        n = G(poly.normal)
+        for li in poly.loop_indices:
+            c = f(G(me.vertices[me.loops[li].vertex_index].co), n); at.data[li].color = (c[0], c[1], c[2], 1)
+    return o
+def smoothstep(a, b, x): t = min(1, max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t)
+def remesh(o, voxel):
+    """Fuse overlapping blobs into one skin (voxel remesh)."""
+    return apply(o, 'REMESH', mode='VOXEL', voxel_size=voxel)
+def autosmooth(o, deg=35):
+    """Smooth across gentle edges, sharp across creases (the packed normals are the evaluated ones)."""
+    active(o); bpy.ops.object.shade_auto_smooth(angle=math.radians(deg)); return o
+def noisy(o, amp, scale=1.0, seed=0):
+    """Push every vertex along its normal by smooth noise: lumps on a rock, a canopy, a bush."""
+    from mathutils import noise
+    o.data.update()
+    for v in o.data.vertices: v.co += v.normal * amp * noise.noise(v.co * scale + Vector((seed * 7.1, seed * 3.3, seed * 1.7)))
+    o.data.update(); return o
 
 # ---- packing for the game ----
 def _tris(o):
@@ -118,6 +158,8 @@ def _tris(o):
         g = groups.setdefault(name, [[], [], []])
         for li in tri.loops:
             v = mw @ me.vertices[me.loops[li].vertex_index].co; n = (nm @ me.corner_normals[li].vector).normalized()
+            if n.length < 0.5: n = (nm @ tri.normal).normalized()                   # a degenerate corner: the face's normal
+            if n.length < 0.5: n = Vector((0, 0, 1))
             g[0].append(G(v)); g[1].append(G(n))
             if col: c = col.data[li].color if col.domain == 'CORNER' else col.data[me.loops[li].vertex_index].color; g[2].append(tuple(c[:3]))
     ob.to_mesh_clear(); return groups
@@ -132,9 +174,10 @@ def _pack(pos, nor, col):
     out = { 'pos': e(uniq[:, 0:3], np.int16), 'nor': e(uniq[:, 3:6], np.int8), 'idx': e(inv.reshape(-1), np.uint16) }
     if Cc is not None: out['col'] = e(uniq[:, 6:9], np.uint8)
     return out, len(inv) // 3, len(uniq)
-def pack(asset_id, family, levels, meta=None):
+def pack(asset_id, family, levels, meta=None, origin=False):
     """Write src/assets/gen/<asset_id>.js: levels = { 'hi': [objects], 'lo': [objects] } (lo optional). Each object's
-    triangles are grouped by material into parts {name, mat, pos, nor, idx[, col]}. Returns stats for the manifest."""
+    triangles are grouped by material into parts {name, mat, pos, nor, idx[, col]}. Returns stats for the manifest.
+    origin: every part's pivot is the model's origin (instanced scenery, placed by the game's own transforms)."""
     os.makedirs(GEN, exist_ok=True); data = { 'id': asset_id, 'family': family, 'meta': meta or {} }; stats = { 'family': family }
     lo_all, hi_all, piv = [], [], {}
     # every part has a pivot (its `at`, game coords): the object's 'pivot' property if the design set one (a hinge, an
@@ -144,8 +187,10 @@ def pack(asset_id, family, levels, meta=None):
         parts, tris = [], 0
         for o in levels[lvl]:
             groups = _tris(o); name = o.get('part', o.name)   # a far copy carries its near part's name
+            if re.search(r'\.\d{3}$', name): raise ValueError(f'{asset_id}: two parts named {name[:-4]} (Blender renamed one)')
             if name not in piv:
-                if 'pivot' in o: piv[name] = [round(float(v), 4) for v in o['pivot']]
+                if origin: piv[name] = [0.0, 0.0, 0.0]
+                elif 'pivot' in o: piv[name] = [round(float(v), 4) for v in o['pivot']]
                 else: a = np.array([v for g in groups.values() for v in g[0]]); piv[name] = [round(float(v), 4) for v in (a.min(0) + a.max(0)) / 2]
             at = np.array(piv[name])
             for m, (p, n, c) in groups.items():
