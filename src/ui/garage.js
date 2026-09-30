@@ -11,7 +11,7 @@ import { saveStageVehicles, saveVehicle } from './storage.js';
 const BARS = [['Speed', v => v.top], ['Acceleration', v => v.accel], ['Grip', v => v.grip], ['Off-road', v => v.off], ['Weight', v => 1 / v.im]];
 const pct = (label, x) => label === 'Weight' ? Math.round(Math.min(100, Math.max(8, (x - 0.35) / 2.1 * 100))) : Math.round(Math.min(100, Math.max(8, 50 + (x - 1) * 200)));
 const STD = { accel: 1, top: 1, grip: 1, off: 1, im: 1 };
-function statsHTML(v) {
+export function statsHTML(v) {
   const s = v.veh || STD;
   return BARS.map(([n, f]) => `<div class="gs"><span>${n}</span><i><b style="width:${pct(n, f(s))}%"></b></i></div>`).join('');
 }

@@ -28,3 +28,6 @@ export function saveStageVehicles(m) { try { localStorage.setItem(STAGE_VEH_KEY,
 export const LEAGUE_KEY = 'downhill-rush-league';
 export function loadLeagues() { try { return JSON.parse(localStorage.getItem(LEAGUE_KEY) || '{}') || {}; } catch (e) { return {}; } }
 export function saveLeagues(m) { try { localStorage.setItem(LEAGUE_KEY, JSON.stringify(m)); } catch (e) { } }
+export const CAREER_KEY = 'downhill-rush-career';
+export function loadCareer() { try { const c = JSON.parse(localStorage.getItem(CAREER_KEY) || 'null'); return c && c.v === 1 && c.cars ? c : null; } catch (e) { return null; } }
+export function saveCareer(c) { try { if (c) localStorage.setItem(CAREER_KEY, JSON.stringify(c)); else localStorage.removeItem(CAREER_KEY); } catch (e) { } }
