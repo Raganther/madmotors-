@@ -103,6 +103,36 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await page.keyboard.press('Escape');
   console.log(`league: cars ${cars.join(', ')}; round 1 scored (${res.rows} in the table), round 2 grid ends with the leader ${grid.lead}; "${again}"`);
 }
+// a career: pick a starter, race Rookie Cup round 1 to the flag: stars and cash on the results, Next starts round 2
+{
+  await page.evaluate(() => { localStorage.removeItem('downhill-rush-career'); window.__dr.flow.toMenu(); });
+  await page.click('#career-btn'); await page.waitForSelector('[data-act="starter"]');
+  await page.screenshot({ path: path.join(outDir, 'career-start.png') });
+  await page.click('[data-act="starter"][data-id="hatch"]');
+  await page.screenshot({ path: path.join(outDir, 'career-hub.png') });
+  const tabs = await page.$$eval('.cr-tab', bs => bs.map(b => b.textContent));
+  await page.click('.cr-item[data-id="rookie-cup"]'); await page.click('#cr-actions .cta');
+  await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 0 && window.__dr.G.state === 'countdown' && window.__dr.G.career, null, { timeout: 30000 });
+  const n = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
+    for (let k = 0; k < 400 && !d.race.player.finished; k++) d.step(0.5); d.flow.showResults(); return { cars: d.race.cars.length, me: d.race.player.def.vehicle }; });
+  const res = await page.evaluate(() => ({ shown: !document.getElementById('res-career').hidden, stars: document.querySelectorAll('.cr-res-stars span').length, cash: JSON.parse(localStorage.getItem('downhill-rush-career')).cash,
+    rows: document.querySelectorAll('#res-league tr').length, next: document.getElementById('next-btn').textContent, tally: window.__dr.G.tally }));
+  await page.screenshot({ path: path.join(outDir, 'career-results.png') });
+  if (n.cars !== 8 || n.me !== 'hatch' || !res.shown || res.stars !== 3 || !(res.cash > 1500) || res.rows !== 8 || !/Next round: Pine Forest/.test(res.next) || !tabs[0].includes('Rookie') || !/Locked/.test(tabs[1]))
+    errors.push('career round 1: ' + JSON.stringify({ n, tabs, ...res }));
+  await page.click('#next-btn');
+  await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 1 && window.__dr.G.career && window.__dr.G.career.k === 1, null, { timeout: 30000 });
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('downhill-rush-career')); s.cash = 9000; localStorage.setItem('downhill-rush-career', JSON.stringify(s)); window.__dr.flow.toMenu(); });
+  const back = await page.evaluate(() => ({ open: !document.getElementById('career').hidden, title: document.getElementById('cr-title').textContent, cta: document.querySelector('#cr-actions .cta').textContent }));
+  await page.screenshot({ path: path.join(outDir, 'career-event.png') });
+  if (!back.open || back.title !== 'Rookie Cup' || !/round 2/.test(back.cta)) errors.push('career back to event: ' + JSON.stringify(back));
+  await page.click('[data-act="garage"]'); await page.waitForSelector('.cr-cars');
+  const shop = await page.$$eval('[data-act="buy"]', bs => bs.map(b => b.dataset.id));
+  await page.screenshot({ path: path.join(outDir, 'career-garage.png') });
+  if (!shop.length) errors.push('career garage: nothing to buy with $9000 (stale state?)');
+  await page.keyboard.press('Escape');
+  console.log(`career: tabs ${tabs.join(' | ')}; round 1 scored, ${res.rows} in the table, bank $${res.cash}, tally ${JSON.stringify(res.tally)}; back to "${back.title}"; showroom ${shop.length} cars`);
+}
 // the Rivals setting: a full field of 19 (one of every vehicle), then down to a single rival; the meshes follow
 {
   await page.evaluate(() => window.__dr.flow.toMenu()); await page.evaluate(() => { document.getElementById('garage').hidden = true; });

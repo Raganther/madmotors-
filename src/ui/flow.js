@@ -31,6 +31,7 @@ import { fmt, ordinal } from './format.js';
 import { callout, drawProfile } from './hud.js';
 import { showVehicle } from './garage.js';
 import { leagueResults, resetResultsUI } from './league.js';
+import { careerRaceDefs, careerResults } from './career.js';
 import { best, saveBest, saveMode, saveRivals, saveWeapons } from './storage.js';
 
 export let race = null, pausedFrom = null, selected = 0;
@@ -39,18 +40,20 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const lg = G.league, mode = lg ? 'race' : G.mode;                                                                  // a league round is always a Race
-  let defs = raceDefs(vehicleById(G.vehicle), lg ? LEAGUE_RIVALS : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);      // the line-up, with the player's pick
+  const lg = G.league, cr = G.career, mode = lg || cr ? 'race' : G.mode;                                               // league and career rounds are Races
+  let defs = cr ? careerRaceDefs() : raceDefs(vehicleById(G.vehicle), lg ? LEAGUE_RIVALS : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);   // the line-up, with the player's pick
   if (lg && lg.round > 0) { const order = standings(lg, defs.map(d => d.name)).map(s => s.name).reverse(); defs = order.map(n => defs.find(d => d.name === n)).filter(Boolean); }   // the championship leader starts at the back
   setRoster(defs);
-  const r = createRace(G.world.W, defs, { mode, weapons: G.weapons }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed
+  const r = createRace(G.world.W, defs, { mode, weapons: cr ? true : G.weapons }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed; a career always races with weapons
   elementHook('newRace', r);
   return r;
 }
 // ---------- flow ----------
 export function handleEvents() {
+  const pi = race.cars.indexOf(race.player);
   for (const c of race.cars.concat(race.traffic, race.parked || [])) {
     for (const e of c.events) {
+      if (G.tally) tally(c, e, pi);
       const near = Math.hypot(c.x - race.player.x, c.z - race.player.z) < 40;
       switch (e.t) {
         case 'hit': impactFx(c, e, c.isPlayer, near); break;
@@ -123,6 +126,13 @@ export function handleEvents() {
     c.events.length = 0;
   }
 }
+// the player's race for the career results: big airs, drift boosts, weapon hits on rivals (not bullets), wrecks, resets
+const HITS = ['missile-hit', 'harpoon-hit', 'pulse-hit', 'oil-hit'];
+function tally(c, e, pi) {
+  const t = G.tally;
+  if (c === race.player) { if (e.t === 'bigair') t.air++; else if (e.t === 'drift') t.drift++; else if (e.t === 'wreck') t.wrecks++; else if (e.t === 'respawn') t.respawns++; }
+  else if (!c.traffic && race.cars.includes(c) && ((HITS.includes(e.t) && e.from === pi) || (e.t === 'door-hit' && e.by === pi))) t.hits++;
+}
 /** Is a car inside the current Showdown view? */
 function onScreen(c) { const v = race.sd.view, f = race.sd.focus; if (!v || !f) return false; const [sx, sy] = screenOffset(c.x, c.y, c.z, f, race.camDir); return Math.abs(sx) < v.hw && Math.abs(sy) < v.hh; }
 // Showdown crown events: stragglers blowing up (and paying crown time to the holder), the crown changing hands
@@ -162,7 +172,7 @@ export function showResults() {
   $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name}`;
   $('res-best').textContent = newBest ? 'New best time on this stage' : 'Best time ' + fmt(best[G.world.idx]);
   $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
-  resetResultsUI(); leagueResults();
+  resetResultsUI(); careerResults() || leagueResults();
   updateResultsTable();
   $('next-btn').focus();
 }
@@ -209,20 +219,21 @@ export function selectStage(i, cb) {
 export function startRace(idx) {
   AudioSys.init();
   selectStage(idx, () => {
-    race = newRace(); clearSkids(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0;
+    race = newRace(); clearSkids(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0; G.tally = G.career ? { air: 0, drift: 0, hits: 0, wrecks: 0, respawns: 0 } : null;
     G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; G.sdTick = 0; $('edge').className = '';
     $('menu').hidden = true; $('garage').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
-    $('stage-name').textContent = G.editDrive ? `Test drive: ${STAGES[idx].name}` : `Stage ${idx + 1}: ${STAGES[idx].name}`; $('quit-btn').textContent = G.editDrive ? 'Back to editor' : 'Choose stage';
+    $('stage-name').textContent = G.editDrive ? `Test drive: ${STAGES[idx].name}` : `Stage ${idx + 1}: ${STAGES[idx].name}`; $('quit-btn').textContent = G.editDrive ? 'Back to editor' : G.career ? 'Career menu' : 'Choose stage';
     racesStarted++; G.hintTimer = racesStarted <= 2 ? 7 : 0;
     $('hint').textContent = isTouch ? G.steer === 'wheel' ? 'Point the wheel where to go. Slide Gas down to drift, up to fire' : 'Slide Gas down to drift, up to fire' : 'Hold Space through a corner to drift, then let go for a boost';
     updateCamera(0, true);
   });
 }
 export function toMenu() {
-  G.league = null;
+  const cr = G.career; G.league = null; G.career = null; G.tally = null;
   if (G.editDrive && G.onEditorBack) { G.onEditorBack(); }   // leaving a test drive goes back to the track editor
   G.state = 'menu'; $('hud').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('touch').hidden = true; $('menu').hidden = false; $('countdown').hidden = true;
   race = newRace(); clearSkids(); AudioSys.update(null, 'off'); updateCamera(0, true); $('race-btn').focus();
+  if (cr && G.onCareerMenu) G.onCareerMenu(cr);   // leaving a career race goes back to the career screen
 }
 export function togglePause() {
   if (G.state === 'countdown' || G.state === 'racing') { if (resultsShown) return; pausedFrom = G.state; G.state = 'paused'; $('pause').hidden = false; AudioSys.update(null, 'off'); $('resume-btn').focus(); }

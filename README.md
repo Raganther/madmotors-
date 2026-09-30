@@ -31,6 +31,17 @@ for you). The AI uses all of it. On touch there are Fire and Door buttons; a gam
 10-8-6-5-4-3-2-1 by finishing place; from round 2 the grid lines up in reverse championship order, so the leader
 starts at the back. Progress is kept per league in localStorage; leave for the menu and carry on later.
 
+**Career** (menu: Career; `src/data/career.js`, `src/ui/career.js`): the progression mode. Pick a cheap starter
+(Muscle Coupe, Rally Hatch or Tuk-Tuk) and climb four tiers, Rookie, Club, Pro and Legend. Each tier holds events
+(cups of 3-6 rounds scored like a league). Every race pays cash by finishing place plus style bonuses (big air, drift
+boosts, weapon hits, a clean race) and earns up to three stars: a podium, a win, and the round's objective (so many
+drift boosts or big airs, weapon hits, a clean run). Stars open the next tier; cash buys cars in the showroom, which
+stocks more cars as tiers open. Rivals drive cars that belong in the tier and get sharper tier by tier
+(`TIERS[].skill`). A cup's top three win a trophy (paid once per step up). Career races always have weapons on;
+Quick Race and Leagues are untouched. The state is one localStorage entry (`downhill-rush-career`).
+`npm run career` races every career round with the AI at a casual and a good player's skill and prints places,
+stars and cash: tune `TIERS`, prices and payouts against it.
+
 **A car for each stage:** the garage remembers your pick for the selected stage (by stage name, `G.stageCars`), and
 the last pick is the default for stages with none yet. The stage list shows each stage's car, the garage tags the
 vehicles that suit the stage (off-road stats on gravel and snow, speed and grip on tarmac), and the league screen has a
@@ -81,6 +92,7 @@ npm run check      # lint + tests: run before every commit
 | `npm run layout -- 7` | Top-down plan of stage 7's road: heights, bridges, tunnels, river, railways, near-misses between road sections |
 | `npm run terrain -- gorge` | Shaded relief map of a stage's terrain |
 | `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
+| `npm run career -- [tier] [--car id] [--skill 0.88,0.95] [--v]` | Career pacing: every round of a tier raced by the AI at a casual and a good skill; places, stars, cash |
 | `npm run bench -- 5 7` | Render-time benchmark for stages 5 and 7 (software renderer: compare runs, not absolute ms) |
 | `npm run assets [ids]` | Builds the Blender assets headless (`blender/`) into `src/assets/gen/`; previews in `blender/out/` |
 | `npm run labshot -- [ids]` | Asset Lab pictures, Blender beside Classic per asset → `tools/out/labshot.png` |
@@ -103,12 +115,12 @@ src/
     elements/           TRACK ELEMENTS: one module per reusable piece of road (bridge, tunnel, kick, gap, boost, town, ...)
     features/           race systems plugged into the race loop: traffic, trains, parked, rockfall, hazards
     modes/              game modes on top of a race (showdown: King of the Hill, Deuce, Tiebreak)
-  data/                 stages (one file each), sandboxes (a tiny loop per element), car/traffic definitions, leagues
+  data/                 stages (one file each), sandboxes (a tiny loop per element), car/traffic definitions, leagues, career
   render/               three.js: renderer & quality, materials/shaders, world (terrain, road, barriers,
                         scenery: draws core's obstacles with world/shapes.js, spectators, houses), elements/ (each element's and feature's visuals), vehicles (racer bodies: carmodels.js, one builder per `model`; paint, glass, chrome and occlusion: carpaint.js; garage pictures: thumbs.js), effects,
                         camera, overlay.js (debug overlay)
   audio/                Web Audio synth (engine, crashes, horns, bells)
-  ui/                   HUD, menu/flow (countdown, pause, results), garage, league, input, storage
+  ui/                   HUD, menu/flow (countdown, pause, results), garage, league, career, input, storage
 tests/                  golden simulation tests, scenarios, browser smoke test
 tools/                  layout / terrain / sandbox / benchmark tools
 ```

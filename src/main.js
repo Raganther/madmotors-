@@ -6,6 +6,7 @@ import { loadCamera, loadMode, loadRivals, loadSteer, loadVehicle, loadWeapons, 
 import { DEFAULT_RIVALS, MAX_RIVALS } from './data/cars.js';
 import { closeGarage, openGarage, showVehicle } from './ui/garage.js';
 import { wireLeagues, leagueNext } from './ui/league.js';
+import { wireCareer, careerNext } from './ui/career.js';
 import { initNotes } from './ui/notes.js';
 import { initEditor } from './ui/editor.js';
 import { AudioSys } from './audio/audio.js';
@@ -76,7 +77,7 @@ export function wireUI() {
   $('restart-btn').addEventListener('click', () => { $('pause').hidden = true; startRace(G.world.idx); });
   $('quit-btn').addEventListener('click', toMenu);
   $('again-btn').addEventListener('click', () => startRace(G.world.idx));
-  $('next-btn').addEventListener('click', () => leagueNext() || startRace((G.world.idx + 1) % STAGES.length));
+  $('next-btn').addEventListener('click', () => careerNext() || leagueNext() || startRace((G.world.idx + 1) % STAGES.length));
   $('menu-btn').addEventListener('click', toMenu);
   $('pause-btn').addEventListener('click', togglePause);
   $('reset-btn').addEventListener('click', () => { if (G.state === 'racing' && !race.player.finished) respawn(race.player, G.world.W); });
@@ -90,7 +91,7 @@ export function wireUI() {
   $('models-btn').addEventListener('click', () => { setModelMode(MODEL_MODES[(MODEL_MODES.indexOf(modelMode) + 1) % MODEL_MODES.length]); modelsLabel(); rebuildCars(); });
   modelsLabel();
   for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
-  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); initNotes(); initEditor(); $('lab-btn').addEventListener('click', () => import('./ui/lab.js').then(m => m.startLab())); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
+  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); wireCareer(); initNotes(); initEditor(); $('lab-btn').addEventListener('click', () => import('./ui/lab.js').then(m => m.startLab())); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
   for (const b of document.querySelectorAll('.cam-btn')) b.addEventListener('click', () => setCamera(nextCamera()));
   for (const b of document.querySelectorAll('.zoom-btn')) b.addEventListener('click', () => setCamera(G.camMode, nextZoom()));
 }
