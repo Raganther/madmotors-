@@ -12,7 +12,8 @@ export const kitPack = id => instancePack('kit-' + id);
 function instancePack(id) {
   const pack = blenderPack(id); if (!pack) return null;
   const H = decodePack(pack), cache = {}, L = gfx === 'high' ? H.hi : H.lo;
-  const geo = part => cache[part] || (cache[part] = merge(Object.values(L[part] || H.hi[part] || {})));
+  const looped = part => Object.values(H.hi[part] || {}).some(g => g.userData.loop);   // an authored loop lives on the near level
+  const geo = part => cache[part] || (cache[part] = merge(Object.values((looped(part) ? H.hi[part] : L[part]) || H.hi[part] || {})));
   return { geo, n: H.meta.variants || 1, meta: H.meta, has: part => !!H.hi[part] };
 }
 function merge(geos) {

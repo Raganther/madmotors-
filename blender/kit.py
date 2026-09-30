@@ -148,6 +148,61 @@ def noisy(o, amp, scale=1.0, seed=0):
     for v in o.data.vertices: v.co += v.normal * amp * noise.noise(v.co * scale + Vector((seed * 7.1, seed * 3.3, seed * 1.7)))
     o.data.update(); return o
 
+def bake_ao(groups, strength=0.6, distance=1.5, samples=24, occluders=()):
+    """Ambient occlusion from Cycles, multiplied into each part's vertex colours (white where it has none). Each group
+    is baked on its own (the others hidden), so a model's variants, which all sit at the origin, don't shade each
+    other; `occluders` (e.g. a car's preview wheels) stay in the scene for every group. NOBAKE=1 skips it."""
+    if os.environ.get('NOBAKE'): return
+    sc = bpy.context.scene; sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = samples
+    if not sc.world: sc.world = bpy.data.worlds.new('w')
+    sc.world.light_settings.distance = distance
+    meshes = [o for o in bpy.data.objects if o.type == 'MESH']
+    for group in groups:
+        keep = set(group) | set(occluders)
+        for o in meshes: o.hide_render = o not in keep
+        for o in group:
+            me = o.data
+            if not me.color_attributes.get('Col'): vcol(o, lambda p, n: (1, 1, 1))
+            ao = me.color_attributes.new('AO', 'FLOAT_COLOR', 'CORNER'); me.color_attributes.active_color = ao
+            active(o); bpy.ops.object.bake(type='AO', target='VERTEX_COLORS')
+            col = me.color_attributes['Col'].data; ao = me.color_attributes['AO'].data
+            # one occlusion value per vertex (the mean of its corners): corners that differ would stop the packer
+            # welding the vertex and double the pack
+            vi = [me.loops[k].vertex_index for k in range(len(ao))]; acc = [0.0] * len(me.vertices); cnt = [0] * len(me.vertices)
+            for k in range(len(ao)): acc[vi[k]] += ao[k].color[0]; cnt[vi[k]] += 1
+            for k in range(len(col)):
+                a = 1 - strength * (1 - acc[vi[k]] / cnt[vi[k]]); a = round(a * 64) / 64; c = col[k].color; col[k].color = (c[0] * a, c[1] * a, c[2] * a, 1)
+            me.color_attributes.remove(me.color_attributes['AO']); me.color_attributes.active_color = me.color_attributes['Col']
+    for o in meshes: o.hide_render = False
+def flag_grid(name, w, h, nx, ny, m, tail=0.0):
+    """A flat flag in the game's x-y plane, w x h centred on the origin, nx x ny quads (a wave needs rows to bend);
+    tail > 0 cuts a swallow tail that deep into the free end (+x)."""
+    import bmesh
+    bm = bmesh.new(); V = [[bm.verts.new(B(-w / 2 + w * i / nx - tail * (1 - abs(2 * j / ny - 1)) * (i / nx) ** 3, -h / 2 + h * j / ny, 0)) for j in range(ny + 1)] for i in range(nx + 1)]
+    for i in range(nx):
+        for j in range(ny): bm.faces.new((V[i][j], V[i + 1][j], V[i + 1][j + 1], V[i][j + 1]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces); return obj(name, bm, [m])
+def wave_loop(o, n, f, fps=8):
+    """An authored loop on the timeline: n shape keys, key k = f(x, y, z, k / n) in game coords, each keyed full on at
+    frame k + 1 and off either side, so the evaluated mesh at frame k + 1 is pose k. The packer samples it (o['loop']);
+    the game plays it back as morph targets."""
+    active(o); o.shape_key_add(name='rest'); pts = [G(v.co) for v in o.data.vertices]
+    for k in range(n):
+        sk = o.shape_key_add(name=f'f{k}', from_mix=False)
+        for i, p in enumerate(pts): sk.data[i].co = Vector(B(*f(*p, k / n)))
+        for fr, v in ((k, 0.0), (k + 1, 1.0), (k + 2, 0.0)): sk.value = v; sk.keyframe_insert('value', frame=fr)
+    o['loop'] = n; o['fps'] = fps; return o
+def variant_groups(parts):
+    """Parts grouped by the variant number they end in (crown0 + snow0 + trunk0...); unnumbered parts go with the first
+    group (a shared trunk). A model without numbers bakes each part alone (they all sit at the origin)."""
+    import re as _re
+    by = {}
+    for o in parts:
+        m = _re.search(r'(\d+)$', o.name); by.setdefault(m.group(1) if m else None, []).append(o)
+    shared = by.pop(None, [])
+    if not by: return [[o] for o in shared]
+    return [g + (shared if k == min(by) else []) for k, g in sorted(by.items())]
+
 # ---- packing for the game ----
 def _tris(o):
     dg = bpy.context.evaluated_depsgraph_get(); ob = o.evaluated_get(dg); me = ob.to_mesh(); me.calc_loop_triangles()
@@ -163,7 +218,7 @@ def _tris(o):
             g[0].append(G(v)); g[1].append(G(n))
             if col: c = col.data[li].color if col.domain == 'CORNER' else col.data[me.loops[li].vertex_index].color; g[2].append(tuple(c[:3]))
     ob.to_mesh_clear(); return groups
-def _pack(pos, nor, col, q=8000):
+def _pack(pos, nor, col, q=8000, frames=None):
     P = np.round(np.array(pos) * q).astype(np.int32); Nn = np.round(np.array(nor) * 127).astype(np.int32)
     Cc = np.round(np.clip(np.array(col), 0, 1) * 255).astype(np.int32) if col else None   # (over 1 would wrap round in a byte)
     key = np.concatenate([P, Nn] + ([Cc] if Cc is not None else []), axis=1)
@@ -173,6 +228,9 @@ def _pack(pos, nor, col, q=8000):
     e = lambda a, t: base64.b64encode(a.astype(t).tobytes()).decode()
     out = { 'pos': e(uniq[:, 0:3], np.int16), 'nor': e(uniq[:, 3:6], np.int8), 'idx': e(inv.reshape(-1), np.uint16) }
     if Cc is not None: out['col'] = e(uniq[:, 6:9], np.uint8)
+    if frames:   # an authored loop: each frame's position of every packed vertex
+        first = np.zeros(len(uniq), dtype=np.int64); first[inv.reshape(-1)] = np.arange(len(inv.reshape(-1)))
+        out['frames'] = [e(np.round(np.array(f)[first] * q), np.int16) for f in frames]
     return out, len(inv) // 3, len(uniq)
 def pack(asset_id, family, levels, meta=None, origin=False, q=8000):
     """Write src/assets/gen/<asset_id>.js: levels = { 'hi': [objects], 'lo': [objects] } (lo optional). Each object's
@@ -194,8 +252,16 @@ def pack(asset_id, family, levels, meta=None, origin=False, q=8000):
                 elif 'pivot' in o: piv[name] = [round(float(v), 4) for v in o['pivot']]
                 else: a = np.array([v for g in groups.values() for v in g[0]]); piv[name] = [round(float(v), 4) for v in (a.min(0) + a.max(0)) / 2]
             at = np.array(piv[name])
+            loop = {}   # parts with an authored loop (o['loop'] = frames at o['fps']): sample the timeline, frame by frame
+            if lvl == 'hi' and 'loop' in o:
+                for f in range(int(o['loop'])):
+                    bpy.context.scene.frame_set(f + 1)
+                    for m, g in _tris(o).items(): loop.setdefault(m, []).append(list(np.array(g[0]) - at))
+                bpy.context.scene.frame_set(0); groups = _tris(o)
             for m, (p, n, c) in groups.items():
-                pk, t, _ = _pack(list(np.array(p) - at), n, c, q); parts.append({ 'name': name, 'mat': m, 'at': piv[name], **pk }); tris += t
+                pk, t, _ = _pack(list(np.array(p) - at), n, c, q, loop.get(m))
+                if m in loop: pk['fps'] = float(o.get('fps', 8))
+                parts.append({ 'name': name, 'mat': m, 'at': piv[name], **pk }); tris += t
                 (hi_all if lvl == 'hi' else lo_all).extend(p)
         data[lvl] = parts; stats[lvl + 'Tris'] = tris
     pts = np.array(hi_all); stats['min'] = [round(v, 3) for v in pts.min(0)]; stats['max'] = [round(v, 3) for v in pts.max(0)]

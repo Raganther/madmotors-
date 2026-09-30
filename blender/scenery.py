@@ -10,7 +10,8 @@ DESIGNS = {}
 def design(fn): DESIGNS[fn.__name__] = fn; return fn
 def far(o, ratio):
     c = o.copy(); c.data = o.data.copy(); bpy.context.collection.objects.link(c); decimate(c, ratio); c.name = o.name + '_lo'; c['part'] = o.name; return c
-def finish(aid, parts, meta=None, ratio=0.5):
+def finish(aid, parts, meta=None, ratio=0.5, ao=(0.5, 1.5)):
+    bake_ao(variant_groups(parts), *ao)
     lo = [far(o, ratio) if len(o.data.polygons) > 60 else o for o in parts]
     hide([o for o in lo if o not in parts])
     st = pack('scn-' + aid, 'scenery', { 'hi': parts, 'lo': lo }, meta or {}, origin=True, q=4000)

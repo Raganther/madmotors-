@@ -5,6 +5,7 @@ import { canvasTex } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { race } from '../../ui/flow.js';
 import { kitPack, vcMat } from '../assets/scenery.js';
+import { playLoop } from '../assets/index.js';
 
 // Open country (core/elements/open.js): the gates and the streams; the forest, rocks and bushes are the ordinary
 // scenery (track/obstacles.js placeOpen). A gate is two tall striped posts with pennants and a numbered banner between
@@ -21,7 +22,7 @@ export function addOpen(group, tr, terr, stage) {
     const N = tr.loopN || tr.N, stripe = canvasTex(8, 64, (g, w, h) => { for (let y = 0; y < h; y += 16) { g.fillStyle = '#E0402F'; g.fillRect(0, y, w, 8); g.fillStyle = '#F4F4F0'; g.fillRect(0, y + 8, w, 8); } });
     // Blender's gate (blender/pieces.py gate: a banded post with a ball and plinth, a swallow-tailed pennant) or Classic's
     const GK = kitPack('gate'), postG = GK ? GK.geo('post') : new THREE.CylinderGeometry(0.22, 0.28, 6, 10), flagG = GK ? GK.geo('flag') : new THREE.PlaneGeometry(1.4, 0.8);
-    const postM = withCutaway(GK ? vcMat() : new THREE.MeshLambertMaterial({ map: stripe })), flagM = GK ? vcMat({ side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ color: 0xFFC72C, side: THREE.DoubleSide });
+    const postM = withCutaway(GK ? vcMat() : new THREE.MeshLambertMaterial({ map: stripe })), flagM = GK ? vcMat({ side: THREE.DoubleSide, morphTargets: !!flagG.userData.loop }) : new THREE.MeshLambertMaterial({ color: 0xFFC72C, side: THREE.DoubleSide });
     tr.gates.forEach((i, n) => {
       if (i >= tr.startIdx + N) return;
       const root = new THREE.Group(), hw = GATE.W / 2, y0 = [-1, 1].map(s => terr.at(tr.xs[i] + tr.rx[i] * s * hw, tr.zs[i] + tr.rz[i] * s * hw));
@@ -89,7 +90,7 @@ export function updateOpen(dt, now) {
     g.bm.color.setHex(done ? 0x777777 : 0xFFFFFF);
     g.glow.material.opacity = isNext ? 0.35 + 0.25 * Math.sin(now * 5) : 0;
     g.b.position.y = g.top + (isNext ? Math.sin(now * 3) * 0.2 : 0);
-    for (const f of g.flags) f.rotation.x = Math.sin(now * 6 + g.n) * 0.25;
+    for (const f of g.flags) if (f.geometry.userData.loop) playLoop(f, now + g.n * 0.37); else f.rotation.x = Math.sin(now * 6 + g.n) * 0.25;   // Blender's authored wave, or a wag
   }
   if (!arrow) return;
   const gi = next >= 0 ? tr.gates[k] : -1;

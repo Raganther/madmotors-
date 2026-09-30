@@ -63,6 +63,8 @@ function kit(def, root, body) {
       if (hi && hi !== lo) { m.userData.lod = [m.geometry, lamp ? hi : bakeAO(hi.clone(), at ? at[1] : 0)]; lod.swap.push(m); }
       if (at) m.position.set(...at); m.castShadow = !lamp; body.add(m); m.userData.hdMat = c; m.userData.home = { p: m.position.clone(), r: m.rotation.clone(), dims: [0.6, 0.2, 0.6], color: col }; return m;
     },
+    /** Near detail only (a Blender part with no far version): shown with the close-up bodies, hidden far off. */
+    nearOnly(m) { const i = lod.swap.indexOf(m); if (i >= 0) lod.swap.splice(i, 1); m.geometry = m.userData.lod ? m.userData.lod[1] : m.geometry; delete m.userData.lod; lod.hi.push(m); m.visible = lod.on; return m; },
     /** Make a Blender part dentable (keeps its undented positions for both levels). */
     dentHD(m) {
       const copy = g => Float32Array.from(g.attributes.position.array);
