@@ -2,7 +2,7 @@
  "car-buggy": {
   "family": "cars",
   "hiTris": 6892,
-  "kb": 146,
+  "kb": 164,
   "loTris": 3478,
   "max": [
    0.746,
@@ -36,8 +36,8 @@
  },
  "car-coupe": {
   "family": "cars",
-  "hiTris": 6892,
-  "kb": 154,
+  "hiTris": 7156,
+  "kb": 179,
   "loTris": 3736,
   "max": [
    1.061,
@@ -62,6 +62,12 @@
    "lamp1:lamp",
    "lamp2:lamp",
    "lamp3:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
    "rbumper:chrome",
    "scoop:paint",
    "scoopmouth:trim",
@@ -73,16 +79,16 @@
  },
  "car-firetruck": {
   "family": "cars",
-  "hiTris": 7098,
-  "kb": 153,
+  "hiTris": 7362,
+  "kb": 177,
   "loTris": 3670,
   "max": [
-   1.128,
+   1.21,
    2.6,
    2.52
   ],
   "min": [
-   -1.128,
+   -1.21,
    0.33,
    -2.52
   ],
@@ -102,6 +108,12 @@
    "lockers:accent",
    "lockers:firered",
    "lockers:trim",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
    "reel:chrome",
    "reel:hose",
    "tail0:tail",
@@ -112,7 +124,7 @@
  "car-formula": {
   "family": "cars",
   "hiTris": 7500,
-  "kb": 155,
+  "kb": 176,
   "loTris": 3538,
   "max": [
    0.97,
@@ -142,8 +154,8 @@
  },
  "car-hatch": {
   "family": "cars",
-  "hiTris": 7578,
-  "kb": 173,
+  "hiTris": 7842,
+  "kb": 199,
   "loTris": 4410,
   "max": [
    1.13,
@@ -166,6 +178,12 @@
    "grille:trim",
    "head0:lamp",
    "head1:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
    "rack:trim",
    "rbumper:trim",
    "spare:hub",
@@ -185,7 +203,7 @@
  "car-hotrod": {
   "family": "cars",
   "hiTris": 7334,
-  "kb": 158,
+  "kb": 179,
   "loTris": 3522,
   "max": [
    0.9,
@@ -230,7 +248,7 @@
  "car-hover": {
   "family": "cars",
   "hiTris": 7896,
-  "kb": 159,
+  "kb": 179,
   "loTris": 3482,
   "max": [
    1.141,
@@ -261,8 +279,8 @@
  },
  "car-icecream": {
   "family": "cars",
-  "hiTris": 4428,
-  "kb": 103,
+  "hiTris": 4692,
+  "kb": 120,
   "loTris": 2656,
   "max": [
    1.242,
@@ -290,6 +308,12 @@
    "hatch:cream",
    "lamp0:lamp",
    "lamp1:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
    "nose:paint",
    "tail0:tail",
    "tail1:tail",
@@ -299,7 +323,7 @@
  "car-kart": {
   "family": "cars",
   "hiTris": 3240,
-  "kb": 75,
+  "kb": 85,
   "loTris": 2024,
   "max": [
    0.87,
@@ -329,16 +353,16 @@
  },
  "car-limo": {
   "family": "cars",
-  "hiTris": 7464,
-  "kb": 163,
-  "loTris": 3850,
+  "hiTris": 7576,
+  "kb": 188,
+  "loTris": 3698,
   "max": [
-   0.995,
+   1.03,
    2.07,
    2.79
   ],
   "min": [
-   -0.995,
+   -1.03,
    0.281,
    -2.78
   ],
@@ -356,6 +380,12 @@
    "lamp1:lamp",
    "lamp2:lamp",
    "lamp3:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
    "ornament:accent",
    "rbumper:chrome",
    "sunroof:glass",
@@ -367,8 +397,8 @@
  },
  "car-mixer": {
   "family": "cars",
-  "hiTris": 5396,
-  "kb": 118,
+  "hiTris": 5660,
+  "kb": 137,
   "loTris": 2930,
   "max": [
    1.23,
@@ -392,6 +422,12 @@
    "grille:trim",
    "lamp0:lamp",
    "lamp1:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
    "supports:trim",
    "tail0:tail",
    "tail1:tail",
@@ -400,8 +436,8 @@
  },
  "car-monster": {
   "family": "cars",
-  "hiTris": 5776,
-  "kb": 137,
+  "hiTris": 6040,
+  "kb": 158,
   "loTris": 3402,
   "max": [
    1.24,
@@ -427,6 +463,12 @@
    "grille:trim",
    "head0:lamp",
    "head1:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
    "shocks:chrome",
    "spot0:lamp",
    "spot1:lamp",
@@ -440,16 +482,16 @@
  },
  "car-police": {
   "family": "cars",
-  "hiTris": 6216,
-  "kb": 140,
+  "hiTris": 6480,
+  "kb": 161,
   "loTris": 3420,
   "max": [
-   0.977,
+   1.03,
    1.8,
    1.993
   ],
   "min": [
-   -0.977,
+   -1.03,
    0.301,
    -1.93
   ],
@@ -467,6 +509,12 @@
    "lightbase:trim",
    "lightblue:glowblue",
    "lightred:glowred",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
    "rbumper:trim",
    "tail0:tail",
    "tail1:tail",
@@ -476,7 +524,7 @@
  "car-rocket": {
   "family": "cars",
   "hiTris": 5582,
-  "kb": 121,
+  "kb": 136,
   "loTris": 2662,
   "max": [
    0.853,
@@ -505,7 +553,7 @@
  "car-rover": {
   "family": "cars",
   "hiTris": 6088,
-  "kb": 125,
+  "kb": 141,
   "loTris": 2764,
   "max": [
    1.15,
@@ -539,7 +587,7 @@
  "car-sidecar": {
   "family": "cars",
   "hiTris": 6316,
-  "kb": 134,
+  "kb": 152,
   "loTris": 3156,
   "max": [
    1.07,
@@ -574,8 +622,8 @@
  },
  "car-snowcat": {
   "family": "cars",
-  "hiTris": 7136,
-  "kb": 151,
+  "hiTris": 7400,
+  "kb": 174,
   "loTris": 3498,
   "max": [
    1.25,
@@ -602,6 +650,12 @@
    "lamp1:lamp",
    "lamp2:lamp",
    "lamp3:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
    "tail0:tail",
    "tail1:tail",
    "tracks:trim",
@@ -612,7 +666,7 @@
  "car-tuktuk": {
   "family": "cars",
   "hiTris": 6230,
-  "kb": 131,
+  "kb": 149,
   "loTris": 2954,
   "max": [
    0.78,
@@ -642,8 +696,8 @@
  },
  "car-wedge": {
   "family": "cars",
-  "hiTris": 7014,
-  "kb": 154,
+  "hiTris": 7278,
+  "kb": 179,
   "loTris": 3654,
   "max": [
    1.05,
@@ -667,6 +721,12 @@
    "hoodstripe:accent",
    "intakes:trim",
    "louvres:trim",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
    "strut0:trim",
    "strut1:trim",
    "tail0:tail",
@@ -698,9 +758,9 @@
  },
  "kit-gate": {
   "family": "kit",
-  "hiTris": 844,
-  "kb": 23,
-  "loTris": 430,
+  "hiTris": 908,
+  "kb": 30,
+  "loTris": 494,
   "max": [
    0.7,
    3.4,

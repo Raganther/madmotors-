@@ -10,7 +10,8 @@ DESIGNS = {}
 def design(fn): DESIGNS[fn.__name__] = fn; return fn
 def far(o, ratio):
     c = o.copy(); c.data = o.data.copy(); bpy.context.collection.objects.link(c); decimate(c, ratio); c.name = o.name + '_lo'; c['part'] = o.name; return c
-def finish(aid, parts, meta=None, ratio=0.5, q=4000):
+def finish(aid, parts, meta=None, ratio=0.5, q=4000, ao=(0.5, 1.0), together=False):
+    bake_ao([parts] if together else [[o] for o in parts], *ao)   # together: parts that are one object (portal arch and band)
     lo = [far(o, ratio) if len(o.data.polygons) > 80 else o for o in parts]
     hide([o for o in lo if o not in parts])
     return pack('kit-' + aid, 'kit', { 'hi': parts, 'lo': lo }, meta or {}, origin=True, q=q)
@@ -52,7 +53,7 @@ def portal():
     cornice = rbox('cornice', (2 * RT + 7.4, 0.7, 1.6), (0, HT + 3.35, 0.5), 'concrete', 0.08); vcol(cornice, lambda p, n: grey(0.95 if n[1] > 0.5 else 0.78))
     plaque = rbox('plaque', (3.2, 0.9, 0.12), (0, HT + 1.9, -0.18), 'concrete', 0.03); vcol(plaque, lambda p, n: (0.18, 0.24, 0.36) if n[2] < -0.5 else grey(0.5))
     arch = join('arch', vs + sides + [cornice, plaque])
-    return finish('portal', [arch, band], { 'rt': RT, 'ht': HT }, ratio=0.7, q=2000)   # 13 m across: +-16 m range
+    return finish('portal', [arch, band], { 'rt': RT, 'ht': HT }, ratio=0.7, q=2000, ao=(0.55, 2.0), together=True)   # 13 m across: +-16 m range
 
 @design
 def pier():
@@ -78,9 +79,9 @@ def gate():
     ball = sphere('ball', 0.3, (0, 3.1, 0), 'white', 14); vcol(ball, lambda p, n: (1, 0.84, 0.2))
     plinth = cyl('plinth', 0.45, 0.5, (0, -2.75, 0), 'y', 'white', 16, r2=0.36); vcol(plinth, lambda p, n: grey(0.55 + 0.2 * max(0, n[1])))
     post = join('post', bands + [ball, plinth])
-    bm = bmesh.new(); V = [bm.verts.new(B(x, y, 0)) for x, y in ((-0.7, 0.4), (0.7, 0.4), (0.35, 0.0), (0.7, -0.4), (-0.7, -0.4))]   # in the x-y plane, like the Classic one
-    bm.faces.new(V); flag = obj('flag', bm, ['yellow']); apply(flag, 'SOLIDIFY', thickness=0.02, offset=0)
-    warp(flag, lambda x, y, z: (x, y, z + 0.06 * math.sin(x * 4))); vcol(flag, lambda p, n: (1, 0.78, 0.17))
+    # the pennant waves: a loop of 12 poses keyed on the timeline, a wave running out from the pole (-x) growing to the tail
+    flag = flag_grid('flag', 1.4, 0.8, 10, 4, 'yellow', tail=0.35); vcol(flag, lambda p, n: (1, 0.78, 0.17))
+    wave_loop(flag, 12, lambda x, y, z, t: (x, y + 0.03 * math.sin(2 * math.pi * t + x * 3) * (x + 0.7), z + 0.16 * (x + 0.7) / 1.4 * math.sin(2 * math.pi * t - (x + 0.7) * 4.2)), fps=10)
     return finish('gate', [post, flag], { 'lab': { 'post': [0, 3, 0], 'flag': [0.9, 5.6, 0] } })
 
 @design
@@ -92,7 +93,7 @@ def lamp():
                          cyl('cap', 0.22, 0.14, (0, 4.95, 0.6), 'y', 'dark', 8, r2=0.05)])
     vcol(pole, lambda p, n: grey(0.32 + 0.12 * max(0, n[1])))
     glass = cyl('glow', 0.16, 0.36, (0, 4.72, 0.6), 'y', 'lamp', 8, r2=0.2); vcol(glass, lambda p, n: (1, 0.91, 0.66))
-    return finish('lamp', [pole, glass], {})
+    return finish('lamp', [pole, glass], {}, together=True)
 
 @design
 def barrier():

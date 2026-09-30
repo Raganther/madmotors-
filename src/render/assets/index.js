@@ -30,6 +30,8 @@ function geometry(p, q = 8000) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(new THREE.BufferAttribute(I, 1));
   if (p.col) g.setAttribute('color', new THREE.BufferAttribute(Float32Array.from(new Uint8Array(bytes(p.col)), v => v / 255), 3));
+  // an authored loop (blender kit.wave_loop): its frames as morph targets, played by playLoop
+  if (p.frames) { g.morphAttributes.position = p.frames.map(f => new THREE.BufferAttribute(Float32Array.from(new Int16Array(bytes(f)), v => v / q), 3)); g.userData.loop = { n: p.frames.length, fps: p.fps || 8 }; }
   return g;
 }
 /** A pack's geometries: { hi: { [part]: { [material]: geometry } }, lo: {...} (falls back to hi), at: { [part]: pivot } }.
@@ -40,6 +42,14 @@ export function decodePack(pack) {
   for (const p of pack.hi) at[p.name] = p.at || [0, 0, 0];
   const out = { hi: lvl(pack.hi), lo: pack.lo ? lvl(pack.lo) : null, at, meta: pack.meta || {} }; out.lo = out.lo || out.hi;
   cache.set(pack, out); return out;
+}
+/** Play a mesh's authored loop at time t (s): the two frames either side blended, the rest off. The mesh's material
+ *  needs morphTargets on (r128). */
+export function playLoop(mesh, t, speed = 1) {
+  const L = mesh.geometry.userData.loop; if (!L) return;
+  if (!mesh.morphTargetInfluences) mesh.updateMorphTargets();
+  const f = ((t * L.fps * speed) % L.n + L.n) % L.n, k = Math.floor(f), w = f - k, I = mesh.morphTargetInfluences;
+  I.fill(0); I[k] = 1 - w; I[(k + 1) % L.n] = w;
 }
 /** Triangles in a pack level (for the Asset Lab). */
 export const packTris = (pack, lvl = 'hi') => (pack[lvl] || []).reduce((a, p) => a + atob(p.idx).length / 6, 0);

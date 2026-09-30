@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { decodePack } from './index.js';
+import { decodePack, playLoop } from './index.js';
 
 // A racer built from its Blender pack (blender/cars.py): every part the pack names, in the car's colours, with both
 // levels of detail (near / far: setCarDetail swaps them), and the damage hooks the game needs, from the pack's meta:
@@ -11,8 +11,10 @@ const MATS = def => ({ paint: def.color, accent: def.accent });
 export function buildBlenderCar(K, def, pack) {
   const H = decodePack(pack), m = H.meta, C = MATS(def), O = {};
   for (const name of Object.keys(H.hi)) for (const mat of Object.keys(H.hi[name])) {
-    const hi = H.hi[name][mat], lo = (H.lo[name] && H.lo[name][mat]) || hi;
+    const hi = H.hi[name][mat], near = (m.near || []).includes(name), lo = hi.userData.loop || near ? hi : (H.lo[name] && H.lo[name][mat]) || hi;   // a looping part keeps its frames far off too
     const mesh = K.hd(lo, C[mat] ?? mat, hi, H.at[name]); (O[name] = O[name] || []).push(mesh); mesh.name = name;
+    if (near) K.nearOnly(mesh);
+    if (hi.userData.loop) { mesh.material = mesh.material.clone(); mesh.material.morphTargets = true; mesh.updateMorphTargets(); }
   }
   for (const n of m.dent || []) for (const mesh of O[n] || []) K.dentHD(mesh);
   const one = n => n && O[n] ? O[n][0] : null, byMat = mt => Object.values(O).flat().filter(x => x.userData.hdMat === mt);
@@ -57,7 +59,7 @@ export const RIGS = {
     return { moving: [...fan, ...rud], anim: (v, c, now) => { fan.forEach(x => { x.rotation.z = now * (6 + (c.inp.throttle || 0) * 30); }); rud.forEach(x => { x.rotation.y = -(c.inp.steer || 0) * 0.5; }); } };
   },
   snowcat(O) { const b = all(O, 'beacon'); return { moving: b, anim: (v, c, now) => b.forEach(x => { x.rotation.y = now * 6; x.material.color.setHex(Math.floor(now * 3) % 2 ? 0xFFA020 : 0x7A4A10); }) }; },
-  limo(O) { const f = all(O, 'flag'); return { moving: f, anim: (v, c, now) => f.forEach(x => { x.rotation.y = Math.sin(now * 9) * 0.3; }) }; },
+  limo(O) { const f = all(O, 'flag'); return { moving: f, anim: (v, c, now) => f.forEach(x => { if (x.geometry.userData.loop) playLoop(x, now, 1 + Math.min(1, Math.hypot(c.vx || 0, c.vz || 0) / 30)); else x.rotation.y = Math.sin(now * 9) * 0.3; }) }; },   // the authored wave, faster with speed
   sidecar(O) {
     const pass = all(O, 'pass'), rider = all(O, 'rider'), x0 = pass.map(x => x.position.x);
     return { moving: [...pass, ...rider], anim: (v, c, now) => { const lean = c.inp.steer || 0; pass.forEach((x, k) => { x.position.x = x0[k] + lean * 0.45; x.rotation.z = -lean * 0.4; }); rider.forEach(x => { x.rotation.z = lean * 0.25; }); } };

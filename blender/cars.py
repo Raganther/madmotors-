@@ -64,6 +64,13 @@ def grille(w, h, y, z, name='grille'):
     """A dark grille with chrome slats."""
     g = rbox(name, (w, h, 0.05), (0, y, z), 'trim', 0.015); n = max(2, int(h / 0.07))
     return join(name, [g] + [rbox(f'{name}_s{k}', (w * 0.92, 0.018, 0.02), (0, y - h / 2 + h * (k + 0.5) / n, z + 0.03), 'chrome', 0) for k in range(n)])
+def mirrors(x, y, z, name='mirror'):
+    """Wing mirrors either side at (+-x, y, z): a painted housing with the glass facing back. Near detail only."""
+    out = []
+    for k, s_ in enumerate((-1, 1)):
+        out.append(join(f'{name}{k}', [rbox(f'{name}{k}h', (0.16, 0.1, 0.1), (s_ * x, y, z), 'paint', 0.03, segs=2), rbox(f'{name}{k}g', (0.13, 0.07, 0.01), (s_ * x, y, z - 0.052), 'glass', 0),
+                                        rbox(f'{name}{k}s', (0.1, 0.03, 0.04), (s_ * (x - 0.08), y - 0.03, z + 0.01), 'trim', 0)]))
+    return out
 def preview_wheels(wheels):
     out = []
     for x, z, r, wd in wheels:
@@ -73,9 +80,14 @@ def lo_copy(o, ratio):
     """The far level: a copy decimated to `ratio` (small parts stay as they are)."""
     c = o.copy(); c.data = o.data.copy(); bpy.context.collection.objects.link(c); decimate(c, ratio); c.name = o.name + '_lo'; c['part'] = o.name; return c
 def finish(model, parts, wheels, roles, lo_ratio=0.3, extra_meta=None):
-    """Pack a car: `parts` are the game's meshes (render-only wheels excluded). The far level decimates the big ones."""
+    """Pack a car: `parts` are the game's meshes (render-only wheels excluded). Occlusion is baked into vertex colours
+    first (the preview wheels shade the arches), then the far level decimates the big ones."""
+    bake_ao([[o for o in parts if o.data.materials and o.data.materials[0].name not in ('lamp', 'tail') and not o.data.materials[0].name.startswith('glow')]],
+            0.55, 0.9, occluders=[o for o in bpy.data.objects if o.name.startswith('_tyre') or o.name.startswith('_hub')])
     # the far level: big parts decimated to lo_ratio, middling ones (rounded boxes, spheres, tubes) halved
-    lo = [lo_copy(o, lo_ratio) if len(o.data.polygons) > 400 else lo_copy(o, 0.5) if len(o.data.polygons) > 120 else o for o in parts]
+    near = {o.name for o in parts if o.name.startswith('mirror')}   # near-only detail (wing mirrors): no far version at all
+    roles = { **roles, 'near': sorted(near) } if near else roles
+    lo = [lo_copy(o, lo_ratio) if len(o.data.polygons) > 400 else lo_copy(o, 0.5) if len(o.data.polygons) > 120 else o for o in parts if o.name not in near]
     hide([o for o in lo if o not in parts])
     meta = { 'wheels': wheels, **roles, **(extra_meta or {}) }
     st = pack('car-' + model, 'cars', { 'hi': parts, 'lo': lo }, meta)
@@ -106,6 +118,7 @@ def coupe():
              rbox('scoopmouth', (0.36, 0.07, 0.04), (0, 1.04, 1.08), 'trim', 0.01), rbox('grille', (0.9, 0.16, 0.05), (0, 0.76, 1.84), 'trim', 0.02)]
     parts += lamps((-0.72, -0.42, 0.42, 0.72), 0.8, 1.8) + tails((-0.58, 0.58), 0.86, -1.85)
     parts += [rbox(f'exh{k}', (0.12, 0.1, 0.24), (s_ * 0.5, 0.4, -1.84), 'chrome', 0.04) for k, s_ in enumerate((-1, 1))]
+    parts += mirrors(0.9, 1.05, 0.22)
     preview_wheels(W)
     return finish('coupe', parts, W, { 'dent': ['body', 'scoop', 'cabin'], 'bumper': 'bumper', 'wing': 'wing', 'cabin': 'cabin', 'number': [0.62, 1.47, -0.55] })
 
@@ -134,6 +147,7 @@ def hatch():
              grille(0.84, 0.2, 0.86, 1.64), join('flaps', [rbox(f'flap{k}', (0.36, 0.3, 0.04), (s_ * 0.95, 0.34, -1.6), 'tyre', 0.01) for k, s_ in enumerate(MIR)])]
     parts += lamps((-0.48, -0.16, 0.16, 0.48), 1.26, 1.47, 0.13, 'spot') + [join('spotcans', [cyl(f'can{k}', 0.15, 0.14, (x, 1.26, 1.4), 'z', 'chrome', 20) for k, x in enumerate((-0.48, -0.16, 0.16, 0.48))])]
     parts += rects((-0.64, 0.64), 0.88, 1.66, 0.34, 0.2) + tails((-0.66, 0.66), 0.92, -1.66, 0.36, 0.18)
+    parts += mirrors(0.97, 1.13, 0.45)
     preview_wheels(W)
     return finish('hatch', parts, W, { 'dent': ['body', 'cabin'], 'bumper': 'bumper', 'wing': 'wing', 'struts': ['spare'], 'cabin': 'cabin', 'number': [0.72, 1.76, 0.0] })
 
@@ -155,6 +169,7 @@ def wedge():
              rbox('bumper', (1.36, 0.08, 0.36), (0, 0.36, 1.76), 'accent', 0.03), rbox('wing', (2.1, 0.08, 0.55), (0, 1.52, -1.6), 'accent', 0.03),
              rbox('strut0', (0.08, 0.5, 0.14), (-0.56, 1.22, -1.6), 'trim', 0.02), rbox('strut1', (0.08, 0.5, 0.14), (0.56, 1.22, -1.6), 'trim', 0.02)]
     parts += rects((-0.5, 0.5), 0.64, 1.73, 0.34, 0.07) + tails((-0.58, 0.58), 0.8, -1.86, 0.62, 0.12)
+    parts += mirrors(0.8, 0.93, 0.8)
     preview_wheels(W)
     return finish('wedge', parts, W, { 'dent': ['body', 'cover', 'cabin'], 'bumper': 'bumper', 'wing': 'wing', 'struts': ['strut0', 'strut1'], 'cabin': 'cabin', 'number': [0.66, 1.115, -0.8] })
 
@@ -204,6 +219,7 @@ def monster():
              tube('wing', (-0.9, 2.55, -0.6), (0.9, 2.55, -0.6), 0.06, 'trim'), grille(0.8, 0.3, Y + 0.16, 1.76),
              rbox('bumper', (2.1, 0.22, 0.25), (0, Y - 0.1, 1.82), 'chrome', 0.07)]
     parts += lamps((-0.6, -0.2, 0.2, 0.6), 2.66, -0.52, 0.1, 'spot') + rects((-0.62, 0.62), Y + 0.2, 1.77, 0.4, 0.16) + tails((-0.7, 0.7), Y + 0.2, -1.78, 0.3, 0.2)
+    parts += mirrors(1.0, 2.03, 0.95)
     preview_wheels(W)
     return finish('monster', parts, W, { 'dent': ['body', 'bed', 'cabin'], 'bumper': 'bumper', 'wing': 'wing', 'cabin': 'cabin', 'number': [0.7, 2.63, 0.2], 'soft': 2.6, 'knobbly': True, 'hub': 'accent' })
 
@@ -299,6 +315,7 @@ def police():
              rbox('wing', (1.7, 0.05, 0.24), (0, 1.09, -1.72), 'paint', 0.02, rot=(-0.15, 0, 0)), grille(0.76, 0.16, 0.84, 1.82),
              rbox('rbumper', (1.9, 0.14, 0.16), (0, 0.55, -1.85), 'trim', 0.05)]
     parts += rects((-0.62, 0.62), 0.86, 1.83, 0.44, 0.14) + tails((-0.64, 0.64), 0.9, -1.85, 0.44, 0.14)
+    parts += mirrors(0.95, 1.1, 0.45)
     preview_wheels(W)
     return finish('police', parts, W, { 'dent': ['body', 'cabin'], 'bumper': 'bumper', 'wing': 'wing', 'cabin': 'cabin', 'number': [0.7, 1.61, -0.6] })
 
@@ -352,6 +369,7 @@ def icecream():
              join('hatch', [rbox(f'h{k}', (0.03, 0.5, 1.4), (s_ * 0.99, 1.4, -0.6), 'cream', 0.02) for k, s_ in enumerate(MIR)] + [rbox(f'aw{k}', (0.3, 0.04, 1.5), (s_ * 1.1, 1.72, -0.6), 'accent', 0.02, rot=(0, 0, -s_ * 0.35)) for k, s_ in enumerate(MIR)]),
              rbox('bumper', (2.0, 0.22, 0.2), (0, 0.6, 2.07), 'chrome', 0.07), rbox('wing', (1.96, 0.1, 0.3), (0, 1.94, -2.0), 'accent', 0.03), grille(0.9, 0.3, 0.98, 2.06)]
     parts += lamps((-0.66, 0.66), 0.95, 2.06, 0.13) + tails((-0.8, 0.8), 1.2, -2.01, 0.2, 0.36)
+    parts += mirrors(1.03, 1.45, 1.05)
     preview_wheels(W)
     return finish('icecream', parts, W, { 'dent': ['box', 'nose'], 'bumper': 'bumper', 'wing': 'wing', 'cabin': 'cabin', 'number': [0.7, 1.93, -1.4], 'soft': 1.3 })
 
@@ -372,6 +390,7 @@ def firetruck():
              rbox('beacon0', (0.3, 0.2, 0.3), (-0.8, 1.8, 2.05), 'glowblue', 0.05), rbox('beacon1', (0.3, 0.2, 0.3), (0.8, 1.8, 2.05), 'glowblue', 0.05),
              rbox('bumper', (2.1, 0.3, 0.2), (0, 0.62, 2.42), 'chrome', 0.07), rbox('wing', (2.0, 0.2, 0.2), (0, 0.66, -2.42), 'chrome', 0.06), grille(1.1, 0.38, 1.0, 2.31)]
     parts += lamps((-0.75, 0.75), 0.95, 2.32, 0.15) + tails((-0.85, 0.85), 1.0, -2.42, 0.26, 0.3)
+    parts += mirrors(1.13, 1.42, 2.1)
     preview_wheels(W)
     return finish('firetruck', parts, W, { 'dent': ['cab', 'box'], 'bumper': 'bumper', 'wing': 'wing', 'cabin': 'cabin', 'number': [0.7, 1.72, 1.4] })
 
@@ -439,6 +458,7 @@ def snowcat():
              rbox('wing', (1.5, 0.5, 0.5), (0, 1.0, -1.7), 'accent', 0.06), grille(1.0, 0.42, 1.18, 0.86)]
     parts[-1]['pivot'] = (0, 1.18, 0.86)
     parts += lamps((-0.45, -0.15, 0.15, 0.45), 2.4, 0.62, 0.09) + tails((-0.7, 0.7), 1.1, -1.96, 0.2, 0.2)
+    parts += mirrors(0.99, 1.85, 0.62)
     preview_wheels(W)
     return finish('snowcat', parts, W, { 'dent': ['cab', 'cabin'], 'bumper': 'bumper', 'wing': 'wing', 'struts': ['bar'], 'cabin': 'cabin', 'number': [0.66, 2.33, -0.05], 'soft': 0.8 })
 
@@ -454,13 +474,16 @@ def limo():
     s = stripes(b, (0,), ((2.6, 1.55),), 0.08, name='hoodline')
     cab = glasshouse([1.4, 1.35, 1.2, 0.9, 0.5, 0.1, -0.3, -0.7, -1.1, -1.5, -1.9, -2.1, -2.2], 1.02, [(1.4, 1.04), (1.15, 1.45), (-2.0, 1.47), (-2.2, 1.08)],
                      [(1.4, 0.86), (-2.2, 0.86)], [(1.4, 0.76), (-2.2, 0.76)], roof_z=(1.1, -2.0), sub=1)
-    flag = rbox('flag', (0.02, 0.24, 0.36), (0.5, 1.95, -0.09), 'accent', 0.005); flag['pivot'] = (0.5, 1.95, 0.1)
+    # the flag flies from the pole back along the car (-z) and waves: an authored loop the rig plays
+    flag = flag_grid('flag', 0.36, 0.24, 6, 3, 'accent'); warp(flag, lambda x, y, z: (0.5, 1.95 + y, -0.09 - x)); flag['pivot'] = (0.5, 1.95, 0.1)
+    wave_loop(flag, 12, lambda x, y, z, t: (x + 0.07 * (0.09 - z) / 0.36 * math.sin(2 * math.pi * t + z * 14), y, z), fps=12)
     parts = [b, s, cab, flag, rbox('sunroof', (0.9, 0.03, 0.9), (0, 1.48, 0.1), 'glass', 0.02),
-             join('waist', [rbox(f'wl{k}', (0.02, 0.05, 5.0), (s_ * 0.985, 0.97, 0), 'accent', 0.01) for k, s_ in enumerate(MIR)]),
+             join('waist', [rbox(f'wl{k}', (0.02, 0.05, 4.7), (s_ * 0.985, 0.97, -0.05), 'accent', 0.01) for k, s_ in enumerate(MIR)]),
              join('ornament', [rbox('orn', (0.08, 0.14, 0.18), (0, 1.06, 2.45), 'accent', 0.03)]),
              rbox('bumper', (1.98, 0.15, 0.18), (0, 0.58, 2.7), 'chrome', 0.06), rbox('rbumper', (1.98, 0.14, 0.16), (0, 0.58, -2.7), 'chrome', 0.06),
              tube('wing', (0.5, 1.47, 0.1), (0.5, 2.07, 0.1), 0.02, 'chrome'), grille(0.64, 0.2, 0.78, 2.66)]
     parts += lamps((-0.7, -0.45, 0.45, 0.7), 0.82, 2.64, 0.1) + tails((-0.62, 0.62), 0.88, -2.69, 0.5, 0.1)
+    parts += mirrors(0.95, 1.08, 1.25)
     preview_wheels(W)
     return finish('limo', parts, W, { 'dent': ['body', 'cabin'], 'bumper': 'bumper', 'wing': 'wing', 'struts': ['flag'], 'cabin': 'cabin', 'number': [0.6, 1.52, -1.4] })
 
@@ -502,5 +525,6 @@ def mixer():
              join('fenders', [rbox(f'fd{k}', (0.46, 0.06, 1.5), (s_ * 1.0, 1.02, -1.5), 'trim', 0.02) for k, s_ in enumerate(MIR)]),
              rbox('wing', (0.5, 0.1, 0.9), (0, 1.1, -2.4), 'metal', 0.03, rot=(0.5, 0, 0)), rbox('bumper', (2.04, 0.3, 0.22), (0, 0.66, 2.46), 'trim', 0.06), grille(1.1, 0.4, 1.08, 2.41)]
     parts += lamps((-0.72, 0.72), 0.92, 2.43, 0.12) + tails((-0.8, 0.8), 0.9, -2.46, 0.24, 0.2)
+    parts += mirrors(1.06, 1.5, 2.25)
     preview_wheels(W)
     return finish('mixer', parts, W, { 'dent': ['cab'], 'bumper': 'bumper', 'wing': 'wing', 'cabin': 'cabin', 'number': [0.66, 1.93, 1.6], 'soft': 0.8, 'drumTilt': 0.18 })

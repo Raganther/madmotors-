@@ -306,6 +306,15 @@ src/ui/lab.js     the Asset Lab page
 - **Kit pieces** work the same way: `render/elements/tunnel.js` (portals), `bridge.js` (piers: a shaft scaled to each,
   a cap on top), `open.js` (gates), `town.js` (lamps) and `world/barriers.js` ask `kitPack(id)` and keep their Classic
   shapes without it. Track-shaped things (road, decks, bores, headwalls) stay procedural.
+- **Baked occlusion:** every pack's vertex colours carry ambient occlusion baked by Cycles (`kit.bake_ao`, one value per
+  vertex so the packer still welds; a car's preview wheels shade its arches; a model's variants bake apart). The game
+  skips its own height-based occlusion for a part that has colours.
+- **Near-only detail:** car parts named `mirror*` (wing mirrors) have no far version: `meta.near` lists them and the
+  game shows them with the close-up bodies only.
+- **Authored loops:** `kit.wave_loop(o, n, f, fps)` keys n poses on Blender's timeline (shape keys); the packer samples
+  them into the part's `frames`, the decoder turns them into morph targets and `playLoop(mesh, t)` plays them (the
+  gate pennants; the limo's flag, faster with speed). Loops live on the near level only, so a looping part uses it at
+  any distance. Keep looping parts small: Blender can't decimate a mesh with shape keys.
 - Game axes: x right, y up, z forward (+z is the front). Blender is Z-up: `kit.B(x, y, z)` converts.
 - `tests/assets.test.js` holds the contract: every manifest entry is bundled, decodes, has both levels with matching
   part names, fits its triangle/size budget and, for a car, fits its hitbox and names its damage parts. The e2e run

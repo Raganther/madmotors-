@@ -66,3 +66,8 @@ assets` installs it). Assets are shapes and named parts only; behaviour stays in
   Ravenrock ~10% frame time; 14x6 and 1-segment bevels brought it back to Classic's.
 - A piece the game rotates itself (the gate pennant: a quarter turn) must be modelled in the Classic shape's plane.
 - Kit/scenery parts all sit at the origin; give the pack `meta.lab` offsets so the Asset Lab lays them out.
+- Baked AO per corner split every smooth vertex and doubled the packs: `bake_ao` averages it per vertex and rounds it.
+  Parts that overlap at the origin (variants, a gate post and its pennant) must bake in separate groups.
+- Loops (`wave_loop`) exist on the near level only: the instanced-scenery path picks the far level, so it has to take
+  the near one for a looping part, and a car's looping part keeps its near geometry far off too.
+- `window.__dr.step()` passes `now = 0` to car rigs: to test a rig's motion, call `v.anim(v, car, t)` with real times.
