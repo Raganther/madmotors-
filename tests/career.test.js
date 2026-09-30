@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CAREER_RIVALS, SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, careerField, eventById, forSale, newCareer, podiumOf, roundsOf, scoreRace, tierCars, tierOpen, tierStars, topTier, totalStars } from '../src/data/career.js';
+import { CAREER_RIVALS, CLASSES, UPGRADES, UPG_PRICE, allowed, buyUpgrade, careerPlayer, classesOf, upgradedVeh, SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, careerField, eventById, forSale, newCareer, podiumOf, roundsOf, scoreRace, tierCars, tierOpen, tierStars, topTier, totalStars } from '../src/data/career.js';
 import { STAGES } from '../src/data/stages/index.js';
 import { VEHICLES } from '../src/data/vehicles.js';
 
@@ -63,4 +63,48 @@ describe('career rules', () => {
     const b = awardTrophy(a.state, ev, 1); expect(b.cash).toBe(2500 - 800);
     expect(awardTrophy(b.state, ev, 2).cash).toBe(0); expect(awardTrophy(s, ev, 5).cash).toBe(0);
   });
+});
+describe('career classes and upgrades', () => {
+  it('classes pick the cars they say', () => {
+    expect(classesOf('kart')).toContain('small'); expect(classesOf('buggy')).toContain('offroad'); expect(classesOf('mixer')).toContain('heavy');
+    expect(classesOf('formula')).toContain('tarmac'); expect(classesOf('buggy')).not.toContain('tarmac'); expect(classesOf('firetruck')).not.toContain('tarmac');
+  });
+  it('every class cup can be entered with cars on sale by then, and its field is all of the class', () => {
+    for (const [ti, t] of TIERS.entries()) for (const ev of t.events.filter(e => e.cls)) {
+      expect(CLASSES[ev.cls], ev.id).toBeTruthy();
+      expect(tierCars(ti).filter(id => allowed(ev, id)).length, ev.id).toBeGreaterThanOrEqual(2);
+      for (const d of careerField(ev)) expect(allowed(ev, d.vehicle), `${ev.id}: ${d.name} in ${d.vehicle}`).toBe(true);
+    }
+  });
+  it('rivals carry the tier upgrade level; the player their own', () => {
+    const club = TIERS[1].events[0], f = careerField(club)[0];
+    expect(f.veh).toEqual(upgradedVeh(f.vehicle, { eng: 1, tyr: 1, sus: 1 }));
+    expect(careerField(TIERS[0].events[0])[0].veh).toEqual(upgradedVeh(careerField(TIERS[0].events[0])[0].vehicle, {}));
+    const s = { ...newCareer('coupe'), cars: { coupe: { eng: 2, arm: 1 } } }, p = careerPlayer(s);
+    expect(p.veh.accel).toBeCloseTo(1.06); expect(p.veh.top).toBeCloseTo(1.03); expect(p.veh.im).toBeCloseTo(0.92); expect(p.im).toBeCloseTo(0.92);
+  });
+  it('upgrades cost cash, go up a level at a time and stop at the top', () => {
+    let s = { ...newCareer('coupe'), cash: 100000 };
+    for (let L = 0; L < 3; L++) s = buyUpgrade(s, 'coupe', 'eng');
+    expect(s.cars.coupe.eng).toBe(3); expect(s.cash).toBe(100000 - UPG_PRICE.reduce((a, b) => a + b, 0));
+    expect(buyUpgrade(s, 'coupe', 'eng')).toBe(null); expect(buyUpgrade(s, 'kart', 'eng')).toBe(null);
+    expect(buyUpgrade(newCareer('coupe'), 'coupe', 'tyr').cars.coupe.tyr).toBe(1);   // 1500 in the bank: just enough
+    expect(UPGRADES.map(u => u.id)).toEqual(['eng', 'tyr', 'sus', 'arm']);
+  });
+});
+describe('career races run', () => {
+  // a Legend field on Thunder Falls: a rival falling in by the ferry once respawned at a fractional sample and the
+  // race crashed (features/ferry.js); now it races to the flag
+  it('a Legend round on Thunder Falls finishes', async () => {
+    const M = await import('../src/core/index.js');
+    const st = STAGES.find(s => s.name === 'Thunder Falls'), tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: !!st.armco };
+    const s = { ...newCareer('police'), cars: { police: { eng: 3, tyr: 3, sus: 3, arm: 3 } } };
+    let seed = 7; const rnd = Math.random; Math.random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    try {
+      const R = M.createRace(W, careerDefs(s, eventById('grand-tour')), { weapons: true }); R.phase = 'racing'; R.autoPlayer = true; R.player.ai.skill = 0.88;
+      for (let t = 0; t < 400 && !R.player.finished; t += 1 / 120) M.raceStep(R, 1 / 120, W);
+      expect(R.player.finished).toBe(true);
+      for (const c of R.cars) expect(Number.isFinite(c.x) && Number.isFinite(c.z), c.name).toBe(true);
+    } finally { Math.random = rnd; }
+  }, 120000);
 });

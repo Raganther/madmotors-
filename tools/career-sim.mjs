@@ -4,7 +4,7 @@
 // (skill, pay) and the upgrade and rival levels: a good player in a tier-appropriate car should be on the podium.
 import * as M from '../src/core/index.js';
 import { STAGES } from '../src/data/stages/index.js';
-import { TIERS, careerDefs, newCareer, roundsOf, scoreRace } from '../src/data/career.js';
+import { SHOP, TIERS, allowed, careerDefs, newCareer, roundsOf, scoreRace, tierCars } from '../src/data/career.js';
 
 const args = process.argv.slice(2), opt = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
 const want = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--')));
@@ -37,9 +37,12 @@ if (process.argv[1] && process.argv[1].endsWith('career-sim.mjs')) {
       let s = newCareer(car); if (UPG) s.cars[car] = { eng: +UPG, tyr: +UPG, sus: +UPG, arm: +UPG };
       const places = [];
       for (const ev of T.events) roundsOf(ev).forEach((r, k) => {
+        // a class cup the pick can't enter: the priciest car of the class on sale in the tier, upgraded the same
+        const id = allowed(ev, car) ? car : tierCars(TIERS.indexOf(T)).filter(x => allowed(ev, x)).sort((a, b) => SHOP[b].price - SHOP[a].price)[0];
+        s = { ...s, car: id, cars: { ...s.cars, [id]: s.cars[car] } };
         const res = simRace(careerDefs(s, ev), world(r.stage), sk);
         const out = scoreRace(s, ev, k, res.place, res.n, res.t); s = out.state; places.push(res.place);
-        if (args.includes('--v')) console.log(`  ${ev.name} ${k + 1} ${r.stage.padEnd(16)} ${res.place}/${res.n} ${'★'.repeat((out.stars & 1) + (out.stars >> 1 & 1) + (out.stars >> 2 & 1))} +${out.cash} ${JSON.stringify(res.t)}`);
+        if (args.includes('--v')) console.log(`  ${ev.name} ${k + 1} ${id} ${r.stage.padEnd(16)} ${res.place}/${res.n} ${'★'.repeat((out.stars & 1) + (out.stars >> 1 & 1) + (out.stars >> 2 & 1))} +${out.cash} ${JSON.stringify(res.t)}`);
       });
       const avg = places.reduce((a, b) => a + b, 0) / places.length, pod = places.filter(p => p <= 3).length;
       console.log(`${T.name.padEnd(7)} ${car.padEnd(9)} skill ${sk}: avg place ${avg.toFixed(1)}, podiums ${pod}/${places.length}, wins ${places.filter(p => p === 1).length}, stars ${Object.values(s.stars).reduce((a, m) => a + (m & 1) + (m >> 1 & 1) + (m >> 2 & 1), 0)}, cash ${s.cash}`);
