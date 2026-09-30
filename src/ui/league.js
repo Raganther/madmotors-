@@ -102,4 +102,4 @@ export function leagueNext() {
   return true;
 }
 /** Restore the results screen's normal buttons (after a league round). */
-export function resetResultsUI() { $('res-league').hidden = true; $('res-career').hidden = true; $('res-table').hidden = false; $('again-btn').hidden = false; $('menu-btn').textContent = G.editDrive ? 'Back to editor' : 'Choose stage'; }
+export function resetResultsUI() { $('res-league').hidden = true; $('res-career').hidden = true; $('results').querySelector('.card').classList.remove('cr-wide'); $('res-table').hidden = false; $('again-btn').hidden = false; $('menu-btn').textContent = G.editDrive ? 'Back to editor' : 'Choose stage'; }

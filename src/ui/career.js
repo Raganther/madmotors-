@@ -1,5 +1,5 @@
 import { G } from '../game.js';
-import { SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, eventById, eventMaxStars, eventStars, forSale, newCareer, objText, podiumOf, roundMask, roundsOf, scoreRace, selectCar, tierMaxStars, tierOf, tierOpen, tierStars, topTier, totalStars } from '../data/career.js';
+import { CLASSES, SHOP, STARTERS, TIERS, UPGRADES, UPG_MAX, UPG_PRICE, allowed, awardTrophy, buyCar, buyUpgrade, classesOf, upgLevel, upgradedVeh, careerDefs, eventById, eventMaxStars, eventStars, forSale, newCareer, objText, podiumOf, roundMask, roundsOf, scoreRace, selectCar, tierMaxStars, tierOf, tierOpen, tierStars, topTier, totalStars } from '../data/career.js';
 import { scoreRound, standings } from '../data/leagues.js';
 import { STAGES } from '../data/stages/index.js';
 import { VEHICLES, vehicleById } from '../data/vehicles.js';
@@ -15,7 +15,7 @@ import { race, startRace, toMenu } from './flow.js';
 // events; an event screen lists its rounds with the stars earned and the objective; the garage holds your cars and
 // the showroom. While a career round is raced G.career is { ev, k } (the event id and round) and G.tally counts the
 // player's big airs, drift boosts, weapon hits, wrecks and resets for the results (ui/flow.js handleEvents).
-let S = loadCareer(), view = { v: 'hub', tier: 0 };
+let S = loadCareer(), view = { v: 'hub', tier: 0 }, last = '';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const money = n => '$' + Math.round(n).toLocaleString('en-US');
 const star = (on, fresh) => `<i class="cr-star${on ? ' on' : ''}${fresh ? ' new' : ''}">★</i>`;
@@ -27,11 +27,12 @@ const store = s => { S = s; saveCareer(S); };
 /** The career state (for tests and the results screen). */
 export const career = () => S;
 
-export function openCareer(v) { S = loadCareer(); v = v || (S ? view : { v: 'start' }); view = S ? v : { v: 'start' }; draw(); $('career').hidden = false; const f = $('career').querySelector('.cta, .cr-item, .cr-tab'); if (f) f.focus(); }
+export function openCareer(v) { S = loadCareer(); v = v || (S ? view : { v: 'start' }); view = S ? v : { v: 'start' }; draw(); $('career').hidden = false; const f = $('career').querySelector('.cta, .cr-item, .cr-tab'); if (f) f.focus({ preventScroll: true }); $('cr-body').scrollTop = 0; }
 export function closeCareer() { $('career').hidden = true; $('career-btn').focus(); }
 function draw() {
   $('cr-wallet').innerHTML = S ? `<b>${money(S.cash)}</b><span>${star(1)} ${totalStars(S)}</span>` : '';
-  ({ start: drawStart, hub: drawHub, event: drawEvent, garage: drawGarage })[view.v]();
+  ({ start: drawStart, hub: drawHub, event: drawEvent, garage: drawGarage, car: drawCar })[view.v]();
+  if (view.v !== last) { $('cr-body').scrollTop = 0; last = view.v; }
   pictures();
 }
 // car pictures load one at a time after the screen is drawn, so it opens straight away
@@ -40,7 +41,12 @@ function pictures() {
   const next = () => { if (k >= imgs.length) return; const im = imgs[k++]; try { im.src = vehicleThumb(vehicleById(im.dataset.car)); } catch (e) { /* no WebGL: the name is enough */ } setTimeout(next, 0); };
   next();
 }
-const carCard = (v, foot, cls = '') => `<div class="cr-car ${cls}"><img data-car="${v.id}" alt="" width="240" height="150"><b>${esc(v.name)}</b><span class="g-blurb">${esc(v.blurb)}</span><span class="g-stats">${statsHTML(v)}</span>${foot}</div>`;
+// a car's card: picture, name, class chips, stat bars (with your upgrades on a car you own), then `foot` (buttons)
+const chips = id => classesOf(id).map(k => `<span class="cr-cls">${CLASSES[k].name}</span>`).join('');
+const pips = (L, max = UPG_MAX) => Array.from({ length: max }, (_, i) => `<i class="cr-pip${i < L ? ' on' : ''}"></i>`).join('');
+const upgSum = id => S && S.cars[id] ? `<span class="cr-upgs">${UPGRADES.map(u => `<span title="${u.name}">${u.name[0]}${pips(upgLevel(S, id, u.id))}</span>`).join('')}</span>` : '';
+const carCard = (v, foot, cls = '', note = '') => `<div class="cr-car ${cls}"><img data-car="${v.id}" alt="" width="240" height="150"><b>${esc(v.name)}</b><span class="cr-chips">${chips(v.id)}${note}</span>`
+  + `<span class="g-blurb">${esc(v.blurb)}</span><span class="g-stats">${statsHTML({ ...v, veh: upgradedVeh(v.id, S && S.cars[v.id]) })}</span>${upgSum(v.id)}${foot}</div>`;
 
 // ---------- a new career: choose the starter ----------
 function drawStart() {
@@ -58,10 +64,10 @@ function drawHub() {
   const items = T.events.map(ev => {
     const run = cupRun(ev), n = roundsOf(ev).length, tro = S.trophies[ev.id];
     const prog = cupDone(ev, run) ? `Finished ${ordinal(standings(run, ['You']).findIndex(s => s.name === 'You') + 1)}` : run.round ? `Round ${run.round + 1} of ${n}` : `${n} rounds`;
-    return `<button type="button" class="cr-item lg-item" data-act="event" data-id="${ev.id}"${open ? '' : ' disabled'}><b>${esc(ev.name)}${tro ? ` <span class="cr-trophy t${tro}">${['', 'Gold', 'Silver', 'Bronze'][tro]}</span>` : ''}</b><span>${esc(ev.blurb)}</span>`
+    return `<button type="button" class="cr-item lg-item" data-act="event" data-id="${ev.id}"${open ? '' : ' disabled'}><b>${esc(ev.name)}${ev.cls ? ` <span class="cr-cls">${CLASSES[ev.cls].name} only</span>` : ''}${tro ? ` <span class="cr-trophy t${tro}">${['', 'Gold', 'Silver', 'Bronze'][tro]}</span>` : ''}</b><span>${esc(ev.blurb)}</span>`
       + `<small>${roundsOf(ev).map(r => esc(r.stage)).join(' · ')}</small><em>${prog} · ★ ${eventStars(S, ev)}/${eventMaxStars(ev)}</em></button>`;
   }).join('');
-  $('cr-body').innerHTML = `<div class="cr-tabs">${tabs}</div><p class="cr-tier">${esc(T.blurb)}. Rivals ${Math.round(T.skill * 100)}% sharp, prize money ×${T.pay}.</p>${lock}<div class="lg-list">${items}</div>`;
+  $('cr-body').innerHTML = `<div class="cr-tabs">${tabs}</div><p class="cr-tier">${esc(T.blurb)}. Rivals ${Math.round(T.skill * 100)}% sharp${T.upg ? `, their cars at upgrade level ${T.upg}` : ', stock cars'}; prize money ×${T.pay}.</p>${lock}<div class="lg-list">${items}</div>`;
   $('cr-actions').innerHTML = `<button type="button" class="cta" data-act="garage">Garage &amp; showroom</button><div class="btn-row"><button type="button" class="btn" data-act="close">Back to the menu</button><button type="button" class="btn cr-quiet" data-act="restart">New career</button></div>`;
 }
 
@@ -76,23 +82,38 @@ function drawEvent() {
   }).join('');
   const rows = run.round ? table.map((s, i) => `<tr class="${s.name === 'You' ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td>${esc(s.name)}${s.wins ? `<span class="rs">${s.wins} win${s.wins > 1 ? 's' : ''}</span>` : ''}</td><td class="rt">${s.pts} pts</td></tr>`).join('') : '';
   $('cr-body').innerHTML = `<ol class="lg-rounds cr-rounds">${rounds}</ol>${rows ? `<table class="lg-table">${rows}</table>` : ''}`;
-  const car = vehicleById(S.car), next = roundsOf(ev)[run.round];
-  $('cr-actions').innerHTML = `<button type="button" class="cr-drive" data-act="garage"><img data-car="${car.id}" alt="" width="120" height="75"><span><b>${esc(car.name)}</b><small>Change car</small></span></button>`
-    + (done ? `<button type="button" class="cta" data-act="reset">Race it again</button>` : `<button type="button" class="cta" data-act="race">Race round ${run.round + 1}: ${esc(next.stage)}</button>`)
+  const car = vehicleById(S.car), next = roundsOf(ev)[run.round], ok = allowed(ev, car.id), fits = Object.keys(S.cars).filter(id => allowed(ev, id));
+  const why = ok ? '' : `<p class="cr-lock">${esc(ev.name)} is for ${CLASSES[ev.cls].name.toLowerCase()} cars (${CLASSES[ev.cls].blurb}): ${fits.length ? `pick one of yours in the garage` : 'buy one in the showroom'}.</p>`;
+  $('cr-actions').innerHTML = why + `<button type="button" class="cr-drive" data-act="garage"><img data-car="${car.id}" alt="" width="120" height="75"><span><b>${esc(car.name)}</b><small>${ok ? 'Change car' : 'Not allowed here: change car'}</small></span>${upgSum(car.id)}</button>`
+    + (done ? `<button type="button" class="cta" data-act="reset"${ok ? '' : ' disabled'}>Race it again</button>` : `<button type="button" class="cta" data-act="race"${ok ? '' : ' disabled'}>Race round ${run.round + 1}: ${esc(next.stage)}</button>`)
     + `<div class="btn-row">${run.round && !done ? `<button type="button" class="btn" data-act="reset">Start over</button>` : ''}<button type="button" class="btn" data-act="hub">All events</button></div>`;
 }
 
 // ---------- the garage: your cars and the showroom ----------
 function drawGarage() {
-  $('cr-title').textContent = 'Garage'; $('cr-sub').textContent = 'Your cars and the showroom. New cars arrive in the showroom as you open each tier.';
+  const ev = back.v === 'event' ? eventById(back.id) : null, fit = id => ev && ev.cls ? (allowed(ev, id) ? `<span class="cr-cls fit">Fits ${esc(ev.name)}</span>` : '') : '';
+  $('cr-title').textContent = 'Garage'; $('cr-sub').textContent = `Your cars, their upgrades and the showroom. New cars arrive as you open each tier.${ev && ev.cls ? ` ${ev.name} takes ${CLASSES[ev.cls].name.toLowerCase()} cars only.` : ''}`;
   const mine = VEHICLES.filter(v => S.cars[v.id]), sale = forSale(S), top = topTier(S);
   const later = Object.keys(SHOP).filter(id => !S.cars[id] && SHOP[id].tier > top).sort((a, b) => SHOP[a].price - SHOP[b].price);
-  const own = mine.map(v => carCard(v, v.id === S.car ? `<span class="cr-tag">Driving</span>` : `<button type="button" class="btn" data-act="drive" data-id="${v.id}">Drive this</button>`, v.id === S.car ? 'on' : '')).join('');
+  const own = mine.map(v => carCard(v, `<span class="cr-btns">${v.id === S.car ? `<span class="cr-tag">Driving</span>` : `<button type="button" class="btn" data-act="drive" data-id="${v.id}">Drive this</button>`}<button type="button" class="btn" data-act="tune" data-id="${v.id}">Upgrades</button></span>`, v.id === S.car ? 'on' : '', fit(v.id))).join('');
   const shop = sale.sort((a, b) => SHOP[a].price - SHOP[b].price).map(id => { const v = vehicleById(id), p = SHOP[id].price;
-    return carCard(v, S.cash >= p ? `<button type="button" class="cta" data-act="buy" data-id="${id}">Buy · ${money(p)}</button>` : `<span class="cr-tag dim">${money(p)} · ${money(p - S.cash)} to go</span>`); }).join('');
+    return carCard(v, S.cash >= p ? `<button type="button" class="cta" data-act="buy" data-id="${id}">Buy · ${money(p)}</button>` : `<span class="cr-tag dim">${money(p)} · ${money(p - S.cash)} to go</span>`, '', fit(id)); }).join('');
   const soon = later.map(id => carCard(vehicleById(id), `<span class="cr-tag dim">${money(SHOP[id].price)} · opens in ${esc(TIERS[SHOP[id].tier].name)}</span>`, 'locked')).join('');
   $('cr-body').innerHTML = `<h3 class="cr-h">Your cars</h3><div class="cr-cars">${own}</div>${shop ? `<h3 class="cr-h">Showroom</h3><div class="cr-cars">${shop}</div>` : ''}${soon ? `<h3 class="cr-h">Coming later</h3><div class="cr-cars">${soon}</div>` : ''}`;
   $('cr-actions').innerHTML = `<div class="btn-row"><button type="button" class="cta" data-act="back">Done</button></div>`;
+}
+
+// ---------- one car's upgrades ----------
+function drawCar() {
+  const v = vehicleById(view.id);
+  $('cr-title').textContent = v.name; $('cr-sub').textContent = 'Three levels of each upgrade. Rivals upgrade too: their cars carry the tier\'s level (Club 1, Pro 2, Legend 3).';
+  const rows = UPGRADES.map(u => {
+    const L = upgLevel(S, v.id, u.id), p = UPG_PRICE[L];
+    const btn = L >= UPG_MAX ? `<span class="cr-tag">Maxed</span>` : S.cash >= p ? `<button type="button" class="cta" data-act="upg" data-u="${u.id}">Level ${L + 1} · ${money(p)}</button>` : `<span class="cr-tag dim">Level ${L + 1} · ${money(p)}</span>`;
+    return `<li><span class="cr-u"><b>${u.name}</b><small>${esc(u.blurb)}</small></span><span class="cr-pips">${pips(L)}</span>${btn}</li>`;
+  }).join('');
+  $('cr-body').innerHTML = `<div class="cr-tune">${carCard(v, '', v.id === S.car ? 'on' : '')}<ul class="cr-urows">${rows}</ul></div>`;
+  $('cr-actions').innerHTML = `<div class="btn-row">${v.id === S.car ? '' : `<button type="button" class="btn" data-act="drive" data-id="${v.id}">Drive this</button>`}<button type="button" class="cta" data-act="garage2">Back to the garage</button></div>`;
 }
 
 let back = { v: 'hub', tier: 0 };
@@ -105,6 +126,9 @@ function act(b) {
   else if (a === 'hub') { view = { v: 'hub', tier: tierOf(eventById(view.id)) }; draw(); }
   else if (a === 'garage') { back = view; view = { v: 'garage' }; draw(); }
   else if (a === 'back') { view = back; draw(); }
+  else if (a === 'tune') { view = { v: 'car', id: b.dataset.id }; draw(); }
+  else if (a === 'garage2') { view = { v: 'garage' }; draw(); }
+  else if (a === 'upg') { const s = buyUpgrade(S, view.id, b.dataset.u); if (s) { store(s); draw(); } }
   else if (a === 'drive') { store(selectCar(S, b.dataset.id)); draw(); }
   else if (a === 'buy') { const s = buyCar(S, b.dataset.id); if (s) { store(s); draw(); } }
   else if (a === 'race') raceRound(view.id);
@@ -145,7 +169,7 @@ export function careerResults() {
   const news = [done ? (cupPlace <= 3 ? `${['', 'Gold', 'Silver', 'Bronze'][cupPlace]} trophy: you finished the ${ev.name} ${ordinal(cupPlace)}!` : `You finished the ${ev.name} ${ordinal(cupPlace)}.`) : '', opened ? `${opened.name} tier open! New events and new cars in the showroom.` : ''].filter(Boolean);
   const rows = standings(run).map((x, i) => `<tr class="${x.name === 'You' ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td>${esc(x.name)}<span class="rs">${ordinal(order.findIndex(y => y.name === x.name) + 1)} this round</span></td><td class="rt">${x.pts}</td></tr>`).join('');
   $('res-career').innerHTML = `${starsHTML}<table class="cr-cash">${lines}<tr class="tot"><td>Total</td><td class="rt">${money(out.cash + tcash)}</td></tr></table><p class="cr-bank">Bank ${money(S.cash)}</p>${news.map(x => `<p class="cr-news">${esc(x)}</p>`).join('')}`;
-  $('res-career').hidden = false;
+  $('res-career').hidden = false; $('results').querySelector('.card').classList.add('cr-wide');
   $('res-league').innerHTML = `<b>${done ? 'Final standings' : 'Standings'}</b><table class="lg-table">${rows}</table>`; $('res-league').hidden = false; $('res-table').hidden = true;
   $('next-btn').textContent = done ? 'Back to Career' : `Next round: ${roundsOf(ev)[run.round].stage}`;
   $('again-btn').hidden = true; $('menu-btn').textContent = 'Career menu';

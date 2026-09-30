@@ -2,7 +2,9 @@
 // Each tier is a set of events: cups (a few rounds raced for championship points, like a league) and one-off races.
 // Every race pays cash by finishing place plus bonuses for style (big air, drift boosts, weapon hits, a clean run),
 // and earns up to three stars: a podium, a win, and the race's own objective. Stars open the next tier. Cash buys cars.
-// Rivals get quicker every tier (their skill is scaled), so the later tiers need a better car and better driving.
+// Rivals get quicker every tier (their skill is scaled, and their cars carry the tier's upgrade level), so the later
+// tiers need upgrades (engine, tyres, suspension, armour: UPGRADES), a better car and better driving. Some cups are
+// for one class of car (small, off-road, heavy, tarmac: CLASSES), so it pays to own more than one.
 // Pure data and rules: the UI keeps the state in localStorage and calls these; tests/career.test.js checks them.
 import { CAR_DEFS, MORE_RIVALS } from './cars.js';
 import { vehicleById } from './vehicles.js';
@@ -19,6 +21,42 @@ export const SHOP = {
   snowcat: { price: 18000, tier: 2 }, hover: { price: 20000, tier: 2 },
   monster: { price: 26000, tier: 2 }, wedge: { price: 30000, tier: 2 }, formula: { price: 38000, tier: 3 }, rocket: { price: 45000, tier: 3 }, limo: { price: 50000, tier: 3 },
 };
+// ---------- classes and upgrades ----------
+const STD = { accel: 1, top: 1, grip: 1, off: 1, im: 1 };
+const base = id => vehicleById(id).veh || STD;
+/** Car classes, judged on a vehicle's stock stats (data/vehicles.js). A cup with `cls` only takes cars of that class. */
+export const CLASSES = {
+  small: { name: 'Small', blurb: 'karts, trikes and bikes', test: id => base(id).im >= 1.5 },
+  offroad: { name: 'Off-road', blurb: 'off-road grip 1.1 or more', test: id => base(id).off >= 1.1 },
+  heavy: { name: 'Heavy', blurb: 'the heavyweights', test: id => base(id).im <= 0.6 },
+  tarmac: { name: 'Tarmac', blurb: 'road cars built for tarmac', test: id => base(id).off <= 1 && base(id).im >= 0.9 },
+};
+export const classesOf = id => Object.keys(CLASSES).filter(k => CLASSES[k].test(id));
+/** Can car id enter event ev? */
+export const allowed = (ev, id) => !ev.cls || CLASSES[ev.cls].test(id);
+/** Upgrades: three levels each; `fx` gives the multipliers at level L (1..3) on the vehicle's handling. */
+export const UPGRADES = [
+  { id: 'eng', name: 'Engine', blurb: 'Acceleration and top speed', fx: L => ({ accel: 1 + 0.03 * L, top: 1 + 0.015 * L }) },
+  { id: 'tyr', name: 'Tyres', blurb: 'Grip in the corners', fx: L => ({ grip: 1 + 0.03 * L }) },
+  { id: 'sus', name: 'Suspension', blurb: 'Pace on gravel, mud and snow', fx: L => ({ off: 1 + 0.04 * L }) },
+  { id: 'arm', name: 'Armour', blurb: 'Heavier: shove rivals, get shoved less', fx: L => ({ im: 1 - 0.08 * L }) },
+];
+export const UPG_MAX = 3, UPG_PRICE = [1500, 4000, 9000];
+/** A vehicle's handling with upgrade levels `lv` ({ eng, tyr, sus, arm }). */
+export function upgradedVeh(id, lv) {
+  lv = lv || {};   // no levels (a car you don't own, no career yet): stock
+  const v = { ...base(id) };
+  for (const u of UPGRADES) { const L = lv[u.id] || 0; if (L) for (const [k, m] of Object.entries(u.fx(L))) v[k] *= m; }
+  return v;
+}
+export const upgLevel = (s, id, u) => (s.cars[id] && s.cars[id][u]) || 0;
+/** Buy the next level of upgrade u for car id, or null (not yours, maxed, not enough cash). */
+export function buyUpgrade(s, id, u) {
+  const L = upgLevel(s, id, u), p = UPG_PRICE[L];
+  if (!s.cars[id] || L >= UPG_MAX || s.cash < p) return null;
+  return { ...s, cash: s.cash - p, cars: { ...s.cars, [id]: { ...s.cars[id], [u]: L + 1 } } };
+}
+
 export const PLACE_CASH = [1000, 750, 550, 400, 300, 220, 160, 120];
 export const BONUS = { air: 30, drift: 20, hit: 15, clean: 150, obj: 250 };
 export const TROPHY_CASH = [2500, 1500, 800];
@@ -30,25 +68,28 @@ const OBJ = {
 const { drift, air, hits, clean } = OBJ;
 const R = (stage, obj) => ({ stage, obj });
 export const TIERS = [
-  { id: 'rookie', name: 'Rookie', blurb: 'Friendly locals on the easy roads', skill: 0.88, pay: 1, need: 0, events: [
+  { id: 'rookie', name: 'Rookie', blurb: 'Friendly locals on the easy roads', skill: 0.88, upg: 0, pay: 1, need: 0, events: [
     { id: 'rookie-cup', kind: 'cup', name: 'Rookie Cup', blurb: 'The four downhill stages, top to bottom', rounds: [R('Summit Meadow', drift(2)), R('Pine Forest', clean()), R('Quarry Run', air(2)), R('Village Descent', hits(3))] },
     { id: 'sunday-loops', kind: 'cup', name: 'Sunday Loops', blurb: 'Three short circuits to learn the lines', rounds: [R('Mountain Loop', drift(4)), R('Red Mesa Canyon', air(10)), R('Bogwood Rally', clean())] },
     { id: 'valley-run', kind: 'cup', name: 'Valley Run', blurb: 'Switchbacks, a town and a tunnel', rounds: [R('Pine Forest', hits(4)), R('Village Descent', drift(3)), R('Mountain Pass', clean())] },
+    { id: 'pocket-rockets', kind: 'cup', cls: 'small', name: 'Pocket Rockets', blurb: 'Karts, trikes and sidecars only', rounds: [R('Summit Meadow', hits(3)), R('Mountain Loop', drift(4)), R('Village Descent', clean())] },
   ] },
-  { id: 'club', name: 'Club', blurb: 'Weekend racers who know the tracks', skill: 0.94, pay: 1.7, need: 15, events: [
+  { id: 'club', name: 'Club', blurb: 'Weekend racers who know the tracks', skill: 0.94, upg: 1, pay: 1.7, need: 18, events: [
     { id: 'circuit-series', kind: 'cup', name: 'Circuit Series', blurb: 'Switchbacks, viaducts, jumps and a waterfall', rounds: [R('Mountain Loop', hits(8)), R('Mountain Pass', drift(6)), R('Ravenrock Gorge', clean()), R('Red Mesa Canyon', air(12)), R('Thunder Falls', hits(8))] },
-    { id: 'mud-snow', kind: 'cup', name: 'Mud & Snow', blurb: 'Loose surfaces all the way', rounds: [R('Quarry Run', air(3)), R('Bogwood Rally', air(8)), R('Frostpeak', drift(5)), R('Open Country', clean())] },
+    { id: 'mud-snow', kind: 'cup', cls: 'offroad', name: 'Mud & Snow', blurb: 'Loose surfaces all the way: off-road cars only', rounds: [R('Quarry Run', air(3)), R('Bogwood Rally', air(8)), R('Frostpeak', drift(5)), R('Open Country', clean())] },
     { id: 'high-roads', kind: 'cup', name: 'High Roads', blurb: 'Tunnels, ledges and a spire', rounds: [R('Mountain Pass', hits(8)), R('Corkscrew Spire', drift(6)), R('Temple Ruins', clean())] },
+    { id: 'heavyweights', kind: 'cup', cls: 'heavy', name: 'Heavyweights', blurb: 'Trucks, vans and limos: the biggest wins', rounds: [R('Village Descent', hits(4)), R('Scrapyard Smash', air(3)), R('Mountain Pass', clean())] },
   ] },
-  { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.97, pay: 2.6, need: 18, events: [
+  { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.97, upg: 2, pay: 2.6, need: 22, events: [
     { id: 'wild-cup', kind: 'cup', name: 'Wild Cup', blurb: 'The wildest tracks, each with a shortcut to find', rounds: [R('Corkscrew Spire', clean()), R('Scrapyard Smash', air(4)), R('Mesa Leap', air(4)), R('Temple Ruins', hits(8)), R('Glacier Rift', drift(5))] },
-    { id: 'frozen-north', kind: 'cup', name: 'Frozen North', blurb: 'Snow, ice and open country', rounds: [R('Frostpeak', clean()), R('Glacier Rift', air(3)), R('Open Country', hits(6))] },
+    { id: 'frozen-north', kind: 'cup', cls: 'offroad', name: 'Frozen North', blurb: 'Snow, ice and open country: off-road cars only', rounds: [R('Frostpeak', clean()), R('Glacier Rift', air(3)), R('Open Country', hits(6))] },
     { id: 'long-haul', kind: 'cup', name: 'Long Haul', blurb: 'The big circuits', rounds: [R('Ravenrock Gorge', hits(12)), R('Flyover Tangle', drift(8)), R('Thunder Falls', clean())] },
+    { id: 'tarmac-gp', kind: 'cup', cls: 'tarmac', name: 'Tarmac GP', blurb: 'Road cars on the smoothest circuits', rounds: [R('Mountain Loop', drift(6)), R('Flyover Tangle', hits(10)), R('Corkscrew Spire', clean()), R('Summit Meadow', drift(2))] },
   ] },
-  { id: 'legend', name: 'Legend', blurb: 'The best in the mountains', skill: 1, pay: 3.8, need: 18, events: [
+  { id: 'legend', name: 'Legend', blurb: 'The best in the mountains', skill: 0.98, upg: 3, pay: 3.8, need: 22, events: [
     { id: 'grand-tour', kind: 'cup', name: 'Grand Tour', blurb: 'Six of the best, back to back', rounds: [R('Mountain Pass', clean()), R('Ravenrock Gorge', hits(12)), R('Thunder Falls', drift(6)), R('Bogwood Rally', air(10)), R('Glacier Rift', clean()), R('Temple Ruins', hits(10))] },
-    { id: 'dirt-masters', kind: 'cup', name: 'Dirt Masters', blurb: 'Gravel, mud and snow, flat out', rounds: [R('Quarry Run', clean()), R('Bogwood Rally', drift(6)), R('Frostpeak', hits(10)), R('Open Country', air(2)), R('Glacier Rift', drift(6))] },
-    { id: 'top-speed', kind: 'cup', name: 'Top Speed', blurb: 'Fast roads for fast cars', rounds: [R('Summit Meadow', clean()), R('Mountain Loop', drift(8)), R('Flyover Tangle', hits(12)), R('Mesa Leap', air(5)), R('Corkscrew Spire', clean())] },
+    { id: 'dirt-masters', kind: 'cup', cls: 'offroad', name: 'Dirt Masters', blurb: 'Gravel, mud and snow, flat out: off-road cars only', rounds: [R('Quarry Run', clean()), R('Bogwood Rally', drift(6)), R('Frostpeak', hits(10)), R('Open Country', air(2)), R('Glacier Rift', drift(6))] },
+    { id: 'top-speed', kind: 'cup', cls: 'tarmac', name: 'Top Speed', blurb: 'Fast roads for fast tarmac cars', rounds: [R('Summit Meadow', clean()), R('Mountain Loop', drift(8)), R('Flyover Tangle', hits(12)), R('Mesa Leap', air(5)), R('Corkscrew Spire', clean())] },
   ] },
 ];
 export const tierById = id => TIERS.find(t => t.id === id);
@@ -92,19 +133,21 @@ const hash = str => { let h = 2166136261; for (const ch of str) h = Math.imul(h 
 const asDef = (d, v, skin = v) => ({ name: d.name, num: d.num, skill: d.skill, flick: d.flick, driftK: d.driftK, player: d.player, model: v.model, color: skin.color, accent: skin.accent, hw: v.hw, hl: v.hl, im: v.veh ? v.veh.im : undefined, veh: v.veh, vehicle: v.id });
 /** The cars that belong in a tier: sold in its showroom or below. */
 export const tierCars = ti => Object.keys(SHOP).filter(id => SHOP[id].tier <= ti);
-/** The AI field for one round of an event: CAREER_RIVALS drivers in cars that belong in the tier (their own if it
- *  does, else one from the tier in their own livery), each at the tier's skill. Always the same for a given event. */
+/** The AI field for one round of an event: CAREER_RIVALS drivers in cars that belong in the tier and the event's
+ *  class (their own if it does, else one from the tier in their own livery), each at the tier's skill with the
+ *  tier's upgrades on engine, tyres and suspension. Always the same for a given event. */
 export function careerField(ev, ti = tierOf(ev)) {
-  const T = TIERS[ti], ok = tierCars(ti), order = DRIVERS.slice().sort((a, b) => hash(ev.id + a.name) - hash(ev.id + b.name));
+  const T = TIERS[ti], ok = tierCars(ti).filter(id => allowed(ev, id)), lv = { eng: T.upg, tyr: T.upg, sus: T.upg }, order = DRIVERS.slice().sort((a, b) => hash(ev.id + a.name) - hash(ev.id + b.name));
   const own = order.filter(d => ok.includes(d.vehicle)), rest = order.filter(d => !ok.includes(d.vehicle));
   const pick = [...own, ...rest].slice(0, CAREER_RIVALS);
   return pick.map((d, k) => {
     const v = vehicleById(ok.includes(d.vehicle) ? d.vehicle : ok[hash(ev.id + k) % ok.length]);
-    return { ...asDef(d, v, vehicleById(d.vehicle)), skill: Math.min(1, d.skill * T.skill) };
+    const veh = upgradedVeh(v.id, lv);
+    return { ...asDef(d, v, vehicleById(d.vehicle)), skill: Math.min(1, d.skill * T.skill), veh, im: veh.im };
   });
 }
-/** The player's race def in career car `id`. */
-export function careerPlayer(s, id = s.car) { const coupe = CAR_DEFS.find(d => d.player); return asDef(coupe, vehicleById(id)); }
+/** The player's race def in career car `id`, with its upgrades. */
+export function careerPlayer(s, id = s.car) { const coupe = CAR_DEFS.find(d => d.player), veh = upgradedVeh(id, s.cars[id]); return { ...asDef(coupe, vehicleById(id)), veh, im: veh.im }; }
 /** Race defs for a round: the field, then the player at the back of the grid (from round 2 of a cup the grid lines up
  *  in reverse championship order: `order` is the championship order, best first). */
 export function careerDefs(s, ev, order = null) {

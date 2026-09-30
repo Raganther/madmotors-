@@ -130,8 +130,17 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   const shop = await page.$$eval('[data-act="buy"]', bs => bs.map(b => b.dataset.id));
   await page.screenshot({ path: path.join(outDir, 'career-garage.png') });
   if (!shop.length) errors.push('career garage: nothing to buy with $9000 (stale state?)');
+  // upgrades: tune the hatch, buy engine level 1; a class cup (small cars only) won't take the hatch
+  await page.click('[data-act="tune"][data-id="hatch"]'); await page.click('[data-act="upg"][data-u="eng"]');
+  const upg = await page.evaluate(() => ({ eng: JSON.parse(localStorage.getItem('downhill-rush-career')).cars.hatch.eng, cash: JSON.parse(localStorage.getItem('downhill-rush-career')).cash, pips: document.querySelectorAll('.cr-urows li:first-child .cr-pip.on').length }));
+  await page.screenshot({ path: path.join(outDir, 'career-upgrades.png') });
+  await page.click('[data-act="garage2"]'); await page.click('[data-act="back"]'); await page.click('[data-act="hub"]');
+  await page.click('.cr-item[data-id="pocket-rockets"]');
+  const cls = await page.evaluate(() => ({ disabled: document.querySelector('#cr-actions .cta').disabled, why: (document.querySelector('#cr-actions .cr-lock') || {}).textContent }));
+  await page.screenshot({ path: path.join(outDir, 'career-class.png') });
+  if (upg.eng !== 1 || upg.cash !== 9000 - 1500 || upg.pips !== 1 || !cls.disabled || !/small/.test(cls.why || '')) errors.push('career upgrades/classes: ' + JSON.stringify({ upg, cls }));
   await page.keyboard.press('Escape');
-  console.log(`career: tabs ${tabs.join(' | ')}; round 1 scored, ${res.rows} in the table, bank $${res.cash}, tally ${JSON.stringify(res.tally)}; back to "${back.title}"; showroom ${shop.length} cars`);
+  console.log(`career: tabs ${tabs.join(' | ')}; round 1 scored, ${res.rows} in the table, bank $${res.cash}, tally ${JSON.stringify(res.tally)}; back to "${back.title}"; showroom ${shop.length} cars; engine level ${upg.eng}; Pocket Rockets refuses the hatch: ${cls.disabled}`);
 }
 // the Rivals setting: a full field of 19 (one of every vehicle), then down to a single rival; the meshes follow
 {

@@ -174,7 +174,7 @@ export function showResults() {
   $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
   resetResultsUI(); careerResults() || leagueResults();
   updateResultsTable();
-  $('next-btn').focus();
+  $('next-btn').focus({ preventScroll: true }); $('results').querySelector('.card').scrollTop = 0;
 }
 function showShowdownResults() {
   resultsShown = true; $('results').hidden = false; $('touch').hidden = true;

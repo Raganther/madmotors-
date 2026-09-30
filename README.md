@@ -37,7 +37,11 @@ starts at the back. Progress is kept per league in localStorage; leave for the m
 boosts, weapon hits, a clean race) and earns up to three stars: a podium, a win, and the round's objective (so many
 drift boosts or big airs, weapon hits, a clean run). Stars open the next tier; cash buys cars in the showroom, which
 stocks more cars as tiers open. Rivals drive cars that belong in the tier and get sharper tier by tier
-(`TIERS[].skill`). A cup's top three win a trophy (paid once per step up). Career races always have weapons on;
+(`TIERS[].skill`), and from Club on their cars carry upgrades (`TIERS[].upg`: level 1 in Club up to 3 in Legend).
+Your cars take upgrades too (`UPGRADES`, three levels each: engine = acceleration and top speed, tyres = grip,
+suspension = off-road pace, armour = weight), bought per car in the garage; they multiply the vehicle's `veh`
+handling, so stock cars fall behind as you climb. Some cups are for one class (`CLASSES`: small, off-road, heavy,
+tarmac, judged on stock stats), so a garage of one car can't win everything. A cup's top three win a trophy (paid once per step up). Career races always have weapons on;
 Quick Race and Leagues are untouched. The state is one localStorage entry (`downhill-rush-career`).
 `npm run career` races every career round with the AI at a casual and a good player's skill and prints places,
 stars and cash: tune `TIERS`, prices and payouts against it.

@@ -68,7 +68,7 @@ function step(R, W, dt) {
         const lim = f.a - 1 - c.hl, along = c.vx * tr.tx[c.pr.i] + c.vz * tr.tz[c.pr.i];
         if (b > lim) { shift(tr, c, lim - b, 0); if (along > 0) { c.vx -= tr.tx[c.pr.i] * along; c.vz -= tr.tz[c.pr.i] * along; } }
       } else if (b >= f.a && b <= f.b && c.y < f.h - 4) {                               // in the water: back to dock A
-        c.events.push({ t: 'splash' }); c.lastGood = c.pr.i - b + f.a - 6; respawn(c, W);
+        c.events.push({ t: 'splash' }); c.lastGood = Math.round(c.pr.i - b + f.a - 6); respawn(c, W);   // a whole sample: respawn walks the road graph from it
       }
       if (c.isPlayer) f.pOn = on;
       if (b > f.a - FERRY.APPROACH && b < f.b + 4) { c.stuckT = 0; c.wallStuck = 0; }  // queueing isn't being stuck
