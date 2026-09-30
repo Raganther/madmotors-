@@ -20,7 +20,8 @@ Run from the repo root. Stop and fix at the first failure; never commit red.
    attribution trailers the session asks for.
 5. **Push**: `git push -u origin <branch>`; retry on network errors only (2s, 4s, 8s, 16s).
 6. **Publish**: `npm run build`, then publish `dist/index.html` with the Artifact tool to the game's existing artifact
-   URL (`url` = the one in CLAUDE.md or earlier in the session). Never publish a new URL for the game.
+   URL (`url` = the one in CLAUDE.md or earlier in the session). Never publish a new URL for the game. If Blender assets
+   or the Asset Lab changed, also `npm run lab` and publish `dist-lab/index.html` to the lab artifact (CLAUDE.md).
 7. **Tell the user** in plain words what changed for them, what was verified (check, e2e, screenshots) and anything
    you didn't verify. Send the screenshots that show the change.
 
