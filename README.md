@@ -35,13 +35,19 @@ starts at the back. Progress is kept per league in localStorage; leave for the m
 (Muscle Coupe, Rally Hatch or Tuk-Tuk) and climb four tiers, Rookie, Club, Pro and Legend. Each tier holds events
 (cups of 3-6 rounds scored like a league). Every race pays cash by finishing place plus style bonuses (big air, drift
 boosts, weapon hits, a clean race) and earns up to three stars: a podium, a win, and the round's objective (so many
-drift boosts or big airs, weapon hits, a clean run). Stars open the next tier; cash buys cars in the showroom, which
+drift boosts or big airs, weapon hits, a clean run). Stars open each tier's boss; cash buys cars in the showroom, which
 stocks more cars as tiers open. Rivals drive cars that belong in the tier and get sharper tier by tier
 (`TIERS[].skill`), and from Club on their cars carry upgrades (`TIERS[].upg`: level 1 in Club up to 3 in Legend).
 Your cars take upgrades too (`UPGRADES`, three levels each: engine = acceleration and top speed, tyres = grip,
 suspension = off-road pace, armour = weight), bought per car in the garage; they multiply the vehicle's `veh`
 handling, so stock cars fall behind as you climb. Some cups are for one class (`CLASSES`: small, off-road, heavy,
-tarmac, judged on stock stats), so a garage of one car can't win everything. A cup's top three win a trophy (paid once per step up). Career races always have weapons on;
+tarmac, judged on stock stats), so a garage of one car can't win everything.
+Each tier also has specials (a time trial for bronze/silver/gold stars against `par`, a Showdown, Deuce or Tiebreak
+against three rivals, a one-make race where everyone gets the same stock car) and a **boss**: a duel with a star
+driver in their signature car, a notch sharper than the field. Enough stars in the tier open the boss;
+beating the boss wins you their car and a purse and opens the next tier. After the Legend boss, the final (Champion
+of Champions: all four bosses at once) pays for the gold limo and the title. The garage's paint shop resprays a car
+(`PAINTS`) for a fee; the player's career car wears it in the race. A cup's top three win a trophy (paid once per step up). Career races always have weapons on;
 Quick Race and Leagues are untouched. The state is one localStorage entry (`downhill-rush-career`).
 `npm run career` races every career round with the AI at a casual and a good player's skill and prints places,
 stars and cash: tune `TIERS`, prices and payouts against it.

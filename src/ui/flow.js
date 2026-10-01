@@ -31,7 +31,7 @@ import { fmt, ordinal } from './format.js';
 import { callout, drawProfile } from './hud.js';
 import { showVehicle } from './garage.js';
 import { leagueResults, resetResultsUI } from './league.js';
-import { careerRaceDefs, careerResults } from './career.js';
+import { careerMode, careerRaceDefs, careerResults } from './career.js';
 import { best, saveBest, saveMode, saveRivals, saveWeapons } from './storage.js';
 
 export let race = null, pausedFrom = null, selected = 0;
@@ -40,7 +40,7 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const lg = G.league, cr = G.career, mode = lg || cr ? 'race' : G.mode;                                               // league and career rounds are Races
+  const lg = G.league, cr = G.career, mode = lg ? 'race' : cr ? careerMode() : G.mode;                                // league rounds are Races; a career special may be a Showdown
   let defs = cr ? careerRaceDefs() : raceDefs(vehicleById(G.vehicle), lg ? LEAGUE_RIVALS : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);   // the line-up, with the player's pick
   if (lg && lg.round > 0) { const order = standings(lg, defs.map(d => d.name)).map(s => s.name).reverse(); defs = order.map(n => defs.find(d => d.name === n)).filter(Boolean); }   // the championship leader starts at the back
   setRoster(defs);
@@ -185,7 +185,7 @@ function showShowdownResults() {
   $('res-stage').textContent = `Stage ${G.world.idx + 1}: ${G.world.stage.name} · ` + (S.kind === 'crown' ? `${pl(ns, 'crown steal')}, ${pl(nb, 'blow-up')}` : `${pl(ng, 'gate')} scored, ${pl(nb, 'blow-up')}`);
   $('res-best').textContent = S.kind === 'crown' ? `Showdown: hold the lead to bank crown time; first to ${SD.TARGET}s wins` : `${name}: first through each gate scores; first to ${CP.TARGET[S.kind]}, two clear`;
   $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
-  resetResultsUI(); updateResultsTable(); $('next-btn').focus();
+  resetResultsUI(); updateResultsTable(); careerResults(); $('next-btn').focus({ preventScroll: true }); $('results').querySelector('.card').scrollTop = 0;
 }
 export function updateResultsTable() {
   if (race.sd && race.sd.kind !== 'crown') {

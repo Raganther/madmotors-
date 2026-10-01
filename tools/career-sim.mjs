@@ -2,6 +2,7 @@
 // events with the player driven by the AI at a few skills (0.88 ~ a casual player, 0.95 ~ a good one), in the car
 // given (default: the tier's natural pick), and prints the finishing places, stars and cash. Use it to tune TIERS
 // (skill, pay) and the upgrade and rival levels: a good player in a tier-appropriate car should be on the podium.
+// --par prints each time trial's time (set `par`, the gold time, from a good run: --skill 0.97 --upg <tier level>).
 import * as M from '../src/core/index.js';
 import { STAGES } from '../src/data/stages/index.js';
 import { SHOP, TIERS, allowed, careerDefs, newCareer, roundsOf, scoreRace, tierCars } from '../src/data/career.js';
@@ -27,7 +28,7 @@ export function simRace(defs, W, skill, seed0 = 7) {
       c.events.length = 0;
     }
   }
-  return { place: R.player.finished ? R.player.place : R.cars.length, n: R.cars.length, t, time };
+  return { place: R.player.finished ? R.player.place : R.cars.length, n: R.cars.length, t, time: R.player.finished ? R.player.finishTime : 0 };
 }
 if (process.argv[1] && process.argv[1].endsWith('career-sim.mjs')) {
   for (const T of TIERS) {
@@ -37,11 +38,13 @@ if (process.argv[1] && process.argv[1].endsWith('career-sim.mjs')) {
       let s = newCareer(car); if (UPG) s.cars[car] = { eng: +UPG, tyr: +UPG, sus: +UPG, arm: +UPG };
       const places = [];
       for (const ev of T.events) roundsOf(ev).forEach((r, k) => {
+        if (ev.kind === 'mode') return;   // Showdown / checkpoint matches aren't simulated here
         // a class cup the pick can't enter: the priciest car of the class on sale in the tier, upgraded the same
         const id = allowed(ev, car) ? car : tierCars(TIERS.indexOf(T)).filter(x => allowed(ev, x)).sort((a, b) => SHOP[b].price - SHOP[a].price)[0];
         s = { ...s, car: id, cars: { ...s.cars, [id]: s.cars[car] } };
         const res = simRace(careerDefs(s, ev), world(r.stage), sk);
-        const out = scoreRace(s, ev, k, res.place, res.n, res.t); s = out.state; places.push(res.place);
+        if (ev.kind === 'trial' && args.includes('--par')) console.log(`  par ${ev.id}: ${res.time.toFixed(1)} s (${id}, skill ${sk})`);
+        const out = scoreRace(s, ev, k, res.place, res.n, res.t, res.time); s = out.state; places.push(res.place);
         if (args.includes('--v')) console.log(`  ${ev.name} ${k + 1} ${id} ${r.stage.padEnd(16)} ${res.place}/${res.n} ${'★'.repeat((out.stars & 1) + (out.stars >> 1 & 1) + (out.stars >> 2 & 1))} +${out.cash} ${JSON.stringify(res.t)}`);
       });
       const avg = places.reduce((a, b) => a + b, 0) / places.length, pod = places.filter(p => p <= 3).length;
