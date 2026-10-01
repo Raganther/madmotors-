@@ -8,7 +8,7 @@ import { setCarEnvironment } from './carpaint.js';
 // of its own (so the game's renderer and canvas are untouched). Cached as data URLs.
 const cache = new Map(); let R = null, env = null;
 export function vehicleThumb(v, w = 240, h = 150) {
-  const key = v.id + w + (blenderOn() ? 'b' : 'c'); if (cache.has(key)) return cache.get(key);   // one picture per model set
+  const key = v.id + w + (blenderOn() ? 'b' : 'c') + v.color + '/' + v.accent; if (cache.has(key)) return cache.get(key);   // one picture per model set
   if (!R) { R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); }
   R.setSize(w, h);
   const scene = new THREE.Scene(), root = new THREE.Group(), body = new THREE.Group(); root.add(body); scene.add(root);

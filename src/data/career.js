@@ -1,7 +1,11 @@
 // Career (the menu's Career button; ui/career.js): start with one cheap car and climb four tiers, Rookie to Legend.
 // Each tier is a set of events: cups (a few rounds raced for championship points, like a league) and one-off races.
 // Every race pays cash by finishing place plus bonuses for style (big air, drift boosts, weapon hits, a clean run),
-// and earns up to three stars: a podium, a win, and the race's own objective. Stars open the next tier. Cash buys cars.
+// and earns up to three stars: a podium, a win, and the race's own objective. Cash buys cars, upgrades and paint.
+// Each tier also has specials (a time trial for medals, a Showdown or checkpoint match, a one-make race where everyone
+// drives the same car) and ends with a boss: a duel with a star driver in their signature car. Enough stars in a tier
+// open its boss; beating the boss wins you their car and opens the next tier. Beat the Legend boss and the final,
+// Champion of Champions, puts you up against every boss at once.
 // Rivals get quicker every tier (their skill is scaled, and their cars carry the tier's upgrade level), so the later
 // tiers need upgrades (engine, tyres, suspension, armour: UPGRADES), a better car and better driving. Some cups are
 // for one class of car (small, off-road, heavy, tarmac: CLASSES), so it pays to own more than one.
@@ -49,6 +53,12 @@ export function upgradedVeh(id, lv) {
   for (const u of UPGRADES) { const L = lv[u.id] || 0; if (L) for (const [k, m] of Object.entries(u.fx(L))) v[k] *= m; }
   return v;
 }
+/** Respray car id in paint p (an index into PAINTS; -1 = its stock livery). */
+export function paintCar(s, id, p) {
+  if (!s.cars[id] || s.cash < PAINT_PRICE || (s.cars[id].paint ?? -1) === p) return null;
+  const own = { ...s.cars[id] }; if (p < 0) delete own.paint; else own.paint = p;
+  return { ...s, cash: s.cash - PAINT_PRICE, cars: { ...s.cars, [id]: own } };
+}
 export const upgLevel = (s, id, u) => (s.cars[id] && s.cars[id][u]) || 0;
 /** Buy the next level of upgrade u for car id, or null (not yours, maxed, not enough cash). */
 export function buyUpgrade(s, id, u) {
@@ -60,6 +70,18 @@ export function buyUpgrade(s, id, u) {
 export const PLACE_CASH = [1000, 750, 550, 400, 300, 220, 160, 120];
 export const BONUS = { air: 30, drift: 20, hit: 15, clean: 150, obj: 250 };
 export const TROPHY_CASH = [2500, 1500, 800];
+export const MEDAL_CASH = [450, 700, 1000];   // time trial: bronze, silver, gold
+export const DUEL_GAP = 5;   // a duel (a boss): the first star for finishing this close behind (seconds)
+export const BOSS_PURSE = 3000, FINAL_PURSE = 25000, PAINT_PRICE = 800;
+/** A time trial's medal times from its gold `par` (seconds): bronze, silver, gold. */
+export const medals = par => [par * 1.1, par * 1.05, par].map(x => Math.round(x * 10) / 10);
+/** Paint jobs for the garage's paint shop: body colour and accent. */
+export const PAINTS = [
+  { name: 'Race Red', color: 0xD7261E, accent: 0xF4F4F0 }, { name: 'Sunburst', color: 0xFFC72C, accent: 0x1C2340 }, { name: 'Gulf', color: 0x8FC5E8, accent: 0xF08A24 },
+  { name: 'British Green', color: 0x1F5B3A, accent: 0xE8D9A8 }, { name: 'Midnight', color: 0x151823, accent: 0xE8C35A }, { name: 'Lime', color: 0x9BE22E, accent: 0x1A1A1A },
+  { name: 'Candy Pink', color: 0xF46FAE, accent: 0xFFFFFF }, { name: 'Arctic', color: 0xEEF3F7, accent: 0x2F7DE0 }, { name: 'Copper', color: 0xB8643A, accent: 0x2A1E17 },
+  { name: 'Violet', color: 0x7A3FD1, accent: 0xFFD21F }, { name: 'Gunmetal', color: 0x4A5058, accent: 0xFF5A1E }, { name: 'Champion Gold', color: 0xD9B44A, accent: 0x16161A },
+];
 
 // objectives: the third star of a race. n is a count over the whole race
 const OBJ = {
@@ -67,29 +89,51 @@ const OBJ = {
 };
 const { drift, air, hits, clean } = OBJ;
 const R = (stage, obj) => ({ stage, obj });
+// the specials and the boss of a tier: single races
+const trial = (id, name, stage, par) => ({ id, kind: 'trial', name, blurb: 'Alone against the clock: bronze, silver and gold times', stage, par });
+const mode = (id, m, name, stage, obj, blurb) => ({ id, kind: 'mode', mode: m, name, blurb, stage, obj });
+const onemake = (id, make, name, stage, obj, blurb) => ({ id, kind: 'onemake', make, name, blurb, stage, obj });
+const boss = (id, driver, vehicle, stage, need, obj, blurb) => ({ id, kind: 'boss', driver, vehicle, name: `Boss: ${driver}`, blurb, stage, need, obj });
 export const TIERS = [
-  { id: 'rookie', name: 'Rookie', blurb: 'Friendly locals on the easy roads', skill: 0.88, upg: 0, pay: 1, need: 0, events: [
+  { id: 'rookie', name: 'Rookie', blurb: 'Friendly locals on the easy roads', skill: 0.88, upg: 0, pay: 1, events: [
     { id: 'rookie-cup', kind: 'cup', name: 'Rookie Cup', blurb: 'The four downhill stages, top to bottom', rounds: [R('Summit Meadow', drift(2)), R('Pine Forest', clean()), R('Quarry Run', air(2)), R('Village Descent', hits(3))] },
     { id: 'sunday-loops', kind: 'cup', name: 'Sunday Loops', blurb: 'Three short circuits to learn the lines', rounds: [R('Mountain Loop', drift(4)), R('Red Mesa Canyon', air(10)), R('Bogwood Rally', clean())] },
     { id: 'valley-run', kind: 'cup', name: 'Valley Run', blurb: 'Switchbacks, a town and a tunnel', rounds: [R('Pine Forest', hits(4)), R('Village Descent', drift(3)), R('Mountain Pass', clean())] },
+    trial('summit-sprint', 'Summit Sprint', 'Summit Meadow', 47.3),
+    mode('rookie-king', 'showdown', 'King of the Loop', 'Mountain Loop', drift(3), 'Showdown against three rivals: hold the lead to bank crown time'),
+    onemake('ice-cream-derby', 'icecream', 'Ice Cream Derby', 'Village Descent', hits(3), 'Everyone in an Ice Cream Van: pure driving'),
+    boss('rookie-boss', 'Brannigan', 'monster', 'Red Mesa Canyon', 20, air(10), 'One on one with the Monster Truck over the jumps. Win it and it\'s yours'),
     { id: 'pocket-rockets', kind: 'cup', cls: 'small', name: 'Pocket Rockets', blurb: 'Karts, trikes and sidecars only', rounds: [R('Summit Meadow', hits(3)), R('Mountain Loop', drift(4)), R('Village Descent', clean())] },
   ] },
-  { id: 'club', name: 'Club', blurb: 'Weekend racers who know the tracks', skill: 0.94, upg: 1, pay: 1.7, need: 18, events: [
+  { id: 'club', name: 'Club', blurb: 'Weekend racers who know the tracks', skill: 0.94, upg: 1, pay: 1.7, events: [
     { id: 'circuit-series', kind: 'cup', name: 'Circuit Series', blurb: 'Switchbacks, viaducts, jumps and a waterfall', rounds: [R('Mountain Loop', hits(8)), R('Mountain Pass', drift(6)), R('Ravenrock Gorge', clean()), R('Red Mesa Canyon', air(12)), R('Thunder Falls', hits(8))] },
     { id: 'mud-snow', kind: 'cup', cls: 'offroad', name: 'Mud & Snow', blurb: 'Loose surfaces all the way: off-road cars only', rounds: [R('Quarry Run', air(3)), R('Bogwood Rally', air(8)), R('Frostpeak', drift(5)), R('Open Country', clean())] },
     { id: 'high-roads', kind: 'cup', name: 'High Roads', blurb: 'Tunnels, ledges and a spire', rounds: [R('Mountain Pass', hits(8)), R('Corkscrew Spire', drift(6)), R('Temple Ruins', clean())] },
+    trial('frost-attack', 'Frostpeak Time Attack', 'Frostpeak', 116.7),
+    mode('falls-deuce', 'deuce', 'Deuce at the Falls', 'Thunder Falls', hits(4), 'Checkpoints, first to 4, win by two'),
+    onemake('kart-chaos', 'kart', 'Kart Chaos', 'Corkscrew Spire', drift(4), 'Eight Go-Karts round the spire'),
+    boss('club-boss', 'Lindqvist', 'wedge', 'Ravenrock Gorge', 26, clean(), 'The Group B ace on the viaducts. Beat Lindqvist and the Wedge is yours'),
     { id: 'heavyweights', kind: 'cup', cls: 'heavy', name: 'Heavyweights', blurb: 'Trucks, vans and limos: the biggest wins', rounds: [R('Village Descent', hits(4)), R('Scrapyard Smash', air(3)), R('Mountain Pass', clean())] },
   ] },
-  { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.97, upg: 2, pay: 2.6, need: 22, events: [
+  { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.97, upg: 2, pay: 2.6, events: [
     { id: 'wild-cup', kind: 'cup', name: 'Wild Cup', blurb: 'The wildest tracks, each with a shortcut to find', rounds: [R('Corkscrew Spire', clean()), R('Scrapyard Smash', air(4)), R('Mesa Leap', air(4)), R('Temple Ruins', hits(8)), R('Glacier Rift', drift(5))] },
     { id: 'frozen-north', kind: 'cup', cls: 'offroad', name: 'Frozen North', blurb: 'Snow, ice and open country: off-road cars only', rounds: [R('Frostpeak', clean()), R('Glacier Rift', air(3)), R('Open Country', hits(6))] },
     { id: 'long-haul', kind: 'cup', name: 'Long Haul', blurb: 'The big circuits', rounds: [R('Ravenrock Gorge', hits(12)), R('Flyover Tangle', drift(8)), R('Thunder Falls', clean())] },
+    trial('mesa-attack', 'Mesa Time Attack', 'Mesa Leap', 114.3),
+    mode('mesa-showdown', 'showdown', 'Mesa Showdown', 'Red Mesa Canyon', air(6), 'King of the Hill over the mesa jumps'),
+    onemake('monster-mash', 'monster', 'Monster Mash', 'Scrapyard Smash', hits(6), 'Eight Monster Trucks in the scrapyard'),
+    boss('pro-boss', 'Moreau', 'formula', 'Flyover Tangle', 28, drift(6), 'The Formula Racer through the flyovers. Win and it\'s yours'),
     { id: 'tarmac-gp', kind: 'cup', cls: 'tarmac', name: 'Tarmac GP', blurb: 'Road cars on the smoothest circuits', rounds: [R('Mountain Loop', drift(6)), R('Flyover Tangle', hits(10)), R('Corkscrew Spire', clean()), R('Summit Meadow', drift(2))] },
   ] },
-  { id: 'legend', name: 'Legend', blurb: 'The best in the mountains', skill: 0.98, upg: 3, pay: 3.8, need: 22, events: [
+  { id: 'legend', name: 'Legend', blurb: 'The best in the mountains', skill: 0.98, upg: 3, pay: 3.8, events: [
     { id: 'grand-tour', kind: 'cup', name: 'Grand Tour', blurb: 'Six of the best, back to back', rounds: [R('Mountain Pass', clean()), R('Ravenrock Gorge', hits(12)), R('Thunder Falls', drift(6)), R('Bogwood Rally', air(10)), R('Glacier Rift', clean()), R('Temple Ruins', hits(10))] },
     { id: 'dirt-masters', kind: 'cup', cls: 'offroad', name: 'Dirt Masters', blurb: 'Gravel, mud and snow, flat out: off-road cars only', rounds: [R('Quarry Run', clean()), R('Bogwood Rally', drift(6)), R('Frostpeak', hits(10)), R('Open Country', air(2)), R('Glacier Rift', drift(6))] },
     { id: 'top-speed', kind: 'cup', cls: 'tarmac', name: 'Top Speed', blurb: 'Fast roads for fast tarmac cars', rounds: [R('Summit Meadow', clean()), R('Mountain Loop', drift(8)), R('Flyover Tangle', hits(12)), R('Mesa Leap', air(5)), R('Corkscrew Spire', clean())] },
+    trial('flyover-attack', 'Flyover Time Attack', 'Flyover Tangle', 147.7),
+    mode('legend-tiebreak', 'tiebreak', 'Legend Tiebreak', 'Temple Ruins', hits(6), 'Checkpoints, first to 7, win by two'),
+    onemake('rocket-run', 'rocket', 'Rocket Run', 'Summit Meadow', clean(), 'Eight Rocket Cars down the mountain'),
+    boss('legend-boss', 'Achterberg', 'rocket', 'Thunder Falls', 30, clean(), 'The Rocket Car at the falls. Beat Achterberg and the rocket is yours'),
+    { id: 'final', kind: 'final', name: 'Champion of Champions', blurb: 'Every boss at once, fully upgraded. Win it for the gold limo and the title', stage: 'Mountain Pass', obj: clean() },
   ] },
 ];
 export const tierById = id => TIERS.find(t => t.id === id);
@@ -100,7 +144,7 @@ export const roundsOf = ev => ev.rounds || [{ stage: ev.stage, obj: ev.obj }];
 // ---------- the state ----------
 /** A fresh career: the starter car, a little cash, nothing raced. */
 export function newCareer(starter) {
-  return { v: 1, cash: START_CASH, car: starter, cars: { [starter]: {} }, stars: {}, cups: {}, trophies: {}, races: 0, wins: 0, earned: 0 };
+  return { v: 1, cash: START_CASH, car: starter, cars: { [starter]: {} }, stars: {}, cups: {}, trophies: {}, beaten: {}, best: {}, races: 0, wins: 0, earned: 0 };
 }
 const starKey = (ev, k) => ev.id + ':' + k;
 const bits = m => (m & 1) + (m >> 1 & 1) + (m >> 2 & 1);
@@ -112,8 +156,17 @@ export const eventMaxStars = ev => roundsOf(ev).length * 3;
 export const tierStars = (s, t) => t.events.reduce((a, ev) => a + eventStars(s, ev), 0);
 export const tierMaxStars = t => t.events.reduce((a, ev) => a + eventMaxStars(ev), 0);
 export const totalStars = s => TIERS.reduce((a, t) => a + tierStars(s, t), 0);
-/** Tier i is open once the tier below has `need` stars. */
-export const tierOpen = (s, i) => i === 0 || tierStars(s, TIERS[i - 1]) >= TIERS[i].need;
+export const bossOf = t => t.events.find(e => e.kind === 'boss');
+export const beaten = (s, ev) => !!(s.beaten && s.beaten[ev.id]);
+/** Tier i is open once the boss of the tier below is beaten. */
+export const tierOpen = (s, i) => i === 0 || beaten(s, bossOf(TIERS[i - 1]));
+/** Can event ev be raced yet? A boss wants its `need` stars in the tier, the final the Legend boss beaten. */
+export function eventOpen(s, ev) {
+  const ti = tierOf(ev); if (!tierOpen(s, ti)) return false;
+  if (ev.kind === 'boss') return tierStars(s, TIERS[ti]) >= ev.need || beaten(s, ev);
+  if (ev.kind === 'final') return beaten(s, bossOf(TIERS[ti]));
+  return true;
+}
 /** The highest open tier. */
 export const topTier = s => { let i = 0; while (i + 1 < TIERS.length && tierOpen(s, i + 1)) i++; return i; };
 /** Cars you can buy now: sold in an open tier's showroom and not already yours. */
@@ -137,7 +190,25 @@ export const tierCars = ti => Object.keys(SHOP).filter(id => SHOP[id].tier <= ti
  *  class (their own if it does, else one from the tier in their own livery), each at the tier's skill with the
  *  tier's upgrades on engine, tyres and suspension. Always the same for a given event. */
 export function careerField(ev, ti = tierOf(ev)) {
-  const T = TIERS[ti], ok = tierCars(ti).filter(id => allowed(ev, id)), lv = { eng: T.upg, tyr: T.upg, sus: T.upg }, order = DRIVERS.slice().sort((a, b) => hash(ev.id + a.name) - hash(ev.id + b.name));
+  const T = TIERS[ti];
+  if (ev.kind === 'trial') return [];
+  if (ev.kind === 'boss') return [bossDef(ev.driver, ev.vehicle, T.upg, T.skill)];
+  if (ev.kind === 'final') {
+    const bosses = TIERS.map(bossOf).map(b => bossDef(b.driver, b.vehicle, UPG_MAX, T.skill)), rest = DRIVERS.filter(d => !bosses.some(b => b.name === d.name) && ['limo', 'police', 'hover'].includes(d.vehicle));
+    return [...bosses, ...rest.map(d => bossDef(d.name, d.vehicle, UPG_MAX, T.skill))];
+  }
+  const field = cupField(ev, T, ti);
+  if (ev.kind === 'mode') return field.slice(0, 3);
+  if (ev.kind === 'onemake') { const v = vehicleById(ev.make); return field.map(d => ({ ...d, model: v.model, hw: v.hw, hl: v.hl, veh: v.veh, im: v.veh ? v.veh.im : undefined, vehicle: v.id })); }   // stock cars
+  return field;
+}
+// a star driver in their car, a notch sharper than the tier (skill `k`) and upgraded to `L`
+function bossDef(name, vehicle, L, k) {
+  const d = DRIVERS.find(x => x.name === name), veh = upgradedVeh(vehicle, { eng: L, tyr: L, sus: L });
+  return { ...asDef(d, vehicleById(vehicle)), skill: Math.min(1, d.skill * k + 0.02), veh, im: veh.im };
+}
+function cupField(ev, T, ti) {
+  const ok = tierCars(ti).filter(id => allowed(ev, id)), lv = { eng: T.upg, tyr: T.upg, sus: T.upg }, order = DRIVERS.slice().sort((a, b) => hash(ev.id + a.name) - hash(ev.id + b.name));
   const own = order.filter(d => ok.includes(d.vehicle)), rest = order.filter(d => !ok.includes(d.vehicle));
   const pick = [...own, ...rest].slice(0, CAREER_RIVALS);
   return pick.map((d, k) => {
@@ -146,12 +217,19 @@ export function careerField(ev, ti = tierOf(ev)) {
     return { ...asDef(d, v, vehicleById(d.vehicle)), skill: Math.min(1, d.skill * T.skill), veh, im: veh.im };
   });
 }
-/** The player's race def in career car `id`, with its upgrades. */
-export function careerPlayer(s, id = s.car) { const coupe = CAR_DEFS.find(d => d.player), veh = upgradedVeh(id, s.cars[id]); return { ...asDef(coupe, vehicleById(id)), veh, im: veh.im }; }
+/** The player's race def in career car `id`, with its upgrades and paint (a one-make race: its car, stock). */
+export function careerPlayer(s, id = s.car, ev = null) {
+  const coupe = CAR_DEFS.find(d => d.player);
+  if (ev && ev.make) return asDef(coupe, vehicleById(ev.make));
+  const own = s.cars[id] || {}, veh = upgradedVeh(id, own), paint = PAINTS[own.paint];
+  return { ...asDef(coupe, vehicleById(id), paint || vehicleById(id)), veh, im: veh.im };
+}
+/** Can the player race event ev in their current car? (One-make races lend you the car.) */
+export const canEnter = (s, ev) => !!ev.make || allowed(ev, s.car);
 /** Race defs for a round: the field, then the player at the back of the grid (from round 2 of a cup the grid lines up
  *  in reverse championship order: `order` is the championship order, best first). */
 export function careerDefs(s, ev, order = null) {
-  let defs = [...careerField(ev), careerPlayer(s)];
+  let defs = [...careerField(ev), careerPlayer(s, s.car, ev)];
   if (order) { const rank = n => { const i = order.indexOf(n); return i < 0 ? 99 : i; }; defs = defs.slice().sort((a, b) => rank(b.name) - rank(a.name)); }
   return defs;
 }
@@ -165,22 +243,35 @@ export function objText(o) {
 /** The top places that count as a podium in a field of n (top 3 of 8, top 2 of 4, only a win in a duel). */
 export const podiumOf = n => Math.max(1, Math.min(3, Math.floor(n / 2)));
 /**
- * Score round k of event ev: `place` of `n` cars, `t` the player's tally { air, drift, hits, wrecks, respawns }.
+ * Score round k of event ev: `place` of `n` cars, `t` the player's tally { air, drift, hits, wrecks, respawns, gap }
+ * (gap: seconds behind the winner, for a duel), `time` the player's finish time (a time trial).
  * Returns { state, stars (mask this race), fresh (mask of newly earned stars), cash, lines: [[label, amount]] }.
  */
-export function scoreRace(s, ev, k, place, n, t) {
+export function scoreRace(s, ev, k, place, n, t, time = 0) {
   const T = TIERS[tierOf(ev)], o = roundsOf(ev)[k].obj, pay = x => Math.round(x * T.pay / 10) * 10;
-  const mask = (place <= podiumOf(n) ? 1 : 0) | (place === 1 ? 2 : 0) | (objDone(o, t) ? 4 : 0);
+  let mask, lines;
+  if (ev.kind === 'trial') {   // stars by medal: bronze 1, silver 2, gold 3
+    const m = medals(ev.par), got = time > 0 ? m.filter(x => time <= x).length : 0;
+    mask = [0, 1, 3, 7][got]; lines = got ? [[`${['Bronze', 'Silver', 'Gold'][got - 1]} medal`, pay(MEDAL_CASH[got - 1])]] : [['No medal', 0]];
+  } else {
+    const near = n === 2 ? place === 1 || (t.gap >= 0 && t.gap <= DUEL_GAP) : place <= podiumOf(n);   // a duel's first star: close behind
+    mask = (near ? 1 : 0) | (place === 1 ? 2 : 0) | (objDone(o, t) ? 4 : 0);
+    lines = [[`${ordinal(place)} place`, pay(PLACE_CASH[place - 1] || 0)]];
+  }
   const had = roundMask(s, ev, k), fresh = mask & ~had;
-  const lines = [[`${ordinal(place)} place`, pay(PLACE_CASH[place - 1] || 0)]];
   if (t.air) lines.push([`Big air ×${t.air}`, pay(BONUS.air * t.air)]);
   if (t.drift) lines.push([`Drift boosts ×${t.drift}`, pay(BONUS.drift * t.drift)]);
   if (t.hits) lines.push([`Weapon hits ×${t.hits}`, pay(BONUS.hit * t.hits)]);
   if (t.wrecks === 0 && t.respawns === 0) lines.push(['Clean race', pay(BONUS.clean)]);
-  if (mask & 4) lines.push(['Objective', pay(BONUS.obj)]);
+  if (mask & 4 && ev.kind !== 'trial') lines.push(['Objective', pay(BONUS.obj)]);
+  // a boss or the final won for the first time: the purse and the prize car
+  const won = place === 1 && (ev.kind === 'boss' || ev.kind === 'final') && !beaten(s, ev), prize = won ? (ev.kind === 'final' ? 'limo' : ev.vehicle) : null;
+  if (won) lines.push([ev.kind === 'final' ? 'Champion\'s purse' : 'Boss purse', ev.kind === 'final' ? FINAL_PURSE : pay(BOSS_PURSE)]);
   const cash = lines.reduce((a, l) => a + l[1], 0);
-  const state = { ...s, cash: s.cash + cash, earned: s.earned + cash, races: s.races + 1, wins: s.wins + (place === 1 ? 1 : 0), stars: { ...s.stars, [starKey(ev, k)]: had | mask } };
-  return { state, stars: mask, fresh, cash, lines };
+  let state = { ...s, cash: s.cash + cash, earned: s.earned + cash, races: s.races + 1, wins: s.wins + (place === 1 ? 1 : 0), stars: { ...s.stars, [starKey(ev, k)]: had | mask } };
+  if (won) state = { ...state, beaten: { ...(s.beaten || {}), [ev.id]: true }, cars: s.cars[prize] ? state.cars : { ...state.cars, [prize]: {} }, champion: s.champion || ev.kind === 'final' };
+  if (ev.kind === 'trial' && time > 0 && !(s.best && s.best[ev.id] <= time)) state = { ...state, best: { ...(s.best || {}), [ev.id]: time } };
+  return { state, stars: mask, fresh, cash, lines, prize };
 }
 /** A finished cup's trophy (place 1..3, else 0) pays out once per step up: a later gold after a bronze pays the difference. */
 export function awardTrophy(s, ev, place) {

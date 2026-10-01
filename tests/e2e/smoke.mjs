@@ -142,6 +142,43 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await page.keyboard.press('Escape');
   console.log(`career: tabs ${tabs.join(' | ')}; round 1 scored, ${res.rows} in the table, bank $${res.cash}, tally ${JSON.stringify(res.tally)}; back to "${back.title}"; showroom ${shop.length} cars; engine level ${upg.eng}; Pocket Rockets refuses the hatch: ${cls.disabled}`);
 }
+// career specials and the boss: a time trial (alone, medal stars), a Showdown special (scored by crown time), the
+// Rookie boss duel (opened by stars), and a respray in the paint shop
+{
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('downhill-rush-career')); s.cash = 20000;
+    for (const [id, n] of [['rookie-cup', 4], ['sunday-loops', 3]]) for (let k = 0; k < n; k++) s.stars[id + ':' + k] = 7;
+    localStorage.setItem('downhill-rush-career', JSON.stringify(s)); window.__dr.flow.toMenu(); document.getElementById('career').hidden = true; });
+  const race = async (id, secs) => {
+    await page.click('#career-btn'); await page.click(`.cr-item[data-id="${id}"]`); await page.click('#cr-actions .cta');
+    await page.waitForFunction(id => window.__dr.race && window.__dr.G.state === 'countdown' && window.__dr.G.career && window.__dr.G.career.ev === id, id, { timeout: 30000 });
+    return page.evaluate(secs => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
+      for (let k = 0; k < secs * 2 && !d.race.player.finished; k++) d.step(0.5);
+      if (d.race.sd) d.race.sd.winner = d.race.cars.indexOf(d.race.player);
+      d.flow.showResults(); return { cars: d.race.cars.map(c => c.name + ':' + c.def.vehicle), sd: !!d.race.sd, fin: d.race.player.finished,
+        stars: document.querySelectorAll('.cr-res-stars span').length, title: document.getElementById('res-title').textContent, again: !document.getElementById('again-btn').hidden, next: document.getElementById('next-btn').textContent }; }, secs);
+  };
+  const trial = await race('summit-sprint', 200);
+  await page.screenshot({ path: path.join(outDir, 'career-trial.png') });
+  await page.click('#menu-btn'); await page.keyboard.press('Escape');
+  const sd = await race('rookie-king', 8);
+  await page.screenshot({ path: path.join(outDir, 'career-showdown.png') });
+  await page.click('#menu-btn'); await page.keyboard.press('Escape');
+  await page.click('#career-btn');
+  await page.screenshot({ path: path.join(outDir, 'career-hub2.png') });
+  const bossOpen = await page.$eval('.cr-item[data-id="rookie-boss"]', b => !b.disabled); await page.keyboard.press('Escape');
+  const boss = await race('rookie-boss', 300);
+  await page.screenshot({ path: path.join(outDir, 'career-boss.png') });
+  await page.click('#menu-btn');
+  await page.click('[data-act="garage"]'); await page.click('[data-act="tune"][data-id="hatch"]'); await page.click('[data-act="paint"][data-p="3"]');
+  const paint = await page.evaluate(() => JSON.parse(localStorage.getItem('downhill-rush-career')).cars.hatch.paint);
+  await page.screenshot({ path: path.join(outDir, 'career-paint.png') });
+  await page.keyboard.press('Escape');
+  if (trial.cars.length !== 1 || !trial.fin || trial.stars !== 3 || !trial.again || !/Back to Career/.test(trial.next)) errors.push('career trial: ' + JSON.stringify(trial));
+  if (!sd.sd || sd.cars.length !== 4 || sd.stars !== 3) errors.push('career showdown special: ' + JSON.stringify(sd));
+  if (!bossOpen || boss.cars.length !== 2 || !boss.cars.includes('Brannigan:monster')) errors.push('career boss: ' + JSON.stringify({ bossOpen, boss }));
+  if (paint !== 3) errors.push('career paint: ' + paint);
+  console.log(`career specials: trial "${trial.title}"; showdown ${sd.cars.length} cars; boss open ${bossOpen}, ${boss.cars.join(' vs ')}, "${boss.title}"; paint ${paint}`);
+}
 // the Rivals setting: a full field of 19 (one of every vehicle), then down to a single rival; the meshes follow
 {
   await page.evaluate(() => window.__dr.flow.toMenu()); await page.evaluate(() => { document.getElementById('garage').hidden = true; });
