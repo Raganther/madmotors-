@@ -52,6 +52,12 @@ Quick Race and Leagues are untouched. The state is one localStorage entry (`down
 `npm run career` races every career round with the AI at a casual and a good player's skill and prints places,
 stars and cash: tune `TIERS`, prices and payouts against it.
 
+**Rookie circuits** (stages 19-22: Sunday Park, Harbour Sprint, Hay Bale Farm, Village Green): four flat, forgiving
+laps for the Rookie Cup, each teaching one thing (steering and braking, the drift boost, gravel and small kickers, the
+weapons on a figure of eight over its own stone bridge). They set `soft: true`, which puts hay bales instead of tyre
+walls on tight bends, so a mistake costs a second. The four downhill runs moved up to Club as the Downhill Classic
+cup. A stage's `river` can take a `color` (a lighter tint for a pond or the sea).
+
 **A car for each stage:** the garage remembers your pick for the selected stage (by stage name, `G.stageCars`), and
 the last pick is the default for stages with none yet. The stage list shows each stage's car, the garage tags the
 vehicles that suit the stage (off-road stats on gravel and snow, speed and grip on tarmac), and the league screen has a

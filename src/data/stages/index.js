@@ -17,5 +17,9 @@ import glacierRift from './glacier-rift.js';
 import templeRuins from './temple-ruins.js';
 import flyoverTangle from './flyover-tangle.js';
 import openCountry from './open-country.js';
+import sundayPark from './sunday-park.js';
+import harbourSprint from './harbour-sprint.js';
+import hayBaleFarm from './hay-bale-farm.js';
+import villageGreen from './village-green.js';
 
-export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins, flyoverTangle, openCountry];
+export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins, flyoverTangle, openCountry, sundayPark, harbourSprint, hayBaleFarm, villageGreen];

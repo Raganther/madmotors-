@@ -12,11 +12,12 @@
  * @property {Array} [plan]                downhill: [['st'|'sw'|'sb', arg], ...] straight / sweepers / switchbacks
  * @property {Segment[]} [segs]            'gorge' circuits: the road, section by section
  * @property {{on: number, with: number}} [traffic]  oncoming / same-way civilian cars kept alive
- * @property {{pts: number[][], level: number, width: number, logs?: number, frozen?: boolean}} [river]
+ * @property {{pts: number[][], level: number, width: number, logs?: number, frozen?: boolean, color?: number}} [river]   color: a lighter tint for a pond or the sea
  * @property {RailDef[]} [rails]
  * @property {object} colors               terrain, road, sky and scenery palette
  * @property {object} light                sun/fill light, cloud shadows, colour grade, optional valley haze
  * @property {boolean} [armco]             fences are metal guard rail (bends) instead of wood
+ * @property {boolean} [soft]              hay bales instead of tyre walls on tight bends: a forgiving (rookie) circuit
  * @property {boolean} [viaduct]           bridges are stone viaducts
  */
 

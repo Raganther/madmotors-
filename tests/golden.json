@@ -683,6 +683,158 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Sunday Park": {
+   "samples": 2810,
+   "loopN": 888,
+   "terrain": [
+    124,
+    142,
+    7716.095
+   ],
+   "times": [
+    78.233,
+    77.925,
+    79.033,
+    77.967
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    2726.597,
+    2730.709,
+    2700.096,
+    2730.399
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Harbour Sprint": {
+   "samples": 3866,
+   "loopN": 1240,
+   "terrain": [
+    139,
+    139,
+    7507.409
+   ],
+   "times": [
+    120.1,
+    112.267,
+    117.258,
+    116.5
+   ],
+   "respawns": [
+    2,
+    0,
+    0,
+    1
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3756.139,
+    3788.022,
+    3788.559,
+    3788.506
+   ],
+   "broken": 2,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Hay Bale Farm": {
+   "samples": 3275,
+   "loopN": 1043,
+   "terrain": [
+    152,
+    147,
+    25504.37
+   ],
+   "times": [
+    103.775,
+    102.108,
+    103.933,
+    103.692
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3170.904,
+    3196.001,
+    3165.228,
+    3173.697
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Village Green": {
+   "samples": 3164,
+   "loopN": 1006,
+   "terrain": [
+    133,
+    131,
+    8208.64
+   ],
+   "times": [
+    96.158,
+    92.525,
+    96.242,
+    96.108
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3056.836,
+    3084.59,
+    3054.041,
+    3058.563
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {
