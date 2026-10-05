@@ -119,7 +119,7 @@ export function genCircuit(stage) {
   const { A, B, hs, ch } = main;
   while (A.length > 2 && Math.hypot(A[A.length - 1] - A[0], B[B.length - 1] - B[0]) < 0.6) { A.pop(); B.pop(); hs.pop(); for (const k in ch) ch[k].pop(); }
   const [xs, zs] = toXZ(A, B);
-  const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width, logs: stage.river.logs || 0, frozen: !!stage.river.frozen } : null;
+  const river = stage.river ? { pts: stage.river.pts.map(([ra, rb]) => [(ra - rb) / Math.SQRT2, -(ra + rb) / Math.SQRT2]), level: stage.river.level, width: stage.river.width, logs: stage.river.logs || 0, frozen: !!stage.river.frozen, color: stage.river.color } : null;
   // branches: an alternative route that leaves the main road where main section `from` starts and rejoins it where
   // main section `to` starts. Its own sections must end exactly there, heading the same way.
   const alts = (stage.branches || []).map((br, n) => {
@@ -269,7 +269,7 @@ export function finishLoop(stage, g, seed) {
   const own = (i, j) => { const r = nb(i, j); return (i < N0) === (r < N0) ? r : i; };   // along the same route only (a branch's bends don't wall off the main road)
   for (let i = 0; i < NB; i++) {
     const a = Math.abs(ks0[i]);
-    if (a > 1 / 48) { const out = ks0[i] > 0 ? wallR0 : wallL0; for (let j = -8; j <= 8; j++) out[own(i, j)] = 1; }
+    if (a > 1 / 48) { const out = ks0[i] > 0 ? wallR0 : wallL0; for (let j = -8; j <= 8; j++) out[own(i, j)] = stage.soft ? 3 : 1; }   // tyres; hay on a soft (rookie) stage
     if (a > 1 / 75) for (let j = -5; j <= 5; j++) { kerbL0[own(i, j)] = 1; kerbR0[own(i, j)] = 1; }
   }
   for (let i = 0; i < NB; i++) {

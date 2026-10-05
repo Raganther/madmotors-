@@ -103,7 +103,7 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await page.keyboard.press('Escape');
   console.log(`league: cars ${cars.join(', ')}; round 1 scored (${res.rows} in the table), round 2 grid ends with the leader ${grid.lead}; "${again}"`);
 }
-// a career: pick a starter, race Rookie Cup round 1 to the flag: stars and cash on the results, Next starts round 2
+// a career: pick a starter, race Rookie Cup round 1 (Sunday Park) to the flag: stars and cash on the results, Next starts round 2
 {
   await page.evaluate(() => { localStorage.removeItem('downhill-rush-career'); window.__dr.flow.toMenu(); });
   await page.click('#career-btn'); await page.waitForSelector('[data-act="starter"]');
@@ -112,16 +112,16 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await page.screenshot({ path: path.join(outDir, 'career-hub.png') });
   const tabs = await page.$$eval('.cr-tab', bs => bs.map(b => b.textContent));
   await page.click('.cr-item[data-id="rookie-cup"]'); await page.click('#cr-actions .cta');
-  await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 0 && window.__dr.G.state === 'countdown' && window.__dr.G.career, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.stage.name === 'Sunday Park' && window.__dr.G.state === 'countdown' && window.__dr.G.career, null, { timeout: 30000 });
   const n = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true;
     for (let k = 0; k < 400 && !d.race.player.finished; k++) d.step(0.5); d.flow.showResults(); return { cars: d.race.cars.length, me: d.race.player.def.vehicle }; });
   const res = await page.evaluate(() => ({ shown: !document.getElementById('res-career').hidden, stars: document.querySelectorAll('.cr-res-stars span').length, cash: JSON.parse(localStorage.getItem('downhill-rush-career')).cash,
     rows: document.querySelectorAll('#res-league tr').length, next: document.getElementById('next-btn').textContent, tally: window.__dr.G.tally }));
   await page.screenshot({ path: path.join(outDir, 'career-results.png') });
-  if (n.cars !== 8 || n.me !== 'hatch' || !res.shown || res.stars !== 3 || !(res.cash > 1500) || res.rows !== 8 || !/Next round: Pine Forest/.test(res.next) || !tabs[0].includes('Rookie') || !/Locked/.test(tabs[1]))
+  if (n.cars !== 8 || n.me !== 'hatch' || !res.shown || res.stars !== 3 || !(res.cash > 1500) || res.rows !== 8 || !/Next round: Harbour Sprint/.test(res.next) || !tabs[0].includes('Rookie') || !/Locked/.test(tabs[1]))
     errors.push('career round 1: ' + JSON.stringify({ n, tabs, ...res }));
   await page.click('#next-btn');
-  await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 1 && window.__dr.G.career && window.__dr.G.career.k === 1, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.stage.name === 'Harbour Sprint' && window.__dr.G.career && window.__dr.G.career.k === 1, null, { timeout: 30000 });
   await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('downhill-rush-career')); s.cash = 9000; localStorage.setItem('downhill-rush-career', JSON.stringify(s)); window.__dr.flow.toMenu(); });
   const back = await page.evaluate(() => ({ open: !document.getElementById('career').hidden, title: document.getElementById('cr-title').textContent, cta: document.querySelector('#cr-actions .cta').textContent }));
   await page.screenshot({ path: path.join(outDir, 'career-event.png') });
@@ -157,7 +157,7 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
       d.flow.showResults(); return { cars: d.race.cars.map(c => c.name + ':' + c.def.vehicle), sd: !!d.race.sd, fin: d.race.player.finished,
         stars: document.querySelectorAll('.cr-res-stars span').length, title: document.getElementById('res-title').textContent, again: !document.getElementById('again-btn').hidden, next: document.getElementById('next-btn').textContent }; }, secs);
   };
-  const trial = await race('summit-sprint', 200);
+  const trial = await race('park-sprint', 200);
   await page.screenshot({ path: path.join(outDir, 'career-trial.png') });
   await page.click('#menu-btn'); await page.keyboard.press('Escape');
   const sd = await race('rookie-king', 8);

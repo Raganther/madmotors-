@@ -96,14 +96,14 @@ const onemake = (id, make, name, stage, obj, blurb) => ({ id, kind: 'onemake', m
 const boss = (id, driver, vehicle, stage, need, obj, blurb) => ({ id, kind: 'boss', driver, vehicle, name: `Boss: ${driver}`, blurb, stage, need, obj });
 export const TIERS = [
   { id: 'rookie', name: 'Rookie', blurb: 'Friendly locals on the easy roads', skill: 0.88, upg: 0, pay: 1, events: [
-    { id: 'rookie-cup', kind: 'cup', name: 'Rookie Cup', blurb: 'The four downhill stages, top to bottom', rounds: [R('Summit Meadow', drift(2)), R('Pine Forest', clean()), R('Quarry Run', air(2)), R('Village Descent', hits(3))] },
+    { id: 'rookie-cup', kind: 'cup', name: 'Rookie Cup', blurb: 'Four easy tracks: steering, drifting, dirt and jumps, then weapons', rounds: [R('Sunday Park', clean()), R('Harbour Sprint', drift(4)), R('Hay Bale Farm', air(3)), R('Village Green', hits(3))] },
     { id: 'sunday-loops', kind: 'cup', name: 'Sunday Loops', blurb: 'Three short circuits to learn the lines', rounds: [R('Mountain Loop', drift(4)), R('Red Mesa Canyon', air(10)), R('Bogwood Rally', clean())] },
-    { id: 'valley-run', kind: 'cup', name: 'Valley Run', blurb: 'Switchbacks, a town and a tunnel', rounds: [R('Pine Forest', hits(4)), R('Village Descent', drift(3)), R('Mountain Pass', clean())] },
-    trial('summit-sprint', 'Summit Sprint', 'Summit Meadow', 47.3),
+    { id: 'seaside-double', kind: 'cup', name: 'Seaside Double', blurb: 'The park, the harbour and the farm again, a little sharper', rounds: [R('Harbour Sprint', hits(3)), R('Hay Bale Farm', clean()), R('Sunday Park', drift(3))] },
+    trial('park-sprint', 'Park Sprint', 'Sunday Park', 78.4),
     mode('rookie-king', 'showdown', 'King of the Loop', 'Mountain Loop', drift(3), 'Showdown against three rivals: hold the lead to bank crown time'),
-    onemake('ice-cream-derby', 'icecream', 'Ice Cream Derby', 'Village Descent', hits(3), 'Everyone in an Ice Cream Van: pure driving'),
+    onemake('ice-cream-derby', 'icecream', 'Ice Cream Derby', 'Village Green', hits(3), 'Everyone in an Ice Cream Van round the fete: pure driving'),
     boss('rookie-boss', 'Brannigan', 'monster', 'Red Mesa Canyon', 20, air(10), 'One on one with the Monster Truck over the jumps. Win it and it\'s yours'),
-    { id: 'pocket-rockets', kind: 'cup', cls: 'small', name: 'Pocket Rockets', blurb: 'Karts, trikes and sidecars only', rounds: [R('Summit Meadow', hits(3)), R('Mountain Loop', drift(4)), R('Village Descent', clean())] },
+    { id: 'pocket-rockets', kind: 'cup', cls: 'small', name: 'Pocket Rockets', blurb: 'Karts, trikes and sidecars only', rounds: [R('Sunday Park', hits(3)), R('Harbour Sprint', drift(4)), R('Village Green', clean())] },
   ] },
   { id: 'club', name: 'Club', blurb: 'Weekend racers who know the tracks', skill: 0.94, upg: 1, pay: 1.7, events: [
     { id: 'circuit-series', kind: 'cup', name: 'Circuit Series', blurb: 'Switchbacks, viaducts, jumps and a waterfall', rounds: [R('Mountain Loop', hits(8)), R('Mountain Pass', drift(6)), R('Ravenrock Gorge', clean()), R('Red Mesa Canyon', air(12)), R('Thunder Falls', hits(8))] },
@@ -113,6 +113,7 @@ export const TIERS = [
     mode('falls-deuce', 'deuce', 'Deuce at the Falls', 'Thunder Falls', hits(4), 'Checkpoints, first to 4, win by two'),
     onemake('kart-chaos', 'kart', 'Kart Chaos', 'Corkscrew Spire', drift(4), 'Eight Go-Karts round the spire'),
     boss('club-boss', 'Lindqvist', 'wedge', 'Ravenrock Gorge', 26, clean(), 'The Group B ace on the viaducts. Beat Lindqvist and the Wedge is yours'),
+    { id: 'downhill-classic', kind: 'cup', name: 'Downhill Classic', blurb: 'The four original downhill runs, top to bottom: fast, steep and unforgiving', rounds: [R('Summit Meadow', drift(2)), R('Pine Forest', clean()), R('Quarry Run', air(2)), R('Village Descent', hits(4))] },
     { id: 'heavyweights', kind: 'cup', cls: 'heavy', name: 'Heavyweights', blurb: 'Trucks, vans and limos: the biggest wins', rounds: [R('Village Descent', hits(4)), R('Scrapyard Smash', air(3)), R('Mountain Pass', clean())] },
   ] },
   { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.97, upg: 2, pay: 2.6, events: [

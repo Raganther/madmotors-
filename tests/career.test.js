@@ -35,13 +35,13 @@ describe('career data', () => {
 describe('career rules', () => {
   it('stars: podium, win, objective; best kept; cash by place and bonuses', () => {
     let s = newCareer('coupe'); const ev = eventById('rookie-cup');
-    let r = scoreRace(s, ev, 0, 3, 8, { ...T0, drift: 2 });   // objective: 2 drift boosts
+    let r = scoreRace(s, ev, 1, 3, 8, { ...T0, drift: 4 });   // round 2's objective: 4 drift boosts
     expect(r.stars).toBe(1 | 4); expect(r.fresh).toBe(5);
-    expect(r.cash).toBe(550 + 40 + 150 + 250);
+    expect(r.cash).toBe(550 + 80 + 150 + 250);
     s = r.state; expect(s.cash).toBe(1500 + r.cash); expect(totalStars(s)).toBe(2);
-    r = scoreRace(s, ev, 0, 1, 8, { ...T0, wrecks: 1 });
+    r = scoreRace(s, ev, 1, 1, 8, { ...T0, wrecks: 1 });
     expect(r.stars).toBe(3); expect(r.fresh).toBe(2); expect(totalStars(r.state)).toBe(3);
-    expect(scoreRace(r.state, ev, 0, 6, 8, T0).state.stars['rookie-cup:0']).toBe(7);   // a worse run keeps the stars
+    expect(scoreRace(r.state, ev, 1, 6, 8, T0).state.stars['rookie-cup:1']).toBe(7);   // a worse run keeps the stars
   });
   it('a duel: the first star for finishing within DUEL_GAP of the winner', () => {
     const s = newCareer('coupe'), B = eventById('rookie-boss');
@@ -133,19 +133,19 @@ describe('career specials, bosses, paint', () => {
   });
   it('fields: a trial is alone, a mode special has three rivals, a boss one, a one-make race lends the car stock', () => {
     const s = { ...newCareer('coupe'), cars: { coupe: { eng: 3 } } };
-    expect(careerDefs(s, eventById('summit-sprint')).length).toBe(1);
+    expect(careerDefs(s, eventById('park-sprint')).length).toBe(1);
     expect(careerDefs(s, eventById('rookie-king')).length).toBe(4);
     const b = careerDefs(s, eventById('club-boss')); expect(b.length).toBe(2); expect(b[0].name).toBe('Lindqvist'); expect(b[0].vehicle).toBe('wedge');
     const om = careerDefs(s, eventById('ice-cream-derby')); expect(om.every(d => d.vehicle === 'icecream')).toBe(true); expect(om.at(-1).veh).toEqual(om[0].veh);
   });
   it('time trials give stars by medal and keep the best time', () => {
-    const ev = eventById('summit-sprint'), [b, sv, g] = medals(ev.par), s = newCareer('coupe');
+    const ev = eventById('park-sprint'), [b, sv, g] = medals(ev.par), s = newCareer('coupe');
     expect(scoreRace(s, ev, 0, 1, 1, T0, g - 0.5).stars).toBe(7);
     expect(scoreRace(s, ev, 0, 1, 1, T0, sv - 0.1).stars).toBe(3);
     expect(scoreRace(s, ev, 0, 1, 1, T0, b - 0.1).stars).toBe(1);
     expect(scoreRace(s, ev, 0, 1, 1, T0, b + 5).stars).toBe(0);
-    const r = scoreRace(s, ev, 0, 1, 1, T0, 50); expect(r.state.best['summit-sprint']).toBe(50);
-    expect(scoreRace(r.state, ev, 0, 1, 1, T0, 55).state.best['summit-sprint']).toBe(50);
+    const r = scoreRace(s, ev, 0, 1, 1, T0, 50); expect(r.state.best['park-sprint']).toBe(50);
+    expect(scoreRace(r.state, ev, 0, 1, 1, T0, 55).state.best['park-sprint']).toBe(50);
   });
   it('paint: costs a respray, stock again is -1, and the player wears it', () => {
     const s = { ...newCareer('coupe'), cash: 5000 }, p = paintCar(s, 'coupe', 2);

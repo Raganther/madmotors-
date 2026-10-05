@@ -14,11 +14,12 @@ export function addRiver(group, tr) {
       pos.push(x0 - nx, y, z0 - nz, x1 - nx, y, z1 - nz, x0 + nx, y, z0 + nz, x0 + nx, y, z0 + nz, x1 - nx, y, z1 - nz, x1 + nx, y, z1 + nz);
     }
   }
+  // wind the triangles upward if the polyline ran the other way (flipping only the normals left the top a back face, lit from below: near black)
+  const up = (pos[5] - pos[2]) * (pos[6] - pos[0]) - (pos[3] - pos[0]) * (pos[8] - pos[2]) > 0;
+  if (!up) for (let t = 0; t < pos.length; t += 9) for (let k = 0; k < 3; k++) { const v = pos[t + 3 + k]; pos[t + 3 + k] = pos[t + 6 + k]; pos[t + 6 + k] = v; }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
-  // wind the triangles upward if the polyline ran the other way
-  if (g.attributes.normal.array[1] < 0) { g.attributes.normal.array.forEach((v, i, a) => a[i] = -v); }
   const mat = rv.frozen ? withCutaway(new THREE.MeshLambertMaterial({ color: 0xA9C8E0, side: THREE.DoubleSide }), false, { cut: false, cloud: true, grain: 0.25 })   // frozen over: no ripples
-    : withCutaway(new THREE.MeshLambertMaterial({ color: 0x3E7DAE, side: THREE.DoubleSide }), false, { cut: false, cloud: true, water: true });   // opaque: nothing needs to show through
+    : withCutaway(new THREE.MeshLambertMaterial({ color: rv.color || 0x3E7DAE, side: THREE.DoubleSide }), false, { cut: false, cloud: true, water: true });   // opaque: nothing needs to show through
   group.add(chunkMesh(g, mat, 80, true));
 }
 // logs drifting downstream (river.logs of them): along the polyline from its first point, bobbing, wrapping at the end
