@@ -34,6 +34,7 @@ import { addHammers, updateHammers } from './hammer.js';
 import { initWeaponVis, updateWeaponVis } from '../weapons.js';
 import { addSnowfall, updateSnowfall } from './snowfall.js';
 import { addBreakables, newBreakablesRace, updateBreakables } from './breakables.js';
+import { addKit, newKitRace, updateKit } from './kit.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
 const river = { name: 'river', build(group, tr) { addRiver(group, tr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
@@ -85,5 +86,7 @@ const open = { name: 'open', build(group, tr, terr, stage) { addOpen(group, tr, 
 
 const breakables = { name: 'breakables', build(group, tr) { addBreakables(group, tr); }, newRace() { newBreakablesRace(); }, update() { updateBreakables(); } };   // fences, gates, hay, crates, concrete
 
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables];
+const kit = { name: 'kit', build(group, tr, terr, stage) { addKit(group, tr, terr, stage); }, newRace() { newKitRace(); }, update() { updateKit(); } };   // towns from the world kit (stage.towns)
+
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

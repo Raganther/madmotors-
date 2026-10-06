@@ -1,6 +1,7 @@
 import { G } from '../game.js';
 import { $ } from './dom.js';
-import { WORKSHOP_STAGE, WORKSHOP_TABS, YARD, YARD_AT } from '../data/workshop.js';
+import { WORKSHOP_STAGE, WORKSHOP_TABS, YARD, YARD_AT, kitStage } from '../data/workshop.js';
+import { STYLES, STYLE_IDS } from '../data/styles.js';
 import { BREAKABLES } from '../data/breakables.js';
 import { breakSpeed, massOf, toughOf } from '../core/sim/impact.js';
 import { newBreakablesRace } from '../render/elements/breakables.js';
@@ -38,7 +39,7 @@ const CSS = `
 #ws-read{white-space:pre;font:12px/1.4 ui-monospace,Menlo,monospace;margin-top:8px} #ws-log{font:12px/1.35 ui-monospace,Menlo,monospace;margin-top:6px;color:#C9D2EA}
 @media (max-width:700px){#ws-panel{top:auto;bottom:8px;right:8px;left:8px;width:auto;max-height:42%}}`;
 let hub = null, panel = null, tick = 0;
-const S = { tab: null, kind: 'concrete', outcome: null, scenario: 'tbone', kmh: 80, slow: false, item: 'missile', refill: true, targets: 'dummies', auto: false, log: [], watch: [], snap: new Map() };
+const S = { tab: null, style: 'village', kind: 'concrete', outcome: null, scenario: 'tbone', kmh: 80, slow: false, item: 'missile', refill: true, targets: 'dummies', auto: false, log: [], watch: [], snap: new Map() };
 
 /** ?workshop or ?workshop=<tab>: which tab the page was opened on ('hub' for the bare link), or null. */
 export function workshopParam() { const q = new URLSearchParams(location.search); return q.has('workshop') ? q.get('workshop') || 'hub' : null; }
@@ -74,10 +75,13 @@ function openSandbox(name) {
 }
 
 // ---------- the live tabs ----------
+const kitStages = {};
 function startLive(tab) {
-  let i = STAGES.indexOf(WORKSHOP_STAGE); if (i < 0) { STAGES.push(WORKSHOP_STAGE); i = STAGES.length - 1; }
-  const car = new URLSearchParams(location.search).get('car'); if (car && vehicleById(car) && !S.car) S.car = car;
-  if (S.car) G.stageCars[WORKSHOP_STAGE.name] = S.car;   // the Workshop loop's own pick (selectStage applies it)
+  const q = new URLSearchParams(location.search), st = tab === 'kit' ? (kitStages[S.style] = kitStages[S.style] || kitStage(S.style)) : WORKSHOP_STAGE;   // the kit tab: the loop with a town in the chosen style
+  let i = STAGES.indexOf(st); if (i < 0) { STAGES.push(st); i = STAGES.length - 1; }
+  const car = q.get('car'); if (car && vehicleById(car) && !S.car) S.car = car;
+  if (tab === 'kit' && STYLES[q.get('style')] && !S.styled) { S.styled = true; if (S.style !== q.get('style')) { S.style = q.get('style'); return startLive(tab); } }
+  if (S.car) G.stageCars[st.name] = S.car;   // the Workshop loop's own pick (selectStage applies it)
   S.tab = tab; S.log = []; S.watch = []; S.snap = new Map();
   G.workshop = { tab, rivals: tab === 'weapons' ? 3 : 1, weapons: tab === 'weapons', onEvent };
   flow.startRace(i);
@@ -86,7 +90,7 @@ function startLive(tab) {
   clearInterval(tick); tick = setInterval(update, 100);
 }
 function endLive() { clearInterval(tick); if (panel) panel.hidden = true; if (G.workshop) toggleOverlay(false); G.workshop = null; }
-function setup() { if (S.tab === 'crash') runCrash(); else if (S.tab === 'destruct') runYard(); else lineUp(); }
+function setup() { if (S.tab === 'crash') runCrash(); else if (S.tab === 'destruct') runYard(); else if (S.tab === 'kit') { R().autoPlayer = S.auto = true; rivals()[0].hold = true; } else lineUp(); }
 const R = () => flow.race, P = () => flow.race.player, kmh = c => Math.round(Math.hypot(c.vx, c.vz) * 3.6);
 const rivals = () => R().cars.filter(c => !c.isPlayer);
 /** Put car `c` on the road at sample `idx`, `lat` m across, turned `dyaw`, moving at `v` m/s; `fresh` repairs it. */
@@ -158,6 +162,9 @@ function update() {
     const T = rivals()[0]; if (S.scenario === 'headon' && T.hold && S.impact) T.hold = true;
     const imp = S.impact ? `impact at ${S.impact.at} km/h, ${S.impact.after} km/h after` : 'no impact yet';
     $('ws-read').textContent = S.tab === 'destruct' ? [dmg(Pc), (S.outcome ? S.outcome.toUpperCase() + ': ' : '') + imp, `mass ${massOf(Pc).toFixed(2)}, toughness ${toughOf(Pc)}`].join('\n') : [dmg(Pc), dmg(rivals()[0]), imp].join('\n');
+  } else if (S.tab === 'kit') {
+    const kit = r.brk.filter(o => BREAKABLES[o.kind].kit), by = {}; for (const o of kit) if (o.broken) by[o.kind] = (by[o.kind] || 0) + 1;
+    $('ws-read').textContent = `${STYLES[S.style].name} town: ${kit.filter(o => o.kind === 'house').length} houses, ${kit.length} pieces\nyou ${kmh(Pc)} km/h\nbroken: ${Object.entries(by).map(([k, n]) => `${n} ${k}`).join(', ') || 'nothing yet'}`;
   } else {
     for (const c of rivals()) S.snap.set(c, { v: kmh(c), d: { ...c.dmg } });
     if (S.refill && Pc.wpn && !Pc.wpn.item) give(S.item);
@@ -177,6 +184,9 @@ function drawPanel() {
   if (S.tab === 'crash') panel.innerHTML = `<h2>Crash test</h2>${carSel}<label>Into</label><select id="ws-scn">${Object.entries(SCENARIOS).map(([k, n]) => `<option value="${k}" ${k === S.scenario ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <label>Speed: <b id="ws-kmh">${S.kmh}</b> km/h</label><input id="ws-speed" type="range" min="20" max="200" step="5" value="${S.kmh}">
     <div class="row"><button class="ws-btn" id="ws-run" type="button">Run</button><button class="ws-btn alt" id="ws-fix" type="button">Repair</button><button class="ws-btn alt" id="ws-wreck" type="button">Wreck it</button></div>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
+  else if (S.tab === 'kit') panel.innerHTML = `<h2>Scenery kit</h2><label>Style</label><div class="row">${STYLE_IDS.map(k => `<button class="ws-btn alt ${k === S.style ? 'on' : ''}" data-st="${k}" type="button">${STYLES[k].name}</button>`).join('')}</div>
+    ${carSel}<div class="row"><button class="ws-btn alt ${S.auto ? 'on' : ''}" id="ws-auto" type="button">Autopilot</button><button class="ws-btn alt ${G.camMode === 'heli' ? 'on' : ''}" id="ws-heli" type="button">Heli view</button></div>
+    <p style="margin:6px 0 0;color:#9AA6C4">Turn the autopilot off and drive into the town: fences, gates, hedges and bins give way, walls need a heavy car, houses don't.</p>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
   else if (S.tab === 'destruct') panel.innerHTML = `<h2>Destruction yard</h2>${carSel}<label>Into</label><select id="ws-kind">${YARD.map(k => `<option value="${k}" ${k === S.kind ? 'selected' : ''}>${BREAKABLES[k].name}</option>`).join('')}</select>
     <label>Speed: <b id="ws-kmh">${S.kmh}</b> km/h</label><input id="ws-speed" type="range" min="20" max="200" step="5" value="${S.kmh}">
     <div class="row"><button class="ws-btn" id="ws-run" type="button">Run</button><button class="ws-btn alt" id="ws-fix" type="button">Repair</button></div>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
@@ -187,7 +197,11 @@ function drawPanel() {
   $('ws-car').onchange = e => { S.car = e.target.value; startLive(S.tab); };
   $('ws-slow').onclick = () => { S.slow = !S.slow; $('ws-slow').classList.toggle('on', S.slow); };
   $('ws-hub-btn').onclick = () => openWorkshop('hub');
-  if (S.tab === 'destruct') {
+  if (S.tab === 'kit') {
+    for (const b of panel.querySelectorAll('[data-st]')) b.onclick = () => { S.style = b.dataset.st; startLive('kit'); };
+    $('ws-auto').onclick = () => { S.auto = !S.auto; R().autoPlayer = S.auto; drawPanel(); };
+    $('ws-heli').onclick = () => { G.camMode = G.camMode === 'heli' ? 'classic' : 'heli'; drawPanel(); };
+  } else if (S.tab === 'destruct') {
     $('ws-kind').onchange = e => { S.kind = e.target.value; runYard(); };
     $('ws-speed').oninput = e => { S.kmh = +e.target.value; $('ws-kmh').textContent = S.kmh; };
     $('ws-run').onclick = runYard;

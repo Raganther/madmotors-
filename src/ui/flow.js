@@ -7,6 +7,7 @@ import { screenOffset } from '../core/sim/view.js';
 import { CP, SD } from '../core/modes/showdown.js';
 import { DEFAULT_RIVALS, MAX_RIVALS, raceDefs } from '../data/cars.js';
 import { vehicleById } from '../data/vehicles.js';
+import { BREAKABLES } from '../data/breakables.js';
 import { LEAGUE_RIVALS, standings } from '../data/leagues.js';
 import { STAGES } from '../data/stages/index.js';
 import { updateCamera } from '../render/camera.js';
@@ -49,7 +50,7 @@ export function newRace() {
   return r;
 }
 // ---------- flow ----------
-const BRK_FX = { crates: 2, fence: 2, gate: 2, hay: 3, concrete: 6 };   // which barrier's debris a broken thing throws (render/effects/impacts.js)
+const BRK_FX = { crates: 2, fence: 2, gate: 2, hay: 3, concrete: 6, picket: 2, yardgate: 2, bench: 2, hedge: 8, wall: 9, railing: 4, chain: 4, post: 4, bin: 1, postbox: 4 };   // which barrier's debris a broken thing throws (render/effects/impacts.js)
 export function handleEvents() {
   const pi = race.cars.indexOf(race.player);
   for (const c of race.cars.concat(race.traffic, race.parked || [])) {
@@ -91,8 +92,8 @@ export function handleEvents() {
         case 'destroyed': takedownFx(c, e, e.by.isPlayer, near); break;
         case 'break':   // smashed through a breakable (core/features/breakables.js): splinters, hay or concrete dust the way it went
           impactFx(c, { ...e, w: BRK_FX[e.kind] }, c.isPlayer, near);
-          if (c.isPlayer) { callout(e.kind === 'concrete' ? 'Through the concrete!' : 'Smashed through!'); G.shake = Math.min(1.2, G.shake + 0.3 + e.v / 60); }
-          if (c.isPlayer || near) AudioSys.crash(e.kind === 'hay' ? 'hay' : e.kind === 'crates' || e.kind === 'fence' ? 'wood' : 'metal', c.isPlayer ? 0.8 : 0.4);
+          if (c.isPlayer && BREAKABLES[e.kind].hp >= 7) { callout(e.kind === 'concrete' || e.kind === 'wall' ? `Through the ${e.kind}!` : 'Smashed through!'); G.shake = Math.min(1.2, G.shake + 0.3 + e.v / 60); }
+          if (c.isPlayer || near) AudioSys.crash(e.kind === 'hay' || e.kind === 'hedge' ? 'hay' : ['crates', 'fence', 'picket', 'yardgate', 'bench'].includes(e.kind) ? 'wood' : 'metal', c.isPlayer ? 0.8 : 0.4);
           break;
         case 'takedown': if (c.isPlayer) { callout(e.kind === 'truck' ? 'Truck takedown!' : 'Takedown!'); AudioSys.whoosh(); } break;
         case 'rockhit': sparks(e.x, e.y, e.z, 14); if (c.isPlayer || near) AudioSys.crash('metal', clamp(e.v / 20, 0.2, 0.9) * (c.isPlayer ? 1 : 0.5)); if (c.isPlayer) G.shake = Math.min(1.4, G.shake + 0.8); break;

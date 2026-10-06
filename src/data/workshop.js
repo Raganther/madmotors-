@@ -9,7 +9,7 @@ export const WORKSHOP_TABS = [
   { id: 'weapons', name: 'Weapons range', blurb: 'Pick any weapon, fire it at dummies or at rivals driving the loop, and see what each hit costs them', live: true },
   { id: 'elements', name: 'Track elements', blurb: 'A small loop per track element (jumps, bridges, mud, ferry, gates...) with the debug readout' },
   { id: 'destruct', name: 'Destruction yard', blurb: 'Any car into crates, hay, a fence, a farm gate or concrete blocks at a set speed: what breaks, what bounces, what it costs', live: true },
-  { id: 'kit', name: 'Scenery kit', blurb: 'Towns, farms and yards from the kit pieces and style packs, on an empty lot', phase: 'F4' },
+  { id: 'kit', name: 'Scenery kit', blurb: 'A town in each style (village, alpine, seaside, farm, desert, industrial) along the loop: drive or fly round it, smash its fences and gates', live: true },
 ];
 
 /** The Destruction yard: one of each breakable (data/breakables.js) across the far straight, 50 m apart. */
@@ -18,3 +18,9 @@ export const YARD = ['crates', 'hay', 'fence', 'gate', 'concrete'], YARD_AT = 48
 export const WORKSHOP_STAGE = loop('workshop', 'the Workshop: two long flat straights (300 m and 270 m) for crash tests and the weapons range', {
   bottom: [['s', 300, 0, { far: -5, near: -5, rampF: 4, rampN: 4 }]], right: [['s', 40, 0]], top: [['s', 270, 0]], left: [['s', 20, 0]]
 }, { name: 'Workshop', laps: 8, trees: { density: 0.0015, pine: 0.4 }, rocks: 0, bushes: 0.001, props: YARD.map((kind, k) => ({ kind, at: YARD_AT + k * 50 })) });
+
+/** The Scenery kit tab: the Workshop loop with a town in one style (data/styles.js) along both long straights. */
+export const kitStage = style => loop('kit-' + style, `the world kit: a ${style} town along both straights`, {
+  bottom: [['s', 300, 0]], right: [['s', 40, 0]], top: [['s', 270, 0]], left: [['s', 20, 0]]
+}, { name: 'Kit: ' + style, laps: 8, trees: { density: 0.0025, pine: style === 'alpine' ? 0.8 : 0.3 }, rocks: 0.0006, bushes: 0.002, armco: false,
+  towns: [{ style, at: 10, len: 270, side: 'both' }, { style, at: 410, len: 250, side: 'both' }] });

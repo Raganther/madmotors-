@@ -10,16 +10,17 @@ import { groundAt, project } from '../track/query.js';
 // how hard the thing was, and the thing is gone for the rest of the race (on every lap). Concrete leaves chunks on the
 // road (R.chunks): loose blocks that get shoved about, slow whoever hits them and can trip a car into a spin.
 // Deterministic: no random numbers (where the chunks go comes from the hit).
-const CHUNK = { R: 0.55, MASS: 1.4, FRIC: 2.2, LIFE: 40 };
+const CHUNK = { R: 0.55, MASS: 1.4, FRIC: 2.2, LIFE: 40 }, cellKey = (a, b) => a * 100003 + b;
 export function breakableStep(R, W, dt) {
   W.brk = R.brk;                                                                       // the AI checks a breach is down (sim/ai.js)
   if (!R.brk.length && !R.chunks.length) return;
   const tr = W.tr, cars = R.cars.concat(R.traffic || [], R.parked || []);
-  for (const o of R.brk) {
-    if (o.broken) continue;
-    const K = BREAKABLES[o.kind];
-    for (const c of cars) {
-      if (c.ghost > 0 || Math.abs(c.x - o.x) > 9 || Math.abs(c.z - o.z) > 9 || Math.abs(c.y - o.y) > 3) continue;
+  for (const c of cars) {
+    if (c.ghost > 0) continue;
+    const near = R.brkGrid.get(cellKey(Math.floor(c.x / 16), Math.floor(c.z / 16))); if (!near) continue;
+    for (const k of near) {
+      const o = R.brk[k]; if (o.broken || Math.abs(c.y - o.y) > 3 + (o.h || 0)) continue;
+      const K = BREAKABLES[o.kind];
       const h = carSAT(o, c); if (!h) continue;                                   // normal points from the thing to the car
       const vn = -(c.vx * h.nx + c.vz * h.nz);                                    // speed into it
       if (vn > 0 && breaks(c, o.kind, vn)) {
@@ -66,7 +67,12 @@ export const feature = {
   name: 'breakables',
   init(R, W) {
     const tr = W.tr;
-    R.brk = (tr.breakables || []).map(b => { const K = BREAKABLES[b.kind]; return { ...b, hl: K.w / 2, hw: K.d / 2, y: tr.H[tr.u0(b.b)], broken: false }; });
+    // the track's own (a breach, props) and the world kit's pieces (W.terr.kit: houses, fences, gates...); a piece
+    // carries its own size, `w` across its face and `d` deep. A grid of 16 m cells keeps the per-car checks local.
+    const own = (tr.breakables || []).map(b => { const K = BREAKABLES[b.kind]; return { ...b, hl: K.w / 2, hw: K.d / 2, y: tr.H[tr.u0(b.b)], broken: false }; });
+    const kit = ((W.terr && W.terr.kit && W.terr.kit.solid) || []).map(p => ({ ...p, hl: p.w / 2, hw: p.d / 2, broken: false }));
+    R.brk = own.concat(kit).map((o, k) => ({ ...o, id: k }));
+    R.brkGrid = new Map(); R.brk.forEach((o, k) => { const r = Math.ceil(Math.max(o.hl, o.hw) / 16); for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) { const g = cellKey(Math.floor(o.x / 16) + a, Math.floor(o.z / 16) + b); let l = R.brkGrid.get(g); if (!l) R.brkGrid.set(g, l = []); l.push(k); } });
     R.chunks = [];
   },
   after: breakableStep
