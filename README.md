@@ -245,6 +245,18 @@ locks the rules.
 player's seat to `tools/out/`: the player car drives itself to each distance from the start line (default: five
 points over a lap). `npm run shot -- garage` shoots the vehicle picker; `npm run shot -- workshop[:tab]` the Workshop.
 
+### Car anatomy (panels)
+
+Cars come apart panel by panel. `src/data/anatomy.js` lists the panels (bonnet, boot, two doors): the damage zone that
+hits each, how hard (`k`), its hinge, and the damage at which it bends, swings open and tears off. The core
+(`damageCar`) adds every hit to `c.panels` and puts the steps it crosses on the `dent` event (`e.panels`); physics
+still runs on the four zones, so races and golden runs are unchanged. `src/render/anatomy.js` cuts each car's body
+shell (its biggest painted, dentable mesh, either provider, both detail levels) along a few planes into those panels,
+each a mesh on a hinge, with a dark tub inside the shell for the hole a missing panel leaves. Panels dent, take dirt,
+flap when open, tear off as real pieces, swing for a door bash, and go with everything else when a car is wrecked
+(it's stripped to the shell). Vehicles with no closed shell are listed in `NO_PANELS`. No per-car work: a new car
+gets panels if its body is one painted box (or Blender part).
+
 ### The Workshop
 
 One place to try any part of the game on its own, without a race or the career around it: the menu's Workshop button,
@@ -362,7 +374,7 @@ src/ui/lab.js     the Asset Lab page (the Workshop's Cars tab)
   opens the lab and builds every asset with each provider.
 - **The Asset Lab** (`?lab`, the Workshop's Cars tab, or `npm run lab` for a page of its own): every asset on a
   turntable, Blender vs Classic, near/far, wireframe, triangles and draw calls, any stage's light, studio or race
-  view, paint colour; cars can be dented, lose bumper and wing, and be repaired. Its notes go to the artifact's
+  view, paint colour; cars can be dented, lose bumper and wing, have their panels bent, opened and taken off, and be repaired. Its notes go to the artifact's
   database, collection `assetNotes` (`asset`, `provider`, `text`; answer with `reply` + `status: 'done'`).
 - Adding one: a design in `blender/<family>.py`, `npm run assets -- <id>`, look at `blender/out/<id>-34.png` and in the
   lab, then the game-side builder picks it up by id. See the `/blender` skill.

@@ -45,7 +45,7 @@ function place(c, W, i, lat) {
   c.vx = tr.tx[i] * SD.ROLL; c.vz = tr.tz[i] * SD.ROLL; c.vy = 0; c.vf = SD.ROLL; c.vr = 0; c.onGround = true; c.airT = 0; c.boost = 0; c.driftT = 0; c.spin = 0;
   c.offT = 0; c.stuckT = 0; c.wrongT = 0; c.strandT = 0; c.wallStuck = 0; c.lastGood = i; c.progress = tr.progOf(i); c.ai.cur = lat;
   c.pr = project(tr, c.x, c.z, i, 2, 2); computeGrad(c, W);
-  if (c.wreckT > 0) { c.wreckT = 0; c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.events.push({ t: 'repair' }); }
+  if (c.wreckT > 0) { c.wreckT = 0; c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.panels = {}; c.events.push({ t: 'repair' }); }
   c.ghost = SD.GRACE;
 }
 function finish(R, winner) {

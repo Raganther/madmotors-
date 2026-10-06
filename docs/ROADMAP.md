@@ -8,8 +8,9 @@ The plan agreed for the next stretch of work. Update the status table at the end
 |---|---|---|
 | F0 | Roadmap in the repo | done |
 | F1 | Workshop test hub | done: hub, Cars (the Asset Lab), Crash test, Weapons range, Track elements; Destruction yard and Scenery kit tabs wait for F3/F4 |
-| F2 | Car anatomy: panels, hinges, health | next |
-| F3 | Toughness and breakable scenery | planned |
+| F2 | Car anatomy: panels, hinges, health | done: bonnet, boot and doors cut from every closed body (13 of 19 vehicles, both providers) at runtime; bend / open / off from core damage; wrecks strip to the shell; Lab Panels button |
+| (F2 later) | Lost wheels change handling; Blender-authored panel splits for odd bodies (vans, wedge nose) | open |
+| F3 | Toughness and breakable scenery | next |
 | F4 | World kit: towns from rules + style packs | planned |
 | F5 | Visible, swappable upgrade parts | planned |
 | F6 | Weapon modules: levels, loadouts, signature weapons | planned |
@@ -289,4 +290,4 @@ F0 → F1 → F2 → F3 → { F4, F5, F6 can run in any order } → G1 → G2 �
   the user what to try in the Workshop.
 
 ## Next step
-F2: car anatomy, on its own PR. (F1 left the Asset Lab's own Dent/Knock buttons as they were; F2 replaces them with the real damage path.)
+F3: toughness and breakable scenery, on its own PR.

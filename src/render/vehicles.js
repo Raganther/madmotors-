@@ -17,6 +17,7 @@ import { getCrackTex } from './materials.js';
 import { bakeAO, carMat } from './carpaint.js';
 import { quality, scene } from './renderer.js';
 import { buildCarModel, panelGeos, setCarDetail } from './carmodels.js';
+import { panelStep, repairPanels, updatePanels } from './anatomy.js';
 import { smoothNormals } from './geometry.js';
 import { addDirt, updateDirt } from './effects/dirt.js';
 import { updateMount } from './weapons.js';
@@ -43,7 +44,7 @@ export function makeCarMesh(def) {
   const m = buildCarModel(def, root, body);                                          // one of four bodies (render/carmodels.js)
   scene.add(root);
   const v = { root, body, wheels: m.wheels, steer: m.steer, wr: m.wr, soft: m.soft || 1, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
-    dentable: m.dentable, bumper: m.bumper, wing: m.wing, struts: m.struts, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 } };
+    dentable: m.dentable, bumper: m.bumper, wing: m.wing, struts: m.struts, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 }, panels: m.panels, pstep: {} };
   v.anim = m.anim; v.def = def; v.lod = m.lod; addCarExtras(v, m.tails, def.hw || CAR_HW, def.hl || CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin), m.wheels);
   inShade(root); return v;
 }
@@ -94,7 +95,8 @@ function mendDents(c, v) {
 }
 export function repairCarVis(v) {
   for (const m of v.dentable) for (const [g, o] of panelGeos(m)) { g.attributes.position.array.set(o); g.attributes.position.needsUpdate = true; if (g.userData.n0) { g.attributes.normal.array.set(g.userData.n0); g.attributes.normal.needsUpdate = true; } else renormal(g); }
-  for (const m of [v.bumper, v.wing, ...v.struts]) { const h = m.userData.home; m.position.copy(h.p); m.rotation.copy(h.r); m.visible = true; }
+  for (const m of [v.bumper, v.wing, ...v.struts, v.cabin, ...v.dentable]) { const h = m && m.userData.home; if (!h) continue; m.position.copy(h.p); m.rotation.copy(h.r); m.visible = true; }
+  repairPanels(v);
   v.heads.forEach(m => m.visible = true); v.tails.forEach(m => m.visible = true); v.cabin.material = v.glassM;
   v.parts = { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 }; v.wreckFx = 0;
   v.flipA = 0; v.flipV = 0; v.wheels.forEach(w => w.visible = true); v.broken = false; v.sag = 0;   // pooled road-car meshes come back whole
@@ -105,6 +107,7 @@ export function dentFx(c, e) {
   const [lx, lz] = toCarLocal(c, e.x, e.z), [ix, iz] = (() => { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); return [e.ix * fz - e.iz * fx, e.ix * fx + e.iz * fz]; })();
   dentMesh(v, lx, 0.8, lz, ix, iz, clamp(e.amt * 1.4, 0.04, 0.35), 0.8 + clamp(e.v * 0.03, 0, 0.7));
   updateCarDamageVis(c, v);
+  for (const [id, s] of e.panels || []) if (panelStep(v, id, s) && s === 2) detachPart(c, v, v.panels[id]);   // a panel bent, swung open or torn off (data/anatomy.js)
   // a side stove right in: the wheel nearest the hit comes off (the car drives on; it's back after a repair)
   if ((e.zone === 'l' || e.zone === 'r') && c.dmg[e.zone] > 0.8 && e.v > 9) {
     let best = null, bd = 9; for (const w of v.wheels) { if (!w.visible) continue; w.getWorldPosition(_p); const d = Math.hypot(_p.x - e.x, _p.z - e.z); if (d < bd) { bd = d; best = w; } }
@@ -264,12 +267,16 @@ export function drawCar(c, v, dt, now) {
   v.root.visible = c.ghost > 0 ? Math.floor(now * 14) % 2 === 0 : true;
   if (G.state === 'racing') { effectsForCar(c, v, dt); updateDirt(c, v, dt); mendDents(c, v); }
   if (v.anim) v.anim(v, c, now);
+  // panels on their hinges; a door bash swings the real door when the car has one (core side +1 is the car's local -x)
+  const bash = c.wpn && c.wpn.doorT > 0 ? c.wpn.doorSide : 0;
+  updatePanels(v, c, dt, now, id => bash === 1 && id === 'doorR' ? 1.15 : bash === -1 && id === 'doorL' ? -1.15 : 0);
   if (c.wpn) { swingDoors(c, v, dt); updateMount(c, v, dt, now); }
 }
 // door bashing (core/features/weapons.js): a door panel in the car's colour swings out on the side it was flung open,
 // hinged at the front, and closes again. Built the first time a car uses one.
-function swingDoors(c, v, dt) {
-  const w = c.wpn, want = w.doorT > 0 ? w.doorSide : 0;
+function swingDoors(c, v, dt) {   // the stand-in doors, for a car without door panels (or with them torn off)
+  const real = s => { const d = v.panels && v.panels[s > 0 ? 'doorR' : 'doorL']; return d && d.visible; };
+  const w = c.wpn, want = w.doorT > 0 && !real(w.doorSide) ? w.doorSide : 0;
   if (!want && !v.doors) return;
   if (!v.doors) {
     const hw = v.def.hw || CAR_HW, mat = carMat('paint', v.def.color);

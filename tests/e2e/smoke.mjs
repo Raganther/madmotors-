@@ -3,6 +3,8 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
+import { VEHICLES } from '../../src/data/vehicles.js';
+import { NO_PANELS } from '../../src/data/anatomy.js';
 
 const file = path.resolve('dist/index.html'), outDir = path.resolve('tests/e2e/shots');
 fs.mkdirSync(outDir, { recursive: true });
@@ -364,6 +366,8 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
     await lp.click(`[data-id="${id}"]`); if (await lp.$eval(`[data-p=${pr}]`, b => b.disabled)) continue;
     await lp.click(`[data-p=${pr}]`); await lp.click('#lab-lod');
     if (!await lp.$eval('#lab-dent', b => b.hidden)) for (const b of ['#lab-dent', '#lab-bump', '#lab-wing', '#lab-fix']) await lp.click(b);
+    const veh = VEHICLES.find(v => v.id === id);   // a car's panels (render/anatomy.js): every one except NO_PANELS, either provider
+    if (veh) { const has = !await lp.$eval('#lab-pan', b => b.hidden); if (has === NO_PANELS.includes(veh.model)) errors.push(`lab: ${id} (${pr}) ${has ? 'has panels but is in NO_PANELS' : 'got no panels'}`); if (has) for (let k = 0; k < 3; k++) await lp.click('#lab-pan'); await lp.click('#lab-fix'); }
     await lp.click('#lab-lod');
   }
   const blender = await lp.evaluate(() => document.querySelectorAll('#lab-list small:not(:empty)').length);
