@@ -18,6 +18,12 @@ existing vehicle's role (list: `src/data/vehicles.js`).
 - Copy the closest existing builder and follow the kit it uses: outline, `K.wheels`, the damage parts every model
   provides, materials from `carMat(kind, color)` (`paint`, `glass`, `chrome`, `rubber`, `trim`; `render/carpaint.js`),
   and `bakeAO` on the body geometry. Livery comes from the entry's `color` / `accent`.
+- **Anatomy (panels):** the body's biggest painted dentable panel (an unrotated `K.panel`, at least 2.2 m long and
+  1.2 m wide) is its shell: `render/anatomy.js` cuts it into a bonnet, a boot and two doors on hinges by itself, and
+  core damage bends, opens and tears them off (`data/anatomy.js`). So make the main body ONE painted box covering
+  the car, not a stack of slabs, and keep it unrotated. A vehicle with no closed shell (open wheels, a frame) goes in
+  `NO_PANELS`; the e2e run fails if a car gets panels it shouldn't, or none when it should. Check them in the Workshop:
+  Cars tab, "Panels" button (bend, open, off), and the Crash test.
 - Moving parts (spinning props, flashing lights, bobbing antennas) go in `anim(v, c, now)`; keep it cheap.
 - Size to the hitbox: if the body is much wider or longer than the standard car, set `hw` / `hl` on the entry.
 

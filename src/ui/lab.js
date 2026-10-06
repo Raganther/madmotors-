@@ -5,13 +5,15 @@ import { CAR_HL, CAR_HW } from '../core/constants.js';
 import { buildCarModel, setCarDetail, HD_COL } from '../render/carmodels.js';
 import { setCarEnvironment } from '../render/carpaint.js';
 import { dentMesh, repairCarVis } from '../render/vehicles.js';
+import { panelStep, updatePanels } from '../render/anatomy.js';
 import { decodePack, packIds, packOf, packTris } from '../render/assets/index.js';
 import MANIFEST from '../assets/gen/manifest.json';
 import { G } from '../game.js';
 
 // The Asset Lab (?lab, the menu's Asset Lab button, or its own build: `npm run lab`): every asset on a turntable,
 // Classic and Blender side by side in turn, near and far detail, wireframe, triangles and draw calls, under any stage's
-// light, from the studio or the race camera; cars can be dented, lose their bumper and wing, and be repaired. Notes
+// light, from the studio or the race camera; cars can be dented, lose their bumper and wing, have their panels bent,
+// swung open and taken off (render/anatomy.js), and be repaired. Notes
 // on an asset go to the artifact's database ("assetNotes": asset, provider, text; Claude answers in `reply`).
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const CSS = `
@@ -36,7 +38,7 @@ const TINT = { hay: 0xE2C265, concrete: 0xC9C6BE, pine: 0x3E7447, leaf: 0x4F8A3F
 // what a car's rig reads (render/carmodels.js anim): a car cruising with a little throttle
 const FAKE = { boost: 0, speed: 20, vx: 0, vz: 20, yaw: 0, inp: { throttle: 0.6, steer: 0 }, dmg: { f: 0, b: 0 } };
 let R, scene, cam, sun, hemi, holder, cur = null, db = null, notes = [];
-const S = { id: VEHICLES[0].id, provider: 'blender', near: true, wire: false, spin: true, view: 'studio', stage: 0, color: null, a: -0.25 };
+const S = { pan: -1, id: VEHICLES[0].id, provider: 'blender', near: true, wire: false, spin: true, view: 'studio', stage: 0, color: null, a: -0.25 };
 // what can be shown: every vehicle (Classic always, Blender when packed), then any other packed asset
 function items() {
   const out = VEHICLES.map(v => ({ id: v.id, label: v.name, fam: 'cars', pack: 'car-' + v.model, def: v }));
@@ -54,7 +56,7 @@ export function startLab() {
     <button data-p="blender">Blender</button><button data-p="classic">Classic</button>
     <button id="lab-lod">Near detail</button><button id="lab-wire">Wireframe</button><button id="lab-spin">Turntable</button><button id="lab-cam">Studio view</button>
     <select id="lab-stage"></select><input id="lab-col" type="color" title="Paint">
-    <button id="lab-dent">Dent</button><button id="lab-bump">Knock bumper</button><button id="lab-wing">Knock wing</button><button id="lab-fix">Repair</button>
+    <button id="lab-dent">Dent</button><button id="lab-bump">Knock bumper</button><button id="lab-wing">Knock wing</button><button id="lab-pan">Panels: bend</button><button id="lab-fix">Repair</button>
   </div><pre id="lab-stats"></pre>
   <div id="lab-notes"><b>Notes on this asset</b><ul id="lab-nl"></ul><textarea id="lab-nt" placeholder="What would you change? (goes to Claude)"></textarea><button id="lab-ns" type="button">Send to Claude</button> <span id="lab-nm"></span></div></div>`;
   const $ = id => document.getElementById(id), view = $('lab-view');
@@ -81,14 +83,16 @@ export function startLab() {
   $('lab-dent').onclick = () => { if (!cur || !cur.v) return; const a = Math.random() * Math.PI * 2, [hw, hl] = cur.hit; dentMesh(cur.v, Math.sin(a) * hw, 0.7, Math.cos(a) * hl, -Math.sin(a), -Math.cos(a), 0.22, 0.9); };
   $('lab-bump').onclick = () => { const b = cur && cur.v && cur.v.bumper; if (b) { b.rotation.x = 0.35; b.position.y -= 0.12; b.rotation.z = 0.2; cur.v.heads.forEach(m => m.visible = false); } };
   $('lab-wing').onclick = () => { const w = cur && cur.v && cur.v.wing; if (w) { w.rotation.z = 0.3; w.position.y -= 0.08; cur.v.tails.forEach(m => m.visible = false); } };
-  $('lab-fix').onclick = () => { if (cur && cur.v) repairCarVis(cur.v); };
+  // the car's panels (render/anatomy.js) one step further each press: bent, swung open, gone (in a race they fly off)
+  $('lab-pan').onclick = () => { const v = cur && cur.v; if (!v || !v.panels) return; S.pan = (S.pan + 1) % 3; for (const id in v.panels) { panelStep(v, id, S.pan); if (S.pan === 2) v.panels[id].visible = false; } $('lab-pan').textContent = 'Panels: ' + ['open', 'off', 'bend'][S.pan]; };
+  $('lab-fix').onclick = () => { if (cur && cur.v) { repairCarVis(cur.v); S.pan = -1; $('lab-pan').textContent = 'Panels: bend'; } };
   $('lab-ns').onclick = sendNote;
   if (window.claude && window.claude.use) window.claude.use('db').then(d => {
     if (!d) return; db = d; db.collection('assetNotes').onSnapshot(s => { notes = s.docs.map(x => ({ id: x.id, ...x.data() })); listNotes(); }, () => { db = null; });
   });
   light(); show();
   let last = performance.now();
-  const loop = t => { requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); last = t; if (S.spin) S.a += dt * 0.5; if (cur) holder.rotation.y = S.a; if (cur && cur.anim) cur.anim(cur.v, FAKE, t / 1000); R.render(scene, cam); stats(); };
+  const loop = t => { requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); last = t; if (S.spin) S.a += dt * 0.5; if (cur) holder.rotation.y = S.a; if (cur && cur.anim) cur.anim(cur.v, FAKE, t / 1000); if (cur && cur.v) updatePanels(cur.v, FAKE, dt, t / 1000); R.render(scene, cam); stats(); };
   requestAnimationFrame(loop);
 }
 function light() {
@@ -100,7 +104,7 @@ function build(it) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   if (it.fam === 'cars') {
     const def = { ...it.def, color: S.color ?? it.def.color, num: 7 }, m = buildCarModel(def, root, body, S.provider);
-    const v = { root, body, wheels: m.wheels, struts: m.struts || [], dentable: m.dentable, bumper: m.bumper, wing: m.wing, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material };
+    const v = { root, body, wheels: m.wheels, struts: m.struts || [], dentable: m.dentable, bumper: m.bumper, wing: m.wing, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material, panels: m.panels, pstep: {} };
     return { root, v, lod: m.lod, anim: m.anim, hit: [def.hw || CAR_HW, def.hl || CAR_HL], blender: S.provider === 'blender' && !!packOf(it.pack) };
   }
   // any other pack (scenery): its parts tinted as a typical stage would, variants side by side (parts named <part><n>),
@@ -122,6 +126,7 @@ function show() {
   for (const b of document.querySelectorAll('#lab-bar [data-p]')) { b.classList.toggle('on', b.dataset.p === S.provider); b.disabled = b.dataset.p === 'blender' && !packOf(it.pack); }
   if (it.fam === 'cars') document.getElementById('lab-col').value = '#' + (S.color ?? it.def.color).toString(16).padStart(6, '0');
   for (const id of ['lab-dent', 'lab-bump', 'lab-wing', 'lab-fix', 'lab-col']) document.getElementById(id).hidden = !cur.v;
+  document.getElementById('lab-pan').hidden = !(cur.v && cur.v.panels && Object.keys(cur.v.panels).length); S.pan = -1; document.getElementById('lab-pan').textContent = 'Panels: bend';
   applyView(); listNotes();
 }
 function applyView() {

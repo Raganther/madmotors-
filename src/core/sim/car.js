@@ -24,7 +24,7 @@ export function makeCar(W, idx, lat, def) {
     x: tr.xs[idx] + tr.rx[idx] * lat, z: tr.zs[idx] + tr.rz[idx] * lat, y: tr.H[idx], vx: 0, vy: 0, vz: 0, yaw: tr.th[idx],
     onGround: true, airT: 0, boost: 0, driftT: 0, lastGood: idx, progress: idx, finished: false, finishTime: 0, place: 0,
     offT: 0, ghost: 0, stuckT: 0, wrongT: 0, lap: 0, spin: 0, mod: 1, vf: 0, vr: 0, gx: 0, gz: 0, squash: 0, surface: tr.surface, respawns: 0,
-    inp: { throttle: 0, brake: 0, steer: 0, handbrake: 0 }, events: [], dmg: { f: 0, b: 0, l: 0, r: 0 }, wreckT: 0, wrecks: 0,
+    inp: { throttle: 0, brake: 0, steer: 0, handbrake: 0 }, events: [], dmg: { f: 0, b: 0, l: 0, r: 0 }, panels: {}, wreckT: 0, wrecks: 0,
     hw: def.hw || CAR_HW, hl: def.hl || CAR_HL, im: def.im || 1, traffic: !!def.traffic, veh: def.veh || null,
     isPlayer: !!def.player, name: def.name, def,
     ai: { lane: lat, cur: lat, skill: def.player ? 0.85 : def.skill, wT: 1 + Math.random() * 2, flick: def.player ? 0 : (def.flick || 0), driftK: def.driftK || 1 / 45, drift: { until: -1, t: 0, cool: 0, dir: 0 } }
@@ -87,7 +87,7 @@ export function stepCar(c, dt, W, racing) {
   if (c.wreckT > 0) {
     c.wreckT -= dt; inp.throttle = 0; inp.brake = 0; inp.handbrake = 0; inp.steer = 0;
     const f = Math.exp(-2.5 * dt); c.vx *= f; c.vz *= f;
-    if (c.wreckT <= 0) { c.wreckT = 0; respawn(c, W); c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.events.push({ t: 'repair' }); return; }
+    if (c.wreckT <= 0) { c.wreckT = 0; respawn(c, W); c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.panels = {}; c.events.push({ t: 'repair' }); return; }
   }
   let pr = c.pr;
   const al0 = Math.abs(pr.lat), side0 = pr.lat >= 0 ? 1 : -1, wallSide0 = wallAt(W, pr.i, side0);

@@ -7,8 +7,8 @@ import { VEHICLES, vehicleById } from '../data/vehicles.js';
 import { makeCar } from '../core/sim/car.js';
 import { damageCar } from '../core/sim/damage.js';
 import { ITEMS, ITEM_USES } from '../core/features/weapons.js';
+import { PANELS, PANEL_STEPS } from '../data/anatomy.js';
 import { toggleOverlay } from '../render/overlay.js';
-import { showVehicle } from './garage.js';
 import * as flow from './flow.js';
 
 // The Workshop (data/workshop.js has the tabs): a hub over the menu, and the live tabs, which are ordinary races on the
@@ -73,7 +73,8 @@ function openSandbox(name) {
 // ---------- the live tabs ----------
 function startLive(tab) {
   let i = STAGES.indexOf(WORKSHOP_STAGE); if (i < 0) { STAGES.push(WORKSHOP_STAGE); i = STAGES.length - 1; }
-  const car = new URLSearchParams(location.search).get('car'); if (car && vehicleById(car)) showVehicle(car);
+  const car = new URLSearchParams(location.search).get('car'); if (car && vehicleById(car) && !S.car) S.car = car;
+  if (S.car) G.stageCars[WORKSHOP_STAGE.name] = S.car;   // the Workshop loop's own pick (selectStage applies it)
   S.tab = tab; S.log = []; S.watch = []; S.snap = new Map();
   G.workshop = { tab, rivals: tab === 'crash' ? 1 : 3, weapons: tab === 'weapons', onEvent };
   flow.startRace(i);
@@ -90,7 +91,7 @@ function place(c, idx, lat, v, dyaw = 0, fresh = true) {
   const n = makeCar(G.world.W, idx, lat, c.def);
   for (const k of ['x', 'y', 'z', 'yaw', 'pr', 'gx', 'gz', 'onGround', 'airT', 'progress', 'lastGood', 'lap', 'spin', 'vf', 'vr', 'offT', 'stuckT', 'wrongT', 'ghost', 'boost', 'driftT', 'squash']) c[k] = n[k];
   c.yaw += dyaw; c.vx = Math.sin(c.yaw) * v; c.vz = Math.cos(c.yaw) * v; c.vy = 0; c.px = c.x; c.py = c.y; c.pz = c.z; c.pyaw = c.yaw;
-  if (fresh) { c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.wreckT = 0; c.events.push({ t: 'repair' }); }
+  if (fresh) { c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.panels = {}; c.wreckT = 0; c.events.push({ t: 'repair' }); }
 }
 // ----- crash test: the first rival is the target, held where the scenario puts it
 const SCENARIOS = { tbone: 'Into a car side-on', rear: 'Into the back of a car', headon: 'Head-on: both moving', wall: 'Into the Armco at 25°' };
@@ -114,7 +115,7 @@ function give(it) { const w = P().wpn; if (!w) return; w.item = it; w.uses = ITE
 const HITS = { 'missile-hit': 'Missile', 'bullet-hit': 'Bullet', 'oil-hit': 'Oil', 'pulse-hit': 'Shockwave', 'harpoon-hit': 'Harpoon', 'door-hit': 'Door' };
 function onEvent(c, e) {
   if (S.tab === 'crash') {
-    if (e.t === 'dent' && e.v > 3) log(`${c.isPlayer ? 'You' : c.name}: ${e.zone} dent ${Math.round(e.amt * 100)}% at ${Math.round(e.v * 3.6)} km/h`);
+    if (e.t === 'dent' && e.v > 3) log(`${c.isPlayer ? 'You' : c.name}: ${e.zone} dent ${Math.min(100, Math.round(e.amt * 100))}% at ${Math.round(e.v * 3.6)} km/h`);
     if (e.t === 'wreck') log(`${c.isPlayer ? 'You' : c.name}: wrecked`);
     if (e.t === 'destroyed' || e.t === 'takedown') log(`${c.isPlayer ? 'You' : c.name}: ${e.t}`);
   } else if (HITS[e.t] && !c.isPlayer && R().cars[e.from ?? e.by] === P()) {
@@ -129,7 +130,9 @@ function update() {
   if (!G.workshop || !R() || !panel) return;
   if (S.slow) G.slowmo = 1e6; else if (G.slowmo > 100) G.slowmo = 0;
   const r = R(), Pc = P(), bar = d => (d * 100).toFixed(0).padStart(3) + '%';
-  const dmg = c => `${c.isPlayer ? 'You' : c.name} ${kmh(c)} km/h${c.wreckT > 0 ? '  WRECKED' : ''}\n  front ${bar(c.dmg.f)}  back ${bar(c.dmg.b)}\n  left  ${bar(c.dmg.l)}  right ${bar(c.dmg.r)}`;
+  const step = (p, d) => { let k = -1; p.steps.forEach((t, i) => { if (d >= t) k = i; }); return k < 0 ? '' : ' ' + PANEL_STEPS[k]; };
+  const pan = c => PANELS.filter(p => c.panels && c.panels[p.id] > 0.005).map(p => `${p.id} ${Math.round(c.panels[p.id] * 100)}%${step(p, c.panels[p.id])}`).join(', ');
+  const dmg = c => `${c.isPlayer ? 'You' : c.name} ${kmh(c)} km/h${c.wreckT > 0 ? '  WRECKED' : ''}\n  front ${bar(c.dmg.f)}  back ${bar(c.dmg.b)}\n  left  ${bar(c.dmg.l)}  right ${bar(c.dmg.r)}${pan(c) ? '\n  ' + pan(c) : ''}`;
   if (S.tab === 'crash') {
     const v = Math.hypot(Pc.vx, Pc.vz);
     if (!S.impact && S.lastV - v > 2.5 && r.time - S.runAt < 6) S.impact = { at: Math.round(S.lastV * 3.6), after: Math.round(v * 3.6) };
@@ -160,14 +163,14 @@ function drawPanel() {
     <div class="row"><button class="ws-btn" id="ws-fire" type="button">Fire (F)</button><button class="ws-btn alt ${S.refill ? 'on' : ''}" id="ws-refill" type="button">Endless ammo</button></div>
     <label>Targets</label><div class="row"><button class="ws-btn alt ${S.targets === 'dummies' ? 'on' : ''}" data-tg="dummies" type="button">Dummies</button><button class="ws-btn alt ${S.targets === 'racing' ? 'on' : ''}" data-tg="racing" type="button">Rivals racing</button><button class="ws-btn alt ${S.auto ? 'on' : ''}" id="ws-auto" type="button">Autopilot</button></div>
     <div class="row"><button class="ws-btn alt" id="ws-line" type="button">Line up again</button></div>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
-  $('ws-car').onchange = e => { showVehicle(e.target.value); G.defaultVehicle = e.target.value; startLive(S.tab); };
+  $('ws-car').onchange = e => { S.car = e.target.value; startLive(S.tab); };
   $('ws-slow').onclick = () => { S.slow = !S.slow; $('ws-slow').classList.toggle('on', S.slow); };
   $('ws-hub-btn').onclick = () => openWorkshop('hub');
   if (S.tab === 'crash') {
     $('ws-scn').onchange = e => { S.scenario = e.target.value; runCrash(); };
     $('ws-speed').oninput = e => { S.kmh = +e.target.value; $('ws-kmh').textContent = S.kmh; };
     $('ws-run').onclick = runCrash;
-    $('ws-fix').onclick = () => { for (const c of R().cars) { c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.wreckT = 0; c.events.push({ t: 'repair' }); } };
+    $('ws-fix').onclick = () => { for (const c of R().cars) { c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.panels = {}; c.wreckT = 0; c.events.push({ t: 'repair' }); } };
     $('ws-wreck').onclick = () => { const c = P(); damageCar(c, c.x + Math.sin(c.yaw) * 2, c.z + Math.cos(c.yaw) * 2, 80, 2, -Math.sin(c.yaw), -Math.cos(c.yaw)); };
   } else {
     for (const b of panel.querySelectorAll('[data-it]')) b.onclick = () => { S.item = b.dataset.it; give(S.item); drawPanel(); };

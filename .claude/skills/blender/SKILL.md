@@ -15,6 +15,9 @@ assets` installs it). Assets are shapes and named parts only; behaviour stays in
 - Keep the game's contract: for a car the same wheel positions and radius as its Classic builder, inside the hitbox
   (`hw`/`hl` in data/vehicles.js, default 1.0 x 1.78), the same damage parts (a front bumper, a rear wing or whatever
   falls off the back, lamps, tails, cabin glass) and any part its animation moves.
+- Panels come for free: the game cuts the biggest painted `dent` part (the shell) into bonnet, boot and doors
+  (`render/anatomy.js`), so keep the body shell one painted part with its pivot unrotated; don't split it yourself.
+  Check it in the Asset Lab's "Panels" button (bend, open, off) with both providers.
 
 ## 2. Build
 1. A design function in `blender/<family>.py` (`@design`), using `kit.py` (loft/superellipse bodies, `rbox`, `cyl`,

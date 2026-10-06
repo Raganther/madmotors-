@@ -4,11 +4,13 @@ import { numberTex } from './materials.js';
 import { bakeAO, carMat, grilleTex, lensTex, treadTex } from './carpaint.js';
 import { blenderPack } from './assets/index.js';
 import { buildBlenderCar } from './assets/cars.js';
+import { carvePanels } from './anatomy.js';
 
 // The racers' bodies, one builder per model (CAR_DEFS[].model). They differ where it shows from the camera, overhead:
 // outline, roof and deck. All share the same footprint (the hitbox is the same for everyone), wheels, lights and the
 // damage hooks: each builder hands back the parts damage acts on (bumper, wing + struts fall off, heads/tails go
 // out, cabin glass cracks, dentable panels dent), and optionally anim(v, c, now) for moving parts (lights, flames).
+// buildCarModel then cuts the body shell into a bonnet, a boot and doors on hinges (render/anatomy.js).
 // +z is the front, y up, ground at 0. The garage (data/vehicles.js) lists them all.
 const DARK = 0x2B2F3A, GLASS = 0x253450, CHROME = 0xD3D7DD, TYRE = 0x1E1E22, LAMP = 0xFFF6C8;
 // the Blender palette's names (blender/kit.py PALETTE) as the kit's colours; paint and accent come from the car
@@ -512,9 +514,10 @@ export function buildCarModel(def, root, body, provider) {
   const K = kit(def, root, body), pack = provider !== 'classic' && blenderPack('car-' + def.model, provider === 'blender');
   const out = pack ? buildBlenderCar(K, def, pack) : (MODELS[def.model] || MODELS.hatch)(K, def);
   const paint = K.dentable.filter(m => m !== out.cabin && m.userData.home.color === def.color && m.userData.box), vol = m => m.userData.box.w * m.userData.box.h * m.userData.box.d;
-  K.seams(paint.sort((a, b) => vol(b) - vol(a))[0], out.cabin);
+  const panels = carvePanels(K, out, def, body, DARK);                                 // bonnet, boot and doors on hinges (render/anatomy.js)
+  if (!Object.keys(panels).length) K.seams(paint.sort((a, b) => vol(b) - vol(a))[0], out.cabin);   // painted-on shut lines where there are no real ones
   mergeStatic(body, out, K);
-  return { ...out, dentable: K.dentable, lod: K.lod };
+  return { ...out, panels, dentable: K.dentable, lod: K.lod };
 }
 // Every separate mesh is a draw call (twice with shadows), and a body is dozens of small parts. The ones nothing acts on
 // alone (not the bumper, wing, struts, lamps, cabin or dentable panels, nothing animated) are merged, one mesh per

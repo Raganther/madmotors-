@@ -27,6 +27,8 @@ export function flingPiece(src, vx, vy, vz, spin, { life = 7, hint = 0, keep = f
 export function breakApart(c, v, { power = 1, keep = false } = {}) {
   if (!v) return;
   const parts = [...(power >= 1 ? v.wheels : v.wheels.filter(() => Math.random() < power)), v.bumper, v.wing, ...(v.struts || []), ...(v.heads || []).slice(0, 1), ...(v.tails || []).slice(0, 1)];
+  // a full wreck strips it to the shell: every panel, the glass and the roof go too (render/anatomy.js)
+  if (power >= 1 && v.panels && Object.keys(v.panels).length) parts.push(...Object.values(v.panels), v.cabin, ...v.dentable.filter(m => m !== v.cabin && !Object.values(v.panels).includes(m) && m.userData.home && m.position.y > v.cabin.position.y - 0.1));
   for (const m of parts) {
     if (!m || !m.visible) continue;
     m.updateWorldMatrix(true, false); m.getWorldPosition(_v);
