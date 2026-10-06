@@ -38,9 +38,9 @@ boosts, weapon hits, a clean race) and earns up to three stars: a podium, a win,
 drift boosts or big airs, weapon hits, a clean run). Stars open each tier's boss; cash buys cars in the showroom, which
 stocks more cars as tiers open. Rivals drive cars that belong in the tier and get sharper tier by tier
 (`TIERS[].skill`), and from Club on their cars carry upgrades (`TIERS[].upg`: level 1 in Club up to 3 in Legend).
-Your cars take upgrades too (`UPGRADES`, three levels each: engine = acceleration and top speed, tyres = grip,
-suspension = off-road pace, armour = weight), bought per car in the garage; they multiply the vehicle's `veh`
-handling, so stock cars fall behind as you climb. Some cups are for one class (`CLASSES`: small, off-road, heavy,
+Your cars take upgrades too: parts in seven slots, three levels each (`SLOTS` in `src/data/parts.js`; see "Upgrade
+parts" below), bought per car in the garage; they multiply the vehicle's `veh` handling, so stock cars fall behind as
+you climb. Some cups are for one class (`CLASSES`: small, off-road, heavy,
 tarmac, judged on stock stats), so a garage of one car can't win everything.
 Each tier also has specials (a time trial for bronze/silver/gold stars against `par`, a Showdown, Deuce or Tiebreak
 against three rivals, a one-make race where everyone gets the same stock car) and a **boss**: a duel with a star
@@ -286,11 +286,25 @@ flap when open, tear off as real pieces, swing for a door bash, and go with ever
 (it's stripped to the shell). Vehicles with no closed shell are listed in `NO_PANELS`. No per-car work: a new car
 gets panels if its body is one painted box (or Blender part).
 
+### Upgrade parts
+
+An upgrade is a part you can see. `src/data/parts.js` has seven slots, three levels each: engine (scoop, side pipes,
+supercharger), tyres (wider, then fat; road or gravel kind, swapped free), suspension (lift on long springs, and more
+body travel in races), armour (sill, door and nose plates, window mesh), aero (lip, wing, big wing and splitter), ram
+bar (nudge bar, bull bar, plough: `veh.ram`, what breaks scenery) and roll cage (hoop, roof bars, lamp pod:
+`veh.tough`). Each slot's `fx` multiplies the vehicle's `veh`; `buildVeh` applies a build, the
+`{ eng, tyr, ..., tyrKind }` record the career keeps per car (saves from before the parts load unchanged). A race def's
+`build` is drawn by `src/render/parts.js`: anchors come from the body itself (a height profile along it, the cabin's
+box, the panels), so every car of either provider takes every part, and a part on the bonnet, boot or a door rides on
+that panel (it opens and flies off with it). Rivals show the tier's parts (engine, tyres, suspension). In the career
+garage a car's upgrades screen is a turntable (`src/render/showcar.js`): a part goes on with the car up on jacks. Try
+any part on any car in the Workshop's Cars tab.
+
 ### The Workshop
 
 One place to try any part of the game on its own, without a race or the career around it: the menu's Workshop button,
 or `?workshop` (the hub) / `?workshop=<tab>`. Tabs live in `src/data/workshop.js`, the page in `src/ui/workshop.js`.
-- **Cars** is the Asset Lab. **Track elements** lists the sandboxes and races one with the debug readout.
+- **Cars** is the Asset Lab, with every upgrade part to fit (one press per level, or Full build). **Track elements** lists the sandboxes and races one with the debug readout.
 - **Crash test** and **Weapons range** are real races on the Workshop loop (two flat straights with Armco) with a panel
   that places the cars: any car into a parked car, an oncoming one or the Armco at a set speed, or any weapon at
   parked dummies or racing rivals, with damage per zone, speeds and slow motion. Add `&car=<id>` to pick the car.
@@ -350,6 +364,7 @@ has a note box; both go to Claude with the track.
    `grip`, `off`, `im`; hitbox `hw`/`hl`). The garage lists it, with its picture and stat bars.
 3. An AI rival to drive it in bigger fields: an entry in `MORE_RIVALS` (`src/data/cars.js`; the menu's Rivals setting goes
    up to 3 + that many).
+   Upgrade parts (`src/render/parts.js`) fit any body without per-car work: check a full build in the Workshop's Cars tab.
 4. `npm run check`: a test races every vehicle alone on a tarmac and a dirt stage and wants it within 10% of the coupe.
 
 ## Blender assets (the asset lab)

@@ -3,12 +3,13 @@ import { buildCarModel, setCarDetail } from './carmodels.js';
 import { blenderOn } from './assets/index.js';
 import { disposeGroup } from './geometry.js';
 import { setCarEnvironment } from './carpaint.js';
+import { buildKey } from '../data/parts.js';
 
 // Garage pictures: each vehicle rendered once, three-quarter view on a plain floor, into a small offscreen renderer
 // of its own (so the game's renderer and canvas are untouched). Cached as data URLs.
 const cache = new Map(); let R = null, env = null;
 export function vehicleThumb(v, w = 240, h = 150) {
-  const key = v.id + w + (blenderOn() ? 'b' : 'c') + v.color + '/' + v.accent; if (cache.has(key)) return cache.get(key);   // one picture per model set
+  const key = v.id + buildKey(v.build) + w + (blenderOn() ? 'b' : 'c') + v.color + '/' + v.accent; if (cache.has(key)) return cache.get(key);   // one picture per model set
   if (!R) { R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); }
   R.setSize(w, h);
   const scene = new THREE.Scene(), root = new THREE.Group(), body = new THREE.Group(); root.add(body); scene.add(root);
@@ -16,7 +17,7 @@ export function vehicleThumb(v, w = 240, h = 150) {
   const sun = new THREE.DirectionalLight(0xFFF3DE, 0.85); sun.position.set(4, 8, 5); scene.add(sun);
   if (!env) { const s0 = new THREE.Scene(); setCarEnvironment(R, s0, { colors: { sky: 0xBFE3F2 }, light: { ground: 0x4A5040, sun: 0xFFF3DE } }); env = s0.environment; }   // built once
   scene.environment = env;
-  const m = buildCarModel({ ...v, num: 7 }, root, body); setCarDetail(m.lod, true);   // the garage shows the close-up body
+  const m = buildCarModel({ ...v, num: 7 }, root, body); setCarDetail(m.lod, true); body.position.y = m.lift || 0;   // the garage shows the close-up body, with its parts
   if (m.anim) m.anim({}, { inp: { throttle: 0.7 }, boost: 0 }, 0.4);
   const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   const cam = new THREE.PerspectiveCamera(30, w / h, 0.1, 100), d = Math.max(size.x, size.y, size.z) * 2.35;

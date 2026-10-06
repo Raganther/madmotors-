@@ -17,6 +17,7 @@ import { getCrackTex } from './materials.js';
 import { bakeAO, carMat } from './carpaint.js';
 import { quality, scene } from './renderer.js';
 import { buildCarModel, panelGeos, setCarDetail } from './carmodels.js';
+import { buildKey } from '../data/parts.js';
 import { panelStep, repairPanels, updatePanels } from './anatomy.js';
 import { smoothNormals } from './geometry.js';
 import { addDirt, updateDirt } from './effects/dirt.js';
@@ -43,7 +44,7 @@ export function makeCarMesh(def) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const m = buildCarModel(def, root, body);                                          // one of four bodies (render/carmodels.js)
   scene.add(root);
-  const v = { root, body, wheels: m.wheels, steer: m.steer, wr: m.wr, soft: m.soft || 1, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
+  const v = { root, body, wheels: m.wheels, steer: m.steer, wr: m.wr, soft: m.soft || 1, lift: m.lift || 0, n: new THREE.Vector3(0, 1, 0), spin: 0, skPrev: [null, null], emitAcc: 0,
     dentable: m.dentable, bumper: m.bumper, wing: m.wing, struts: m.struts, heads: m.heads, tails: m.tails, cabin: m.cabin, glassM: m.cabin.material, crackM: null, parts: { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 }, panels: m.panels, pstep: {} };
   v.anim = m.anim; v.def = def; v.lod = m.lod; addCarExtras(v, m.tails, def.hw || CAR_HW, def.hl || CAR_HL); addDirt(v, m.dentable.filter(p => p !== m.cabin), m.wheels);
   inShade(root); return v;
@@ -223,7 +224,7 @@ export let marker, crown;
 /** Make the racers' meshes match a line-up (new vehicle picked, or a rival swapped cars). */
 export function setRoster(defs) {
   defs.forEach((d, k) => {
-    const v = carVis[k]; if (v && !v.stale && v.def.model === d.model && v.def.color === d.color && v.def.accent === d.accent) return;
+    const v = carVis[k]; if (v && !v.stale && v.def.model === d.model && v.def.color === d.color && v.def.accent === d.accent && buildKey(v.def.build) === buildKey(d.build)) return;   // same body, livery and parts
     if (v) { scene.remove(v.root); disposeGroup(v.root); }
     carVis[k] = makeCarMesh(d);
   });
@@ -258,7 +259,7 @@ export function drawCar(c, v, dt, now) {
   v.body.rotation.z = clamp(c.vr * 0.016, -0.18, 0.18) + Math.sin(v.wobT * 32) * v.wobble + (v.flipA || 0);
   v.body.rotation.x = (c.onGround ? -clamp((c.acc || 0) * 0.003, -0.07, 0.07) : clamp(-c.vy * 0.012, -0.3, 0.3)) + Math.cos(v.wobT * 27) * v.wobble * 0.6;
   c.squash *= Math.exp(-dt * 7); v.body.scale.y = 1 - c.squash * 0.22 / (v.soft || 1); v.sag = (v.sag || 0) + ((v.broken ? 1 : 0) - (v.sag || 0)) * Math.min(1, dt * 6);
-  v.body.position.y = -c.squash * 0.08 * (v.soft || 1) + (1 - Math.cos(v.flipA || 0)) * 0.85 - v.sag * (v.wr || 0.42) * 0.8;   // lifted so a flipped shell rests on its roof; dropped when the wheels are gone   // lifted so a flipped shell rests on its roof
+  v.body.position.y = (v.lift || 0) - c.squash * 0.08 * (v.soft || 1) + (1 - Math.cos(v.flipA || 0)) * 0.85 - v.sag * (v.wr || 0.42) * 0.8;   // lifted so a flipped shell rests on its roof; dropped when the wheels are gone   // lifted so a flipped shell rests on its roof
   v.spin += c.vf * dt / (v.wr || 0.42); v.wheels.forEach(w => w.rotation.x = v.spin);
   v.steer.forEach(p => p.rotation.y = -c.inp.steer * 0.42);
   const braking = !v.parts.tails && ((c.inp.brake > 0.05 && c.vf > 0.5) || (c.inp.handbrake > 0 && Math.abs(c.vf) > 3));

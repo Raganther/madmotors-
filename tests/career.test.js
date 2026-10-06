@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { bossOf, eventOpen, medals, paintCar, PAINTS, PAINT_PRICE, tierMaxStars, CAREER_RIVALS, CLASSES, UPGRADES, UPG_PRICE, allowed, buyUpgrade, careerPlayer, classesOf, upgradedVeh, SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, careerField, eventById, forSale, newCareer, podiumOf, roundsOf, scoreRace, tierCars, tierOpen, tierStars, topTier, totalStars } from '../src/data/career.js';
+import { bossOf, eventOpen, medals, paintCar, PAINTS, PAINT_PRICE, tierMaxStars, CAREER_RIVALS, CLASSES, allowed, fitTyres, buyUpgrade, careerPlayer, classesOf, upgradedVeh, SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, careerField, eventById, forSale, newCareer, podiumOf, roundsOf, scoreRace, tierCars, tierOpen, tierStars, topTier, totalStars } from '../src/data/career.js';
+import { SLOTS } from '../src/data/parts.js';
 import { STAGES } from '../src/data/stages/index.js';
 import { VEHICLES } from '../src/data/vehicles.js';
 
@@ -98,10 +99,25 @@ describe('career classes and upgrades', () => {
   it('upgrades cost cash, go up a level at a time and stop at the top', () => {
     let s = { ...newCareer('coupe'), cash: 100000 };
     for (let L = 0; L < 3; L++) s = buyUpgrade(s, 'coupe', 'eng');
-    expect(s.cars.coupe.eng).toBe(3); expect(s.cash).toBe(100000 - UPG_PRICE.reduce((a, b) => a + b, 0));
+    expect(s.cars.coupe.eng).toBe(3); expect(s.cash).toBe(100000 - SLOTS[0].price.reduce((a, b) => a + b, 0));
     expect(buyUpgrade(s, 'coupe', 'eng')).toBe(null); expect(buyUpgrade(s, 'kart', 'eng')).toBe(null);
     expect(buyUpgrade(newCareer('coupe'), 'coupe', 'tyr').cars.coupe.tyr).toBe(1);   // 1500 in the bank: just enough
-    expect(UPGRADES.map(u => u.id)).toEqual(['eng', 'tyr', 'sus', 'arm']);
+    expect(SLOTS.map(u => u.id)).toEqual(['eng', 'tyr', 'sus', 'arm', 'aero', 'ram', 'cage']);
+  });
+  it('parts: the new slots change toughness, ram and grip; tyres swap kind for free, keeping their level', () => {
+    let s = { ...newCareer('coupe'), cash: 100000 };
+    for (const u of ['cage', 'ram', 'aero', 'tyr']) s = buyUpgrade(s, 'coupe', u);
+    const p = careerPlayer(s);
+    expect(p.veh.tough).toBeCloseTo(1.12); expect(p.veh.ram).toBeCloseTo(1.2); expect(p.veh.grip).toBeCloseTo(1.02 * 1.03); expect(p.veh.top).toBeCloseTo(0.995);
+    expect(p.build).toEqual({ tyr: 1, aero: 1, ram: 1, cage: 1 });
+    const g = fitTyres(s, 'coupe', 'gravel'), q = careerPlayer(g);
+    expect(g.cash).toBe(s.cash); expect(g.cars.coupe.tyr).toBe(1); expect(q.veh.off).toBeCloseTo(1.03); expect(q.veh.grip).toBeCloseTo(1.02 * 1.01); expect(q.build.tyrKind).toBe('gravel');
+    expect(fitTyres(g, 'coupe', 'gravel')).toBe(null); expect(fitTyres(g, 'coupe', 'road').cars.coupe.tyrKind).toBe(undefined);
+  });
+  it('a career saved before the parts (F5) loads as it was', () => {
+    const old = { ...newCareer('coupe'), cars: { coupe: { eng: 2, tyr: 1, sus: 3, arm: 1, paint: 4 } } }, p = careerPlayer(old);
+    expect(p.veh).toEqual(upgradedVeh('coupe', { eng: 2, tyr: 1, sus: 3, arm: 1 })); expect(p.build).toEqual({ eng: 2, tyr: 1, sus: 3, arm: 1 });
+    expect(careerPlayer(newCareer('coupe')).build).toBe(null);
   });
 });
 describe('career races run', () => {
