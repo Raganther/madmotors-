@@ -1,6 +1,7 @@
 # Notes for Claude
 
 Top-down racer, three.js r128, plain JS modules, Vite. Read README.md for the layout and how to add stages/features.
+The agreed plan for upcoming work is docs/ROADMAP.md (foundations F0-F6, then the game layer G1-G6); keep its status table current.
 
 ## Commands
 - `npm run check`: lint + tests (golden included) + a production build. Run before every commit; must pass.
