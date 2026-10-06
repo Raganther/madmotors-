@@ -24,6 +24,9 @@ existing vehicle's role (list: `src/data/vehicles.js`).
   the car, not a stack of slabs, and keep it unrotated. A vehicle with no closed shell (open wheels, a frame) goes in
   `NO_PANELS`; the e2e run fails if a car gets panels it shouldn't, or none when it should. Check them in the Workshop:
   Cars tab, "Panels" button (bend, open, off), and the Crash test.
+- **Upgrade parts** (`render/parts.js`) mount from the body's own shape: the tallest point along it (bonnet, boot),
+  its widest (sills, ram bar), the cabin's box (roll cage) and the panels. Check a Full build in the Workshop Cars tab
+  (both providers): a part floating clear of the body or buried in it means the body's top or cabin is unusual.
 - Moving parts (spinning props, flashing lights, bobbing antennas) go in `anim(v, c, now)`; keep it cheap.
 - **Weight and toughness:** `im` (1 / weight) also sets what it can smash (mass x speed, `core/sim/impact.js`) and
   `tough` divides the damage it takes. Run `npm run destruct` and check it lands where its role says (a truck through

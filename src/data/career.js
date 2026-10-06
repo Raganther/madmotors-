@@ -7,11 +7,12 @@
 // open its boss; beating the boss wins you their car and opens the next tier. Beat the Legend boss and the final,
 // Champion of Champions, puts you up against every boss at once.
 // Rivals get quicker every tier (their skill is scaled, and their cars carry the tier's upgrade level), so the later
-// tiers need upgrades (engine, tyres, suspension, armour: UPGRADES), a better car and better driving. Some cups are
+// tiers need upgrades (the part slots of data/parts.js: engine, tyres, suspension, armour, aero, ram bar, roll cage), a better car and better driving. Some cups are
 // for one class of car (small, off-road, heavy, tarmac: CLASSES), so it pays to own more than one.
 // Pure data and rules: the UI keeps the state in localStorage and calls these; tests/career.test.js checks them.
 import { CAR_DEFS, MORE_RIVALS } from './cars.js';
 import { vehicleById } from './vehicles.js';
+import { PART_MAX, TYRE_KINDS, buildOf, buildVeh, slotById } from './parts.js';
 
 export const CAREER_RIVALS = 7;
 export const STARTERS = ['coupe', 'hatch', 'tuktuk'];
@@ -38,21 +39,8 @@ export const CLASSES = {
 export const classesOf = id => Object.keys(CLASSES).filter(k => CLASSES[k].test(id));
 /** Can car id enter event ev? */
 export const allowed = (ev, id) => !ev.cls || CLASSES[ev.cls].test(id);
-/** Upgrades: three levels each; `fx` gives the multipliers at level L (1..3) on the vehicle's handling. */
-export const UPGRADES = [
-  { id: 'eng', name: 'Engine', blurb: 'Acceleration and top speed', fx: L => ({ accel: 1 + 0.03 * L, top: 1 + 0.015 * L }) },
-  { id: 'tyr', name: 'Tyres', blurb: 'Grip in the corners', fx: L => ({ grip: 1 + 0.03 * L }) },
-  { id: 'sus', name: 'Suspension', blurb: 'Pace on gravel, mud and snow', fx: L => ({ off: 1 + 0.04 * L }) },
-  { id: 'arm', name: 'Armour', blurb: 'Heavier: shove rivals, get shoved less', fx: L => ({ im: 1 - 0.08 * L }) },
-];
-export const UPG_MAX = 3, UPG_PRICE = [1500, 4000, 9000];
-/** A vehicle's handling with upgrade levels `lv` ({ eng, tyr, sus, arm }). */
-export function upgradedVeh(id, lv) {
-  lv = lv || {};   // no levels (a car you don't own, no career yet): stock
-  const v = { ...base(id) };
-  for (const u of UPGRADES) { const L = lv[u.id] || 0; if (L) for (const [k, m] of Object.entries(u.fx(L))) v[k] *= m; }
-  return v;
-}
+/** A vehicle's handling with upgrade levels `lv` (a build: data/parts.js; none = stock). */
+export const upgradedVeh = (id, lv) => buildVeh(base(id), lv);
 /** Respray car id in paint p (an index into PAINTS; -1 = its stock livery). */
 export function paintCar(s, id, p) {
   if (!s.cars[id] || s.cash < PAINT_PRICE || (s.cars[id].paint ?? -1) === p) return null;
@@ -60,11 +48,17 @@ export function paintCar(s, id, p) {
   return { ...s, cash: s.cash - PAINT_PRICE, cars: { ...s.cars, [id]: own } };
 }
 export const upgLevel = (s, id, u) => (s.cars[id] && s.cars[id][u]) || 0;
-/** Buy the next level of upgrade u for car id, or null (not yours, maxed, not enough cash). */
+/** Buy the next level of part slot u (data/parts.js SLOTS) for car id, or null (not yours, maxed, not enough cash). */
 export function buyUpgrade(s, id, u) {
-  const L = upgLevel(s, id, u), p = UPG_PRICE[L];
-  if (!s.cars[id] || L >= UPG_MAX || s.cash < p) return null;
+  const L = upgLevel(s, id, u), slot = slotById(u), p = slot && slot.price[L];
+  if (!s.cars[id] || !slot || L >= PART_MAX || s.cash < p) return null;
   return { ...s, cash: s.cash - p, cars: { ...s.cars, [id]: { ...s.cars[id], [u]: L + 1 } } };
+}
+/** Swap car id's tyres to kind k (data/parts.js TYRE_KINDS): free, the level carries over. */
+export function fitTyres(s, id, k) {
+  if (!s.cars[id] || !TYRE_KINDS[k] || (s.cars[id].tyrKind || 'road') === k) return null;
+  const own = { ...s.cars[id] }; if (k === 'road') delete own.tyrKind; else own.tyrKind = k;
+  return { ...s, cars: { ...s.cars, [id]: own } };
 }
 
 export const PLACE_CASH = [1000, 750, 550, 400, 300, 220, 160, 120];
@@ -195,18 +189,18 @@ export function careerField(ev, ti = tierOf(ev)) {
   if (ev.kind === 'trial') return [];
   if (ev.kind === 'boss') return [bossDef(ev.driver, ev.vehicle, T.upg, T.skill)];
   if (ev.kind === 'final') {
-    const bosses = TIERS.map(bossOf).map(b => bossDef(b.driver, b.vehicle, UPG_MAX, T.skill)), rest = DRIVERS.filter(d => !bosses.some(b => b.name === d.name) && ['limo', 'police', 'hover'].includes(d.vehicle));
-    return [...bosses, ...rest.map(d => bossDef(d.name, d.vehicle, UPG_MAX, T.skill))];
+    const bosses = TIERS.map(bossOf).map(b => bossDef(b.driver, b.vehicle, PART_MAX, T.skill)), rest = DRIVERS.filter(d => !bosses.some(b => b.name === d.name) && ['limo', 'police', 'hover'].includes(d.vehicle));
+    return [...bosses, ...rest.map(d => bossDef(d.name, d.vehicle, PART_MAX, T.skill))];
   }
   const field = cupField(ev, T, ti);
   if (ev.kind === 'mode') return field.slice(0, 3);
-  if (ev.kind === 'onemake') { const v = vehicleById(ev.make); return field.map(d => ({ ...d, model: v.model, hw: v.hw, hl: v.hl, veh: v.veh, im: v.veh ? v.veh.im : undefined, vehicle: v.id })); }   // stock cars
+  if (ev.kind === 'onemake') { const v = vehicleById(ev.make); return field.map(d => ({ ...d, model: v.model, hw: v.hw, hl: v.hl, veh: v.veh, im: v.veh ? v.veh.im : undefined, vehicle: v.id, build: null })); }   // stock cars
   return field;
 }
 // a star driver in their car, a notch sharper than the tier (skill `k`) and upgraded to `L`
 function bossDef(name, vehicle, L, k) {
-  const d = DRIVERS.find(x => x.name === name), veh = upgradedVeh(vehicle, { eng: L, tyr: L, sus: L });
-  return { ...asDef(d, vehicleById(vehicle)), skill: Math.min(1, d.skill * k + 0.02), veh, im: veh.im };
+  const d = DRIVERS.find(x => x.name === name), lv = { eng: L, tyr: L, sus: L }, veh = upgradedVeh(vehicle, lv);
+  return { ...asDef(d, vehicleById(vehicle)), skill: Math.min(1, d.skill * k + 0.02), veh, im: veh.im, build: buildOf(lv) };
 }
 function cupField(ev, T, ti) {
   const ok = tierCars(ti).filter(id => allowed(ev, id)), lv = { eng: T.upg, tyr: T.upg, sus: T.upg }, order = DRIVERS.slice().sort((a, b) => hash(ev.id + a.name) - hash(ev.id + b.name));
@@ -215,7 +209,7 @@ function cupField(ev, T, ti) {
   return pick.map((d, k) => {
     const v = vehicleById(ok.includes(d.vehicle) ? d.vehicle : ok[hash(ev.id + k) % ok.length]);
     const veh = upgradedVeh(v.id, lv);
-    return { ...asDef(d, v, vehicleById(d.vehicle)), skill: Math.min(1, d.skill * T.skill), veh, im: veh.im };
+    return { ...asDef(d, v, vehicleById(d.vehicle)), skill: Math.min(1, d.skill * T.skill), veh, im: veh.im, build: buildOf(lv) };   // their parts show
   });
 }
 /** The player's race def in career car `id`, with its upgrades and paint (a one-make race: its car, stock). */
@@ -223,7 +217,7 @@ export function careerPlayer(s, id = s.car, ev = null) {
   const coupe = CAR_DEFS.find(d => d.player);
   if (ev && ev.make) return asDef(coupe, vehicleById(ev.make));
   const own = s.cars[id] || {}, veh = upgradedVeh(id, own), paint = PAINTS[own.paint];
-  return { ...asDef(coupe, vehicleById(id), paint || vehicleById(id)), veh, im: veh.im };
+  return { ...asDef(coupe, vehicleById(id), paint || vehicleById(id)), veh, im: veh.im, build: buildOf(own) };
 }
 /** Can the player race event ev in their current car? (One-make races lend you the car.) */
 export const canEnter = (s, ev) => !!ev.make || allowed(ev, s.car);

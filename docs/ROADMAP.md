@@ -14,8 +14,9 @@ The plan agreed for the next stretch of work. Update the status table at the end
 | (F3 later) | Concrete wall type for barriers; breakables placed on real stages (with F4's kit) | open |
 | F4 | World kit: towns from rules + style packs | done: core layout (plots, houses, drives, gates, boundaries, side roads, street furniture) from six styles, all breakable through F3; Village Green, Harbour Sprint, Hay Bale Farm, Village Descent retrofitted; Workshop Scenery kit tab |
 | (F4 later) | Blender kit pieces (fence panel, gate, wall, bin, shelter); farm fields and service parks; the old village scatter on other stages | open |
-| F5 | Visible, swappable upgrade parts | next |
-| F6 | Weapon modules: levels, loadouts, signature weapons | planned |
+| F5 | Visible, swappable upgrade parts | done: data/parts.js (seven slots: engine, tyres with road/gravel kinds, suspension, armour, aero, ram bar, roll cage), every level a part drawn on any car from its own anchors (rides on its panel), suspension lift and travel in races, rivals show their parts, career turntable with jacks, Workshop Cars parts panel; old saves load as they are (no v2 needed: same record) |
+| (F5 later) | Blender-authored part shapes and anchors; parts knocked off by damage; sidegrades for other slots | open |
+| F6 | Weapon modules: levels, loadouts, signature weapons | next |
 | G1 | Disciplines and ratings | planned |
 | G2 | Events and scoring from data | planned |
 | G3 | Derby: mode, arenas, AI | planned |
@@ -292,4 +293,4 @@ F0 → F1 → F2 → F3 → { F4, F5, F6 can run in any order } → G1 → G2 �
   the user what to try in the Workshop.
 
 ## Next step
-F5: upgrades as visible, swappable parts, on its own PR.
+F6: weapon modules (levels, loadouts, signature weapons), on its own PR.

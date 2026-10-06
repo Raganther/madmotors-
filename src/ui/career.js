@@ -1,10 +1,12 @@
 import { G } from '../game.js';
-import { CLASSES, DUEL_GAP, PAINTS, PAINT_PRICE, SHOP, STARTERS, TIERS, UPGRADES, UPG_MAX, UPG_PRICE, allowed, awardTrophy, beaten, bossOf, buyCar, buyUpgrade, canEnter, careerDefs, classesOf, eventById, eventMaxStars, eventOpen, eventStars, forSale, medals, newCareer, objText, paintCar, podiumOf, roundMask, roundsOf, scoreRace, selectCar, tierMaxStars, tierOf, tierOpen, tierStars, topTier, totalStars, upgLevel, upgradedVeh } from '../data/career.js';
+import { CLASSES, DUEL_GAP, PAINTS, PAINT_PRICE, SHOP, STARTERS, TIERS, allowed, awardTrophy, beaten, bossOf, buyCar, buyUpgrade, canEnter, careerPlayer, fitTyres, careerDefs, classesOf, eventById, eventMaxStars, eventOpen, eventStars, forSale, medals, newCareer, objText, paintCar, podiumOf, roundMask, roundsOf, scoreRace, selectCar, tierMaxStars, tierOf, tierOpen, tierStars, topTier, totalStars, upgLevel, upgradedVeh } from '../data/career.js';
 import { scoreRound, standings } from '../data/leagues.js';
 import { STAGES } from '../data/stages/index.js';
 import { VEHICLES, vehicleById } from '../data/vehicles.js';
 import { ranking } from '../core/sim/race.js';
 import { vehicleThumb } from '../render/thumbs.js';
+import { showCar } from '../render/showcar.js';
+import { PART_MAX, SLOTS, TYRE_KINDS, buildOf } from '../data/parts.js';
 import { $ } from './dom.js';
 import { fmt, ordinal } from './format.js';
 import { statsHTML } from './garage.js';
@@ -41,14 +43,14 @@ function kindText(ev) {
 
 export function openCareer(v) { S = loadCareer(); v = v || (S ? view : { v: 'start' }); view = S ? v : { v: 'start' }; draw(); $('career').hidden = false; const f = $('career').querySelector('.cta, .cr-item, .cr-tab'); if (f) f.focus({ preventScroll: true }); $('cr-body').scrollTop = 0; }
 export function closeCareer() { $('career').hidden = true; $('career-btn').focus(); }
-function draw() {
+function draw(fitted = false) {
   $('cr-wallet').innerHTML = S ? `<b>${money(S.cash)}</b><span>${star(1)} ${totalStars(S)}</span>` : '';
-  ({ start: drawStart, hub: drawHub, event: drawEvent, garage: drawGarage, car: drawCar })[view.v]();
+  ({ start: drawStart, hub: drawHub, event: drawEvent, garage: drawGarage, car: drawCar })[view.v](fitted);
   if (view.v !== last) { $('cr-body').scrollTop = 0; last = view.v; }
   pictures();
 }
 // the livery a car wears in the career: its paint job if it has one
-const skinned = id => { const v = vehicleById(id), p = S && S.cars[id] && PAINTS[S.cars[id].paint]; return p ? { ...v, color: p.color, accent: p.accent } : v; };
+const skinned = id => { const v = vehicleById(id), own = S && S.cars[id], p = own && PAINTS[own.paint]; return { ...v, ...(p ? { color: p.color, accent: p.accent } : {}), build: buildOf(own) }; };   // with its parts on
 // car pictures load one at a time after the screen is drawn, so it opens straight away
 function pictures() {
   const imgs = [...$('career').querySelectorAll('img[data-car]')]; let k = 0;
@@ -57,8 +59,8 @@ function pictures() {
 }
 // a car's card: picture, name, class chips, stat bars (with your upgrades on a car you own), then `foot` (buttons)
 const chips = id => classesOf(id).map(k => `<span class="cr-cls">${CLASSES[k].name}</span>`).join('');
-const pips = (L, max = UPG_MAX) => Array.from({ length: max }, (_, i) => `<i class="cr-pip${i < L ? ' on' : ''}"></i>`).join('');
-const upgSum = id => S && S.cars[id] ? `<span class="cr-upgs">${UPGRADES.map(u => `<span title="${u.name}">${u.name[0]}${pips(upgLevel(S, id, u.id))}</span>`).join('')}</span>` : '';
+const pips = (L, max = PART_MAX) => Array.from({ length: max }, (_, i) => `<i class="cr-pip${i < L ? ' on' : ''}"></i>`).join('');
+const upgSum = id => { const on = S && S.cars[id] ? SLOTS.filter(u => upgLevel(S, id, u.id)) : []; return on.length ? `<span class="cr-upgs">${on.map(u => `<span title="${esc(u.looks[upgLevel(S, id, u.id) - 1])}">${u.name}${pips(upgLevel(S, id, u.id))}</span>`).join('')}</span>` : ''; };
 const carCard = (v, foot, cls = '', note = '') => `<div class="cr-car ${cls}"><img data-car="${v.id}" alt="" width="240" height="150"><b>${esc(v.name)}</b><span class="cr-chips">${chips(v.id)}${note}</span>`
   + `<span class="g-blurb">${esc(v.blurb)}</span><span class="g-stats">${statsHTML({ ...v, veh: upgradedVeh(v.id, S && S.cars[v.id]) })}</span>${upgSum(v.id)}${foot}</div>`;
 
@@ -142,18 +144,26 @@ function drawGarage() {
 }
 
 // ---------- one car: upgrades and paint ----------
-function drawCar() {
-  const v = vehicleById(view.id), cur = S.cars[v.id].paint ?? -1, hex = c => '#' + c.toString(16).padStart(6, '0');
-  $('cr-title').textContent = v.name; $('cr-sub').textContent = 'Three levels of each upgrade. Rivals upgrade too: their cars carry the tier\'s level (Club 1, Pro 2, Legend 3).';
-  const rows = UPGRADES.map(u => {
-    const L = upgLevel(S, v.id, u.id), p = UPG_PRICE[L];
-    const btn = L >= UPG_MAX ? '<span class="cr-tag">Maxed</span>' : S.cash >= p ? `<button type="button" class="cta" data-act="upg" data-u="${u.id}">Level ${L + 1} · ${money(p)}</button>` : `<span class="cr-tag dim">Level ${L + 1} · ${money(p)}</span>`;
-    return `<li><span class="cr-u"><b>${u.name}</b><small>${esc(u.blurb)}</small></span><span class="cr-pips">${pips(L)}</span>${btn}</li>`;
+// the car on a turntable (render/showcar.js) instead of its picture: one canvas, kept across redraws, so a part being
+// fitted plays out on it (jacks up, part on, back down)
+let showCv = null, shownId = null;
+function drawCar(fitted = false) {
+  const v = vehicleById(view.id), own = S.cars[v.id], cur = own.paint ?? -1, hex = c => '#' + c.toString(16).padStart(6, '0'), kind = own.tyrKind || 'road';
+  $('cr-title').textContent = v.name; $('cr-sub').textContent = 'Seven kinds of part, three levels each, and you can see every one on the car. Rivals upgrade too: their cars carry the tier\'s level on engine, tyres and suspension (Club 1, Pro 2, Legend 3).';
+  const rows = SLOTS.map(u => {
+    const L = upgLevel(S, v.id, u.id), p = u.price[L];
+    const btn = L >= PART_MAX ? '<span class="cr-tag">Maxed</span>' : S.cash >= p ? `<button type="button" class="cta" data-act="upg" data-u="${u.id}">Level ${L + 1} · ${money(p)}</button>` : `<span class="cr-tag dim">Level ${L + 1} · ${money(p)}</span>`;
+    const kinds = u.kinds ? `<span class="cr-kinds">${Object.entries(u.kinds).map(([k, t]) => `<button type="button" class="btn" data-act="tyres" data-k="${k}" aria-pressed="${k === kind}" title="${esc(t.blurb)}">${t.name}</button>`).join('')}</span>` : '';
+    const has = L ? `Fitted: ${u.looks[L - 1]}` : 'Stock', next = L < PART_MAX ? ` · next: ${u.looks[L]}` : '';
+    return `<li><span class="cr-u"><b>${u.name}</b><small>${esc(u.kinds ? TYRE_KINDS[kind].blurb : u.blurb)}</small><small class="cr-look">${esc(has + next)}</small>${kinds}</span><span class="cr-pips">${pips(L)}</span>${btn}</li>`;
   }).join('');
   const sw = (i, c, a, name) => `<button type="button" class="cr-sw" data-act="paint" data-p="${i}" title="${esc(name)}" aria-pressed="${i === cur}"${i !== cur && S.cash < PAINT_PRICE ? ' disabled' : ''}><i style="background:${hex(c)}"></i><i style="background:${hex(a)}"></i></button>`;
   const paints = sw(-1, v.color, v.accent, 'Stock livery') + PAINTS.map((p, i) => sw(i, p.color, p.accent, p.name)).join('');
-  $('cr-body').innerHTML = `<div class="cr-tune">${carCard(v, '', v.id === S.car ? 'on' : '')}<div><ul class="cr-urows">${rows}</ul><h3 class="cr-h">Paint shop <small>${money(PAINT_PRICE)} a respray</small></h3><div class="cr-paints">${paints}</div></div></div>`;
+  $('cr-body').innerHTML = `<div class="cr-tune">${carCard(v, '', v.id === S.car ? 'on' : '').replace(/<img [^>]*>/, '<div class="cr-show"></div>')}<div><ul class="cr-urows">${rows}</ul><h3 class="cr-h">Paint shop <small>${money(PAINT_PRICE)} a respray</small></h3><div class="cr-paints">${paints}</div></div></div>`;
   $('cr-actions').innerHTML = `<div class="btn-row">${v.id === S.car ? '' : `<button type="button" class="btn" data-act="drive" data-id="${v.id}">Drive this</button>`}<button type="button" class="cta" data-act="garage2">Back to the garage</button></div>`;
+  if (!showCv) { showCv = document.createElement('canvas'); showCv.width = 360; showCv.height = 225; }
+  $('cr-body').querySelector('.cr-show').appendChild(showCv);
+  try { showCar(showCv, careerPlayer(S, v.id), fitted && shownId === v.id); shownId = v.id; } catch (e) { /* no WebGL: the stats are enough */ }
 }
 
 let back = { v: 'hub', tier: 0 };
@@ -168,8 +178,9 @@ function act(b) {
   else if (a === 'back') { view = back; draw(); }
   else if (a === 'tune') { view = { v: 'car', id: b.dataset.id }; draw(); }
   else if (a === 'garage2') { view = { v: 'garage' }; draw(); }
-  else if (a === 'upg') { const s = buyUpgrade(S, view.id, b.dataset.u); if (s) { store(s); draw(); } }
-  else if (a === 'paint') { const s = paintCar(S, view.id, +b.dataset.p); if (s) { store(s); draw(); } }
+  else if (a === 'upg') { const s = buyUpgrade(S, view.id, b.dataset.u); if (s) { store(s); draw(true); } }
+  else if (a === 'tyres') { const s = fitTyres(S, view.id, b.dataset.k); if (s) { store(s); draw(true); } }
+  else if (a === 'paint') { const s = paintCar(S, view.id, +b.dataset.p); if (s) { store(s); draw(true); } }
   else if (a === 'drive') { store(selectCar(S, b.dataset.id)); draw(); }
   else if (a === 'buy') { const s = buyCar(S, b.dataset.id); if (s) { store(s); draw(); } }
   else if (a === 'race') raceRound(view.id);

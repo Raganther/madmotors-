@@ -133,14 +133,15 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await page.screenshot({ path: path.join(outDir, 'career-garage.png') });
   if (!shop.length) errors.push('career garage: nothing to buy with $9000 (stale state?)');
   // upgrades: tune the hatch, buy engine level 1; a class cup (small cars only) won't take the hatch
-  await page.click('[data-act="tune"][data-id="hatch"]'); await page.click('[data-act="upg"][data-u="eng"]');
-  const upg = await page.evaluate(() => ({ eng: JSON.parse(localStorage.getItem('downhill-rush-career')).cars.hatch.eng, cash: JSON.parse(localStorage.getItem('downhill-rush-career')).cash, pips: document.querySelectorAll('.cr-urows li:first-child .cr-pip.on').length }));
+  await page.click('[data-act="tune"][data-id="hatch"]'); await page.click('[data-act="upg"][data-u="eng"]'); await page.click('[data-act="tyres"][data-k="gravel"]');   // parts (data/parts.js): fitted on the turntable
+  await page.waitForTimeout(1300);
+  const upg = await page.evaluate(() => ({ kind: JSON.parse(localStorage.getItem('downhill-rush-career')).cars.hatch.tyrKind, show: !!document.querySelector('.cr-show canvas'), eng: JSON.parse(localStorage.getItem('downhill-rush-career')).cars.hatch.eng, cash: JSON.parse(localStorage.getItem('downhill-rush-career')).cash, pips: document.querySelectorAll('.cr-urows li:first-child .cr-pip.on').length }));
   await page.screenshot({ path: path.join(outDir, 'career-upgrades.png') });
   await page.click('[data-act="garage2"]'); await page.click('[data-act="back"]'); await page.click('[data-act="hub"]');
   await page.click('.cr-item[data-id="pocket-rockets"]');
   const cls = await page.evaluate(() => ({ disabled: document.querySelector('#cr-actions .cta').disabled, why: (document.querySelector('#cr-actions .cr-lock') || {}).textContent }));
   await page.screenshot({ path: path.join(outDir, 'career-class.png') });
-  if (upg.eng !== 1 || upg.cash !== 9000 - 1500 || upg.pips !== 1 || !cls.disabled || !/small/.test(cls.why || '')) errors.push('career upgrades/classes: ' + JSON.stringify({ upg, cls }));
+  if (upg.eng !== 1 || upg.kind !== 'gravel' || !upg.show || upg.cash !== 9000 - 1500 || upg.pips !== 1 || !cls.disabled || !/small/.test(cls.why || '')) errors.push('career upgrades/classes: ' + JSON.stringify({ upg, cls }));
   await page.keyboard.press('Escape');
   console.log(`career: tabs ${tabs.join(' | ')}; round 1 scored, ${res.rows} in the table, bank $${res.cash}, tally ${JSON.stringify(res.tally)}; back to "${back.title}"; showroom ${shop.length} cars; engine level ${upg.eng}; Pocket Rockets refuses the hatch: ${cls.disabled}`);
 }
@@ -367,6 +368,7 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
     await lp.click(`[data-p=${pr}]`); await lp.click('#lab-lod');
     if (!await lp.$eval('#lab-dent', b => b.hidden)) for (const b of ['#lab-dent', '#lab-bump', '#lab-wing', '#lab-fix']) await lp.click(b);
     const veh = VEHICLES.find(v => v.id === id);   // a car's panels (render/anatomy.js): every one except NO_PANELS, either provider
+    if (veh) await lp.evaluate(() => { const b = document.querySelector('#lab-parts [data-s="all"]'); if (/Full/.test(b.textContent)) b.click(); });   // every upgrade part on (render/parts.js)
     if (veh) { const has = !await lp.$eval('#lab-pan', b => b.hidden); if (has === NO_PANELS.includes(veh.model)) errors.push(`lab: ${id} (${pr}) ${has ? 'has panels but is in NO_PANELS' : 'got no panels'}`); if (has) for (let k = 0; k < 3; k++) await lp.click('#lab-pan'); await lp.click('#lab-fix'); }
     await lp.click('#lab-lod');
   }
