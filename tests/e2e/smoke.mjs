@@ -369,6 +369,33 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   const blender = await lp.evaluate(() => document.querySelectorAll('#lab-list small:not(:empty)').length);
   console.log(`asset lab: ${ids.length} assets, ${blender} from Blender`); await lp.screenshot({ path: path.join(outDir, 'asset-lab.png') }); await lp.close();
 }
+// the Workshop: the hub, a crash test side-on and into the Armco, a missile at the dummies, a sandbox from the hub
+{
+  const wp = await browser.newPage({ viewport: { width: 1100, height: 620 } });
+  wp.on('pageerror', e => errors.push('workshop: ' + e.message)); wp.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push('workshop: ' + m.text()); });
+  const fail = msg => { errors.push('workshop: ' + msg); console.log('workshop: ' + msg); };
+  await wp.goto('file://' + file + '?workshop'); await wp.waitForSelector('#ws-hub .ws-card', { timeout: 30000 });
+  const cards = await wp.$$eval('.ws-card', a => a.map(x => x.dataset.tab + (x.disabled ? '-' : '')).join(' '));
+  if (!cards.includes('crash') || !cards.includes('weapons')) fail('hub cards ' + cards);
+  const live = tab => wp.waitForFunction(t => window.__dr.G.workshop && window.__dr.G.workshop.tab === t && window.__dr.G.state === 'racing' && document.getElementById('ws-read').textContent, tab, { timeout: 60000 });
+  await wp.click('[data-tab=crash]'); await live('crash');
+  const crash = async scn => {
+    await wp.selectOption('#ws-scn', scn); await wp.evaluate(() => { const s = document.getElementById('ws-speed'); s.value = 90; s.dispatchEvent(new Event('input')); });
+    await wp.click('#ws-run'); await wp.evaluate(() => window.__dr.step(2.5)); await wp.waitForTimeout(400);
+    return wp.evaluate(() => window.__dr.race.cars.map(c => Math.max(c.dmg.f, c.dmg.b, c.dmg.l, c.dmg.r)));
+  };
+  const side = await crash('tbone'); if (!(Math.min(...side) > 0.2)) fail('side-on crash at 90 km/h did too little damage: ' + side);
+  const wall = await crash('wall'); if (!(await wp.evaluate(() => Math.max(window.__dr.race.player.dmg.l, window.__dr.race.player.dmg.r)) > 0)) fail('the Armco crash did no damage');
+  console.log(`workshop crash: side-on damage ${side.map(d => d.toFixed(2))}, Armco ${wall.map(d => d.toFixed(2))}`); await wp.screenshot({ path: path.join(outDir, 'workshop-crash.png') });
+  await wp.click('#ws-hub-btn'); await wp.waitForSelector('#ws-hub:not([hidden])'); await wp.click('[data-tab=weapons]'); await live('weapons');
+  await wp.click('[data-it=missile]'); await wp.click('#ws-fire');
+  await wp.evaluate(() => window.__dr.step(2.5)); await wp.waitForTimeout(400);
+  const wlog = await wp.textContent('#ws-log'); if (!wlog.includes('Missile →')) fail('no missile hit on the dummies: ' + wlog);
+  console.log('workshop weapons: ' + wlog.split('km/h')[0] + 'km/h...'); await wp.screenshot({ path: path.join(outDir, 'workshop-weapons.png') });
+  await wp.click('#ws-hub-btn'); await wp.click('[data-tab=elements]'); await wp.click('[data-sb=jump]');
+  await wp.waitForFunction(() => window.__dr.G.world.stage.name === 'Sandbox: jump' && window.__dr.G.state !== 'menu', null, { timeout: 60000 });
+  console.log('workshop elements: sandbox jump opened'); await wp.close();
+}
 await browser.close();
 if (errors.length) { console.error('ERRORS:\n' + errors.join('\n')); process.exit(1); }
 console.log('smoke test passed');

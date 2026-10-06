@@ -234,7 +234,7 @@ function doors(R, dt) {
 function aiWeapons(R, W, dt) {
   const rng = R.wpn.rng;
   for (const c of R.cars) {
-    if ((c.isPlayer && !R.autoPlayer) || !live(c)) continue;
+    if ((c.isPlayer && !R.autoPlayer) || c.hold || !live(c)) continue;
     const keen = 0.6 + (c.ai.flick || 0.3), w = c.wpn;
     if (w.item && !(w.gunT > 0) && rng() < dt * 0.8 * keen) {
       const ahead = missileTarget(R, c), gap = ahead >= 0 ? R.cars[ahead].progress - c.progress : 999;

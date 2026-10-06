@@ -40,11 +40,11 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const lg = G.league, cr = G.career, mode = lg ? 'race' : cr ? careerMode() : G.mode;                                // league rounds are Races; a career special may be a Showdown
-  let defs = cr ? careerRaceDefs() : raceDefs(vehicleById(G.vehicle), lg ? LEAGUE_RIVALS : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);   // the line-up, with the player's pick
+  const lg = G.league, cr = G.career, ws = G.workshop, mode = lg || ws ? 'race' : cr ? careerMode() : G.mode;          // league rounds are Races; a career special may be a Showdown
+  let defs = cr ? careerRaceDefs() : raceDefs(vehicleById(G.vehicle), ws ? ws.rivals : lg ? LEAGUE_RIVALS : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);   // the line-up, with the player's pick
   if (lg && lg.round > 0) { const order = standings(lg, defs.map(d => d.name)).map(s => s.name).reverse(); defs = order.map(n => defs.find(d => d.name === n)).filter(Boolean); }   // the championship leader starts at the back
   setRoster(defs);
-  const r = createRace(G.world.W, defs, { mode, weapons: cr ? true : G.weapons }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed; a career always races with weapons
+  const r = createRace(G.world.W, defs, { mode, weapons: ws ? ws.weapons : cr ? true : G.weapons }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed; a career always races with weapons
   elementHook('newRace', r);
   return r;
 }
@@ -54,6 +54,7 @@ export function handleEvents() {
   for (const c of race.cars.concat(race.traffic, race.parked || [])) {
     for (const e of c.events) {
       if (G.tally) tally(c, e, pi);
+      if (G.workshop && G.workshop.onEvent) G.workshop.onEvent(c, e);
       const near = Math.hypot(c.x - race.player.x, c.z - race.player.z) < 40;
       switch (e.t) {
         case 'hit': impactFx(c, e, c.isPlayer, near); break;
@@ -234,6 +235,7 @@ export function toMenu() {
   G.state = 'menu'; $('hud').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('touch').hidden = true; $('menu').hidden = false; $('countdown').hidden = true;
   race = newRace(); clearSkids(); AudioSys.update(null, 'off'); updateCamera(0, true); $('race-btn').focus();
   if (cr && G.onCareerMenu) G.onCareerMenu(cr);   // leaving a career race goes back to the career screen
+  else if (G.workshop && G.onWorkshopMenu) G.onWorkshopMenu();   // and a Workshop tab to the Workshop
 }
 export function togglePause() {
   if (G.state === 'countdown' || G.state === 'racing') { if (resultsShown) return; pausedFrom = G.state; G.state = 'paused'; $('pause').hidden = false; AudioSys.update(null, 'off'); $('resume-btn').focus(); }

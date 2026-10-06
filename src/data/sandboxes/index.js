@@ -8,7 +8,7 @@ import frostpeak from '../stages/frostpeak.js';
 
 const R = 30;
 /** A rounded-rectangle loop: bottom (the start straight, heading right), right, top, left, back to the start. */
-function loop(name, about, { bottom, right, top, left }, extra = {}) {
+export function loop(name, about, { bottom, right, top, left }, extra = {}) {
   const segs = [...bottom, ['a', R, 90, bottom.at(-1)[2]], ...right, ['a', R, 90, right.at(-1)[2]], ...top, ['s', { toA: 0 }, 0], ['a', R, 90, 0], ...left, ['s', { toB: R }, 0], ['a', R, 90, 0]];
   return { name: 'Sandbox: ' + name, blurb: about, type: 'gorge', laps: 3, seed: 101, surface: 'tarmac', hillAmp: 2, jumps: 0, armco: true,
     light: summit.light, colors: summit.colors, trees: { density: 0.002, pine: 0.4 }, rocks: 0.001, bushes: 0.002, village: false, segs, ...extra };

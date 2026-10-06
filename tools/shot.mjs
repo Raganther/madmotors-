@@ -3,6 +3,7 @@
 //   node tools/shot.mjs <stage|sandbox:name> [metres ...] [--vehicle id] [--rivals n] [--mode race|showdown|deuce|tiebreak] [--camera classic|behind|follow|heli|bonnet|tv|...] [--zoom close|near|normal|far] [--debug] [--w 1100 --h 620]
 //   --eval '<js>' runs in the page once the race is built (window.__dr as d), e.g. to recolour something to find it
 //   node tools/shot.mjs garage              the garage, top and bottom, once every vehicle's picture is drawn
+//   node tools/shot.mjs workshop[:tab]      the Workshop hub, or a tab (crash, weapons: its opening run, two seconds in)
 // Stage is a 1-based number or (part of) its name. Metres are from the start line (1 sample = 1 m; past one lap on a circuit is lap 2).
 // Default: 5 points spread over the first lap. Files go to tools/out/shot-<id>-<m>.png. Exits 1 on page errors.
 import { chromium } from 'playwright';
@@ -18,15 +19,25 @@ const evalJs = opt('eval', ''), camMode = opt('camera', 'classic'), camZoom = op
 const [which = '', ...marks] = args, sb = which.startsWith('sandbox:') ? which.slice(8) : null;
 if (sb && !SANDBOXES[sb]) throw new Error(`no sandbox "${sb}"; sandboxes: ${Object.keys(SANDBOXES).join(', ')}`);
 const garage = which === 'garage';
-const idx = garage ? 0 : sb ? STAGES.length : stageFromArg(which), id = (sb ? 'sandbox-' + sb : String(idx + 1)) + (camMode !== 'classic' ? '-' + camMode : '');
-const q = new URLSearchParams(); if (sb) q.set('sandbox', sb); if (debug) q.set('debug', '');
+const ws = which === 'workshop' ? 'hub' : which.startsWith('workshop:') ? which.slice(9) : null;
+const idx = garage || ws ? 0 : sb ? STAGES.length : stageFromArg(which), id = (sb ? 'sandbox-' + sb : String(idx + 1)) + (camMode !== 'classic' ? '-' + camMode : '');
+const q = new URLSearchParams(); if (sb) q.set('sandbox', sb); if (debug) q.set('debug', ''); if (ws) q.set('workshop', ws === 'hub' ? '' : ws);
 mkdirSync('tools/out', { recursive: true });
 
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: W, height: H } }), errs = [];
 page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errs.push(m.text()); });
 if (process.env.MODELS) await page.addInitScript(m => localStorage.setItem('downhill-rush-models', m), process.env.MODELS);   // MODELS=classic|blender: the Models setting
-await page.goto('file://' + path.resolve('dist/index.html') + '?' + q); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
+await page.goto('file://' + path.resolve('dist/index.html') + '?' + q);
+if (ws === 'cars') await page.waitForSelector('#lab-list [data-id]', { timeout: 30000 }); else await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
+if (ws) {
+  if (ws === 'hub' || ws === 'elements') await page.waitForSelector('#ws-hub .ws-card', { timeout: 30000 });
+  else if (ws !== 'cars') { await page.waitForFunction(() => window.__dr.G.workshop && window.__dr.G.state === 'racing', null, { timeout: 60000 }); await page.evaluate(() => window.__dr.step(2)); await page.waitForTimeout(300); }
+  else await page.waitForTimeout(3000);
+  const file = `tools/out/shot-workshop-${ws}.png`; await page.screenshot({ path: file }); console.log(file);
+  if (errs.length) console.log('page errors:\n  ' + errs.join('\n  '));
+  await browser.close(); process.exit(errs.length ? 1 : 0);
+}
 if (garage) {
   await page.click('#veh-btn');
   await page.waitForFunction(() => [...document.querySelectorAll('#garage-grid img')].every(i => i.complete && i.naturalWidth), null, { timeout: 120000 });

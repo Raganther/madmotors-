@@ -43,7 +43,11 @@ export function raceStep(R, dt, W) {
     c.draft = (c.draft || 0) + (want - (c.draft || 0)) * Math.min(1, dt * 4);
   }
   for (const c of R.cars) {
-    if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt, R.hazards, R.sd && R.sd.gate);
+    if (c.hold) {                                                                     // the Workshop's test cars (nothing else sets it): parked, or held at a speed
+      const sp = Math.hypot(c.vx, c.vz); c.inp.steer = 0; c.inp.handbrake = 0;
+      c.inp.throttle = typeof c.hold === 'number' && sp < c.hold ? 1 : 0; c.inp.brake = c.hold === true && c.vf > 0.5 ? 1 : 0;   // (brake at a standstill would reverse)
+    }
+    else if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt, R.hazards, R.sd && R.sd.gate);
     if (c.finished && c.progress > tr.finishIdx + 18) { c.inp.throttle = 0; c.inp.brake = c.vf > 0.5 ? 0.7 : 0; c.inp.handbrake = c.vf > 0.5 ? 0 : 1; }   // pull up and stay put (no creeping backwards)
     c.mod = lead ? clamp(1 + (lead.progress - c.progress) / 300, 1, 1.08)                // Showdown: everyone chasing the leader gets a tow
       : c.isPlayer ? 1 : clamp(1 + (P.progress - c.progress) / 1400, 0.93, 1.08);
