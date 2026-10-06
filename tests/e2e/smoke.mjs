@@ -396,6 +396,14 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   await wp.evaluate(() => window.__dr.step(2.5)); await wp.waitForTimeout(400);
   const wlog = await wp.textContent('#ws-log'); if (!wlog.includes('Missile →')) fail('no missile hit on the dummies: ' + wlog);
   console.log('workshop weapons: ' + wlog.split('km/h')[0] + 'km/h...'); await wp.screenshot({ path: path.join(outDir, 'workshop-weapons.png') });
+  // the destruction yard: the monster truck through the concrete at 100 km/h, the blocks left on the road
+  await wp.click('#ws-hub-btn'); await wp.waitForSelector('#ws-hub:not([hidden])'); await wp.click('[data-tab=destruct]'); await live('destruct');
+  await wp.selectOption('#ws-car', 'monster'); await live('destruct'); await wp.waitForFunction(() => window.__dr.race.player.def.vehicle === 'monster', null, { timeout: 60000 });
+  await wp.selectOption('#ws-kind', 'concrete'); await wp.evaluate(() => { const s = document.getElementById('ws-speed'); s.value = 100; s.dispatchEvent(new Event('input')); });
+  await wp.click('#ws-run'); await wp.evaluate(() => window.__dr.step(2.5)); await wp.waitForTimeout(400);
+  const yard = await wp.evaluate(() => ({ broke: window.__dr.race.brk.find(o => o.kind === 'concrete').broken, chunks: window.__dr.race.chunks.length }));
+  if (!yard.broke || yard.chunks !== 3) fail('the monster truck did not smash the concrete: ' + JSON.stringify(yard));
+  console.log(`workshop destruct: concrete broken ${yard.broke}, ${yard.chunks} blocks on the road`); await wp.screenshot({ path: path.join(outDir, 'workshop-destruct.png') });
   await wp.click('#ws-hub-btn'); await wp.click('[data-tab=elements]'); await wp.click('[data-sb=jump]');
   await wp.waitForFunction(() => window.__dr.G.world.stage.name === 'Sandbox: jump' && window.__dr.G.state !== 'menu', null, { timeout: 60000 });
   console.log('workshop elements: sandbox jump opened'); await wp.close();

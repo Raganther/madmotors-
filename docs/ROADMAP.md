@@ -10,8 +10,9 @@ The plan agreed for the next stretch of work. Update the status table at the end
 | F1 | Workshop test hub | done: hub, Cars (the Asset Lab), Crash test, Weapons range, Track elements; Destruction yard and Scenery kit tabs wait for F3/F4 |
 | F2 | Car anatomy: panels, hinges, health | done: bonnet, boot and doors cut from every closed body (13 of 19 vehicles, both providers) at runtime; bend / open / off from core damage; wrecks strip to the shell; Lab Panels button |
 | (F2 later) | Lost wheels change handling; Blender-authored panel splits for odd bodies (vans, wedge nose) | open |
-| F3 | Toughness and breakable scenery | next |
-| F4 | World kit: towns from rules + style packs | planned |
+| F3 | Toughness and breakable scenery | done: impact = mass x speed (+ minMass per kind), veh.tough, five breakable kinds, breach shortcuts the AI understands, concrete chunks on the road, npm run destruct, Workshop Destruction yard |
+| (F3 later) | Concrete wall type for barriers; breakables placed on real stages (with F4's kit) | open |
+| F4 | World kit: towns from rules + style packs | next |
 | F5 | Visible, swappable upgrade parts | planned |
 | F6 | Weapon modules: levels, loadouts, signature weapons | planned |
 | G1 | Disciplines and ratings | planned |
@@ -123,7 +124,7 @@ What exploring the code found:
 
 ### F3. Toughness and breakable scenery (behaviour)
 - **Hit energy:** `src/core/sim/impact.js`.
-  - Energy = ½ · m · v², where m = 1/`im`, times `ram` (upgrade).
+  - Impact = mass × speed into the thing (built as momentum, not ½·m·v², so weight matters more than speed), where mass = 1/`im` × `ram` (upgrade); each kind also has a minimum mass.
   - Each car gets a new stat `veh.tough` (default 1), which divides the damage it takes in `damageCar`.
 - **Breakables in core:**
   - Extend `terr.obst` entries with `kind`, `hp`, and a box footprint (`hw`, `hl`, `yaw`) for fences, walls, stalls and
@@ -290,4 +291,4 @@ F0 → F1 → F2 → F3 → { F4, F5, F6 can run in any order } → G1 → G2 �
   the user what to try in the Workshop.
 
 ## Next step
-F3: toughness and breakable scenery, on its own PR.
+F4: the world kit (towns from rules + style packs), on its own PR.

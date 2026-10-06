@@ -36,8 +36,9 @@ import { element as ice } from './ice.js';
 import { element as dirt } from './dirt.js';
 import { element as hammer } from './hammer.js';
 import { element as open } from './open.js';
+import { element as breakables } from './breakables.js';
 
-export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops, yump, ice, dirt, hammer, open];
+export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops, yump, ice, dirt, hammer, open, breakables];
 export const elementPhase = (phase, ...args) => { for (const e of ELEMENTS) if (e[phase]) e[phase](...args); };
 
 // stage options that belong to the stage itself rather than to an element

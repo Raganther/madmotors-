@@ -72,6 +72,9 @@ export const SANDBOXES = {
   shortcut: loop('shortcut', 'an off-road shortcut: the road swings round a wide S, a dirt track cuts straight across it', {
     bottom: [flat(40), ['a', 40, 60, 0], ['a', 40, -120, 0], ['a', 40, 60, 0], flat(40)], right: [flat(40)], top: [flat(190)], left: [flat(20)]
   }, { branches: [{ from: 1, to: 4, name: 'dirt cut', share: 0.4, segs: [['s', 30, 0, { dirt: true }], ['s', 50, 0, { dirt: true, whoops: 0.5 }], ['s', { toA: 178.564 }, 0, { dirt: true }]] }] }),
+  breach: loop('breach', 'a fenced-off shortcut: the first car fast and heavy enough smashes the fence, then it is open to everyone', {
+    bottom: [flat(40), ['a', 40, 60, 0], ['a', 40, -120, 0], ['a', 40, 60, 0], flat(40)], right: [flat(40)], top: [flat(190)], left: [flat(20)]
+  }, { branches: [{ from: 1, to: 4, name: 'fenced cut', share: 0.8, segs: [['s', 30, 0, { dirt: true, breach: 'fence' }], ['s', 50, 0, { dirt: true }], ['s', { toA: 178.564 }, 0, { dirt: true }]] }] }),
   hammer: loop('hammer', 'wrecking balls swinging across the road: time your run', {
     bottom: [flat(40), ['s', 120, 0, { hammers: 3 }], flat(40)], right: [flat(40)], top: [flat(180)], left: [flat(20)]
   }),

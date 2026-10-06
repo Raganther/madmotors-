@@ -25,6 +25,9 @@ existing vehicle's role (list: `src/data/vehicles.js`).
   `NO_PANELS`; the e2e run fails if a car gets panels it shouldn't, or none when it should. Check them in the Workshop:
   Cars tab, "Panels" button (bend, open, off), and the Crash test.
 - Moving parts (spinning props, flashing lights, bobbing antennas) go in `anim(v, c, now)`; keep it cheap.
+- **Weight and toughness:** `im` (1 / weight) also sets what it can smash (mass x speed, `core/sim/impact.js`) and
+  `tough` divides the damage it takes. Run `npm run destruct` and check it lands where its role says (a truck through
+  concrete, a kart not through a gate).
 - Size to the hitbox: if the body is much wider or longer than the standard car, set `hw` / `hl` on the entry.
 
 ## 3. Handling (`src/data/vehicles.js`)

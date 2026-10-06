@@ -8,11 +8,13 @@ export const WORKSHOP_TABS = [
   { id: 'crash', name: 'Crash test', blurb: 'Any car into a parked car, an oncoming one or the wall, at the speed you pick. Damage per zone, slow motion, repair', live: true },
   { id: 'weapons', name: 'Weapons range', blurb: 'Pick any weapon, fire it at dummies or at rivals driving the loop, and see what each hit costs them', live: true },
   { id: 'elements', name: 'Track elements', blurb: 'A small loop per track element (jumps, bridges, mud, ferry, gates...) with the debug readout' },
-  { id: 'destruct', name: 'Destruction yard', blurb: 'Drive any car into fences, walls and barriers and see what breaks', phase: 'F3' },
+  { id: 'destruct', name: 'Destruction yard', blurb: 'Any car into crates, hay, a fence, a farm gate or concrete blocks at a set speed: what breaks, what bounces, what it costs', live: true },
   { id: 'kit', name: 'Scenery kit', blurb: 'Towns, farms and yards from the kit pieces and style packs, on an empty lot', phase: 'F4' },
 ];
 
+/** The Destruction yard: one of each breakable (data/breakables.js) across the far straight, 50 m apart. */
+export const YARD = ['crates', 'hay', 'fence', 'gate', 'concrete'], YARD_AT = 480;
 /** The live tabs' ground: a flat loop with straights of 300 m and 270 m, Armco both sides, and eight laps (the Workshop never shows results). */
 export const WORKSHOP_STAGE = loop('workshop', 'the Workshop: two long flat straights (300 m and 270 m) for crash tests and the weapons range', {
   bottom: [['s', 300, 0, { far: -5, near: -5, rampF: 4, rampN: 4 }]], right: [['s', 40, 0]], top: [['s', 270, 0]], left: [['s', 20, 0]]
-}, { name: 'Workshop', laps: 8, trees: { density: 0.0015, pine: 0.4 }, rocks: 0, bushes: 0.001 });
+}, { name: 'Workshop', laps: 8, trees: { density: 0.0015, pine: 0.4 }, rocks: 0, bushes: 0.001, props: YARD.map((kind, k) => ({ kind, at: YARD_AT + k * 50 })) });
