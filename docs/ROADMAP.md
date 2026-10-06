@@ -12,8 +12,9 @@ The plan agreed for the next stretch of work. Update the status table at the end
 | (F2 later) | Lost wheels change handling; Blender-authored panel splits for odd bodies (vans, wedge nose) | open |
 | F3 | Toughness and breakable scenery | done: impact = mass x speed (+ minMass per kind), veh.tough, five breakable kinds, breach shortcuts the AI understands, concrete chunks on the road, npm run destruct, Workshop Destruction yard |
 | (F3 later) | Concrete wall type for barriers; breakables placed on real stages (with F4's kit) | open |
-| F4 | World kit: towns from rules + style packs | next |
-| F5 | Visible, swappable upgrade parts | planned |
+| F4 | World kit: towns from rules + style packs | done: core layout (plots, houses, drives, gates, boundaries, side roads, street furniture) from six styles, all breakable through F3; Village Green, Harbour Sprint, Hay Bale Farm, Village Descent retrofitted; Workshop Scenery kit tab |
+| (F4 later) | Blender kit pieces (fence panel, gate, wall, bin, shelter); farm fields and service parks; the old village scatter on other stages | open |
+| F5 | Visible, swappable upgrade parts | next |
 | F6 | Weapon modules: levels, loadouts, signature weapons | planned |
 | G1 | Disciplines and ratings | planned |
 | G2 | Events and scoring from data | planned |
@@ -291,4 +292,4 @@ F0 → F1 → F2 → F3 → { F4, F5, F6 can run in any order } → G1 → G2 �
   the user what to try in the Workshop.
 
 ## Next step
-F4: the world kit (towns from rules + style packs), on its own PR.
+F5: upgrades as visible, swappable parts, on its own PR.

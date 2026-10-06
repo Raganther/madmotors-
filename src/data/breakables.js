@@ -10,4 +10,21 @@ export const BREAKABLES = {
   gate: { name: 'Farm gate', hp: 24, minMass: 0.9, w: 6, d: 0.3, h: 1.4, chunks: 0, color: 0x8E9399 },
   concrete: { name: 'Concrete blocks', hp: 40, minMass: 1.6, w: 6, d: 0.8, h: 1.0, chunks: 3, color: 0xC9C6BE },
 };
-export const BREAKABLE_KINDS = Object.keys(BREAKABLES);
+// The world kit's pieces (core/kit/layout.js lays them out per town, render/elements/kit.js draws them, `kit: true`):
+// sizes come with each piece, these give how strong. Houses and barns never break (hp Infinity): you bounce off.
+Object.assign(BREAKABLES, {
+  house: { name: 'House', hp: Infinity, minMass: Infinity, kit: true },
+  barn: { name: 'Barn', hp: Infinity, minMass: Infinity, kit: true },
+  picket: { name: 'Picket fence', hp: 7, minMass: 0, kit: true },
+  wall: { name: 'Stone wall', hp: 26, minMass: 1.3, kit: true },
+  hedge: { name: 'Hedge', hp: 12, minMass: 0, kit: true },
+  railing: { name: 'Railing', hp: 14, minMass: 0, kit: true },
+  chain: { name: 'Chain-link fence', hp: 10, minMass: 0, kit: true },
+  yardgate: { name: 'Garden gate', hp: 8, minMass: 0, kit: true },
+  post: { name: 'Lamp post', hp: 16, minMass: 0, kit: true },
+  bin: { name: 'Bin', hp: 2, minMass: 0, kit: true },
+  bench: { name: 'Bench', hp: 4, minMass: 0, kit: true },
+  postbox: { name: 'Postbox', hp: 22, minMass: 1, kit: true },
+});
+/** The stand-alone kinds (a breach, stage props, the Destruction yard); the kit's pieces are placed by the kit. */
+export const BREAKABLE_KINDS = Object.keys(BREAKABLES).filter(k => !BREAKABLES[k].kit);

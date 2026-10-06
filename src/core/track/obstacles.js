@@ -14,7 +14,10 @@ export function placeObstacles(tr, terr, stage) {
   const overhangs = (x, z, q) => { if (!q) return false; const up = terr.at(x, z) - tr.H[q.i]; return up > 4 && q.d < 12 + up * 0.75; };
   const slopeAt = (x, z) => Math.hypot(terr.at(x + 1.5, z) - terr.at(x - 1.5, z), terr.at(x, z + 1.5) - terr.at(x, z - 1.5)) / 3;
   const x0 = Math.min(-195, tr.minX - 90), x1 = Math.max(195, tr.maxX + 90), z0 = tr.minZ - 80, z1 = tr.maxZ + 110, area = (x1 - x0) * (z1 - z0);
-  const items = [], at = () => [x0 + rnd() * (x1 - x0), z0 + rnd() * (z1 - z0)];
+  const kit = terr.kit, at0 = () => [x0 + rnd() * (x1 - x0), z0 + rnd() * (z1 - z0)];
+  // inside a town (core/kit/layout.js) nothing grows: a candidate there is drawn again (only stages with towns)
+  const at = kit ? () => { let p = at0(); for (let k = 0; k < 8 && kit.inZone(p[0], p[1], 2); k++) p = at0(); return p; } : at0;
+  const items = [];
   // trees: a pine or a round-topped tree on a trunk; r is what a car hits (a pine's low skirt of branches, a trunk)
   for (let k = 0, n = Math.round(area * (stage.trees ? stage.trees.density : 0)); k < n; k++) {
     const [x, z] = at(), q = tr.nearest(x, z);

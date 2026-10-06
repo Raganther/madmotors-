@@ -247,6 +247,20 @@ locks the rules.
 player's seat to `tools/out/`: the player car drives itself to each distance from the start line (default: five
 points over a lap). `npm run shot -- garage` shoots the vehicle picker; `npm run shot -- workshop[:tab]` the Workshop.
 
+### The world kit: towns from rules + a style
+
+A stage's `towns: [{ style, at, len, side, steep }]` lays towns out along the road (`src/core/kit/layout.js`, run with
+the terrain, so `terr.kit`): a pavement, then plot after plot along the frontage, each with a house at the back facing
+the road, a drive in through a gate in the front boundary, a side boundary, a barn or a garden tree; every few plots a
+side road closed at the end by something breakable; lamps, bins, benches and postboxes on the pavement. Plots that
+would hit a road, a railway, a tunnel or too steep a slope are left out. `src/data/styles.js` holds the styles
+(village, alpine, seaside, farm, desert, industrial): colours, roof shapes, plot sizes, what bounds a garden, what
+closes a side road, what stands on the pavement. A new style is a new entry; the rules are shared. Everything you can
+hit is a breakable (kit kinds in `data/breakables.js`: houses and barns never give way, picket fences snap, stone walls
+need a heavy car), so towns join in F3's destruction. Trees and rocks keep out of the plots. `render/elements/kit.js`
+draws a town as a handful of instanced batches. Village Green, Harbour Sprint, Hay Bale Farm and Village Descent use it;
+the Workshop's Scenery kit tab shows every style.
+
 ### Impact, toughness and breakables
 
 One rule for what breaks: a car's impact is its mass (1 / `im`, times `veh.ram`, an upgrade) times its speed into
@@ -284,7 +298,9 @@ or `?workshop` (the hub) / `?workshop=<tab>`. Tabs live in `src/data/workshop.js
   other input for them. Nothing else sets it, so races and golden runs are untouched.
 - **Destruction yard**: any car into crates, hay, a fence, a gate or concrete blocks (a row of `props` on the loop's far
   straight) at a set speed: what breaks, the speed after, mass and toughness.
-- Each roadmap phase adds its tab (the Scenery kit with F4): a new system gets a Workshop tab, a
+- **Scenery kit**: the loop with a town in any style along both straights (`?workshop=kit&style=seaside`): drive or fly
+  round it, smash its fences and gates.
+- Each roadmap phase adds its tab: a new system gets a Workshop tab, a
   headless tool and a test. The e2e run drives the hub, both live tabs and a sandbox.
 
 ### Debugging an element

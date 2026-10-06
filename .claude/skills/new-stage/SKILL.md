@@ -26,7 +26,9 @@ New behaviour belongs in elements (`/new-element`), never special cases for this
 2. `segs` (gorge): `['s', length, endHeight, tags]` and `['a', radius, degrees (+ = left), endHeight, tags]`; ground
    tags (`far`/`near`, `rampF`/`rampN`) shape the terrain each side. Close the loop with `{ toB: n }` / `{ toA: 0 }`
    the way the existing gorge stages do. Share tag objects (`const wood = {...}`) like `bogwood-rally.js`.
-3. Look: `surface`, `light` (sun, sky, haze, grade), `colors`, `trees`, `rocks`, `bushes`, `village`. Borrow a
+3. Look: `surface`, `light` (sun, sky, haze, grade), `colors`, `trees`, `rocks`, `bushes`, and towns from the world kit:
+   `towns: [{ style, at, len, side, steep }]` (data/styles.js; README "The world kit"), not the old `village` scatter.
+   Find where a town fits with a few test builds (count `terr.kit.solid` houses per span) and look at it in a shot. Borrow a
    palette from the nearest stage and shift it; make it recognisably its own at a glance.
 4. Features switch on from the stage (traffic, trains, parked, rockfall, hazards...): only where they fit the theme.
 

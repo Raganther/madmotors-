@@ -4,6 +4,7 @@ export const BORE_H = 7.2;   // a tunnel bore's height over the road (render/ele
 import { clamp, lerp, smoothstep } from '../math.js';
 import { railAt, railProject } from './rails.js';
 import { placeObstacles } from './obstacles.js';
+import { layoutTowns } from '../kit/layout.js';
 import { OPEN } from '../elements/open.js';
 
 export function riverDist(rv, x, z) {
@@ -96,6 +97,7 @@ export function buildTerrain(tr, stage) {
     return (h[i] * (1 - u) + h[i + 1] * u) * (1 - v) + (h[i + cols] * (1 - u) + h[i + cols + 1] * u) * v;
   }
   const T = { x0, z0, S, cols, rows, h, dist, at, holes, holeY };
+  T.kit = layoutTowns(tr, T, stage);   // towns from the world kit (core/kit/layout.js): before the trees, which keep out of them
   T.obst = placeObstacles(tr, T, stage);   // trees, rocks, cacti, bushes: drawn by render/world/scenery.js, hit in sim/obstacles.js
   return T;
 }

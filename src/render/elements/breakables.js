@@ -11,7 +11,7 @@ import { race } from '../../ui/flow.js';
 const BLOCK = [1.9, 0.8, 0.75];
 let vis = [], chunkMeshes = [], chunkGroup = null;
 const mats = new Map(), matOf = c => { if (!mats.has(c)) mats.set(c, new THREE.MeshLambertMaterial({ color: c })); return mats.get(c); };
-function box(g, w, h, d, c, x, y, z, ry = 0, rz = 0) {
+export function box(g, w, h, d, c, x, y, z, ry = 0, rz = 0) {
   const m = new THREE.Mesh(flat(new THREE.BoxGeometry(w, h, d)), matOf(c)); m.position.set(x, y, z); m.rotation.set(0, ry, rz); m.castShadow = true; m.receiveShadow = true;
   m.userData.dims = [w, h, d]; m.userData.color = c; g.add(m); return m;
 }
@@ -21,7 +21,7 @@ function jersey() {
   for (let k = 0; k < p.count; k++) { const y = p.getY(k); if (y > 0) p.setX(k, p.getX(k) * 0.4); else if (y > -0.1) p.setX(k, p.getX(k) * 0.75); }
   return flat(g);
 }
-const SHAPES = {
+export const SHAPES = {
   crates(g, K) { for (let k = 0; k < 3; k++) box(g, 1.0, 1.0, 1.0, K.color, 0, 0.5, (k - 1) * 1.08, k * 0.2); for (let k = 0; k < 2; k++) box(g, 0.9, 0.9, 0.9, 0xC29A64, 0.05, 1.45, (k - 0.5) * 1.05, 0.4 - k * 0.5); },
   hay(g, K) { for (let k = 0; k < 4; k++) box(g, 1.2, 0.75, 1.05, K.color, 0, 0.38, (k - 1.5) * 1.1); for (let k = 0; k < 3; k++) box(g, 1.2, 0.75, 1.05, 0xD7B657, 0, 1.12, (k - 1) * 1.1); },
   fence(g, K) {
@@ -40,8 +40,8 @@ const SHAPES = {
   }
 };
 export function addBreakables(group, tr) {
-  vis = []; chunkMeshes = []; if (!tr.breakables) return;
-  for (const b of tr.breakables) {
+  vis = []; chunkMeshes = [];
+  for (const b of tr.breakables || []) {
     const K = BREAKABLES[b.kind], g = new THREE.Group(); g.position.set(b.x, tr.H[tr.u0(b.b)], b.z); g.rotation.y = b.yaw; group.add(g);
     SHAPES[b.kind](g, K); vis.push({ b, g, shown: true });
   }

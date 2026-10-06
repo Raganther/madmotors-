@@ -404,6 +404,15 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   const yard = await wp.evaluate(() => ({ broke: window.__dr.race.brk.find(o => o.kind === 'concrete').broken, chunks: window.__dr.race.chunks.length }));
   if (!yard.broke || yard.chunks !== 3) fail('the monster truck did not smash the concrete: ' + JSON.stringify(yard));
   console.log(`workshop destruct: concrete broken ${yard.broke}, ${yard.chunks} blocks on the road`); await wp.screenshot({ path: path.join(outDir, 'workshop-destruct.png') });
+  // the scenery kit: a village town, then a seaside one, built and drawn without errors
+  await wp.click('#ws-hub-btn'); await wp.waitForSelector('#ws-hub:not([hidden])'); await wp.click('[data-tab=kit]'); await live('kit');
+  for (const st of ['village', 'seaside']) {
+    if (st !== 'village') { await wp.click(`[data-st=${st}]`); await wp.waitForFunction(s => window.__dr.G.world.stage.name === 'Kit: ' + s && window.__dr.G.state === 'racing', st, { timeout: 60000 }); }
+    await wp.evaluate(() => window.__dr.step(1)); await wp.waitForTimeout(300);
+    const n = await wp.evaluate(() => window.__dr.G.world.W.terr.kit.solid.filter(p => p.kind === 'house').length);
+    if (!(n > 6)) fail(`kit ${st}: only ${n} houses`); console.log(`workshop kit: ${st}, ${n} houses`);
+  }
+  await wp.screenshot({ path: path.join(outDir, 'workshop-kit.png') });
   await wp.click('#ws-hub-btn'); await wp.click('[data-tab=elements]'); await wp.click('[data-sb=jump]');
   await wp.waitForFunction(() => window.__dr.G.world.stage.name === 'Sandbox: jump' && window.__dr.G.state !== 'menu', null, { timeout: 60000 });
   console.log('workshop elements: sandbox jump opened'); await wp.close();

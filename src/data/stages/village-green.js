@@ -5,7 +5,7 @@ export default { name: 'Village Green', blurb: 'Rookie: a figure of eight round 
   startHeading: Math.PI * 3 / 4,
   light: { sun: 0xFFF2D6, sunI: 1.04, sky: 0xE6F0FA, ground: 0x6E7E52, hemiI: 0.63, cloud: 0.3, grade: [1.02, 1.0, 0.98], sat: 1.12 },
   colors: { grassA: 0x86BE56, grassB: 0x6EA848, rock: 0xB0A894, dirt: 0xB79C72, road: 0x585C64, sky: 0xC4E2F2, round: [0x4E8E3E, 0x62A246, 0x7AB24E], pine: [0x3E6E46] },
-  trees: { density: 0.0026, pine: 0.2 }, rocks: 0.0004, bushes: 0.003, village: true,
+  trees: { density: 0.0026, pine: 0.2 }, rocks: 0.0004, bushes: 0.003, towns: [{ style: 'village', at: 300, len: 450 }],
   segs: (() => {
     const green = { far: 0.5, rampF: 30, near: -0.5, rampN: 30 };
     return [

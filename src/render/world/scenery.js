@@ -34,7 +34,7 @@ export function addScenery(group, tr, terr, stage) {
   };
   const vStart = stage.village ? Math.floor(tr.N * 0.45) : tr.loopN ? tr.startIdx - 110 : tr.finishIdx - 90;
   const vEnd = tr.loopN ? tr.startIdx + 60 : tr.N - 2;
-  if (!tr.town) for (let i = vStart; i < vEnd; i += stage.village ? 12 : 9) for (const side of [-1, 1]) if (rnd() < 0.75) tryHouse(i, side, HALF + 12, 9);
+  if (!tr.town && !stage.towns) for (let i = vStart; i < vEnd; i += stage.village ? 12 : 9) for (const side of [-1, 1]) if (rnd() < 0.75) tryHouse(i, side, HALF + 12, 9);
   // spectators at hairpins and the start/finish
   const bodies = [], heads = [], arms = [], fans = [];
   const addFan = (x, z, face) => {
