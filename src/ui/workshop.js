@@ -1,6 +1,9 @@
 import { G } from '../game.js';
 import { $ } from './dom.js';
-import { WORKSHOP_STAGE, WORKSHOP_TABS } from '../data/workshop.js';
+import { WORKSHOP_STAGE, WORKSHOP_TABS, YARD, YARD_AT } from '../data/workshop.js';
+import { BREAKABLES } from '../data/breakables.js';
+import { breakSpeed, massOf, toughOf } from '../core/sim/impact.js';
+import { newBreakablesRace } from '../render/elements/breakables.js';
 import { SANDBOXES } from '../data/sandboxes/index.js';
 import { STAGES } from '../data/stages/index.js';
 import { VEHICLES, vehicleById } from '../data/vehicles.js';
@@ -35,7 +38,7 @@ const CSS = `
 #ws-read{white-space:pre;font:12px/1.4 ui-monospace,Menlo,monospace;margin-top:8px} #ws-log{font:12px/1.35 ui-monospace,Menlo,monospace;margin-top:6px;color:#C9D2EA}
 @media (max-width:700px){#ws-panel{top:auto;bottom:8px;right:8px;left:8px;width:auto;max-height:42%}}`;
 let hub = null, panel = null, tick = 0;
-const S = { tab: null, scenario: 'tbone', kmh: 80, slow: false, item: 'missile', refill: true, targets: 'dummies', auto: false, log: [], watch: [], snap: new Map() };
+const S = { tab: null, kind: 'concrete', outcome: null, scenario: 'tbone', kmh: 80, slow: false, item: 'missile', refill: true, targets: 'dummies', auto: false, log: [], watch: [], snap: new Map() };
 
 /** ?workshop or ?workshop=<tab>: which tab the page was opened on ('hub' for the bare link), or null. */
 export function workshopParam() { const q = new URLSearchParams(location.search); return q.has('workshop') ? q.get('workshop') || 'hub' : null; }
@@ -76,14 +79,14 @@ function startLive(tab) {
   const car = new URLSearchParams(location.search).get('car'); if (car && vehicleById(car) && !S.car) S.car = car;
   if (S.car) G.stageCars[WORKSHOP_STAGE.name] = S.car;   // the Workshop loop's own pick (selectStage applies it)
   S.tab = tab; S.log = []; S.watch = []; S.snap = new Map();
-  G.workshop = { tab, rivals: tab === 'crash' ? 1 : 3, weapons: tab === 'weapons', onEvent };
+  G.workshop = { tab, rivals: tab === 'weapons' ? 3 : 1, weapons: tab === 'weapons', onEvent };
   flow.startRace(i);
   const ready = () => { if (flow.race && G.world.idx === i && G.state === 'countdown') { G.countdown = 0.25; G.hintTimer = 0; setup(); } else setTimeout(ready, 50); };
   ready(); drawPanel();
   clearInterval(tick); tick = setInterval(update, 100);
 }
 function endLive() { clearInterval(tick); if (panel) panel.hidden = true; if (G.workshop) toggleOverlay(false); G.workshop = null; }
-function setup() { if (S.tab === 'crash') runCrash(); else lineUp(); }
+function setup() { if (S.tab === 'crash') runCrash(); else if (S.tab === 'destruct') runYard(); else lineUp(); }
 const R = () => flow.race, P = () => flow.race.player, kmh = c => Math.round(Math.hypot(c.vx, c.vz) * 3.6);
 const rivals = () => R().cars.filter(c => !c.isPlayer);
 /** Put car `c` on the road at sample `idx`, `lat` m across, turned `dyaw`, moving at `v` m/s; `fresh` repairs it. */
@@ -105,6 +108,16 @@ function runCrash() {
   T.hold = S.scenario === 'headon' ? v : true;
   S.impact = null; S.lastV = v; S.runAt = R().time; log(`${SCENARIOS[S.scenario]} at ${S.kmh} km/h (${vehicleById(G.vehicle).name})`);
 }
+// ----- destruction yard: the Workshop loop's row of breakables (data/workshop.js YARD), all rebuilt for each run
+function runYard() {
+  const r = R(), tr = G.world.tr, k = YARD.indexOf(S.kind), v = S.kmh / 3.6;
+  for (const o of r.brk) o.broken = false; r.chunks.length = 0; newBreakablesRace();
+  place(P(), tr.startIdx + YARD_AT + k * 50 - 45, 0, v); P().hold = v;
+  const T = rivals()[0]; place(T, tr.startIdx + 60, 3, 0); T.hold = true;   // the other car parked out of the way
+  S.impact = null; S.lastV = v; S.runAt = r.time; S.outcome = null;
+  const bs = breakSpeed(P(), S.kind);
+  log(`${BREAKABLES[S.kind].name} at ${S.kmh} km/h (${vehicleById(G.vehicle).name}: ${bs < Infinity ? 'breaks it from ' + Math.ceil(bs * 3.6) + ' km/h' : 'too light ever to break it'})`);
+}
 // ----- weapons range: rivals held in a row ahead as dummies, or driving the loop
 function lineUp() {
   const s0 = G.world.tr.startIdx + 10, dummies = S.targets === 'dummies';
@@ -114,7 +127,11 @@ function lineUp() {
 function give(it) { const w = P().wpn; if (!w) return; w.item = it; w.uses = ITEM_USES[it]; }
 const HITS = { 'missile-hit': 'Missile', 'bullet-hit': 'Bullet', 'oil-hit': 'Oil', 'pulse-hit': 'Shockwave', 'harpoon-hit': 'Harpoon', 'door-hit': 'Door' };
 function onEvent(c, e) {
-  if (S.tab === 'crash') {
+  if (S.tab === 'destruct' && c.isPlayer) {
+    if (e.t === 'break') { S.outcome = 'broke'; log(`Smashed through the ${BREAKABLES[e.kind].name.toLowerCase()} at ${Math.round(e.v * 3.6)} km/h`); }
+    if (e.t === 'hit' && e.kind && !S.outcome) { S.outcome = 'bounced'; log(`Bounced off the ${BREAKABLES[e.kind].name.toLowerCase()} at ${Math.round(e.v * 3.6)} km/h`); }
+  }
+  if (S.tab === 'crash' || S.tab === 'destruct') {
     if (e.t === 'dent' && e.v > 3) log(`${c.isPlayer ? 'You' : c.name}: ${e.zone} dent ${Math.min(100, Math.round(e.amt * 100))}% at ${Math.round(e.v * 3.6)} km/h`);
     if (e.t === 'wreck') log(`${c.isPlayer ? 'You' : c.name}: wrecked`);
     if (e.t === 'destroyed' || e.t === 'takedown') log(`${c.isPlayer ? 'You' : c.name}: ${e.t}`);
@@ -133,13 +150,14 @@ function update() {
   const step = (p, d) => { let k = -1; p.steps.forEach((t, i) => { if (d >= t) k = i; }); return k < 0 ? '' : ' ' + PANEL_STEPS[k]; };
   const pan = c => PANELS.filter(p => c.panels && c.panels[p.id] > 0.005).map(p => `${p.id} ${Math.round(c.panels[p.id] * 100)}%${step(p, c.panels[p.id])}`).join(', ');
   const dmg = c => `${c.isPlayer ? 'You' : c.name} ${kmh(c)} km/h${c.wreckT > 0 ? '  WRECKED' : ''}\n  front ${bar(c.dmg.f)}  back ${bar(c.dmg.b)}\n  left  ${bar(c.dmg.l)}  right ${bar(c.dmg.r)}${pan(c) ? '\n  ' + pan(c) : ''}`;
-  if (S.tab === 'crash') {
+  if (S.tab === 'crash' || S.tab === 'destruct') {
     const v = Math.hypot(Pc.vx, Pc.vz);
     if (!S.impact && S.lastV - v > 2.5 && r.time - S.runAt < 6) S.impact = { at: Math.round(S.lastV * 3.6), after: Math.round(v * 3.6) };
     S.lastV = v;
     if (Pc.hold && (S.impact || r.time - S.runAt > 4)) Pc.hold = false;   // after the crash, it's yours to drive
     const T = rivals()[0]; if (S.scenario === 'headon' && T.hold && S.impact) T.hold = true;
-    $('ws-read').textContent = [dmg(Pc), dmg(rivals()[0]), S.impact ? `impact at ${S.impact.at} km/h, ${S.impact.after} km/h after` : 'no impact yet'].join('\n');
+    const imp = S.impact ? `impact at ${S.impact.at} km/h, ${S.impact.after} km/h after` : 'no impact yet';
+    $('ws-read').textContent = S.tab === 'destruct' ? [dmg(Pc), (S.outcome ? S.outcome.toUpperCase() + ': ' : '') + imp, `mass ${massOf(Pc).toFixed(2)}, toughness ${toughOf(Pc)}`].join('\n') : [dmg(Pc), dmg(rivals()[0]), imp].join('\n');
   } else {
     for (const c of rivals()) S.snap.set(c, { v: kmh(c), d: { ...c.dmg } });
     if (S.refill && Pc.wpn && !Pc.wpn.item) give(S.item);
@@ -159,6 +177,9 @@ function drawPanel() {
   if (S.tab === 'crash') panel.innerHTML = `<h2>Crash test</h2>${carSel}<label>Into</label><select id="ws-scn">${Object.entries(SCENARIOS).map(([k, n]) => `<option value="${k}" ${k === S.scenario ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <label>Speed: <b id="ws-kmh">${S.kmh}</b> km/h</label><input id="ws-speed" type="range" min="20" max="200" step="5" value="${S.kmh}">
     <div class="row"><button class="ws-btn" id="ws-run" type="button">Run</button><button class="ws-btn alt" id="ws-fix" type="button">Repair</button><button class="ws-btn alt" id="ws-wreck" type="button">Wreck it</button></div>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
+  else if (S.tab === 'destruct') panel.innerHTML = `<h2>Destruction yard</h2>${carSel}<label>Into</label><select id="ws-kind">${YARD.map(k => `<option value="${k}" ${k === S.kind ? 'selected' : ''}>${BREAKABLES[k].name}</option>`).join('')}</select>
+    <label>Speed: <b id="ws-kmh">${S.kmh}</b> km/h</label><input id="ws-speed" type="range" min="20" max="200" step="5" value="${S.kmh}">
+    <div class="row"><button class="ws-btn" id="ws-run" type="button">Run</button><button class="ws-btn alt" id="ws-fix" type="button">Repair</button></div>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
   else panel.innerHTML = `<h2>Weapons range</h2>${carSel}<label>Weapon</label><div class="row">${ITEMS.map(it => `<button class="ws-btn alt ${it === S.item ? 'on' : ''}" data-it="${it}" type="button">${esc(flow.ITEM_NAME[it])}</button>`).join('')}</div>
     <div class="row"><button class="ws-btn" id="ws-fire" type="button">Fire (F)</button><button class="ws-btn alt ${S.refill ? 'on' : ''}" id="ws-refill" type="button">Endless ammo</button></div>
     <label>Targets</label><div class="row"><button class="ws-btn alt ${S.targets === 'dummies' ? 'on' : ''}" data-tg="dummies" type="button">Dummies</button><button class="ws-btn alt ${S.targets === 'racing' ? 'on' : ''}" data-tg="racing" type="button">Rivals racing</button><button class="ws-btn alt ${S.auto ? 'on' : ''}" id="ws-auto" type="button">Autopilot</button></div>
@@ -166,7 +187,12 @@ function drawPanel() {
   $('ws-car').onchange = e => { S.car = e.target.value; startLive(S.tab); };
   $('ws-slow').onclick = () => { S.slow = !S.slow; $('ws-slow').classList.toggle('on', S.slow); };
   $('ws-hub-btn').onclick = () => openWorkshop('hub');
-  if (S.tab === 'crash') {
+  if (S.tab === 'destruct') {
+    $('ws-kind').onchange = e => { S.kind = e.target.value; runYard(); };
+    $('ws-speed').oninput = e => { S.kmh = +e.target.value; $('ws-kmh').textContent = S.kmh; };
+    $('ws-run').onclick = runYard;
+    $('ws-fix').onclick = () => { for (const c of R().cars) { c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.panels = {}; c.wreckT = 0; c.events.push({ t: 'repair' }); } };
+  } else if (S.tab === 'crash') {
     $('ws-scn').onchange = e => { S.scenario = e.target.value; runCrash(); };
     $('ws-speed').oninput = e => { S.kmh = +e.target.value; $('ws-kmh').textContent = S.kmh; };
     $('ws-run').onclick = runCrash;
@@ -180,5 +206,5 @@ function drawPanel() {
     $('ws-auto').onclick = () => { S.auto = !S.auto; R().autoPlayer = S.auto; drawPanel(); };
     $('ws-line').onclick = lineUp;
   }
-  log(S.log.shift() || (S.tab === 'crash' ? 'Pick a car, a crash and a speed, then Run' : 'Pick a weapon and fire: hits show here'));
+  log(S.log.shift() || (S.tab === 'crash' ? 'Pick a car, a crash and a speed, then Run' : S.tab === 'destruct' ? 'Pick a car, a thing to hit and a speed, then Run' : 'Pick a weapon and fire: hits show here'));
 }

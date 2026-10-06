@@ -6,13 +6,20 @@ import { rutDepth, rutLane } from '../features/wear.js';
 import { clamp } from '../math.js';
 import { HAMMER, hammerLat } from '../elements/hammer.js';
 import { navControl } from './nav.js';
+import { breakSpeed } from './impact.js';
+const breachOpen = (W, k) => (W.brk || []).some(o => o.alt === k && o.broken);
 
 /** Before each fork pick a route, the branch or the main road, at random (stage.branches[k].share = the branch's
  *  chance), so the pack splits. */
-function chooseRoute(c, tr) {
+function chooseRoute(c, tr, W) {
   const ai = c.ai; if (c.pr.i >= tr.NM) return;                                  // already on a branch
   const b = c.pr.i % tr.loopN, key = tr.lapOf(c.pr.i) * 64;
-  tr.alts.forEach((a, k) => { const d = a.F - b; if (d > 0 && d < 90 && ai.forkKey !== key + k) { ai.forkKey = key + k; const r = Math.random(); ai.alt = ai.forceAlt ?? (r < (a.share ?? 0.5) ? k : -1); } });
+  tr.alts.forEach((a, k) => {
+    if (!(a.F - b > 0 && a.F - b < 90) || ai.forkKey === key + k) return;
+    ai.forkKey = key + k; const r = Math.random(); ai.alt = ai.forceAlt ?? (r < (a.share ?? 0.5) ? k : -1);
+    // a breach across it (elements/breakables.js): only if it's still down, or this car can smash it at a speed it'll have
+    if (ai.alt === k && a.breach && ai.forceAlt === undefined && W && !breachOpen(W, k) && breakSpeed(c, a.breach) > 0.8 * Math.hypot(c.vx, c.vz)) ai.alt = -1;
+  });
 }
 /** Just past a fork, still on the road it didn't pick (the two run side by side there): look ahead from the same
  *  place on the route it did pick, so it steers across; too late for that (past the first third of the side-by-side
@@ -30,7 +37,7 @@ export function aiControl(c, W, cars, dt, hazards, gate) {
   if (W.tr.open && navControl(c, W)) return;                                        // open country: find the way to the next gate
   const tr = W.tr, pr = c.pr, i = pr.i, N = tr.N, ai = c.ai;
   // d samples further along the road (along the route this car has picked on stages with branches)
-  const G = !!tr.nx; if (G) chooseRoute(c, tr);
+  const G = !!tr.nx; if (G) chooseRoute(c, tr, W);
   const i0 = G ? forkStart(c, tr) : i, at = G ? d => tr.adv(i0, d, ai.alt ?? -1) : d => Math.min(N - 1, i + d);
   const sp = Math.hypot(c.vx, c.vz);
   ai.wT -= dt; if (ai.wT <= 0) { ai.wT = 2 + Math.random() * 3; ai.lane = (Math.random() * 2 - 1) * 2.2; }

@@ -108,6 +108,7 @@ npm run check      # lint + tests: run before every commit
 | `npm run layout -- 7` | Top-down plan of stage 7's road: heights, bridges, tunnels, river, railways, near-misses between road sections |
 | `npm run terrain -- gorge` | Shaded relief map of a stage's terrain |
 | `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
+| `npm run destruct [-- kmh]` | What each vehicle can smash: the speed it breaks each breakable from, and a real run into each at a set speed |
 | `npm run career -- [tier] [--car id] [--skill 0.88,0.95] [--v]` | Career pacing: every round of a tier raced by the AI at a casual and a good skill; places, stars, cash |
 | `npm run bench -- 5 7` | Render-time benchmark for stages 5 and 7 (software renderer: compare runs, not absolute ms) |
 | `npm run assets [ids]` | Builds the Blender assets headless (`blender/`) into `src/assets/gen/`; previews in `blender/out/` |
@@ -180,6 +181,7 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | whoops | `whoops: <m>` | a run of rolling bumps |
 | yump | `yump: <m>` | a natural dirt crest jump (no painted ramp); `kick` is the painted one |
 | dirt | `dirt: true` | a loose dirt track (gravel grip, no kerbs) on any stage; on a branch it's an off-road shortcut |
+| breakables | `breach: '<kind>'` on a branch; stage `props: [{ kind, at, lat }]` | a fence, gate, hay, crates or concrete blocks across a shortcut's mouth (only cars heavy and fast enough smash through; the AI knows), or placed on the road |
 | hammer | `hammers: <n>` | wrecking balls swinging across the road from gantries (hits in `features/hammers.js`); the AI times its run |
 | ice | `ice: true` | an ice patch across the road: hardly any grip; the AI slows for it. Best on a snow stage |
 | open | `open: 'field' \| 'forest' \| 'rocks' \| 'stream'`, `gate` | off-piste: a leg with no road (rolling ground, no barriers, no resets for leaving the line) through a meadow, a forest with gaps, a rock garden or a stream; `gate: true` puts a gate at the section's start. See "Off-piste" below |
@@ -211,7 +213,7 @@ grip from the `FIRM` table there.
 A `gorge` stage can add `branches: [{ from, to, name, share, segs }]`: an alternative route that leaves the main road
 where main section `from` starts and rejoins it where section `to` starts. Its own `segs` must end exactly there
 (position, heading and height, or `buildTrack` says how far off it is). `share` is the chance an AI car takes it.
-Elements marked `onBranch` work on a branch (ground, kick, arch, boost, falls, mill, dirt, mud, whoops, yump, ice); the others throw if tagged there.
+Elements marked `onBranch` work on a branch (ground, kick, arch, boost, falls, mill, dirt, mud, whoops, yump, ice, breakables); the others throw if tagged there.
 The five newest circuits each have an off-road shortcut built this way: a `dirt` branch with whoops, yumps, mud or ice
 (Corkscrew Spire's goat track, Scrapyard Smash's crusher yard, Mesa Leap's wash, Glacier Rift's lake crossing, Temple
 Ruins' path). Balance it with the AI: a shortcut should save a few seconds at most, and less on a loose-surface car.
@@ -245,6 +247,19 @@ locks the rules.
 player's seat to `tools/out/`: the player car drives itself to each distance from the start line (default: five
 points over a lap). `npm run shot -- garage` shoots the vehicle picker; `npm run shot -- workshop[:tab]` the Workshop.
 
+### Impact, toughness and breakables
+
+One rule for what breaks: a car's impact is its mass (1 / `im`, times `veh.ram`, an upgrade) times its speed into
+the thing (`core/sim/impact.js`). A breakable kind (`src/data/breakables.js`: crates, hay, fence, gate, concrete)
+gives way when the impact reaches its `hp`, and only to cars of at least its `minMass`: the coupe bounces off concrete
+at any speed, the monster truck goes through from 80 km/h, the mixer from 58. `veh.tough` is the other side: it divides
+the damage a car takes. The `breakables` feature (appended to `FEATURES`, no random numbers) treats an intact one as a
+solid box, breaks it for the rest of the race when hit hard enough (the car ploughs through, losing speed for how hard
+it was), and leaves concrete's blocks on the road as chunks that get shoved about and slow you. Placed by the
+`breakables` element: `breach` across a branch where it has pulled clear of the main road (the AI only takes a breached
+shortcut once it's down or it can smash it), or stage `props`. `npm run destruct` tables every vehicle against every
+kind; Workshop → Destruction yard drives any car into any of them.
+
 ### Car anatomy (panels)
 
 Cars come apart panel by panel. `src/data/anatomy.js` lists the panels (bonnet, boot, two doors): the damage zone that
@@ -267,7 +282,9 @@ or `?workshop` (the hub) / `?workshop=<tab>`. Tabs live in `src/data/workshop.js
   parked dummies or racing rivals, with damage per zone, speeds and slow motion. Add `&car=<id>` to pick the car.
 - Test cars use the car's `hold` flag (`true` parked, a number: driven straight at that speed); the race sets no
   other input for them. Nothing else sets it, so races and golden runs are untouched.
-- Each roadmap phase adds its tab (Destruction yard with F3, Scenery kit with F4): a new system gets a Workshop tab, a
+- **Destruction yard**: any car into crates, hay, a fence, a gate or concrete blocks (a row of `props` on the loop's far
+  straight) at a set speed: what breaks, the speed after, mass and toughness.
+- Each roadmap phase adds its tab (the Scenery kit with F4): a new system gets a Workshop tab, a
   headless tool and a test. The e2e run drives the hub, both live tabs and a sandbox.
 
 ### Debugging an element

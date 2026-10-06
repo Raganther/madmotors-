@@ -49,6 +49,7 @@ export function newRace() {
   return r;
 }
 // ---------- flow ----------
+const BRK_FX = { crates: 2, fence: 2, gate: 2, hay: 3, concrete: 6 };   // which barrier's debris a broken thing throws (render/effects/impacts.js)
 export function handleEvents() {
   const pi = race.cars.indexOf(race.player);
   for (const c of race.cars.concat(race.traffic, race.parked || [])) {
@@ -88,6 +89,11 @@ export function handleEvents() {
         }
         case 'splash': dustRing(c, 18, 0xE6F2FF, 7, 1.4); if (c.isPlayer) callout('Splash!'); break;
         case 'destroyed': takedownFx(c, e, e.by.isPlayer, near); break;
+        case 'break':   // smashed through a breakable (core/features/breakables.js): splinters, hay or concrete dust the way it went
+          impactFx(c, { ...e, w: BRK_FX[e.kind] }, c.isPlayer, near);
+          if (c.isPlayer) { callout(e.kind === 'concrete' ? 'Through the concrete!' : 'Smashed through!'); G.shake = Math.min(1.2, G.shake + 0.3 + e.v / 60); }
+          if (c.isPlayer || near) AudioSys.crash(e.kind === 'hay' ? 'hay' : e.kind === 'crates' || e.kind === 'fence' ? 'wood' : 'metal', c.isPlayer ? 0.8 : 0.4);
+          break;
         case 'takedown': if (c.isPlayer) { callout(e.kind === 'truck' ? 'Truck takedown!' : 'Takedown!'); AudioSys.whoosh(); } break;
         case 'rockhit': sparks(e.x, e.y, e.z, 14); if (c.isPlayer || near) AudioSys.crash('metal', clamp(e.v / 20, 0.2, 0.9) * (c.isPlayer ? 1 : 0.5)); if (c.isPlayer) G.shake = Math.min(1.4, G.shake + 0.8); break;
         case 'trainhit': sparks(e.x, e.y, e.z, 45); shockwave(e.x, e.y, e.z, 9, 0xFFFFFF); if (c.isPlayer) { G.shake = 1.8; callout('Hit by a train!'); } if (c.isPlayer || near) AudioSys.crash('metal', c.isPlayer ? 1 : 0.5); break;

@@ -7,10 +7,11 @@ The agreed plan for upcoming work is docs/ROADMAP.md (foundations F0-F6, then th
 - `npm run check`: lint + tests (golden included) + a production build. Run before every commit; must pass.
 - `npm run e2e`: production build + headless browser run of every stage (no console errors allowed).
 - `npm run layout -- <n>` / `npm run terrain -- <n>`: inspect a stage's road plan / terrain before playing it (`sandbox:<name>` works too).
-- The Workshop (`?workshop`, `?workshop=crash|weapons|cars|elements`, `npm run shot -- workshop:<tab>`): try cars, crashes, weapons and track elements without a race around them. Each new system gets a tab there (README "The Workshop").
+- The Workshop (`?workshop`, `?workshop=crash|destruct|weapons|cars|elements`, `npm run shot -- workshop:<tab>`): try cars, crashes, weapons and track elements without a race around them. Each new system gets a tab there (README "The Workshop").
 - `npm run sandbox -- <name|all>`: AI laps of an element sandbox, with what went wrong where. Browser: `?sandbox=<name>&debug`; backquote toggles the debug overlay.
 - `npm run shot -- <n|sandbox:name|garage> [metres ...] [--vehicle id] [--debug]`: screenshots from the player's seat (AI drives to each distance) → tools/out/. Look at them.
 - `npm run balance`: every vehicle's pace vs the coupe on tarmac and loose stages, and what each weapon costs its victim (~1 s per use). Run after touching handling or weapon numbers.
+- `npm run destruct`: what each vehicle can smash (data/breakables.js, core/sim/impact.js). Run after touching vehicle mass (`im`), `tough`, `ram` or breakable numbers.
 - `npm run career -- [tier] [--v]`: Career pacing (AI at a casual and a good skill through every round). Run after touching career tiers, prices, payouts or upgrades.
 - `npm run bench -- <n>`: render benchmark (SwiftShader here, so only compare against a previous run). `MODELS=classic|blender` (also for `shot`) sets the Models setting: price Blender assets against Classic with `RIVALS=13`.
 - `npm run assets [ids]`: build the Blender assets headless (installs `bpy` if missing; ~1 min per car) → `src/assets/gen/` (commit it) and previews in `blender/out/`. Look at them: `npm run labshot -- <ids>` (Blender beside Classic), and the Asset Lab (`?lab`, `npm run lab`; published on its own at https://claude.ai/artifact/YbX3XQF3kMha8K6a6GgdMj, whose db also holds `assetNotes`).
