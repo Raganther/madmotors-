@@ -112,7 +112,7 @@ npm run check      # lint + tests: run before every commit
 | `npm run bench -- 5 7` | Render-time benchmark for stages 5 and 7 (software renderer: compare runs, not absolute ms) |
 | `npm run assets [ids]` | Builds the Blender assets headless (`blender/`) into `src/assets/gen/`; previews in `blender/out/` |
 | `npm run labshot -- [ids]` | Asset Lab pictures, Blender beside Classic per asset → `tools/out/labshot.png` |
-| `npm run lab` | The Asset Lab on its own: `dist-lab/index.html` (also `?lab`, or the menu's Asset Lab button) |
+| `npm run lab` | The Asset Lab on its own: `dist-lab/index.html` (also `?lab`, `?workshop=cars`, or the Workshop's Cars tab) |
 
 Tool output goes to `tools/out/`.
 
@@ -243,7 +243,20 @@ locks the rules.
 
 `npm run shot -- <stage|sandbox:name> [metres ...] [--vehicle id] [--debug]` builds the game and saves frames from the
 player's seat to `tools/out/`: the player car drives itself to each distance from the start line (default: five
-points over a lap). `npm run shot -- garage` shoots the vehicle picker.
+points over a lap). `npm run shot -- garage` shoots the vehicle picker; `npm run shot -- workshop[:tab]` the Workshop.
+
+### The Workshop
+
+One place to try any part of the game on its own, without a race or the career around it: the menu's Workshop button,
+or `?workshop` (the hub) / `?workshop=<tab>`. Tabs live in `src/data/workshop.js`, the page in `src/ui/workshop.js`.
+- **Cars** is the Asset Lab. **Track elements** lists the sandboxes and races one with the debug readout.
+- **Crash test** and **Weapons range** are real races on the Workshop loop (two flat straights with Armco) with a panel
+  that places the cars: any car into a parked car, an oncoming one or the Armco at a set speed, or any weapon at
+  parked dummies or racing rivals, with damage per zone, speeds and slow motion. Add `&car=<id>` to pick the car.
+- Test cars use the car's `hold` flag (`true` parked, a number: driven straight at that speed); the race sets no
+  other input for them. Nothing else sets it, so races and golden runs are untouched.
+- Each roadmap phase adds its tab (Destruction yard with F3, Scenery kit with F4): a new system gets a Workshop tab, a
+  headless tool and a test. The e2e run drives the hub, both live tabs and a sandbox.
 
 ### Debugging an element
 
@@ -314,7 +327,7 @@ src/assets/gen/   GENERATED packs (committed so the game builds without Blender)
 src/render/assets/index.js   registry: blenderPack(id) (null = use Classic), decodePack, the Models setting
 src/render/assets/cars.js    a racer from its pack: parts, damage hooks, wheels, RIGS for moving parts
 src/render/assets/scenery.js scenery and kit geometries for instancing (sceneryPack / kitPack; each user keeps its Classic shape)
-src/ui/lab.js     the Asset Lab page
+src/ui/lab.js     the Asset Lab page (the Workshop's Cars tab)
 ```
 
 - **A pack** is shapes only: named parts, one mesh per palette material (`paint` and `accent` take the livery), two
@@ -347,7 +360,7 @@ src/ui/lab.js     the Asset Lab page
 - `tests/assets.test.js` holds the contract: every manifest entry is bundled, decodes, has both levels with matching
   part names, fits its triangle/size budget and, for a car, fits its hitbox and names its damage parts. The e2e run
   opens the lab and builds every asset with each provider.
-- **The Asset Lab** (`?lab`, the menu's Asset Lab button, or `npm run lab` for a page of its own): every asset on a
+- **The Asset Lab** (`?lab`, the Workshop's Cars tab, or `npm run lab` for a page of its own): every asset on a
   turntable, Blender vs Classic, near/far, wireframe, triangles and draw calls, any stage's light, studio or race
   view, paint colour; cars can be dented, lose bumper and wing, and be repaired. Its notes go to the artifact's
   database, collection `assetNotes` (`asset`, `provider`, `text`; answer with `reply` + `status: 'done'`).

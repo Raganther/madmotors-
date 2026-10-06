@@ -82,6 +82,7 @@
  * @property {{f: number, b: number, l: number, r: number}} dmg     damage per zone, 0..1
  * @property {object[]} events              things that happened this step, for the renderer/audio ({t: 'hit' | 'smash' | 'wreck' | ...})
  * @property {boolean} isPlayer @property {boolean} [traffic] @property {boolean} [parked] @property {boolean} finished
+ * @property {boolean|number} [hold]       no AI or player input: parked (true) or driven straight at that speed in m/s; only the Workshop sets it
  */
 
 /**

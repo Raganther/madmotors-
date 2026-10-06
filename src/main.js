@@ -9,6 +9,7 @@ import { wireLeagues, leagueNext } from './ui/league.js';
 import { wireCareer, careerNext } from './ui/career.js';
 import { initNotes } from './ui/notes.js';
 import { initEditor } from './ui/editor.js';
+import { openWorkshop, workshopParam } from './ui/workshop.js';
 import { AudioSys } from './audio/audio.js';
 import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
@@ -58,7 +59,7 @@ export function frame(t) {
     handleEvents(); applyBarrierChanges();
     AudioSys.update(race.player, 'drive', race.cars, G.camDir);
     if (G.goTimer > 0) { G.goTimer -= dt; if (G.goTimer <= 0) $('countdown').hidden = true; }
-    if (race.player.finished && !resultsShown && race.time - race.player.finishTime > 1.6) showResults();
+    if (race.player.finished && !resultsShown && !G.workshop && race.time - race.player.finishTime > 1.6) showResults();
     if (race.sd && race.sd.phase === 'over' && !resultsShown && race.time - G.sdOverAt > 1.8) showResults();
     if (resultsShown) { G.resultsTick -= dt; if (G.resultsTick <= 0) { G.resultsTick = 0.5; updateResultsTable(); } }
   }
@@ -91,14 +92,15 @@ export function wireUI() {
   $('models-btn').addEventListener('click', () => { setModelMode(MODEL_MODES[(MODEL_MODES.indexOf(modelMode) + 1) % MODEL_MODES.length]); modelsLabel(); rebuildCars(); });
   modelsLabel();
   for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
-  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); wireCareer(); initNotes(); initEditor(); $('lab-btn').addEventListener('click', () => import('./ui/lab.js').then(m => m.startLab())); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
+  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); wireCareer(); initNotes(); initEditor(); $('lab-btn').addEventListener('click', () => openWorkshop()); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
   for (const b of document.querySelectorAll('.cam-btn')) b.addEventListener('click', () => setCamera(nextCamera()));
   for (const b of document.querySelectorAll('.zoom-btn')) b.addEventListener('click', () => setCamera(G.camMode, nextZoom()));
 }
 export async function boot() {
   let step = 'setting up the menu';
-  // the Asset Lab instead of the game: ?lab, or the lab build (npm run lab)
-  if (import.meta.env.MODE === 'lab' || new URLSearchParams(location.search).has('lab')) { $('loading').hidden = true; return import('./ui/lab.js').then(m => m.startLab()); }
+  // the Asset Lab instead of the game: ?lab, ?workshop=cars, or the lab build (npm run lab)
+  const ws = workshopParam();
+  if (import.meta.env.MODE === 'lab' || new URLSearchParams(location.search).has('lab') || ws === 'cars') { $('loading').hidden = true; return import('./ui/lab.js').then(m => m.startLab()); }
   try {
     // ?sandbox=<name>: append that element sandbox (data/sandboxes) as the last stage and select it
     const sbName = new URLSearchParams(location.search).get('sandbox');
@@ -114,7 +116,7 @@ export async function boot() {
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
     step = 'building the cars'; initCars(); elementHook('init'); showVehicle(G.vehicle); refreshBest();
     step = 'building the first stage';
-    selectStage(sbName ? STAGES.length - 1 : 0);
+    selectStage(sbName ? STAGES.length - 1 : 0, ws ? () => openWorkshop(ws) : null);   // ?workshop[=tab]: the Workshop (ui/workshop.js) once the menu's stage is built
     requestAnimationFrame(frame);
   } catch (e) {
     console.error(e); window.__bootError((e && e.message ? e.message : String(e)) + ' (while ' + step + ')');
