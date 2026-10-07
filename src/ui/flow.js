@@ -32,7 +32,9 @@ import { fmt, ordinal } from './format.js';
 import { callout, drawProfile } from './hud.js';
 import { showVehicle } from './garage.js';
 import { leagueResults, resetResultsUI } from './league.js';
-import { careerMode, careerRaceDefs, careerResults } from './career.js';
+import { careerFormat, careerMode, careerRaceDefs, careerResults } from './career.js';
+import { newTally, tallyEvent } from '../data/scoring.js';
+import { FORMATS } from '../data/formats.js';
 import { best, saveBest, saveMode, saveRivals, saveWeapons } from './storage.js';
 
 export let race = null, pausedFrom = null, selected = 0;
@@ -143,12 +145,13 @@ export function handleEvents() {
     c.events.length = 0;
   }
 }
-// the player's race for the career results: big airs, drift boosts, weapon hits on rivals (not bullets), wrecks, resets
-const HITS = ['missile-hit', 'harpoon-hit', 'pulse-hit', 'oil-hit', 'water-hit', 'cement-hit', 'stinger-hit', 'crush-hit', 'jingle-hit'];
+// the career's race tally (data/scoring.js): the player's style stats, and everyone's destruction for the formats that
+// score it (data/formats.js); your own wrecks and strips are called out when they count
 function tally(c, e, pi) {
-  const t = G.tally;
-  if (c === race.player) { if (e.t === 'bigair') t.air++; else if (e.t === 'drift') t.drift++; else if (e.t === 'wreck') t.wrecks++; else if (e.t === 'respawn') t.respawns++; }
-  else if (!c.traffic && race.cars.includes(c) && ((HITS.includes(e.t) && e.from === pi) || (e.t === 'door-hit' && e.by === pi))) t.hits++;
+  const got = tallyEvent(G.tally, race.cars, c, e, race.time, pi);
+  if (!got || got.k !== pi || !G.tallyFmt || !(FORMATS[G.tallyFmt].weight.destruct > 0)) return;
+  if (got.what === 'wreck') callout(`Wrecked ${race.cars[got.victim].name}!`);
+  else if (got.what === 'panel' && G.calloutTimer <= 0) callout(`Stripped ${race.cars[got.victim].name}!`);
 }
 /** Is a car inside the current Showdown view? */
 function onScreen(c) { const v = race.sd.view, f = race.sd.focus; if (!v || !f) return false; const [sx, sy] = screenOffset(c.x, c.y, c.z, f, race.camDir); return Math.abs(sx) < v.hw && Math.abs(sy) < v.hh; }
@@ -241,7 +244,7 @@ export function selectStage(i, cb) {
 export function startRace(idx) {
   AudioSys.init();
   selectStage(idx, () => {
-    race = newRace(); clearSkids(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0; G.tally = G.career ? { air: 0, drift: 0, hits: 0, wrecks: 0, respawns: 0 } : null;
+    race = newRace(); clearSkids(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0; G.tally = G.career ? newTally(race.cars.length) : null; G.tallyFmt = G.career ? careerFormat() : null;
     G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; G.sdTick = 0; $('edge').className = '';
     $('menu').hidden = true; $('garage').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
     $('stage-name').textContent = G.editDrive ? `Test drive: ${STAGES[idx].name}` : `Stage ${idx + 1}: ${STAGES[idx].name}`; $('quit-btn').textContent = G.editDrive ? 'Back to editor' : G.career ? 'Career menu' : 'Choose stage';
@@ -251,7 +254,7 @@ export function startRace(idx) {
   });
 }
 export function toMenu() {
-  const cr = G.career; G.league = null; G.career = null; G.tally = null;
+  const cr = G.career; G.league = null; G.career = null; G.tally = null; G.tallyFmt = null;
   if (G.editDrive && G.onEditorBack) { G.onEditorBack(); }   // leaving a test drive goes back to the track editor
   G.state = 'menu'; $('hud').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('touch').hidden = true; $('menu').hidden = false; $('countdown').hidden = true;
   race = newRace(); clearSkids(); AudioSys.update(null, 'off'); updateCamera(0, true); $('race-btn').focus();

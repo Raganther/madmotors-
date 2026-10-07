@@ -11,7 +11,7 @@ describe('career data', () => {
     const ids = new Set();
     for (const t of TIERS) for (const ev of t.events) {
       expect(ids.has(ev.id), ev.id).toBe(false); ids.add(ev.id);
-      for (const r of roundsOf(ev)) { expect(STAGES.some(s => s.name === r.stage), `${ev.name}: ${r.stage}`).toBe(true); if (ev.kind === 'trial') expect(ev.par).toBeGreaterThan(20); else expect(['drift', 'air', 'hits', 'clean']).toContain(r.obj.k); }
+      for (const r of roundsOf(ev)) { expect(STAGES.some(s => s.name === r.stage), `${ev.name}: ${r.stage}`).toBe(true); if (ev.kind === 'trial') expect(ev.par).toBeGreaterThan(20); else expect(['drift', 'air', 'hits', 'clean', 'wrecked', 'smashed']).toContain(r.obj.k); }
     }
   });
   it('the shop sells real vehicles, starters included, and every tier can open', () => {

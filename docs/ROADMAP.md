@@ -20,8 +20,9 @@ The plan agreed for the next stretch of work. Update the status table at the end
 | (F6 later) | Weapon mounts as Blender parts; per-car pickup bias in the data; more signature weapons as new vehicles arrive | open |
 | G1 | Disciplines and ratings | done: npm run ratings measures pace (tarmac, loose) and toughness for every vehicle plus stat sensitivities, so any build is rated (bands D-S, data/ratings.js); a test fails when they're stale; disciplines Road, Rally, Off-road, Heavy, Oddball, Derby (earned by toughness) replace the classes; event entry { disc, maxPace?, maxTough? }; shown in the garage, career and Workshop |
 | (G1 later) | Use the caps in events (G5 tiers); ratings in the AI field picker | open |
-| G2 | Events and scoring from data | next |
-| G3 | Derby: mode, arenas, AI | planned |
+| G2 | Events and scoring from data | done: data/formats.js (race, banger, demolition rally, figure of eight, derby (waits for G3), trial, boss, showdown, deuce, tiebreak) each weighing race points against destruction points; data/scoring.js tallies wrecks and torn panels (blamed on the last hitter within 3 s), smashed scenery and takedowns for every car; the result order and cash follow the format; Heavyweights and Monster Mash are banger races, Seaside Smash a demolition rally, Ice Cream Derby a figure of eight; npm run career simulates every format incl. modes |
+| (G2 later) | AI that drives for destruction points in banger formats; a live destruction readout in the HUD | open |
+| G3 | Derby: mode, arenas, AI | next |
 | G4 | Economy and pacing dashboard | planned |
 | G5 | Career v2 structure | planned |
 | G6 | Content waves | planned |
@@ -295,4 +296,4 @@ F0 → F1 → F2 → F3 → { F4, F5, F6 can run in any order } → G1 → G2 �
   the user what to try in the Workshop.
 
 ## Next step
-G2: events and scoring from data (formats and race / destruction weighting), on its own PR.
+G3: the derby (mode, arenas, derby AI), on its own PR.
