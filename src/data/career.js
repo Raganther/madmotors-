@@ -14,21 +14,17 @@ import { CAR_DEFS, MORE_RIVALS } from './cars.js';
 import { vehicleById } from './vehicles.js';
 import { entryOK } from './disciplines.js';
 import { FORMATS, formatOf } from './formats.js';
+import { BONUS, BOSS_PURSE, DESTRUCT_CASH, FINAL_PURSE, FORMAT_PAY, MEDAL_CASH, PAINT_PRICE, PLACE_CASH, START_CASH, TIER_PAY, TROPHY_CASH, carPrice, sellValue } from './economy.js';
+export { BONUS, BOSS_PURSE, DESTRUCT_CASH, FINAL_PURSE, MEDAL_CASH, PAINT_PRICE, PLACE_CASH, START_CASH, TROPHY_CASH } from './economy.js';
 import { PART_MAX, TYRE_KINDS, buildOf, buildVeh, slotById } from './parts.js';
 import { GEAR, GEAR_PRICE, SIGNATURES, WEAPONS, WEAPON_IDS, WEAPON_MAX, WEAPON_PRICE, loadoutOf } from './weapons.js';
 
 export const CAREER_RIVALS = 7;
 export const STARTERS = ['coupe', 'hatch', 'tuktuk'];
-export const START_CASH = 1500;
-/** Cars for sale: price and the tier whose showroom first sells them. */
-export const SHOP = {
-  tuktuk: { price: 2500, tier: 0 }, kart: { price: 3000, tier: 0 }, icecream: { price: 3000, tier: 0 }, sidecar: { price: 3500, tier: 0 },
-  coupe: { price: 4000, tier: 0 }, hatch: { price: 4000, tier: 0 },
-  buggy: { price: 9000, tier: 1 }, firetruck: { price: 10000, tier: 1 }, mixer: { price: 10000, tier: 1 }, rover: { price: 11000, tier: 1 },
-  hotrod: { price: 12000, tier: 1 }, police: { price: 12000, tier: 1 },
-  snowcat: { price: 18000, tier: 2 }, hover: { price: 20000, tier: 2 },
-  monster: { price: 26000, tier: 2 }, wedge: { price: 30000, tier: 2 }, formula: { price: 38000, tier: 3 }, rocket: { price: 45000, tier: 3 }, limo: { price: 50000, tier: 3 },
-};
+/** Cars for sale: the tier whose showroom first sells them, and their price (data/economy.js: from the tier and the car's ratings). */
+const SHOP_TIER = { tuktuk: 0, kart: 0, icecream: 0, sidecar: 0, coupe: 0, hatch: 0, buggy: 1, firetruck: 1, mixer: 1, rover: 1, hotrod: 1, police: 1,
+  snowcat: 2, hover: 2, monster: 2, wedge: 2, formula: 3, rocket: 3, limo: 3 };
+export const SHOP = Object.fromEntries(Object.entries(SHOP_TIER).map(([id, tier]) => [id, { tier, price: carPrice(id, tier) }]));
 // ---------- entry (disciplines) and upgrades ----------
 const STD = { accel: 1, top: 1, grip: 1, off: 1, im: 1 };
 const base = id => vehicleById(id).veh || STD;
@@ -77,13 +73,7 @@ export function fitGear(s, id, g) {
 // rivals' weapons: the tier's upgrade level (Pro 2, Legend 3) on all of them; bosses carry a shield too
 const rivalLoad = (L, gear) => { const lv = L > 1 ? Object.fromEntries(WEAPON_IDS.map(w => [w, Math.min(WEAPON_MAX, L)])) : null; return lv || gear ? { ...(lv ? { lv } : {}), ...(gear ? { gear } : {}) } : null; };
 
-export const PLACE_CASH = [1000, 750, 550, 400, 300, 220, 160, 120];
-export const BONUS = { air: 30, drift: 20, hit: 15, clean: 150, obj: 250 };
-export const DESTRUCT_CASH = { wrecked: 150, panels: 40, smashed: 20, takedowns: 60 };   // per item, times the format's destruct weight
-export const TROPHY_CASH = [2500, 1500, 800];
-export const MEDAL_CASH = [450, 700, 1000];   // time trial: bronze, silver, gold
 export const DUEL_GAP = 5;   // a duel (a boss): the first star for finishing this close behind (seconds)
-export const BOSS_PURSE = 3000, FINAL_PURSE = 25000, PAINT_PRICE = 800;
 /** A time trial's medal times from its gold `par` (seconds): bronze, silver, gold. */
 export const medals = par => [par * 1.1, par * 1.05, par].map(x => Math.round(x * 10) / 10);
 /** Paint jobs for the garage's paint shop: body colour and accent. */
@@ -109,7 +99,7 @@ const onemake = (id, make, name, stage, obj, blurb) => ({ id, kind: 'onemake', m
 const derby = (id, name, stage, obj, blurb) => ({ ...mode(id, 'derby', name, stage, obj, blurb), disc: 'derby', format: 'derby' });
 const boss = (id, driver, vehicle, stage, need, obj, blurb) => ({ id, kind: 'boss', driver, vehicle, name: `Boss: ${driver}`, blurb, stage, need, obj });
 export const TIERS = [
-  { id: 'rookie', name: 'Rookie', blurb: 'Friendly locals on the easy roads', skill: 0.88, upg: 0, pay: 1, events: [
+  { id: 'rookie', name: 'Rookie', blurb: 'Friendly locals on the easy roads', skill: 0.91, upg: 0, pay: TIER_PAY[0], events: [
     { id: 'rookie-cup', kind: 'cup', name: 'Rookie Cup', blurb: 'Four easy tracks: steering, drifting, dirt and jumps, then weapons', rounds: [R('Sunday Park', clean()), R('Harbour Sprint', drift(4)), R('Hay Bale Farm', air(3)), R('Village Green', hits(3))] },
     { id: 'sunday-loops', kind: 'cup', name: 'Sunday Loops', blurb: 'Three short circuits to learn the lines', rounds: [R('Mountain Loop', drift(4)), R('Red Mesa Canyon', air(10)), R('Bogwood Rally', clean())] },
     { id: 'seaside-double', kind: 'cup', format: 'demolition', name: 'Seaside Smash', blurb: 'Demolition rally through the harbour and the farm: smashed fences and gates score as well as your place', rounds: [R('Harbour Sprint', smashed(4)), R('Hay Bale Farm', smashed(3)), R('Sunday Park', drift(3))] },
@@ -119,7 +109,7 @@ export const TIERS = [
     boss('rookie-boss', 'Brannigan', 'monster', 'Red Mesa Canyon', 20, air(10), 'One on one with the Monster Truck over the jumps. Win it and it\'s yours'),
     { id: 'pocket-rockets', kind: 'cup', disc: 'oddball', name: 'Pocket Rockets', blurb: 'Oddballs only: karts, trikes, bikes and vans', rounds: [R('Sunday Park', hits(3)), R('Harbour Sprint', drift(4)), R('Village Green', clean())] },
   ] },
-  { id: 'club', name: 'Club', blurb: 'Weekend racers who know the tracks', skill: 0.94, upg: 1, pay: 1.7, events: [
+  { id: 'club', name: 'Club', blurb: 'Weekend racers who know the tracks', skill: 0.92, upg: 1, pay: TIER_PAY[1], events: [
     { id: 'circuit-series', kind: 'cup', name: 'Circuit Series', blurb: 'Switchbacks, viaducts, jumps and a waterfall', rounds: [R('Mountain Loop', hits(8)), R('Mountain Pass', drift(6)), R('Ravenrock Gorge', clean()), R('Red Mesa Canyon', air(12)), R('Thunder Falls', hits(8))] },
     { id: 'mud-snow', kind: 'cup', disc: 'offroad', name: 'Mud & Snow', blurb: 'Loose surfaces all the way: off-road cars only', rounds: [R('Quarry Run', air(3)), R('Bogwood Rally', air(8)), R('Frostpeak', drift(5)), R('Open Country', clean())] },
     { id: 'high-roads', kind: 'cup', name: 'High Roads', blurb: 'Tunnels, ledges and a spire', rounds: [R('Mountain Pass', hits(8)), R('Corkscrew Spire', drift(6)), R('Temple Ruins', clean())] },
@@ -132,7 +122,7 @@ export const TIERS = [
     { id: 'oval-bangers', kind: 'cup', format: 'banger', name: 'Oval Bangers', blurb: 'Banger racing on the oval and round the village green: wrecks score', rounds: [R('Banger Oval', wrecked(1)), R('Village Green', hits(4)), R('Banger Oval', wrecked(2))] },
     { id: 'heavyweights', kind: 'cup', disc: 'heavy', format: 'banger', name: 'Heavyweights', blurb: 'Banger racing for trucks, vans and limos: wrecks score', rounds: [R('Village Descent', wrecked(1)), R('Scrapyard Smash', air(3)), R('Mountain Pass', clean())] },
   ] },
-  { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.97, upg: 2, pay: 2.6, events: [
+  { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.93, upg: 2, pay: TIER_PAY[2], events: [
     { id: 'wild-cup', kind: 'cup', name: 'Wild Cup', blurb: 'The wildest tracks, each with a shortcut to find', rounds: [R('Corkscrew Spire', clean()), R('Scrapyard Smash', air(4)), R('Mesa Leap', air(4)), R('Temple Ruins', hits(8)), R('Glacier Rift', drift(5))] },
     { id: 'frozen-north', kind: 'cup', disc: 'offroad', name: 'Frozen North', blurb: 'Snow, ice and open country: off-road cars only', rounds: [R('Frostpeak', clean()), R('Glacier Rift', air(3)), R('Open Country', hits(6))] },
     { id: 'long-haul', kind: 'cup', name: 'Long Haul', blurb: 'The big circuits', rounds: [R('Ravenrock Gorge', hits(12)), R('Flyover Tangle', drift(8)), R('Thunder Falls', clean())] },
@@ -143,7 +133,7 @@ export const TIERS = [
     boss('pro-boss', 'Moreau', 'formula', 'Flyover Tangle', 28, drift(6), 'The Formula Racer through the flyovers. Win and it\'s yours'),
     { id: 'tarmac-gp', kind: 'cup', disc: 'road', name: 'Tarmac GP', blurb: 'Road cars on the smoothest circuits', rounds: [R('Mountain Loop', drift(6)), R('Flyover Tangle', hits(10)), R('Corkscrew Spire', clean()), R('Summit Meadow', drift(2))] },
   ] },
-  { id: 'legend', name: 'Legend', blurb: 'The best in the mountains', skill: 0.98, upg: 3, pay: 3.8, events: [
+  { id: 'legend', name: 'Legend', blurb: 'The best in the mountains', skill: 0.935, upg: 3, pay: TIER_PAY[3], events: [
     { id: 'grand-tour', kind: 'cup', name: 'Grand Tour', blurb: 'Six of the best, back to back', rounds: [R('Mountain Pass', clean()), R('Ravenrock Gorge', hits(12)), R('Thunder Falls', drift(6)), R('Bogwood Rally', air(10)), R('Glacier Rift', clean()), R('Temple Ruins', hits(10))] },
     { id: 'dirt-masters', kind: 'cup', disc: 'offroad', name: 'Dirt Masters', blurb: 'Gravel, mud and snow, flat out: off-road cars only', rounds: [R('Quarry Run', clean()), R('Bogwood Rally', drift(6)), R('Frostpeak', hits(10)), R('Open Country', air(2)), R('Glacier Rift', drift(6))] },
     { id: 'top-speed', kind: 'cup', disc: 'road', name: 'Top Speed', blurb: 'Fast roads for fast tarmac cars', rounds: [R('Summit Meadow', clean()), R('Mountain Loop', drift(8)), R('Flyover Tangle', hits(12)), R('Mesa Leap', air(5)), R('Corkscrew Spire', clean())] },
@@ -195,6 +185,14 @@ export function buyCar(s, id) {
   return { ...s, cash: s.cash - p.price, cars: { ...s.cars, [id]: {} }, car: id };
 }
 export const selectCar = (s, id) => s.cars[id] ? { ...s, car: id } : s;
+/** What car id sells for (data/economy.js: RESALE of its price and of what's been spent on it). */
+export const sellPrice = (s, id) => s.cars[id] && SHOP[id] ? sellValue(SHOP[id].price, s.cars[id]) : 0;
+/** Sell car id, or null: not the one you're driving (pick another first), not your last. */
+export function sellCar(s, id) {
+  if (!s.cars[id] || id === s.car || Object.keys(s.cars).length < 2 || !SHOP[id]) return null;
+  const cars = { ...s.cars }; delete cars[id];
+  return { ...s, cash: s.cash + sellPrice(s, id), cars, sold: (s.sold || 0) + 1 };
+}
 
 // ---------- the field ----------
 // every AI driver with the vehicle they own (the classic four's cars are the hatch, wedge and buggy)
@@ -268,7 +266,7 @@ export const podiumOf = n => Math.max(1, Math.min(3, Math.floor(n / 2)));
  * Returns { state, stars (mask this race), fresh (mask of newly earned stars), cash, lines: [[label, amount]] }.
  */
 export function scoreRace(s, ev, k, place, n, t, time = 0) {
-  const T = TIERS[tierOf(ev)], o = roundsOf(ev)[k].obj, pay = x => Math.round(x * T.pay / 10) * 10;
+  const T = TIERS[tierOf(ev)], o = roundsOf(ev)[k].obj, fp = FORMAT_PAY[formatOf(ev)] || 1, pay = x => Math.round(x * T.pay * fp / 10) * 10;   // the tier's pay and the format's (data/economy.js)
   let mask, lines;
   if (ev.kind === 'trial') {   // stars by medal: bronze 1, silver 2, gold 3
     const m = medals(ev.par), got = time > 0 ? m.filter(x => time <= x).length : 0;

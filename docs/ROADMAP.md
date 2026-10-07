@@ -24,8 +24,9 @@ The plan agreed for the next stretch of work. Update the status table at the end
 | (G2 later) | AI that drives for destruction points in banger formats; a live destruction readout in the HUD | open |
 | G3 | Derby: mode, arenas, AI | done: core/modes/derby.js (wrecked = out, no healing, scaled damage, last car running, time-up by damage), derby AI (targets, lead, wall avoidance, retreat when hurt, back off for a run-up), arena element (flat floor, unbreakable ring, props, ramps), Scrapyard Bowl, Mud Pit, The Stadium and the Banger Oval derby track, overhead fitted camera and HUD, career derbies (Club, Pro, Legend) and the Oval Bangers cup, npm run derby, Workshop Derby arena tab |
 | (G3 later) | A crossover figure of eight at grade; derby AI that plays the format in banger races; arena Blender pieces | open |
-| G4 | Economy and pacing dashboard | next |
-| G5 | Career v2 structure | planned |
+| G4 | Economy and pacing dashboard | done: data/economy.js (car price from its pace and toughness rating within its tier, resale 60% of the car and what was fitted, prize money by tier and format), data/prices.js cost curve (each part and weapon level 2.5x the last), selling cars in the career garage, npm run career -- --json and npm run dashboard (the Career Pacing artifact, https://claude.ai/artifact/VS53tnawm2stAUKFGZDxHn: rating gap, win rate at casual and good skill, races per purchase, cash over time), a pacing test (six casual Rookie races buy a Club car), tier skills retuned (Rookie 0.91, Club 0.92, Pro 0.93, Legend 0.935) |
+| (G4 later) | Price weapon gear and paint from the sheet too; a season-long cash test per tier | open |
+| G5 | Career v2 structure | next |
 | G6 | Content waves | planned |
 
 
@@ -297,4 +298,4 @@ F0 → F1 → F2 → F3 → { F4, F5, F6 can run in any order } → G1 → G2 �
   the user what to try in the Workshop.
 
 ## Next step
-G4: the economy sheet and the pacing dashboard, on its own PR.
+G5: career v2 structure (series per discipline in every tier, boss tracks, Elite tier), on its own PR.

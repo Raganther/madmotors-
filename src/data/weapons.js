@@ -2,6 +2,8 @@
 // sells them (data/career.js), the Workshop's Weapons range tries every one at every level.
 // A car's weapons come on its race def as `wpn: { lv: { missile: 2, ... }, gear: 'shield' }` (missing = level 1, no
 // gear); a vehicle with a signature weapon (SIGNATURES) finds it in crates too. Level 1 is the weapon as it always was.
+import { costCurve } from './prices.js';
+
 export const WEAPON_MAX = 3;
 /** Every weapon: what it is and what each level adds. `fx` is per level (1..3): numbers that replace core WPN's. */
 export const WEAPONS = {
@@ -27,7 +29,7 @@ export const GEAR = {
   magnet: { name: 'Magnet', blurb: 'Pulls in weapon crates from further across the road' },
 };
 export const GEAR_IDS = Object.keys(GEAR);
-export const WEAPON_PRICE = [0, 2500, 6000], GEAR_PRICE = 3000;   // level 2, level 3; a piece of gear
+export const WEAPON_PRICE = [0, ...costCurve(2500, 2, 2.4)], GEAR_PRICE = 3000;   // level 2, level 3 (data/prices.js); a piece of gear
 /** The level of weapon `it` in loadout w (a def's `wpn`). */
 export const levelOf = (w, it) => Math.max(1, Math.min(WEAPON_MAX, (w && w.lv && w.lv[it]) || 1));
 /** Loadout from an owned-car record ({ wl, gear }), or null when it's all level 1 and no gear. */

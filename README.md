@@ -129,6 +129,7 @@ npm run check      # lint + tests: run before every commit
 | `npm run layout -- 7` | Top-down plan of stage 7's road: heights, bridges, tunnels, river, railways, near-misses between road sections |
 | `npm run terrain -- gorge` | Shaded relief map of a stage's terrain |
 | `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
+| `npm run dashboard` | The career pacing dashboard (`tools/out/pacing.html`) from `npm run career -- --upg tier --json` |
 | `npm run derby -- [arena,...]` | A derby in each arena with the AI at a casual and a good skill: how long, who went out when, who won |
 | `npm run ratings` | Measure every vehicle's pace (tarmac, loose) and toughness and how much each stat moves a lap → `src/data/ratings-data.js` (commit it; a test fails when it's stale) |
 | `npm run destruct [-- kmh]` | What each vehicle can smash: the speed it breaks each breakable from, and a real run into each at a set speed |
@@ -322,6 +323,22 @@ box, the panels), so every car of either provider takes every part, and a part o
 that panel (it opens and flies off with it). Rivals show the tier's parts (engine, tyres, suspension). In the career
 garage a car's upgrades screen is a turntable (`src/render/showcar.js`): a part goes on with the car up on jacks. Try
 any part on any car in the Workshop's Cars tab.
+
+### The economy and pacing
+
+Every price and payout is on one sheet, `src/data/economy.js` (curves in `src/data/prices.js`). A car's price comes from
+the tier whose showroom sells it and its measured ratings: `CAR_BASE[tier]` × (1 + `PACE_K` × how much quicker than the
+coupe it is on its better surface + `TOUGH_K` × how much tougher), so nothing is priced by hand and a new car is priced
+when its ratings are measured. Part and weapon levels each cost `COST_GROW` (2.5) times the level before. A car sells
+for `RESALE` (60%) of its price and of everything spent on it (parts, weapon levels, gear) from the garage's Sell
+button (never the car you're driving or your last). Payouts (place cash, style bonuses, destruction, trophies, medals,
+purses) are scaled by the tier's `TIER_PAY` and the format's `FORMAT_PAY`.
+`npm run career -- --upg tier --json` races every round of every tier with the AI in your seat at a casual (0.88) and a
+good (0.95) skill, in the tier's natural car at the tier's upgrade level, and writes `tools/out/career.json`;
+`npm run dashboard` turns it into `tools/out/pacing.html`, published as the Career Pacing artifact (https://claude.ai/artifact/VS53tnawm2stAUKFGZDxHn) (places, win rates,
+cash after every race, races to the next tier's cheapest car and to a part, your pace against the field), every
+figure against its target. `tests/economy.test.js` locks the curves and one target: six Rookie races at a casual
+skill buy the cheapest Club car.
 
 ### Event formats and scoring
 
