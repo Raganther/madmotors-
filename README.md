@@ -546,4 +546,7 @@ src/ui/lab.js     the Asset Lab page (the Workshop's Cars tab)
 
 ## Publishing
 
-`npm run build` and publish `dist/index.html` (a single file, no external scripts). `dist/` is not committed.
+`npm run build` makes `dist/index.html`, one file with everything inlined (the e2e and the tools use it). An artifact page
+has a size limit (about 4.7 MB) that the Blender packs outgrow, so `node tools/split.mjs dist` moves the script out to
+`dist/publish/game.js` beside `dist/publish/index.html`, and both are published (the page with `game.js` as a supporting
+file). `dist/` is not committed.

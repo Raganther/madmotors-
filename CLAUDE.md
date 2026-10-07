@@ -53,7 +53,10 @@ answer the same way (`{ reply, status: "done" }`), rebuild with `npm run assets 
 - Visual assets have two providers: Blender packs (`src/assets/gen`, from `blender/`) and the Classic code builders. Code that
   draws one asks `blenderPack` / `sceneryPack` / `kitPack` and must keep its Classic path working (Models: Classic, and
   Auto on Graphics: Low). Behaviour (damage, animation, collisions) stays in code; a pack brings shapes, parts and pivots.
-- Publish by building and publishing `dist/index.html` to the existing artifact, https://claude.ai/artifact/VWoYkDJ6JEu65zXEbELwwC
-  (pass it as `url`; it keeps its db + assets capabilities); dist is not committed. The user's notes and tracks live
-  in that artifact's database. When assets or the lab change, also `npm run lab` and publish `dist-lab/index.html` to the
-  lab artifact above. Work on a branch off `main` and merge back by pull request.
+- Publish by `npm run build && node tools/split.mjs dist`, then publishing `dist/publish/index.html` with
+  `files: { "game.js": "dist/publish/game.js" }` to the existing artifact, https://claude.ai/artifact/VWoYkDJ6JEu65zXEbELwwC
+  (pass it as `url`; it keeps its db + assets capabilities); dist is not committed. (A single-file page is over the
+  artifact size limit, ~4.7 MB; the error it gives talks about "pr-review machinery".) The user's notes and tracks live
+  in that artifact's database. When assets or the lab change, also `npm run lab && node tools/split.mjs dist-lab` and
+  publish `dist-lab/publish/index.html` (+ its game.js) to the lab artifact above. Work on a branch off `main` and merge
+  back by pull request.
