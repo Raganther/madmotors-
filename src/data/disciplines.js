@@ -7,11 +7,11 @@ import { bandRank, ratingOf } from './ratings.js';
 // better than that band in pace (on the discipline's surface) or toughness.
 //   surface  which pace counts for the discipline: 'tarmac', 'loose', or 'pace' (the car's better one)
 export const DISCIPLINES = {
-  road: { name: 'Road', blurb: 'road cars built for tarmac', surface: 'tarmac', cars: ['coupe', 'wedge', 'formula', 'rocket', 'hotrod', 'police', 'limo', 'kart', 'sidecar'] },
-  rally: { name: 'Rally', blurb: 'quick on tarmac and gravel alike', surface: 'loose', cars: ['hatch', 'wedge', 'buggy', 'tuktuk', 'police'] },
-  offroad: { name: 'Off-road', blurb: 'mud, snow and open country', surface: 'loose', cars: ['buggy', 'monster', 'rover', 'hover', 'snowcat', 'hatch'] },
+  road: { name: 'Road', blurb: 'road cars built for tarmac', surface: 'tarmac', cars: ['coupe', 'wedge', 'formula', 'rocket', 'hotrod', 'police', 'limo', 'kart', 'sidecar', 'taxi', 'gt', 'roadster'] },
+  rally: { name: 'Rally', blurb: 'quick on tarmac and gravel alike', surface: 'loose', cars: ['hatch', 'wedge', 'buggy', 'tuktuk', 'police', 'estate'] },
+  offroad: { name: 'Off-road', blurb: 'mud, snow and open country', surface: 'loose', cars: ['buggy', 'monster', 'rover', 'hover', 'snowcat', 'hatch', 'pickup'] },
   heavy: { name: 'Heavy', blurb: 'trucks, vans and limos', surface: 'pace', cars: ['monster', 'icecream', 'firetruck', 'snowcat', 'limo', 'mixer'] },
-  oddball: { name: 'Oddball', blurb: 'karts, trikes, bikes and stranger things', surface: 'pace', cars: ['kart', 'tuktuk', 'icecream', 'hover', 'sidecar', 'rocket', 'rover'] },
+  oddball: { name: 'Oddball', blurb: 'karts, trikes, bikes and stranger things', surface: 'pace', cars: ['kart', 'tuktuk', 'icecream', 'hover', 'sidecar', 'rocket', 'rover', 'taxi'] },
   derby: { name: 'Derby', blurb: 'tough enough to trade blows (toughness B or better)', surface: 'pace', minTough: 'B' },
 };
 export const DISC_IDS = Object.keys(DISCIPLINES);

@@ -9,6 +9,10 @@ argument-hint: <vehicle idea(s)>
 Read README "Adding a vehicle". A vehicle is a body builder (`MODELS.<name>` in `src/render/carmodels.js`) plus a
 data entry (`src/data/vehicles.js`). The rest (garage card, picture, stat bars, race line-up) follows automatically.
 
+**Faster: a family car.** If it's a variation on a shape we have (a saloon, a sports car), add it to a family in
+`src/data/families.js` instead of writing a builder: both providers draw it from the chassis numbers (README "A car
+in a family"). Write a builder only for a shape no family covers, or start a new family.
+
 ## 1. Character first
 One line each: what it is, what it's good at, what it's bad at, and the one visual detail that makes it
 recognisable from the top-down camera at speed (silhouette and colour, not small parts). It should not overlap an
@@ -55,3 +59,12 @@ field (Rivals at max) has one of every vehicle; the full-field test checks that.
 ## 5. Ship
 Adding a vehicle changes no stage's golden run (rivals keep their cars); if golden changes, find out why. `/ship`,
 sending a garage screenshot and one in-race shot per new vehicle.
+
+## Traps
+- A bigger garage means a bigger full field (Rivals at max): tests/elements.test.js and the e2e count it, and the grid
+  must fit before the start line (core/sim/race.js gridSlots closes the rows up past five).
+- The Asset Lab lists cars by vehicle id (`npm run labshot -- taxi`), not by pack id (`car-taxi`).
+- A family car's Blender pack must stay inside the car budget (tests/assets.test.js): busy extras (spare tyres) want
+  few vertices.
+- A body may have no wing (or bumper): render code that knocks parts about must check for them (render/vehicles.js
+  updateCarDamageVis). Unit tests don't build meshes; the e2e's Elite race and a damaged full field catch it.

@@ -30,7 +30,8 @@ export const CAREER_RIVALS = 7;
 export const STARTERS = ['coupe', 'hatch', 'tuktuk'];
 /** Cars for sale: the tier whose showroom first sells them, and their price (data/economy.js: from the tier and the car's ratings). */
 const SHOP_TIER = { tuktuk: 0, kart: 0, icecream: 0, sidecar: 0, coupe: 0, hatch: 0, buggy: 0, mixer: 0, firetruck: 1, rover: 1, hotrod: 1, police: 1,
-  snowcat: 2, hover: 2, monster: 2, wedge: 2, formula: 3, rocket: 3, limo: 3 };
+  snowcat: 2, hover: 2, monster: 2, wedge: 2, formula: 3, rocket: 3, limo: 3,
+  taxi: 0, stockcar: 0, estate: 1, pickup: 1, roadster: 1, gt: 2 };   // the car families (data/families.js)
 export const SHOP = Object.fromEntries(Object.entries(SHOP_TIER).map(([id, tier]) => [id, { tier, price: carPrice(id, tier) }]));
 // ---------- entry (disciplines) and upgrades ----------
 const STD = { accel: 1, top: 1, grip: 1, off: 1, im: 1 };

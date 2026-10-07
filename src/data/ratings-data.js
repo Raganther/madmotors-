@@ -1,6 +1,6 @@
 // Written by `npm run ratings` (tools/ratings.mjs): measured, do not edit. data/ratings.js reads it.
 export default {
- "key": "d84926e8",
+ "key": "a084f173",
  "sens": {
   "tarmac": {
    "accel": -25.98,
@@ -110,6 +110,36 @@ export default {
    "tarmac": 2.09,
    "loose": 1.08,
    "tough": 1.77
+  },
+  "taxi": {
+   "tarmac": -0.17,
+   "loose": 2.34,
+   "tough": 1
+  },
+  "estate": {
+   "tarmac": 0.94,
+   "loose": -2.96,
+   "tough": 1.01
+  },
+  "pickup": {
+   "tarmac": 2.51,
+   "loose": -3.69,
+   "tough": 1.19
+  },
+  "stockcar": {
+   "tarmac": 2.4,
+   "loose": 2.12,
+   "tough": 1.46
+  },
+  "gt": {
+   "tarmac": -1.99,
+   "loose": 2.61,
+   "tough": 1
+  },
+  "roadster": {
+   "tarmac": -1.22,
+   "loose": 2.38,
+   "tough": 0.98
   }
  }
 };

@@ -9,12 +9,12 @@ import { collideCars } from './collide.js';
 import { healCar } from './damage.js';
 
 /** Where each car lines up, [sample, lateral]: two abreast for up to four cars, three abreast in rows 6 m apart for
- *  a bigger field, four abreast past 15 (19 cars still start at sample 6 or later, so a downhill stage has road under
- *  all of them). */
+ *  a bigger field, four abreast past 15. The back row is never behind sample 6 (a downhill stage has road under all
+ *  of them): past five rows (20 cars) the rows close up. */
 export function gridSlots(n) {
   if (n <= 4) return [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
-  const L = n > 15 ? [-4.3, -1.45, 1.45, 4.3] : [-3.5, 0, 3.5];                   // a full field goes four abreast
-  return Array.from({ length: n }, (_, k) => [30 - Math.floor(k / L.length) * 6, L[k % L.length]]);
+  const L = n > 15 ? [-4.3, -1.45, 1.45, 4.3] : [-3.5, 0, 3.5], rows = Math.ceil(n / L.length), gap = rows > 5 ? 24 / (rows - 1) : 6;   // a full field goes four abreast
+  return Array.from({ length: n }, (_, k) => [30 - Math.floor(k / L.length) * gap, L[k % L.length]]);
 }
 /** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'|'deuce'|'tiebreak', weapons?: boolean}} [opts] @returns {import('../types.js').Race} */
 export function createRace(W, defs, opts = {}) {

@@ -77,6 +77,52 @@
    "wing:paint"
   ]
  },
+ "car-estate": {
+  "family": "cars",
+  "hiTris": 8080,
+  "kb": 198,
+  "loTris": 4128,
+  "max": [
+   1.12,
+   1.83,
+   2.03
+  ],
+  "min": [
+   -1.12,
+   0.16,
+   -2.02
+  ],
+  "parts": [
+   "body:paint",
+   "body:trim",
+   "bumper:trim",
+   "cabin:glass",
+   "cabin:paint",
+   "flap0:tyre",
+   "flap1:tyre",
+   "grille:chrome",
+   "grille:trim",
+   "head0:lamp",
+   "head1:lamp",
+   "lampbar:trim",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "pod0:lamp",
+   "pod1:lamp",
+   "pod2:lamp",
+   "pod3:lamp",
+   "rbumper:trim",
+   "roofbox:trim",
+   "stripe0:accent",
+   "stripe1:accent",
+   "tail0:tail",
+   "tail1:tail"
+  ]
+ },
  "car-firetruck": {
   "family": "cars",
   "hiTris": 7362,
@@ -149,6 +195,49 @@
    "strut0:trim",
    "strut1:trim",
    "tail0:tail",
+   "wing:accent"
+  ]
+ },
+ "car-gt": {
+  "family": "cars",
+  "hiTris": 7390,
+  "kb": 183,
+  "loTris": 3704,
+  "max": [
+   1.1,
+   1.335,
+   2.06
+  ],
+  "min": [
+   -1.1,
+   0.281,
+   -2.05
+  ],
+  "parts": [
+   "body:paint",
+   "body:trim",
+   "bumper:trim",
+   "cabin:glass",
+   "cabin:paint",
+   "grille:chrome",
+   "grille:trim",
+   "head0:lamp",
+   "head1:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "pipe0:chrome",
+   "pipe1:chrome",
+   "rbumper:trim",
+   "stripe0:accent",
+   "stripe1:accent",
+   "strut0:trim",
+   "strut1:trim",
+   "tail0:tail",
+   "tail1:tail",
    "wing:accent"
   ]
  },
@@ -480,6 +569,57 @@
    "wing:trim"
   ]
  },
+ "car-pickup": {
+  "family": "cars",
+  "hiTris": 8038,
+  "kb": 202,
+  "loTris": 4362,
+  "max": [
+   0.99,
+   2.03,
+   2.09
+  ],
+  "min": [
+   -0.99,
+   0.621,
+   -2.02
+  ],
+  "parts": [
+   "bed:trim",
+   "bedside0:paint",
+   "bedside1:paint",
+   "body:paint",
+   "body:trim",
+   "bumper:trim",
+   "cabin:glass",
+   "cabin:paint",
+   "grille:chrome",
+   "grille:trim",
+   "head0:lamp",
+   "head1:lamp",
+   "lampbar:trim",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "pod0:lamp",
+   "pod1:lamp",
+   "pod2:lamp",
+   "pod3:lamp",
+   "rbumper:trim",
+   "spare0:hub",
+   "spare0:tyre",
+   "spare1:hub",
+   "spare1:tyre",
+   "stripe0:accent",
+   "stripe1:accent",
+   "tail0:tail",
+   "tail1:tail",
+   "tailgate:paint"
+  ]
+ },
  "car-police": {
   "family": "cars",
   "hiTris": 6480,
@@ -519,6 +659,40 @@
    "tail0:tail",
    "tail1:tail",
    "wing:paint"
+  ]
+ },
+ "car-roadster": {
+  "family": "cars",
+  "hiTris": 6644,
+  "kb": 165,
+  "loTris": 3414,
+  "max": [
+   1.0,
+   1.24,
+   1.93
+  ],
+  "min": [
+   -1.0,
+   0.281,
+   -1.92
+  ],
+  "parts": [
+   "body:paint",
+   "body:trim",
+   "bumper:chrome",
+   "cabin:glass",
+   "grille:chrome",
+   "grille:trim",
+   "head0:lamp",
+   "head1:lamp",
+   "helmet:accent",
+   "rbumper:chrome",
+   "seat0:trim",
+   "seat1:trim",
+   "stripe0:accent",
+   "stripe1:accent",
+   "tail0:tail",
+   "tail1:tail"
   ]
  },
  "car-rocket": {
@@ -661,6 +835,90 @@
    "tracks:trim",
    "tracks:tyre",
    "wing:accent"
+  ]
+ },
+ "car-stockcar": {
+  "family": "cars",
+  "hiTris": 8680,
+  "kb": 212,
+  "loTris": 4384,
+  "max": [
+   0.99,
+   1.57,
+   2.09
+  ],
+  "min": [
+   -0.99,
+   0.361,
+   -2.02
+  ],
+  "parts": [
+   "body:paint",
+   "body:trim",
+   "bumper:trim",
+   "cabin:glass",
+   "cabin:paint",
+   "cage0:trim",
+   "cage1:trim",
+   "cagepost0:trim",
+   "cagepost1:trim",
+   "grille:chrome",
+   "grille:trim",
+   "head0:lamp",
+   "head1:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "plate0:metal",
+   "plate1:metal",
+   "rbumper:trim",
+   "stripe0:accent",
+   "stripe1:accent",
+   "tail0:tail",
+   "tail1:tail"
+  ]
+ },
+ "car-taxi": {
+  "family": "cars",
+  "hiTris": 7552,
+  "kb": 180,
+  "loTris": 3538,
+  "max": [
+   0.99,
+   1.76,
+   2.03
+  ],
+  "min": [
+   -0.99,
+   0.361,
+   -2.02
+  ],
+  "parts": [
+   "body:paint",
+   "body:trim",
+   "bumper:chrome",
+   "cabin:glass",
+   "cabin:paint",
+   "grille:chrome",
+   "grille:trim",
+   "head0:lamp",
+   "head1:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "rbumper:chrome",
+   "sign:white",
+   "signbase:trim",
+   "stripe0:accent",
+   "stripe1:accent",
+   "tail0:tail",
+   "tail1:tail"
   ]
  },
  "car-tuktuk": {

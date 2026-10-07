@@ -6,6 +6,8 @@ import { blenderPack } from './assets/index.js';
 import { buildBlenderCar } from './assets/cars.js';
 import { carvePanels } from './anatomy.js';
 import { fitParts } from './parts.js';
+import { familyModel } from './families.js';
+import { FAMILY_IDS, chassisOf } from '../data/families.js';
 
 // The racers' bodies, one builder per model (CAR_DEFS[].model). They differ where it shows from the camera, overhead:
 // outline, roof and deck. All share the same footprint (the hitbox is the same for everyone), wheels, lights and the
@@ -512,6 +514,8 @@ const MODELS = {
   }
 };
 /** Build a racer's body onto root/body. Returns the parts the damage and drawing code use. */
+// the family cars (data/families.js): one builder from their chassis numbers
+for (const id of FAMILY_IDS) MODELS[id] = (K, def) => familyModel(K, def, chassisOf(id), { DARK, GLASS, CHROME, TYRE });
 export function buildCarModel(def, root, body, provider) {
   const K = kit(def, root, body), pack = provider !== 'classic' && blenderPack('car-' + def.model, provider === 'blender');
   const out = pack ? buildBlenderCar(K, def, pack) : (MODELS[def.model] || MODELS.hatch)(K, def);
