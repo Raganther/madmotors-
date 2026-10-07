@@ -66,3 +66,42 @@ describe('weapons', () => {
     expect(R.cars.reduce((a, c) => a + c.wrecks, 0)).toBeLessThanOrEqual(3);
   });
 });
+
+// F6 (data/weapons.js): levels, gear and the signature weapons
+describe('weapon modules', () => {
+  const raceW = (pdef = {}, odef = {}) => { seedRandom(9); const Wd = W(), defs = DEFS.map(d => d.player ? { ...d, ...pdef } : { ...d, ...odef }); const R = M.createRace(Wd, defs, { weapons: true }); R.phase = 'racing'; return { R, Wd, P: R.player }; };
+  // the player at `at` holding `item`, the others at `gaps` along and `lats` across from it
+  const setup = (item, lats, gaps, pdef, odef, at = 400) => { const s = raceW(pdef, odef), { R, P } = s; R.cars.forEach((c, k) => put(c, 150 + k * 20, 0, 0)); put(P, at, 0, 22); R.cars.filter(c => c !== P).forEach((c, k) => put(c, at + gaps[k], lats[k], 22)); P.wpn.item = item; P.wpn.uses = M.ITEM_USES[item]; P.inp.fire = true; return s; };
+  const run = (R, Wd, secs, on) => { for (let k = 0; k < secs * 120; k++) { M.raceStep(R, 1 / 120, Wd); for (const c of R.cars) { if (on) c.events.forEach(e => on(e, c)); c.events.length = 0; } } };
+  const L3 = it => ({ wpn: { lv: { [it]: 3 } } });
+  it('levels: a longer gun burst, a wider pulse, twin missiles, glue in the oil', () => {
+    { const { R, Wd, P } = setup('gun', [0, 6, -6], [25, -60, -70], L3('gun')); M.raceStep(R, 1 / 120, Wd); expect(P.wpn.gunT).toBeGreaterThan(4.9); }
+    for (const [lv, hit] of [[{}, false], [L3('pulse'), true]]) { const { R, Wd } = setup('pulse', [17, 0, -5], [0, 60, -70], lv); M.raceStep(R, 1 / 120, Wd); expect((R.cars[0].stallT || 0) > 0, JSON.stringify(lv)).toBe(hit); }
+    { const { R, Wd } = setup('missile', [-3, 3, 0], [30, 45, -70], L3('missile')); M.raceStep(R, 1 / 120, Wd); expect(R.missiles.length).toBe(2); expect(new Set(R.missiles.map(m => m.tgt)).size).toBe(2); }
+    const after = lv => { const { R, Wd } = setup('oil', [0, 5, -5], [-14, -60, -60], lv); let v = 99; run(R, Wd, 2, (e, c) => { if (e.t === 'oil-hit') v = Math.hypot(c.vx, c.vz); }); return v; };
+    expect(after(L3('oil'))).toBeLessThan(after({}) - 3);
+  });
+  it('gear: flares draw a missile off, a shield soaks up a hit, then both recharge', () => {
+    for (const gear of ['flares', 'shield']) {
+      const { R, Wd } = setup('missile', [3, 5, -5], [40, -60, -70], {}, { wpn: { gear } }), T = R.cars[0]; const seen = [];
+      run(R, Wd, 3, (e, c) => { if (c === T) seen.push(e.t); });
+      expect(seen.includes('missile-hit'), gear).toBe(false); expect(seen.includes(gear === 'flares' ? 'flares' : 'shield'), gear).toBe(true);
+      expect(gear === 'flares' ? T.wpn.flareT : T.wpn.shieldT).toBeGreaterThan(10);
+    }
+  });
+  it('signature weapons come with their vehicle, and only with it', () => {
+    const { R, Wd } = raceW({ vehicle: 'firetruck' }); R.autoPlayer = true; const got = [];
+    run(R, Wd, 150, (e, c) => { if (e.t === 'pickup') got.push([c.isPlayer, e.item]); });
+    expect(R.player.wpn.sig).toBe('water');
+    expect(got.some(([p, it]) => p && it === 'water')).toBe(true);
+    expect(got.some(([p, it]) => !p && M.SIG_ITEMS.includes(it))).toBe(false);
+  });
+  it('the water cannon shoves the car ahead aside, cement and the stinger catch the car behind, the crush slams a neighbour, the jingle stutters everyone near', () => {
+    const lat0 = (() => { const { R, Wd } = setup('water', [0, 5, -5], [14, -60, -70]); R.player.inp.fire = false; run(R, Wd, 1.5); return R.cars[0].pr.lat; })();
+    { const { R, Wd } = setup('water', [0, 5, -5], [14, -60, -70]); const n = []; run(R, Wd, 1.5, e => n.push(e.t)); expect(n).toContain('water-hit'); expect(Math.abs(R.cars[0].pr.lat - lat0) + R.cars[0].oilT).toBeGreaterThan(0.3); }
+    const behind = item => { const { R, Wd } = setup(item, [0, 5, -5], [-16, -60, -70]); const n = []; run(R, Wd, 3, e => n.push(e.t)); return n; };
+    expect(behind('cement')).toContain('cement-hit'); expect(behind('stinger')).toContain('stinger-hit');
+    { const { R, Wd } = setup('crush', [4, 30, -30], [0, -60, -70]); const n = []; run(R, Wd, 3, e => n.push(e.t)); expect(n).toContain('crush'); expect(n).toContain('crush-hit'); }
+    { const { R, Wd } = setup('jingle', [4, 0, -30], [8, -15, -90]); const n = []; run(R, Wd, 1, e => n.push(e.t)); expect(n.filter(t => t === 'jingle-hit').length).toBe(2); }
+  });
+});

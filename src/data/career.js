@@ -13,6 +13,7 @@
 import { CAR_DEFS, MORE_RIVALS } from './cars.js';
 import { vehicleById } from './vehicles.js';
 import { PART_MAX, TYRE_KINDS, buildOf, buildVeh, slotById } from './parts.js';
+import { GEAR, GEAR_PRICE, SIGNATURES, WEAPONS, WEAPON_IDS, WEAPON_MAX, WEAPON_PRICE, loadoutOf } from './weapons.js';
 
 export const CAREER_RIVALS = 7;
 export const STARTERS = ['coupe', 'hatch', 'tuktuk'];
@@ -60,6 +61,26 @@ export function fitTyres(s, id, k) {
   const own = { ...s.cars[id] }; if (k === 'road') delete own.tyrKind; else own.tyrKind = k;
   return { ...s, cars: { ...s.cars, [id]: own } };
 }
+
+// ---------- the armoury (data/weapons.js): weapon levels and gear, per car ----------
+/** The weapons car id can level up: the five everyone finds, and its own signature weapon. */
+export const armoury = id => WEAPON_IDS.filter(w => !WEAPONS[w].sig || SIGNATURES[id] === w);
+export const weaponLevel = (s, id, w) => Math.max(1, (s.cars[id] && s.cars[id].wl && s.cars[id].wl[w]) || 1);
+/** Buy the next level of weapon w for car id, or null. */
+export function buyWeapon(s, id, w) {
+  const L = weaponLevel(s, id, w), p = WEAPON_PRICE[L];
+  if (!s.cars[id] || !armoury(id).includes(w) || L >= WEAPON_MAX || s.cash < p) return null;
+  const own = s.cars[id]; return { ...s, cash: s.cash - p, cars: { ...s.cars, [id]: { ...own, wl: { ...(own.wl || {}), [w]: L + 1 } } } };
+}
+/** Gear g on car id: bought the first time (GEAR_PRICE), fitted free after that; fitting the fitted one takes it off. */
+export function fitGear(s, id, g) {
+  const own = s.cars[id]; if (!own || !GEAR[g]) return null;
+  const has = (own.gears || []).includes(g); if (!has && s.cash < GEAR_PRICE) return null;
+  const next = { ...own, gears: has ? own.gears : [...(own.gears || []), g] }; if (own.gear === g) delete next.gear; else next.gear = g;
+  return { ...s, cash: s.cash - (has ? 0 : GEAR_PRICE), cars: { ...s.cars, [id]: next } };
+}
+// rivals' weapons: the tier's upgrade level (Pro 2, Legend 3) on all of them; bosses carry a shield too
+const rivalLoad = (L, gear) => { const lv = L > 1 ? Object.fromEntries(WEAPON_IDS.map(w => [w, Math.min(WEAPON_MAX, L)])) : null; return lv || gear ? { ...(lv ? { lv } : {}), ...(gear ? { gear } : {}) } : null; };
 
 export const PLACE_CASH = [1000, 750, 550, 400, 300, 220, 160, 120];
 export const BONUS = { air: 30, drift: 20, hit: 15, clean: 150, obj: 250 };
@@ -200,7 +221,7 @@ export function careerField(ev, ti = tierOf(ev)) {
 // a star driver in their car, a notch sharper than the tier (skill `k`) and upgraded to `L`
 function bossDef(name, vehicle, L, k) {
   const d = DRIVERS.find(x => x.name === name), lv = { eng: L, tyr: L, sus: L }, veh = upgradedVeh(vehicle, lv);
-  return { ...asDef(d, vehicleById(vehicle)), skill: Math.min(1, d.skill * k + 0.02), veh, im: veh.im, build: buildOf(lv) };
+  return { ...asDef(d, vehicleById(vehicle)), skill: Math.min(1, d.skill * k + 0.02), veh, im: veh.im, build: buildOf(lv), wpn: rivalLoad(L, 'shield') };
 }
 function cupField(ev, T, ti) {
   const ok = tierCars(ti).filter(id => allowed(ev, id)), lv = { eng: T.upg, tyr: T.upg, sus: T.upg }, order = DRIVERS.slice().sort((a, b) => hash(ev.id + a.name) - hash(ev.id + b.name));
@@ -209,7 +230,7 @@ function cupField(ev, T, ti) {
   return pick.map((d, k) => {
     const v = vehicleById(ok.includes(d.vehicle) ? d.vehicle : ok[hash(ev.id + k) % ok.length]);
     const veh = upgradedVeh(v.id, lv);
-    return { ...asDef(d, v, vehicleById(d.vehicle)), skill: Math.min(1, d.skill * T.skill), veh, im: veh.im, build: buildOf(lv) };   // their parts show
+    return { ...asDef(d, v, vehicleById(d.vehicle)), skill: Math.min(1, d.skill * T.skill), veh, im: veh.im, build: buildOf(lv), wpn: rivalLoad(T.upg) };   // their parts show
   });
 }
 /** The player's race def in career car `id`, with its upgrades and paint (a one-make race: its car, stock). */
@@ -217,7 +238,7 @@ export function careerPlayer(s, id = s.car, ev = null) {
   const coupe = CAR_DEFS.find(d => d.player);
   if (ev && ev.make) return asDef(coupe, vehicleById(ev.make));
   const own = s.cars[id] || {}, veh = upgradedVeh(id, own), paint = PAINTS[own.paint];
-  return { ...asDef(coupe, vehicleById(id), paint || vehicleById(id)), veh, im: veh.im, build: buildOf(own) };
+  return { ...asDef(coupe, vehicleById(id), paint || vehicleById(id)), veh, im: veh.im, build: buildOf(own), wpn: loadoutOf(own) };
 }
 /** Can the player race event ev in their current car? (One-make races lend you the car.) */
 export const canEnter = (s, ev) => !!ev.make || allowed(ev, s.car);

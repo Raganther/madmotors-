@@ -11,6 +11,7 @@ import { VEHICLES, vehicleById } from '../data/vehicles.js';
 import { makeCar } from '../core/sim/car.js';
 import { damageCar } from '../core/sim/damage.js';
 import { ITEMS, ITEM_USES } from '../core/features/weapons.js';
+import { GEAR, GEAR_IDS, WEAPONS } from '../data/weapons.js';
 import { PANELS, PANEL_STEPS } from '../data/anatomy.js';
 import { toggleOverlay } from '../render/overlay.js';
 import * as flow from './flow.js';
@@ -39,7 +40,7 @@ const CSS = `
 #ws-read{white-space:pre;font:12px/1.4 ui-monospace,Menlo,monospace;margin-top:8px} #ws-log{font:12px/1.35 ui-monospace,Menlo,monospace;margin-top:6px;color:#C9D2EA}
 @media (max-width:700px){#ws-panel{top:auto;bottom:8px;right:8px;left:8px;width:auto;max-height:42%}}`;
 let hub = null, panel = null, tick = 0;
-const S = { tab: null, style: 'village', kind: 'concrete', outcome: null, scenario: 'tbone', kmh: 80, slow: false, item: 'missile', refill: true, targets: 'dummies', auto: false, log: [], watch: [], snap: new Map() };
+const S = { tab: null, style: 'village', kind: 'concrete', outcome: null, scenario: 'tbone', kmh: 80, slow: false, item: 'missile', lv: 1, gear: '', refill: true, targets: 'dummies', auto: false, log: [], watch: [], snap: new Map() };
 
 /** ?workshop or ?workshop=<tab>: which tab the page was opened on ('hub' for the bare link), or null. */
 export function workshopParam() { const q = new URLSearchParams(location.search); return q.has('workshop') ? q.get('workshop') || 'hub' : null; }
@@ -128,7 +129,9 @@ function lineUp() {
   place(P(), s0, 0, dummies ? 0 : 15); P().hold = false; R().autoPlayer = S.auto;
   rivals().forEach((c, k) => { place(c, s0 + 45 + k * 30, [-2.5, 0, 2.5][k % 3], dummies ? 0 : 15); c.hold = dummies; });
 }
-function give(it) { const w = P().wpn; if (!w) return; w.item = it; w.uses = ITEM_USES[it]; }
+function give(it) { const w = P().wpn; if (!w) return; w.item = it; w.uses = ITEM_USES[it]; arm(); }
+// the level on the player's weapons and the gear on the targets (data/weapons.js), straight onto the race's cars
+function arm() { const w = P().wpn; if (!w) return; w.load = { lv: Object.fromEntries(ITEMS.map(k => [k, S.lv])) }; for (const c of rivals()) if (c.wpn) c.wpn.gear = S.gear || null; }
 const HITS = { 'missile-hit': 'Missile', 'bullet-hit': 'Bullet', 'oil-hit': 'Oil', 'pulse-hit': 'Shockwave', 'harpoon-hit': 'Harpoon', 'door-hit': 'Door' };
 function onEvent(c, e) {
   if (S.tab === 'destruct' && c.isPlayer) {
@@ -191,6 +194,8 @@ function drawPanel() {
     <label>Speed: <b id="ws-kmh">${S.kmh}</b> km/h</label><input id="ws-speed" type="range" min="20" max="200" step="5" value="${S.kmh}">
     <div class="row"><button class="ws-btn" id="ws-run" type="button">Run</button><button class="ws-btn alt" id="ws-fix" type="button">Repair</button></div>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
   else panel.innerHTML = `<h2>Weapons range</h2>${carSel}<label>Weapon</label><div class="row">${ITEMS.map(it => `<button class="ws-btn alt ${it === S.item ? 'on' : ''}" data-it="${it}" type="button">${esc(flow.ITEM_NAME[it])}</button>`).join('')}</div>
+    <label>Level</label><div class="row">${[1, 2, 3].map(L => `<button class="ws-btn alt ${L === S.lv ? 'on' : ''}" data-lv="${L}" type="button">${L}: ${esc(WEAPONS[S.item].looks[L - 1])}</button>`).join('')}</div>
+    <label>Targets' gear</label><div class="row">${['', ...GEAR_IDS].map(g => `<button class="ws-btn alt ${g === S.gear ? 'on' : ''}" data-gear="${g}" type="button">${g ? GEAR[g].name : 'None'}</button>`).join('')}</div>
     <div class="row"><button class="ws-btn" id="ws-fire" type="button">Fire (F)</button><button class="ws-btn alt ${S.refill ? 'on' : ''}" id="ws-refill" type="button">Endless ammo</button></div>
     <label>Targets</label><div class="row"><button class="ws-btn alt ${S.targets === 'dummies' ? 'on' : ''}" data-tg="dummies" type="button">Dummies</button><button class="ws-btn alt ${S.targets === 'racing' ? 'on' : ''}" data-tg="racing" type="button">Rivals racing</button><button class="ws-btn alt ${S.auto ? 'on' : ''}" id="ws-auto" type="button">Autopilot</button></div>
     <div class="row"><button class="ws-btn alt" id="ws-line" type="button">Line up again</button></div>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
@@ -214,6 +219,8 @@ function drawPanel() {
     $('ws-wreck').onclick = () => { const c = P(); damageCar(c, c.x + Math.sin(c.yaw) * 2, c.z + Math.cos(c.yaw) * 2, 80, 2, -Math.sin(c.yaw), -Math.cos(c.yaw)); };
   } else {
     for (const b of panel.querySelectorAll('[data-it]')) b.onclick = () => { S.item = b.dataset.it; give(S.item); drawPanel(); };
+    for (const b of panel.querySelectorAll('[data-lv]')) b.onclick = () => { S.lv = +b.dataset.lv; arm(); drawPanel(); };
+    for (const b of panel.querySelectorAll('[data-gear]')) b.onclick = () => { S.gear = b.dataset.gear; arm(); drawPanel(); };
     for (const b of panel.querySelectorAll('[data-tg]')) b.onclick = () => { S.targets = b.dataset.tg; lineUp(); drawPanel(); };
     $('ws-fire').onclick = () => { if (!P().wpn.item) give(S.item); P().inp.fire = true; };
     $('ws-refill').onclick = () => { S.refill = !S.refill; drawPanel(); };
