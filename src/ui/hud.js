@@ -9,6 +9,7 @@ import { ranking } from '../core/sim/race.js';
 import { roadH } from '../core/track/query.js';
 import { $, isTouch } from './dom.js';
 import { ITEM_NAME, race } from './flow.js';
+import { derbyOrder, health } from '../core/modes/derby.js';
 import { fmt, ordinal } from './format.js';
 import { best } from './storage.js';
 
@@ -60,7 +61,7 @@ export function updateHUD(dt) {
   $('sd-panel').hidden = !sd; $('hud').classList.toggle('sd', !!sd); $('pos').hidden = !!sd; $('standings').hidden = !!sd; $('best').hidden = !!sd;
   if (sd) updateShowdownHUD(sd, P);
   else $('edge').className = '';
-  const order = ranking(race), place = order.indexOf(P) + 1;
+  const order = race.derby ? derbyOrder(race) : ranking(race), place = order.indexOf(P) + 1;
   setTxt('pos-n', String(place)); setTxt('pos-suf', ordinal(place).slice(-2));
   const key = order.map(c => c.name).join() + isTouch;
   if (key !== G.standingsKey) {
@@ -77,6 +78,10 @@ export function updateHUD(dt) {
     const lap = G.world.tr.loopN ? ` · Lap ${Math.min(G.world.tr.laps, P.lap + 1)}/${G.world.tr.laps}` : '';
     const gate = sd.gate && sd.gate.open && isFinite(sd.gate.s) ? ` · gate ${Math.max(0, Math.round(sd.gate.s - P.progress))} m` : '';
     $('lap').hidden = true; setTxt('sd-title', sd.kind === 'crown' ? `Crown · first to ${SD.TARGET}s${lap}` : `First to ${CP.TARGET[sd.kind]}, two clear${gate}`);
+  }
+  else if (race.derby) {   // a derby (core/modes/derby.js): how many are left, the clock, your health
+    const D = race.derby, left = race.cars.filter(c => !c.out).length;
+    $('lap').hidden = false; setTxt('lap', P.out ? `Out · ${left} left` : `Derby · ${left} left · ${fmt(Math.max(0, D.time - D.t))} · you ${Math.round(100 * health(P))}%`);
   }
   else if (G.world.tr.loopN) {
     const L = G.world.tr.laps, GT = G.world.tr.gates, per = GT ? GT.length / L : 0, gate = GT && !P.finished ? ` · Gate ${(P.gateK || 0) % per + 1}/${per}` : '';   // off-piste: which gate is next this lap
@@ -98,7 +103,7 @@ export function updateHUD(dt) {
     $('wpn-fire').classList.toggle('ready', !!it); $('wpn-fire').classList.toggle('lock', lock);   // on touch the Fire button is the weapon panel setTxt('wpn-fire', it ? { missile: 'Missile', gun: 'Guns', oil: 'Oil', pulse: 'Pulse', harpoon: 'Hook', water: 'Water', cement: 'Cement', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle' }[it] : 'Fire');
   } else $('wpn').hidden = true;
   $('touch').classList.toggle('nowpn', !race.weapons);
-  const wrong = P.wrongT > 1, missed = P.gateMiss && !P.finished;
+  const wrong = P.wrongT > 1 && !race.derby, missed = P.gateMiss && !P.finished;
   $('warn').textContent = missed ? 'Missed a gate: follow the arrow back' : wrong ? 'Wrong way' : (P.stuckT > 3 ? (isTouch ? 'Stuck? Tap Reset' : 'Stuck? Press R to reset') : '');
   $('warn').hidden = !(missed || wrong || P.stuckT > 3);
 }

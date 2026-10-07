@@ -3,6 +3,7 @@ import { clearSceneryHits, sceneryHit } from '../render/world/scenery.js';
 import { AudioSys } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { createRace, ranking } from '../core/sim/race.js';
+import { derbyOrder, health } from '../core/modes/derby.js';
 import { screenOffset } from '../core/sim/view.js';
 import { CP, SD } from '../core/modes/showdown.js';
 import { DEFAULT_RIVALS, MAX_RIVALS, raceDefs } from '../data/cars.js';
@@ -43,8 +44,8 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const lg = G.league, cr = G.career, ws = G.workshop, mode = lg || ws ? 'race' : cr ? careerMode() : G.mode;          // league rounds are Races; a career special may be a Showdown
-  let defs = cr ? careerRaceDefs() : raceDefs(vehicleById(G.vehicle), ws ? ws.rivals : lg ? LEAGUE_RIVALS : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);   // the line-up, with the player's pick
+  const lg = G.league, cr = G.career, ws = G.workshop, arena = !!G.world.stage.arena, mode = cr ? careerMode() : arena ? 'derby' : lg || ws ? 'race' : G.mode;   // league rounds are Races; a career special may be a Showdown; an arena is always a derby
+  let defs = cr ? careerRaceDefs() : raceDefs(vehicleById(G.vehicle), ws ? ws.rivals : lg ? LEAGUE_RIVALS : mode === 'derby' ? Math.max(5, G.rivals) : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);   // the line-up, with the player's pick
   if (lg && lg.round > 0) { const order = standings(lg, defs.map(d => d.name)).map(s => s.name).reverse(); defs = order.map(n => defs.find(d => d.name === n)).filter(Boolean); }   // the championship leader starts at the back
   setRoster(defs);
   const r = createRace(G.world.W, defs, { mode, weapons: ws ? ws.weapons : cr ? true : G.weapons }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed; a career always races with weapons
@@ -132,6 +133,8 @@ export function handleEvents() {
         case 'cp-miss': callout('Nobody through the gate'); break;
         case 'sd-streak': if (c.isPlayer) { callout(`Crown streak ×${e.mult}!`); AudioSys.tone(880, 0.1, 0.07, 'triangle', 1.3); } break;
         case 'sd-spawn': sdSpawnFx(c); if (c.isPlayer) { callout(e.slot === 'front' ? 'Back in, ahead!' : e.slot === 'beside' ? 'Back in, alongside!' : 'Back in, behind!'); AudioSys.tone(440, 0.25, 0.08, 'triangle', 2); } break;
+        case 'derby-out': flash(c.x, c.y + 1, c.z, 6, 0xFFB03A, 0.4); if (near) AudioSys.crash('car', 0.8); callout(c.isPlayer ? 'Wrecked: you\'re out!' : `${c.name} is out! ${e.left} left`); break;
+        case 'derby-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? 'You win the derby!' : `${w.name} wins the derby${e.timeUp ? ' on damage' : ''}`); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
         case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? `You win the ${MODE_NAME[G.mode]}!` : `${w.name} wins the ${MODE_NAME[G.mode]}`); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
         case 'finish':
           if (c.isPlayer) {
@@ -191,6 +194,7 @@ function sdCrown(e) {
 }
 export function showResults() {
   if (race.sd) return showShowdownResults();
+  if (race.derby) return showDerbyResults();
   resultsShown = true; $('results').hidden = false; $('touch').hidden = true;
   const P = race.player;
   $('res-title').textContent = 'You finished ' + ordinal(P.place);
@@ -212,7 +216,22 @@ function showShowdownResults() {
   $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
   resetResultsUI(); updateResultsTable(); careerResults(); $('next-btn').focus({ preventScroll: true }); $('results').querySelector('.card').scrollTop = 0;
 }
+// a derby's results (core/modes/derby.js): last car running first, then the rest by when they went out
+function showDerbyResults() {
+  resultsShown = true; $('results').hidden = false; $('touch').hidden = true;
+  const D = race.derby, w = race.cars[D.winner], won = w === race.player, pl = derbyOrder(race).indexOf(race.player) + 1;
+  $('res-title').innerHTML = `<span class="chip" style="background:#${w.def.color.toString(16).padStart(6, '0')}"></span>` + (won ? 'You won the derby' : `${w.name} won the derby · you ${ordinal(pl)}`);
+  $('res-stage').textContent = `${G.world.stage.name} · ${fmt(D.t)}${race.cars.filter(c => !c.out).length > 1 ? ', time up: the least damaged wins' : ''}`;
+  $('res-best').textContent = 'Derby: wrecked cars are out; the last car running wins';
+  $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
+  resetResultsUI(); updateResultsTable(); careerResults(); $('next-btn').focus({ preventScroll: true }); $('results').querySelector('.card').scrollTop = 0;
+}
 export function updateResultsTable() {
+  if (race.derby) {
+    const D = race.derby;
+    $('res-table').innerHTML = derbyOrder(race).map((c, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}<span class="rs">${c.out ? 'out' : 'running'}</span></td><td class="rt">${c.out ? fmt(D.outT[race.cars.indexOf(c)] || 0) : Math.round(100 * health(c)) + '%'}</td></tr>`).join('');
+    return;
+  }
   if (race.sd && race.sd.kind !== 'crown') {
     const S = race.sd, order = race.cars.map((c, k) => ({ c, k, l: S.points[k] })).sort((a, b) => b.l - a.l || b.c.progress - a.c.progress);
     $('res-table').innerHTML = order.map(({ c, k, l }, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}<span class="rs">blew up ${S.booms[k]}×</span></td><td class="rt">${l} ${l === 1 ? 'pt' : 'pts'}</td></tr>`).join('');
@@ -269,7 +288,7 @@ export function refreshBest() {
   STAGES.forEach((s, i) => { const el = $('best-' + i), v = G.stageCars[s.name]; if (el) el.textContent = (best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet') + (v ? ' · ' + vehicleById(v).name : ''); });
 }
 const MODE_BTN = { race: 'Race ', showdown: 'Showdown: ', deuce: 'Deuce: ', tiebreak: 'Tiebreak: ' };
-export const MODE_NAME = { showdown: 'Showdown', deuce: 'Deuce', tiebreak: 'Tiebreak' };
+export const MODE_NAME = { showdown: 'Showdown', deuce: 'Deuce', tiebreak: 'Tiebreak', derby: 'Derby' };
 const MODE_DESC = {
   race: () => G.rivals === 1 ? 'Beat your rival to the line.' : `Beat ${G.rivals} rivals to the line${G.rivals > 3 ? ', starting from the back of the grid' : ''}.`,
   showdown: 'King of the Hill: the leader wears the crown and banks crown time. Pass clearly to steal it; slipstream helps, and a runaway leader meets cows and oil. Fall off the screen and you blow up, paying the holder 2 s. First to 60 s of crown time wins.',

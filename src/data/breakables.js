@@ -26,5 +26,11 @@ Object.assign(BREAKABLES, {
   bench: { name: 'Bench', hp: 4, minMass: 0, kit: true },
   postbox: { name: 'Postbox', hp: 22, minMass: 1, kit: true },
 });
-/** The stand-alone kinds (a breach, stage props, the Destruction yard); the kit's pieces are placed by the kit. */
-export const BREAKABLE_KINDS = Object.keys(BREAKABLES).filter(k => !BREAKABLES[k].kit);
+// A derby arena's wall ring (core/elements/arena.js): unbreakable, drawn as one ring by render/elements/arena.js.
+Object.assign(BREAKABLES, {
+  tyres: { name: 'Tyre wall', hp: Infinity, minMass: Infinity, w: 5, d: 1.4, h: 1.2, chunks: 0, color: 0x222428, arena: true },
+  barrier: { name: 'Concrete wall', hp: Infinity, minMass: Infinity, w: 5, d: 0.9, h: 1.5, chunks: 0, color: 0xC9C6BE, arena: true },
+  bales: { name: 'Bale wall', hp: Infinity, minMass: Infinity, w: 5, d: 1.5, h: 1.6, chunks: 0, color: 0xD9B85C, arena: true },
+});
+/** The stand-alone kinds (a breach, stage props, the Destruction yard); the kit's pieces and arena walls are placed by their own. */
+export const BREAKABLE_KINDS = Object.keys(BREAKABLES).filter(k => !BREAKABLES[k].kit && !BREAKABLES[k].arena);

@@ -60,7 +60,7 @@ export function frame(t) {
     AudioSys.update(race.player, 'drive', race.cars, G.camDir);
     if (G.goTimer > 0) { G.goTimer -= dt; if (G.goTimer <= 0) $('countdown').hidden = true; }
     if (race.player.finished && !resultsShown && !G.workshop && race.time - race.player.finishTime > 1.6) showResults();
-    if (race.sd && race.sd.phase === 'over' && !resultsShown && race.time - G.sdOverAt > 1.8) showResults();
+    if (((race.sd && race.sd.phase === 'over') || (race.derby && race.derby.phase === 'over')) && !resultsShown && race.time - G.sdOverAt > 1.8) showResults();
     if (resultsShown) { G.resultsTick -= dt; if (G.resultsTick <= 0) { G.resultsTick = 0.5; updateResultsTable(); } }
   }
   if (G.calloutTimer > 0) { G.calloutTimer -= dt; if (G.calloutTimer <= 0) $('callout').hidden = true; }

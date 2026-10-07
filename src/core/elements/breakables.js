@@ -28,5 +28,5 @@ export const element = {
     for (const p of stage.props || []) { if (!BREAKABLES[p.kind]) throw new Error(`${stage.name}: props: no breakable "${p.kind}"`); put(((startIdx + Math.round(p.at)) % N0 + N0) % N0, p.kind, p.lat || 0, p.turn || 0, -1); }
     out.breakables = list.length ? list : null;
   },
-  markers: tr => (tr.breakables || []).map(o => ({ i: tr.u0(o.b), label: o.kind }))
+  markers: tr => (tr.breakables || []).filter(o => !o.arena).map(o => ({ i: tr.u0(o.b), label: o.kind }))
 };

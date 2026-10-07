@@ -66,6 +66,19 @@ weapons on a figure of eight over its own stone bridge). They set `soft: true`, 
 walls on tight bends, so a mistake costs a second. The four downhill runs moved up to Club as the Downhill Classic
 cup. A stage's `river` can take a `color` (a lighter tint for a pond or the sea).
 
+**Derby** (stages 23-26: Scrapyard Bowl, Mud Pit, The Stadium, and the Banger Oval): `src/core/modes/derby.js`, the
+mode `createRace(W, defs, { mode: 'derby' })`. No laps, no finish line: a wrecked car is out for good (a shell to drive
+round), damage doesn't mend (and is scaled by `DERBY.DMG` so a fight lasts), the last car running wins, and at the time
+limit the survivors rank by damage. The derby AI (`derbyControl`) picks a target (near, battered, or whoever hit it
+last), drives at it with a little lead, keeps off the arena wall, circles away while badly hurt (not in the endgame),
+and backs off for a run-up when it's shoving at walking pace. An **arena** is a stage with `arena: { ring, props,
+ramps }` (`src/core/elements/arena.js`) on a small circuit tagged `open: 'field'`: a flat floor out to a ring of an
+unbreakable wall kind (tyres, a concrete wall, hay bales), breakable props on the floor and earth ramps; the circuit is
+only where the cars line up. Any stage with an arena is raced as a derby, from the menu too. The Banger Oval is a derby
+*track*: a short oval for banger races (data/formats.js). The camera frames the fight overhead; the HUD shows the cars
+left, the clock and your health. In the career, derbies are specials from Club up, for Derby cars (data/disciplines.js:
+toughness B or better). `npm run derby` plays every arena at two skills; the Workshop's Derby arena tab (`?workshop=derby&arena=stadium`) starts one.
+
 **A car for each stage:** the garage remembers your pick for the selected stage (by stage name, `G.stageCars`), and
 the last pick is the default for stages with none yet. The stage list shows each stage's car, the garage tags the
 vehicles that suit the stage (off-road stats on gravel and snow, speed and grip on tarmac), and the league screen has a
@@ -116,6 +129,7 @@ npm run check      # lint + tests: run before every commit
 | `npm run layout -- 7` | Top-down plan of stage 7's road: heights, bridges, tunnels, river, railways, near-misses between road sections |
 | `npm run terrain -- gorge` | Shaded relief map of a stage's terrain |
 | `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
+| `npm run derby -- [arena,...]` | A derby in each arena with the AI at a casual and a good skill: how long, who went out when, who won |
 | `npm run ratings` | Measure every vehicle's pace (tarmac, loose) and toughness and how much each stat moves a lap → `src/data/ratings-data.js` (commit it; a test fails when it's stale) |
 | `npm run destruct [-- kmh]` | What each vehicle can smash: the speed it breaks each breakable from, and a real run into each at a set speed |
 | `npm run career -- [tier] [--car id] [--skill 0.88,0.95] [--v]` | Career pacing: every round of a tier raced by the AI at a casual and a good skill; places, stars, cash |

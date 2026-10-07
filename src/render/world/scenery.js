@@ -34,7 +34,7 @@ export function addScenery(group, tr, terr, stage) {
   };
   const vStart = stage.village ? Math.floor(tr.N * 0.45) : tr.loopN ? tr.startIdx - 110 : tr.finishIdx - 90;
   const vEnd = tr.loopN ? tr.startIdx + 60 : tr.N - 2;
-  if (!tr.town && !stage.towns) for (let i = vStart; i < vEnd; i += stage.village ? 12 : 9) for (const side of [-1, 1]) if (rnd() < 0.75) tryHouse(i, side, HALF + 12, 9);
+  if (!tr.town && !stage.towns && !tr.arena) for (let i = vStart; i < vEnd; i += stage.village ? 12 : 9) for (const side of [-1, 1]) if (rnd() < 0.75) tryHouse(i, side, HALF + 12, 9);
   // spectators at hairpins and the start/finish
   const bodies = [], heads = [], arms = [], fans = [];
   const addFan = (x, z, face) => {
@@ -46,12 +46,14 @@ export function addScenery(group, tr, terr, stage) {
     heads.push({ x, y: y + 1.45, z, ry: face, color: pick([0xF1C9A5, 0xD9A47F, 0x9C6B4E, 0x6B4631]), f, part: 1 });
     for (const s of [-1, 1]) arms.push({ x, y: y + 1.1, z, ry: face, color: col, f, part: s < 0 ? 2 : 3 });
   };
-  for (const hp of tr.hairpins) for (let i = hp.a; i <= hp.b; i += 3) {
+  if (tr.arena) {   // a derby arena (core/elements/arena.js): the crowd stands round the outside of the ring, facing in
+    const A = tr.arena; for (let a = 0; a < TAU; a += 2.6 / A.r) if (rnd() < 0.7) { const d = A.r + 2.5 + rnd() * 4, x = A.x + Math.sin(a) * d, z = A.z + Math.cos(a) * d; addFan(x, z, Math.atan2(A.x - x, A.z - z)); }
+  } else for (const hp of tr.hairpins) for (let i = hp.a; i <= hp.b; i += 3) {
     if (rnd() < 0.45) continue;
     const lat = hp.side * (WALL + 2.5 + rnd() * 3.5), x = tr.xs[i] + tr.rx[i] * lat, z = tr.zs[i] + tr.rz[i] * lat, q = tr.nearest(x, z);
     if (q && q.d < HALF + 3.5) continue; addFan(x, z, Math.atan2(tr.xs[i] - x, tr.zs[i] - z));
   }
-  for (const li of (tr.loopN ? [tr.startIdx] : [tr.startIdx, tr.finishIdx])) for (let i0 = li - 22; i0 < li + 20; i0 += 2) for (const side of [-1, 1]) {
+  if (!tr.arena) for (const li of (tr.loopN ? [tr.startIdx] : [tr.startIdx, tr.finishIdx])) for (let i0 = li - 22; i0 < li + 20; i0 += 2) for (const side of [-1, 1]) {
     const i = tr.loopN ? (i0 % tr.loopN + tr.loopN) % tr.loopN : i0;
     if (rnd() < 0.4) continue; const lat = side * (tr.town ? WALL + 0.8 + rnd() * 1.2 : WALL + 2 + rnd() * 3), x = tr.xs[i] + tr.rx[i] * lat, z = tr.zs[i] + tr.rz[i] * lat;
     addFan(x, z, Math.atan2(tr.xs[i] - x, tr.zs[i] - z));

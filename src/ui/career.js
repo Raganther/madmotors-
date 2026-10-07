@@ -4,6 +4,7 @@ import { scoreRound, standings } from '../data/leagues.js';
 import { STAGES } from '../data/stages/index.js';
 import { VEHICLES, vehicleById } from '../data/vehicles.js';
 import { ranking } from '../core/sim/race.js';
+import { derbyOrder } from '../core/modes/derby.js';
 import { vehicleThumb } from '../render/thumbs.js';
 import { showCar } from '../render/showcar.js';
 import { PART_MAX, SLOTS, TYRE_KINDS, buildOf } from '../data/parts.js';
@@ -39,7 +40,7 @@ export const career = () => S;
 /** What a single event is, in a few words. */
 function kindText(ev) {
   if (ev.kind === 'trial') return 'Time trial';
-  if (ev.kind === 'mode') return { showdown: 'Showdown', deuce: 'Deuce', tiebreak: 'Tiebreak' }[ev.mode];
+  if (ev.kind === 'mode') return { showdown: 'Showdown', deuce: 'Deuce', tiebreak: 'Tiebreak', derby: 'Derby, derby cars only' }[ev.mode];
   if (ev.kind === 'onemake') return `One-make ${ev.format ? FORMATS[ev.format].name.toLowerCase() : 'race'}: ${vehicleById(ev.make).name}`;
   if (ev.kind === 'boss') return `Duel: ${ev.driver} in the ${vehicleById(ev.vehicle).name}`;
   if (ev.kind === 'final') return 'The final';
@@ -118,7 +119,8 @@ function drawEvent() {
       : ev.kind === 'boss' ? `One on one. ${ev.driver}'s ${vehicleById(ev.vehicle).name} carries upgrade level ${T.upg}, and the driver is sharper than the field. Win for the ${vehicleById(ev.vehicle).name}, a purse and the next tier.`
         : ev.kind === 'final' ? 'Seven rivals, all four bosses among them, every car fully upgraded. Win for the gold Stretch Limo and the title.'
           : ev.kind === 'onemake' ? `Everyone drives a stock ${vehicleById(ev.make).name}: we lend you one. Stars: podium, win, objective.`
-            : 'Stars: a podium (top two of four), the win, the objective.';
+            : ev.mode === 'derby' ? 'Six cars, no laps: a wrecked car is out, the last one running wins (at the bell, the least damaged). Stars: a podium, the win, the objective.'
+              : 'Stars: a podium (top two of four), the win, the objective.';
   const F = FORMATS[formatOf(ev)], fmtRule = F.weight.destruct > 0 ? ` ${F.name}: placed on race points plus ${F.weight.destruct}× destruction points (${(P => `a rival wrecked ${P.wreck}, a panel torn off ${P.panel}, a fence or gate smashed ${P.smash}, a road car taken out ${P.takedown}`)({ ...DESTRUCT, ...F.pts })}), and paid for both.` : '';
   $('cr-sub').textContent = `${T.name} tier · ${kindText(ev)}. ${ev.blurb}. ${rules}${fmtRule}`;
   const rounds = roundsOf(ev).map((r, k) => {
@@ -231,7 +233,7 @@ export const careerFormat = () => { const ev = G.career && eventById(G.career.ev
 export const careerMode = () => { const ev = G.career && eventById(G.career.ev); return ev && ev.kind === 'mode' ? ev.mode : 'race'; };
 // the finishing order: a Race by the flag, a Showdown by crown time, a checkpoint match by points (as the results table)
 function finishOrder() {
-  const R = race; if (!R.sd) return ranking(R);
+  const R = race; if (R.derby) return derbyOrder(R); if (!R.sd) return ranking(R);
   const by = R.sd.kind === 'crown' ? R.sd.crown : R.sd.points;
   return R.cars.map((c, k) => ({ c, v: by[k] })).sort((a, b) => b.v - a.v || b.c.progress - a.c.progress).map(x => x.c);
 }

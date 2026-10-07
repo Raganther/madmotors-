@@ -7,10 +7,11 @@ The agreed plan for upcoming work is docs/ROADMAP.md (foundations F0-F6, then th
 - `npm run check`: lint + tests (golden included) + a production build. Run before every commit; must pass.
 - `npm run e2e`: production build + headless browser run of every stage (no console errors allowed).
 - `npm run layout -- <n>` / `npm run terrain -- <n>`: inspect a stage's road plan / terrain before playing it (`sandbox:<name>` works too).
-- The Workshop (`?workshop`, `?workshop=crash|destruct|weapons|kit|cars|elements`, `npm run shot -- workshop:<tab>`): try cars, crashes, weapons and track elements without a race around them. Each new system gets a tab there (README "The Workshop").
+- The Workshop (`?workshop`, `?workshop=crash|destruct|weapons|kit|derby|cars|elements`, `npm run shot -- workshop:<tab>`): try cars, crashes, weapons and track elements without a race around them. Each new system gets a tab there (README "The Workshop").
 - `npm run sandbox -- <name|all>`: AI laps of an element sandbox, with what went wrong where. Browser: `?sandbox=<name>&debug`; backquote toggles the debug overlay.
 - `npm run shot -- <n|sandbox:name|garage> [metres ...] [--vehicle id] [--debug]`: screenshots from the player's seat (AI drives to each distance) → tools/out/. Look at them.
 - `npm run balance`: every vehicle's pace vs the coupe on tarmac and loose stages, and what each weapon costs its victim (~1 s per use at level 1; `node tools/balance-weapons.mjs --level 3` for the levels in data/weapons.js). Run after touching handling or weapon numbers.
+- `npm run derby -- [arena]`: derbies in each arena (core/modes/derby.js, elements/arena.js) at two skills; each should end with one car left well inside the time. Run after touching the derby, arena or damage numbers.
 - `npm run ratings`: measure every vehicle's pace and toughness (data/ratings.js bands) → src/data/ratings-data.js; a test fails when it's stale. Run after touching handling, physics or damage numbers, or adding a vehicle.
 - `npm run destruct`: what each vehicle can smash (data/breakables.js, core/sim/impact.js). Run after touching vehicle mass (`im`), `tough`, `ram` or breakable numbers.
 - `npm run career -- [tier] [--v]`: Career pacing (AI at a casual and a good skill through every round, every format: data/formats.js, scored by data/scoring.js). Run after touching career tiers, prices, payouts or upgrades.

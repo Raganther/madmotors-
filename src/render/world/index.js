@@ -43,10 +43,10 @@ export function buildWorld(idx) {
   const hz = Lt.haze; FX.hazeAmt.value = hz ? hz.amt : 0; if (hz) { FX.hazeCol.value.setHex(hz.color); FX.hazeTop.value = hz.top; FX.hazeRange.value = hz.range; }
   setCarEnvironment(renderer, scene, stage);                          // what the cars' paint and glass reflect
   group.add(makeTerrainMesh(terr, tr, stage));
-  const roads = makeRoadMesh(tr, stage); group.add(roads.main); if (roads.bridge) group.add(roads.bridge);
+  const roads = makeRoadMesh(tr, stage); if (!tr.arena) group.add(roads.main); if (roads.bridge) group.add(roads.bridge);   // an arena's ring of road is only where the cars line up: the floor is the ground
   addBarriers(group, tr, terr, stage);
   G.fanChunks = addScenery(group, tr, terr, stage);
-  if (tr.loopN) addGantry(group, tr, terr, tr.startIdx, 'START / FINISH');
+  if (tr.arena) { /* a derby arena: no start line to mark */ } else if (tr.loopN) addGantry(group, tr, terr, tr.startIdx, 'START / FINISH');
   else { addGantry(group, tr, terr, tr.startIdx, 'START'); addGantry(group, tr, terr, tr.finishIdx, 'FINISH'); }
   elementHook('build', group, tr, terr, stage);                 // bridges, river, railways, town, gallery, tunnel, arches
   addSigns(group, tr, terr);

@@ -105,6 +105,8 @@ const R = (stage, obj) => ({ stage, obj });
 const trial = (id, name, stage, par) => ({ id, kind: 'trial', name, blurb: 'Alone against the clock: bronze, silver and gold times', stage, par });
 const mode = (id, m, name, stage, obj, blurb) => ({ id, kind: 'mode', mode: m, name, blurb, stage, obj });
 const onemake = (id, make, name, stage, obj, blurb) => ({ id, kind: 'onemake', make, name, blurb, stage, obj });
+// a derby (core/modes/derby.js) in an arena: derby cars only (toughness B or better: data/disciplines.js)
+const derby = (id, name, stage, obj, blurb) => ({ ...mode(id, 'derby', name, stage, obj, blurb), disc: 'derby', format: 'derby' });
 const boss = (id, driver, vehicle, stage, need, obj, blurb) => ({ id, kind: 'boss', driver, vehicle, name: `Boss: ${driver}`, blurb, stage, need, obj });
 export const TIERS = [
   { id: 'rookie', name: 'Rookie', blurb: 'Friendly locals on the easy roads', skill: 0.88, upg: 0, pay: 1, events: [
@@ -124,8 +126,10 @@ export const TIERS = [
     trial('frost-attack', 'Frostpeak Time Attack', 'Frostpeak', 116.7),
     mode('falls-deuce', 'deuce', 'Deuce at the Falls', 'Thunder Falls', hits(4), 'Checkpoints, first to 4, win by two'),
     onemake('kart-chaos', 'kart', 'Kart Chaos', 'Corkscrew Spire', drift(4), 'Eight Go-Karts round the spire'),
+    derby('scrapyard-derby', 'Scrapyard Derby', 'Scrapyard Bowl', wrecked(2), 'Six cars in the tyre-walled bowl: wreck the rest, be the last one running'),
     boss('club-boss', 'Lindqvist', 'wedge', 'Ravenrock Gorge', 26, clean(), 'The Group B ace on the viaducts. Beat Lindqvist and the Wedge is yours'),
     { id: 'downhill-classic', kind: 'cup', name: 'Downhill Classic', blurb: 'The four original downhill runs, top to bottom: fast, steep and unforgiving', rounds: [R('Summit Meadow', drift(2)), R('Pine Forest', clean()), R('Quarry Run', air(2)), R('Village Descent', hits(4))] },
+    { id: 'oval-bangers', kind: 'cup', format: 'banger', name: 'Oval Bangers', blurb: 'Banger racing on the oval and round the village green: wrecks score', rounds: [R('Banger Oval', wrecked(1)), R('Village Green', hits(4)), R('Banger Oval', wrecked(2))] },
     { id: 'heavyweights', kind: 'cup', disc: 'heavy', format: 'banger', name: 'Heavyweights', blurb: 'Banger racing for trucks, vans and limos: wrecks score', rounds: [R('Village Descent', wrecked(1)), R('Scrapyard Smash', air(3)), R('Mountain Pass', clean())] },
   ] },
   { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.97, upg: 2, pay: 2.6, events: [
@@ -133,6 +137,7 @@ export const TIERS = [
     { id: 'frozen-north', kind: 'cup', disc: 'offroad', name: 'Frozen North', blurb: 'Snow, ice and open country: off-road cars only', rounds: [R('Frostpeak', clean()), R('Glacier Rift', air(3)), R('Open Country', hits(6))] },
     { id: 'long-haul', kind: 'cup', name: 'Long Haul', blurb: 'The big circuits', rounds: [R('Ravenrock Gorge', hits(12)), R('Flyover Tangle', drift(8)), R('Thunder Falls', clean())] },
     trial('mesa-attack', 'Mesa Time Attack', 'Mesa Leap', 114.3),
+    derby('mud-pit-derby', 'Mud Pit Derby', 'Mud Pit', wrecked(2), 'A derby in the mud at the farm: heavy, slow and sideways'),
     mode('mesa-showdown', 'showdown', 'Mesa Showdown', 'Red Mesa Canyon', air(6), 'King of the Hill over the mesa jumps'),
     { ...onemake('monster-mash', 'monster', 'Monster Mash', 'Scrapyard Smash', wrecked(2), 'Eight Monster Trucks in the scrapyard: a banger race, wrecks score'), format: 'banger' },
     boss('pro-boss', 'Moreau', 'formula', 'Flyover Tangle', 28, drift(6), 'The Formula Racer through the flyovers. Win and it\'s yours'),
@@ -143,6 +148,7 @@ export const TIERS = [
     { id: 'dirt-masters', kind: 'cup', disc: 'offroad', name: 'Dirt Masters', blurb: 'Gravel, mud and snow, flat out: off-road cars only', rounds: [R('Quarry Run', clean()), R('Bogwood Rally', drift(6)), R('Frostpeak', hits(10)), R('Open Country', air(2)), R('Glacier Rift', drift(6))] },
     { id: 'top-speed', kind: 'cup', disc: 'road', name: 'Top Speed', blurb: 'Fast roads for fast tarmac cars', rounds: [R('Summit Meadow', clean()), R('Mountain Loop', drift(8)), R('Flyover Tangle', hits(12)), R('Mesa Leap', air(5)), R('Corkscrew Spire', clean())] },
     trial('flyover-attack', 'Flyover Time Attack', 'Flyover Tangle', 147.7),
+    derby('stadium-derby', 'Stadium Derby', 'The Stadium', wrecked(3), 'Under the floodlights: the fastest, hardest derby of them all'),
     mode('legend-tiebreak', 'tiebreak', 'Legend Tiebreak', 'Temple Ruins', hits(6), 'Checkpoints, first to 7, win by two'),
     onemake('rocket-run', 'rocket', 'Rocket Run', 'Summit Meadow', clean(), 'Eight Rocket Cars down the mountain'),
     boss('legend-boss', 'Achterberg', 'rocket', 'Thunder Falls', 30, clean(), 'The Rocket Car at the falls. Beat Achterberg and the rocket is yours'),
@@ -211,7 +217,7 @@ export function careerField(ev, ti = tierOf(ev)) {
     return [...bosses, ...rest.map(d => bossDef(d.name, d.vehicle, PART_MAX, T.skill))];
   }
   const field = cupField(ev, T, ti);
-  if (ev.kind === 'mode') return field.slice(0, 3);
+  if (ev.kind === 'mode') return field.slice(0, ev.mode === 'derby' ? 5 : 3);   // a derby: six cars in the arena
   if (ev.kind === 'onemake') { const v = vehicleById(ev.make); return field.map(d => ({ ...d, model: v.model, hw: v.hw, hl: v.hl, veh: v.veh, im: v.veh ? v.veh.im : undefined, vehicle: v.id, build: null })); }   // stock cars
   return field;
 }

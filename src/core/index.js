@@ -34,5 +34,6 @@ export { STAGES } from '../data/stages/index.js';
 export { FEATURES } from './features/index.js';
 export * from './sim/view.js';
 export * from './modes/showdown.js';
+export * from './modes/derby.js';
 export * from './elements/index.js';
 export { placeKicker, autoJumps, runs } from './elements/jump.js';
