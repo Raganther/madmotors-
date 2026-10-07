@@ -13,6 +13,7 @@ import { addBarriers } from './barriers.js';
 import { addGantry, addSigns } from './landmarks.js';
 import { makeRoadMesh } from './road.js';
 import { addScenery } from './scenery.js';
+import { addDressing } from './dressing.js';
 import { makeTerrainMesh } from './terrain.js';
 
 // ==CORE END==
@@ -46,6 +47,7 @@ export function buildWorld(idx) {
   const roads = makeRoadMesh(tr, stage); if (!tr.arena) group.add(roads.main); if (roads.bridge) group.add(roads.bridge);   // an arena's ring of road is only where the cars line up: the floor is the ground
   addBarriers(group, tr, terr, stage);
   G.fanChunks = addScenery(group, tr, terr, stage);
+  addDressing(group, tr, terr, stage);                         // ground cover and roadside furniture (looks only)
   if (tr.arena) { /* a derby arena: no start line to mark */ } else if (tr.loopN) addGantry(group, tr, terr, tr.startIdx, 'START / FINISH');
   else { addGantry(group, tr, terr, tr.startIdx, 'START'); addGantry(group, tr, terr, tr.finishIdx, 'FINISH'); }
   elementHook('build', group, tr, terr, stage);                 // bridges, river, railways, town, gallery, tunnel, arches

@@ -316,6 +316,16 @@ need a heavy car), so towns join in F3's destruction. Trees and rocks keep out o
 draws a town as a handful of instanced batches. Village Green, Harbour Sprint, Hay Bale Farm and Village Descent use it;
 the Workshop's Scenery kit tab shows every style.
 
+### Dressing and suspension (looks only)
+
+`src/render/world/dressing.js` scatters ground cover over the land either side of every road: grass tufts, flowers and
+pebbles in the stage's colours (dry tufts on dirt, stones only on snow and salt). It also places roadside furniture
+behind the barriers every ~30 m: advertising boards, marshal posts with flags, tyre stacks, cones (hay bales and oil
+drums on dirt). It skips towns, open country, arenas and water. Everything is from the stage's seed and instanced; the
+simulation never sees it, so golden is unchanged. Graphics: Low places a third of the cover.
+`suspend()` in `src/render/vehicles.js` gives every wheel its own travel: it follows the ground under it (bumps,
+whoops, kickers), hangs down in the air and tucks up on landing (longer travel on soft cars).
+
 ### Impact, toughness and breakables
 
 One rule for what breaks: a car's impact is its mass (1 / `im`, times `veh.ram`, an upgrade) times its speed into
