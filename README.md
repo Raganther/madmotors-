@@ -40,8 +40,9 @@ range fires any weapon at any level at targets with any gear; `npm run balance -
 starts at the back. Progress is kept per league in localStorage; leave for the menu and carry on later.
 
 **Career** (menu: Career; `src/data/career.js`, `src/ui/career.js`): the progression mode. Pick a cheap starter
-(Muscle Coupe, Rally Hatch or Tuk-Tuk) and climb four tiers, Rookie, Club, Pro and Legend. Each tier holds events
-(cups of 3-6 rounds scored like a league). Every race pays cash by finishing place plus style bonuses (big air, drift
+(Muscle Coupe, Rally Hatch or Tuk-Tuk) and climb four tiers, Rookie, Club, Pro and Legend, then the Elite tier. Each tier holds events
+(cups of 3-6 rounds scored like a league): a Road, a Rally, an Off-road and a Derby series and an Oddball cup (`SERIES`;
+the low tiers cap a series at a pace band), open cups, specials and a boss. Every race pays cash by finishing place plus style bonuses (big air, drift
 boosts, weapon hits, a clean race) and earns up to three stars: a podium, a win, and the round's objective (so many
 drift boosts or big airs, weapon hits, a clean run). Stars open each tier's boss; cash buys cars in the showroom, which
 stocks more cars as tiers open. Rivals drive cars that belong in the tier and get sharper tier by tier
@@ -54,7 +55,19 @@ Each tier also has specials (a time trial for bronze/silver/gold stars against `
 against three rivals, a one-make race where everyone gets the same stock car) and a **boss**: a duel with a star
 driver in their signature car, a notch sharper than the field. Enough stars in the tier open the boss;
 beating the boss wins you their car and a purse and opens the next tier. After the Legend boss, the final (Champion
-of Champions: all four bosses at once) pays for the gold limo and the title. The garage's paint shop resprays a car
+of Champions: all four bosses at once) pays for the gold limo and the title. The bosses race on their own tracks:
+Brannigan's Monster Truck in the Monster Stadium (a dirt oval of kickers, whoops and mud), Moreau's Formula Racer on
+the Old Town GP street circuit, Achterberg's Rocket Car on the Salt Flats.
+**Elite** (opened by the final) is a season: every Elite race scores 10-8-6-5-4-3-2-1 for every car in it, and when
+every Elite event is done the top three are paid (`SEASON_CASH`), the result goes in the career's titles and the next
+season starts. Fields are twelve cars (eight in a derby), each rival's engine, tyres and suspension picked so its pace
+on the event's surface is within `ELITE.GAP` % of your car's (`ratedLevel`), so a faster car meets better-built rivals.
+Some rivals have a personality (`persona` on a race def): a **blocker** moves across to cover whoever closes from
+behind (`core/sim/ai.js`), a **bomber** fires sooner and at more (`core/features/weapons.js`). The **nemesis** (one
+of `NEMESES`, named when Elite opens) is in every Elite race, sharper and fully built, blocks the player and bombs;
+the career keeps your record against them. A Champion can **prestige** (`prestige()`): start again at Rookie with
+every car and its parts, against rivals `PRESTIGE.SKILL` sharper and a parts level better per prestige (up to 3), for
+`PRESTIGE_PAY` more prize money. The garage's paint shop resprays a car
 (`PAINTS`) for a fee; the player's career car wears it in the race. A cup's top three win a trophy (paid once per step up). Career races always have weapons on;
 Quick Race and Leagues are untouched. The state is one localStorage entry (`downhill-rush-career`).
 `npm run career` races every career round with the AI at a casual and a good player's skill and prints places,
@@ -76,8 +89,13 @@ ramps }` (`src/core/elements/arena.js`) on a small circuit tagged `open: 'field'
 unbreakable wall kind (tyres, a concrete wall, hay bales), breakable props on the floor and earth ramps; the circuit is
 only where the cars line up. Any stage with an arena is raced as a derby, from the menu too. The Banger Oval is a derby
 *track*: a short oval for banger races (data/formats.js). The camera frames the fight overhead; the HUD shows the cars
-left, the clock and your health. In the career, derbies are specials from Club up, for Derby cars (data/disciplines.js:
+left, the clock and your health. In the career, every tier has a derby series and derbies are specials from Club up, for Derby cars (data/disciplines.js:
 toughness B or better). `npm run derby` plays every arena at two skills; the Workshop's Derby arena tab (`?workshop=derby&arena=stadium`) starts one.
+
+**Boss tracks** (stages 27-29: Monster Stadium, Old Town GP, Salt Flats): one each for the bosses' cars. A floodlit
+dirt oval with two big kickers, whoops, a mud pit and crates on the back straight (seven laps, about 18 s each); a
+street circuit of square corners between Armco and houses with a fast chicane; a speed course on a salt lake, two
+straights with boost pads and sweepers you can almost take flat. They're in the series too.
 
 **A car for each stage:** the garage remembers your pick for the selected stage (by stage name, `G.stageCars`), and
 the last pick is the default for stages with none yet. The stage list shows each stage's car, the garage tags the
@@ -332,7 +350,7 @@ coupe it is on its better surface + `TOUGH_K` × how much tougher), so nothing i
 when its ratings are measured. Part and weapon levels each cost `COST_GROW` (2.5) times the level before. A car sells
 for `RESALE` (60%) of its price and of everything spent on it (parts, weapon levels, gear) from the garage's Sell
 button (never the car you're driving or your last). Payouts (place cash, style bonuses, destruction, trophies, medals,
-purses) are scaled by the tier's `TIER_PAY` and the format's `FORMAT_PAY`.
+purses) are scaled by the tier's `TIER_PAY`, the format's `FORMAT_PAY` and the prestige level (`PRESTIGE_PAY`).
 `npm run career -- --upg tier --json` races every round of every tier with the AI in your seat at a casual (0.88) and a
 good (0.95) skill, in the tier's natural car at the tier's upgrade level, and writes `tools/out/career.json`;
 `npm run dashboard` turns it into `tools/out/pacing.html`, published as the Career Pacing artifact (https://claude.ai/artifact/VS53tnawm2stAUKFGZDxHn) (places, win rates,
@@ -349,7 +367,7 @@ a fence, gate or wall smashed, a road car taken out). A Race has no destruction 
 order; a Banger race, a Demolition rally (smashed scenery worth more) and a Figure of eight re-sort the field by both,
 and the career pays for the destruction too (`DESTRUCT_CASH`). `src/data/scoring.js` keeps the tally from car events for
 every racer, for the game and for `npm run career`, which now simulates every format, Showdown and checkpoint specials
-included. Derby is listed but waits for its mode (G3).
+included; a derby series (`mode: 'derby'` on a cup) is a cup of derbies.
 
 ### Disciplines and ratings
 

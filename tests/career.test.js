@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bossOf, eventOpen, medals, paintCar, PAINTS, PAINT_PRICE, tierMaxStars, CAREER_RIVALS, allowed, fitTyres, armoury, buyWeapon, fitGear, buyUpgrade, careerPlayer, upgradedVeh, SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, careerField, eventById, forSale, newCareer, podiumOf, roundsOf, scoreRace, tierCars, tierOpen, tierStars, topTier, totalStars } from '../src/data/career.js';
+import { ELITE, modeOf, bossOf, eventOpen, medals, paintCar, PAINTS, PAINT_PRICE, tierMaxStars, CAREER_RIVALS, allowed, fitTyres, armoury, buyWeapon, fitGear, buyUpgrade, careerPlayer, upgradedVeh, SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, careerField, eventById, forSale, newCareer, podiumOf, roundsOf, scoreRace, tierCars, tierOpen, tierStars, topTier, totalStars } from '../src/data/career.js';
 import { DISCIPLINES } from '../src/data/disciplines.js';
 import { SLOTS } from '../src/data/parts.js';
 import { STAGES } from '../src/data/stages/index.js';
@@ -16,13 +16,13 @@ describe('career data', () => {
   });
   it('the shop sells real vehicles, starters included, and every tier can open', () => {
     for (const id of [...Object.keys(SHOP), ...STARTERS]) expect(VEHICLES.some(v => v.id === id), id).toBe(true);
-    for (const t of TIERS) { const b = bossOf(t); expect(b, t.id).toBeTruthy(); expect(b.need).toBeLessThanOrEqual(Math.round(tierMaxStars(t) * 0.65)); }
+    for (const t of TIERS.filter(t => !t.elite)) { const b = bossOf(t); expect(b, t.id).toBeTruthy(); expect(b.need).toBeLessThanOrEqual(Math.round(tierMaxStars(t) * 0.65)); }
   });
   it('fields: seven rivals, unique names, cars from the tier, skill scaled and capped', () => {
     for (const [ti, t] of TIERS.entries()) for (const ev of t.events.filter(e => e.kind === 'cup' || e.kind === 'onemake')) {
-      const f = careerField(ev);
-      expect(f.length).toBe(CAREER_RIVALS);
-      expect(new Set(f.map(d => d.name)).size).toBe(CAREER_RIVALS);
+      const f = careerField(ev), n = modeOf(ev) === 'derby' ? (t.elite ? 7 : 5) : t.elite ? ELITE.FIELD : CAREER_RIVALS;   // a derby: six cars (Elite: eight)
+      expect(f.length, ev.id).toBe(n);
+      expect(new Set(f.map(d => d.name)).size).toBe(n);
       for (const d of f) { expect(ev.make ? [ev.make] : tierCars(ti)).toContain(d.vehicle); expect(d.skill).toBeLessThanOrEqual(1); expect(d.skill).toBeGreaterThan(0.7); }
     }
     expect(careerField(TIERS[0].events[0])).toEqual(careerField(TIERS[0].events[0]));   // stable
@@ -54,14 +54,14 @@ describe('career rules', () => {
   it('podium size follows the field', () => { expect(podiumOf(8)).toBe(3); expect(podiumOf(4)).toBe(2); expect(podiumOf(2)).toBe(1); expect(podiumOf(1)).toBe(1); });
   it('tiers open on stars; the showroom follows', () => {
     let s = newCareer('coupe');
-    expect(tierOpen(s, 0)).toBe(true); expect(tierOpen(s, 1)).toBe(false); expect(forSale(s)).not.toContain('buggy');
+    expect(tierOpen(s, 0)).toBe(true); expect(tierOpen(s, 1)).toBe(false); expect(forSale(s)).not.toContain('rover');
     const B = bossOf(TIERS[0]);
     expect(eventOpen(s, B)).toBe(false);
     let k = 0; for (const ev of TIERS[0].events.filter(e => e.kind === 'cup')) roundsOf(ev).forEach((_, j) => { if (k++ < Math.ceil(B.need / 3)) s = scoreRace(s, ev, j, 1, 8, { ...T0, drift: 9, air: 20, hits: 20 }).state; });
     expect(tierStars(s, TIERS[0])).toBeGreaterThanOrEqual(B.need); expect(eventOpen(s, B)).toBe(true); expect(topTier(s)).toBe(0);   // stars open the boss, not the tier
     const r = scoreRace(s, B, 0, 1, 2, { ...T0, air: 20 });
     expect(r.prize).toBe('monster'); expect(r.state.cars.monster).toEqual({}); expect(r.lines.some(l => /purse/.test(l[0]))).toBe(true);
-    s = r.state; expect(topTier(s)).toBe(1); expect(forSale(s)).toContain('buggy');
+    s = r.state; expect(topTier(s)).toBe(1); expect(forSale(s)).toContain('rover');
     expect(scoreRace(s, B, 0, 1, 2, T0).prize).toBe(null);   // the prize comes once
   });
   it('buying: needs the cash and an open showroom', () => {
@@ -69,7 +69,7 @@ describe('career rules', () => {
     expect(buyCar(s, 'kart')).toBe(null);   // 1500 < 3000
     const rich = { ...s, cash: 50000 }, b = buyCar(rich, 'kart');
     expect(b.cash).toBe(50000 - SHOP.kart.price); expect(b.cars.kart).toEqual({}); expect(b.car).toBe('kart');
-    expect(buyCar(rich, 'buggy')).toBe(null); expect(buyCar(b, 'kart')).toBe(null);
+    expect(buyCar(rich, 'rover')).toBe(null); expect(buyCar(b, 'kart')).toBe(null);
   });
   it('trophies pay once per step up', () => {
     const s = newCareer('coupe'), ev = eventById('rookie-cup');
@@ -146,13 +146,13 @@ describe('career races run', () => {
 });
 describe('career specials, bosses, paint', () => {
   it('every tier has a trial, a mode special, a one-make race and a boss; the final waits for the Legend boss', () => {
-    for (const t of TIERS) for (const k of ['trial', 'mode', 'onemake', 'boss']) expect(t.events.some(e => e.kind === k), `${t.id} ${k}`).toBe(true);
+    for (const t of TIERS.filter(t => !t.elite)) for (const k of ['trial', 'mode', 'onemake', 'boss']) expect(t.events.some(e => e.kind === k), `${t.id} ${k}`).toBe(true);
     const fin = eventById('final'), s = newCareer('coupe');
     expect(eventOpen(s, fin)).toBe(false);
     const all = { ...s, beaten: { 'rookie-boss': true, 'club-boss': true, 'pro-boss': true, 'legend-boss': true } };
     expect(eventOpen(all, fin)).toBe(true);
     const f = careerField(fin); expect(f.length).toBe(CAREER_RIVALS);
-    for (const b of TIERS.map(bossOf)) expect(f.some(d => d.name === b.driver && d.vehicle === b.vehicle), b.driver).toBe(true);
+    for (const b of TIERS.map(bossOf).filter(Boolean)) expect(f.some(d => d.name === b.driver && d.vehicle === b.vehicle), b.driver).toBe(true);
     const w = scoreRace(all, fin, 0, 1, 8, T0); expect(w.prize).toBe('limo'); expect(w.state.champion).toBe(true);
   });
   it('fields: a trial is alone, a mode special has three rivals, a boss one, a one-make race lends the car stock', () => {

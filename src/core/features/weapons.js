@@ -358,15 +358,15 @@ function aiWeapons(R, W, dt) {
   const rng = R.wpn.rng;
   for (const c of R.cars) {
     if ((c.isPlayer && !R.autoPlayer) || c.hold || !live(c)) continue;
-    const keen = 0.6 + (c.ai.flick || 0.3), w = c.wpn;
+    const P = c.ai.persona, bold = P === 'bomber' || P === 'nemesis', keen = (0.6 + (c.ai.flick || 0.3)) * (P === 'bomber' ? 2 : P === 'nemesis' ? 1.6 : 1), w = c.wpn;   // personalities (G5): fire sooner, at more
     if (w.item && !(w.gunT > 0) && rng() < dt * 0.8 * keen) {
       const ahead = missileTarget(R, c), gap = ahead >= 0 ? R.cars[ahead].progress - c.progress : 999;
-      const behind = R.cars.some(o => o !== c && live(o) && c.progress - o.progress > 3 && c.progress - o.progress < 30);
+      const behind = R.cars.some(o => o !== c && live(o) && c.progress - o.progress > (bold ? 2 : 3) && c.progress - o.progress < (bold ? 45 : 30));
       const near = R.cars.filter(o => o !== c && live(o) && Math.hypot(o.x - c.x, o.z - c.z) < WPN.PULSE_R * 0.7).length;
       const close = R.cars.filter(o => o !== c && live(o) && Math.hypot(o.x - c.x, o.z - c.z) < 7).length;
       const inJet = R.cars.some(o => o !== c && live(o) && (a => a.d < WPN.WATER_R * 0.85 && a.ang < WPN.WATER_CONE * 0.8)(aim(c, o)));
       const heard = R.cars.filter(o => o !== c && live(o) && Math.hypot(o.x - c.x, o.z - c.z) < WPN.JINGLE_R * 0.8).length;
-      const want = { missile: gap > 20, gun: gap < 45, harpoon: gap > 12 && gap < WPN.HARP_R, oil: behind, pulse: near >= 1,
+      const want = { missile: gap > (bold ? 8 : 20), gun: gap < (bold ? 70 : 45), harpoon: gap > 12 && gap < WPN.HARP_R, oil: behind, pulse: near >= 1,
         water: inJet, cement: behind, stinger: behind, crush: close >= 1 && c.onGround, jingle: heard >= 2 }[w.item];
       if (want) use(R, W, c);
     }

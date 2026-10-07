@@ -26,8 +26,9 @@ The plan agreed for the next stretch of work. Update the status table at the end
 | (G3 later) | A crossover figure of eight at grade; derby AI that plays the format in banger races; arena Blender pieces | open |
 | G4 | Economy and pacing dashboard | done: data/economy.js (car price from its pace and toughness rating within its tier, resale 60% of the car and what was fitted, prize money by tier and format), data/prices.js cost curve (each part and weapon level 2.5x the last), selling cars in the career garage, npm run career -- --json and npm run dashboard (the Career Pacing artifact, https://claude.ai/artifact/VS53tnawm2stAUKFGZDxHn: rating gap, win rate at casual and good skill, races per purchase, cash over time), a pacing test (six casual Rookie races buy a Club car), tier skills retuned (Rookie 0.91, Club 0.92, Pro 0.93, Legend 0.935) |
 | (G4 later) | Price weapon gear and paint from the sheet too; a season-long cash test per tier | open |
-| G5 | Career v2 structure | next |
-| G6 | Content waves | planned |
+| G5 | Career v2 structure | done: every tier runs Road, Rally, Off-road and Derby series and an Oddball cup (Rookie and Club Road capped at pace A; a derby series is a cup of derbies), Buggy and Cement Mixer moved to the Rookie showroom; boss tracks Monster Stadium, Old Town GP and Salt Flats; the Elite tier (opened by the final): twelve-car fields whose parts are matched to your car's pace, blocker and bomber personalities in core AI and weapons, a nemesis in every race with a record, seasons scored on every Elite race with prize money and titles; prestige (start again with the garage, sharper and better-built rivals, more pay); npm run career covers Elite and the season; tests/career-v2.test.js |
+| (G5 later) | A Workshop view of an Elite field (personas, rated builds); nemesis taunts and a rivalry screen; season-long sim test; Elite derby AI personalities | open |
+| G6 | Content waves | next |
 
 
 ## Context
@@ -298,4 +299,4 @@ F0 → F1 → F2 → F3 → { F4, F5, F6 can run in any order } → G1 → G2 �
   the user what to try in the Workshop.
 
 ## Next step
-G5: career v2 structure (series per discipline in every tier, boss tracks, Elite tier), on its own PR.
+G6: content waves (car families from a shared Blender chassis, special tracks, track versions), on its own PR.

@@ -27,7 +27,7 @@ export function makeCar(W, idx, lat, def) {
     inp: { throttle: 0, brake: 0, steer: 0, handbrake: 0 }, events: [], dmg: { f: 0, b: 0, l: 0, r: 0 }, panels: {}, wreckT: 0, wrecks: 0,
     hw: def.hw || CAR_HW, hl: def.hl || CAR_HL, im: def.im || 1, traffic: !!def.traffic, veh: def.veh || null,
     isPlayer: !!def.player, name: def.name, def,
-    ai: { lane: lat, cur: lat, skill: def.player ? 0.85 : def.skill, wT: 1 + Math.random() * 2, flick: def.player ? 0 : (def.flick || 0), driftK: def.driftK || 1 / 45, drift: { until: -1, t: 0, cool: 0, dir: 0 } }
+    ai: { lane: lat, cur: lat, skill: def.player ? 0.85 : def.skill, wT: 1 + Math.random() * 2, flick: def.player ? 0 : (def.flick || 0), driftK: def.driftK || 1 / 45, drift: { until: -1, t: 0, cool: 0, dir: 0 }, persona: def.persona || null }
   };
   c.pr = project(tr, c.x, c.z, idx, 4, 4);
   c.y = groundAt(W, c.pr.s, c.pr.lat, c.x, c.z);

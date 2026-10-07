@@ -188,6 +188,23 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   if (paint !== 3) errors.push('career paint: ' + paint);
   console.log(`career specials: trial "${trial.title}"; showdown ${sd.cars.length} cars; boss open ${bossOpen}, ${boss.cars.join(' vs ')}, "${boss.title}"; paint ${paint}`);
 }
+// G5: a Champion's save opens Elite (the season panel, the nemesis, the Prestige button); an Elite round races twelve
+// cars with the nemesis and some personalities, and scores for the season
+{
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('downhill-rush-career')); Object.assign(s, { cash: 50000, champion: true, car: 'police', beaten: { ...s.beaten, 'rookie-boss': true, 'club-boss': true, 'pro-boss': true, 'legend-boss': true, final: true }, nemesis: { name: 'Delgado', beat: 0, lost: 0 } });
+    s.cars.police = { eng: 3, tyr: 3, sus: 3 }; localStorage.setItem('downhill-rush-career', JSON.stringify(s)); window.__dr.flow.toMenu(); document.getElementById('career').hidden = true; });
+  await page.click('#career-btn'); await page.click('.cr-tab[data-i="4"]');
+  const hub = await page.evaluate(() => ({ heads: [...document.querySelectorAll('#cr-body .cr-h')].map(h => h.firstChild.textContent.trim()), prestige: !!document.querySelector('[data-act="prestige"]'), nem: /Nemesis: Delgado/.test(document.getElementById('cr-body').textContent) }));
+  await page.screenshot({ path: path.join(outDir, 'career-elite.png') });
+  await page.click('.cr-item[data-id="elite-gp"]'); await page.click('#cr-actions .cta');
+  await page.waitForFunction(() => window.__dr.race && window.__dr.G.state === 'countdown' && window.__dr.G.career && window.__dr.G.career.ev === 'elite-gp', null, { timeout: 30000 });
+  const el = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; for (let k = 0; k < 600 && !d.race.player.finished; k++) d.step(0.5); d.flow.showResults();
+    return { n: d.race.cars.length, nem: d.race.cars.some(c => c.name === 'Delgado' && c.ai.persona === 'nemesis'), personas: d.race.cars.filter(c => c.ai.persona).length, news: document.getElementById('res-career').textContent, season: JSON.parse(localStorage.getItem('downhill-rush-career')).season }; });
+  await page.screenshot({ path: path.join(outDir, 'career-elite-results.png') });
+  await page.click('#menu-btn'); await page.keyboard.press('Escape');
+  if (hub.heads.length < 6 || !hub.prestige || !hub.nem || el.n !== 12 || !el.nem || el.personas < 2 || !/nemesis Delgado/.test(el.news) || !el.season || !Object.keys(el.season.pts).length) errors.push('career elite: ' + JSON.stringify({ hub, ...el, news: el.news.slice(0, 200) }));
+  console.log(`career elite: ${hub.heads.join(' | ')}; a round of ${el.n} cars, ${el.personas} with a personality, season points for ${el.season ? Object.keys(el.season.pts).length : 0}`);
+}
 // the Rivals setting: a full field of 19 (one of every vehicle), then down to a single rival; the meshes follow
 {
   await page.evaluate(() => window.__dr.flow.toMenu()); await page.evaluate(() => { document.getElementById('garage').hidden = true; });

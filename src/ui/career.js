@@ -1,5 +1,5 @@
 import { G } from '../game.js';
-import { DUEL_GAP, PAINTS, PAINT_PRICE, SHOP, STARTERS, TIERS, allowed, awardTrophy, beaten, bossOf, buyCar, armoury, buyUpgrade, buyWeapon, canEnter, careerPlayer, fitGear, fitTyres, weaponLevel, careerDefs, eventById, eventMaxStars, eventOpen, eventStars, forSale, medals, newCareer, objText, paintCar, podiumOf, roundMask, roundsOf, scoreRace, selectCar, sellCar, sellPrice, tierMaxStars, tierOf, tierOpen, tierStars, topTier, totalStars, upgLevel, upgradedVeh } from '../data/career.js';
+import { DUEL_GAP, PAINTS, PAINT_PRICE, SERIES, SHOP, STARTERS, TIERS, allowed, gateOf, isElite, modeOf, nemesisOf, prestige, prestigeOf, prestigePay, seasonOf, seasonRace, seasonTable, seriesName, seriesOf, awardTrophy, beaten, bossOf, buyCar, armoury, buyUpgrade, buyWeapon, canEnter, careerPlayer, fitGear, fitTyres, weaponLevel, careerDefs, eventById, eventMaxStars, eventOpen, eventStars, forSale, medals, newCareer, objText, paintCar, podiumOf, roundMask, roundsOf, scoreRace, selectCar, sellCar, sellPrice, tierMaxStars, tierOf, tierOpen, tierStars, topTier, totalStars, upgLevel, upgradedVeh } from '../data/career.js';
 import { scoreRound, standings } from '../data/leagues.js';
 import { STAGES } from '../data/stages/index.js';
 import { VEHICLES, vehicleById } from '../data/vehicles.js';
@@ -44,6 +44,7 @@ function kindText(ev) {
   if (ev.kind === 'onemake') return `One-make ${ev.format ? FORMATS[ev.format].name.toLowerCase() : 'race'}: ${vehicleById(ev.make).name}`;
   if (ev.kind === 'boss') return `Duel: ${ev.driver} in the ${vehicleById(ev.vehicle).name}`;
   if (ev.kind === 'final') return 'The final';
+  if (seriesOf(ev) === 'derby') return 'Derby series: derby cars only';
   const fmt = ev.format ? FORMATS[ev.format].name + ', ' : '';
   return ev.disc ? `${fmt}${DISCIPLINES[ev.disc].name} cars only${ev.maxPace ? `, pace ${ev.maxPace} or below` : ''}${ev.maxTough ? `, toughness ${ev.maxTough} or below` : ''}` : ev.format ? FORMATS[ev.format].name + ' cup' : 'Cup';
 }
@@ -89,21 +90,34 @@ function eventItem(ev, open) {
   else if (ev.kind === 'trial') prog = S.best && S.best[ev.id] ? `Best ${fmt(S.best[ev.id])}` : 'Not run yet';
   else if (ev.kind === 'boss' || ev.kind === 'final') prog = beaten(S, ev) ? 'Beaten' : ok ? 'Ready' : ev.kind === 'boss' ? `Needs ★ ${ev.need} in ${TIERS[ti].name} (you have ${tierStars(S, TIERS[ti])})` : `Beat ${bossOf(TIERS[ti]).driver} first`;
   else prog = roundMask(S, ev, 0) ? 'Raced' : 'One race';
+  if (isCup(ev) && isElite(ev) && seasonOf(S).done[ev.id]) prog = `Done this season · ${prog}`;
   const cls = ev.kind === 'boss' || ev.kind === 'final' ? ' cr-boss' : isCup(ev) ? '' : ' cr-special';
   return `<button type="button" class="cr-item lg-item${cls}" data-act="event" data-id="${ev.id}"${ok ? '' : ' disabled'}><b>${esc(ev.name)}${tro ? ` <span class="cr-trophy t${tro}">${TROPHY[tro]}</span>` : ''}${beaten(S, ev) ? ' <span class="cr-trophy t1">Beaten</span>' : ''}</b>`
     + `<span class="cr-kind">${esc(kindText(ev))}</span><span>${esc(ev.blurb)}</span><small>${roundsOf(ev).map(r => esc(r.stage)).join(' · ')}</small><em>${prog} · ★ ${eventStars(S, ev)}/${eventMaxStars(ev)}</em></button>`;
 }
 function drawHub() {
   const ti = Math.min(view.tier, TIERS.length - 1), T = TIERS[ti], open = tierOpen(S, ti), car = vehicleById(S.car);
-  $('cr-title').textContent = S.champion ? 'Career · Champion' : 'Career';
-  $('cr-sub').textContent = `${S.champion ? 'Champion of Champions! ' : ''}Driving the ${car.name}. ${S.races ? `${S.races} races, ${S.wins} wins, ${money(S.earned)} earned.` : 'Pick an event to start.'}`;
+  const pl = prestigeOf(S) ? ` · Prestige ${S.prestige}` : '';
+  $('cr-title').textContent = (S.champion ? 'Career · Champion' : 'Career') + pl;
+  $('cr-sub').textContent = `${S.champion ? 'Champion of Champions! ' : ''}Driving the ${car.name}. ${S.races ? `${S.races} races, ${S.wins} wins, ${money(S.earned)} earned.` : 'Pick an event to start.'}${S.titles && S.titles.length ? ` Elite seasons: ${S.titles.map(x => ordinal(x.place)).join(', ')}.` : ''}`;
   const tabs = TIERS.map((t, i) => `<button type="button" class="cr-tab" data-act="tier" data-i="${i}" aria-pressed="${i === ti}"${tierOpen(S, i) ? '' : ' data-locked="1"'}><b>${esc(t.name)}</b><small>${tierOpen(S, i) ? `★ ${tierStars(S, t)}/${tierMaxStars(t)}` : 'Locked'}</small></button>`).join('');
-  const prevBoss = ti > 0 && bossOf(TIERS[ti - 1]);
-  const lock = open ? '' : `<p class="cr-lock">Beat ${esc(prevBoss.driver)}, the ${esc(TIERS[ti - 1].name)} boss, to open ${esc(T.name)}.</p>`;
+  const gate = ti > 0 && gateOf(TIERS[ti - 1]);
+  const lock = open ? '' : `<p class="cr-lock">${gate.kind === 'final' ? `Win ${esc(gate.name)}` : `Beat ${esc(gate.driver)}, the ${esc(TIERS[ti - 1].name)} boss,`} to open ${esc(T.name)}.</p>`;
   const group = (title, evs) => evs.length ? `<h3 class="cr-h">${title}</h3><div class="lg-list">${evs.map(ev => eventItem(ev, open)).join('')}</div>` : '';
-  $('cr-body').innerHTML = `<div class="cr-tabs">${tabs}</div><p class="cr-tier">${esc(T.blurb)}. Rivals ${Math.round(T.skill * 100)}% sharp${T.upg ? `, their cars at upgrade level ${T.upg}` : ', stock cars'}; prize money ×${T.pay}.</p>${lock}`
-    + group('Cups', T.events.filter(isCup)) + group('Specials', T.events.filter(e => ['trial', 'mode', 'onemake'].includes(e.kind))) + group(ti === TIERS.length - 1 ? 'Boss and final' : 'Boss', T.events.filter(e => e.kind === 'boss' || e.kind === 'final'));
-  $('cr-actions').innerHTML = `<button type="button" class="cta" data-act="garage">Garage &amp; showroom</button><div class="btn-row"><button type="button" class="btn" data-act="close">Back to the menu</button><button type="button" class="btn cr-quiet" data-act="restart">New career</button></div>`;
+  // the series (G5) in a fixed order, then the open cups, the specials, the boss
+  const ser = SERIES.map(id => { const evs = T.events.filter(e => seriesOf(e) === id); return evs.length ? group(id === 'oddball' ? 'Oddball cup' : `${seriesName(id)} series`, evs) : ''; }).join('');
+  const rules = T.elite ? `Rivals ${Math.round(T.skill * 100)}% sharp, their parts matched to your car's pace; some block, some bomb, and your nemesis ${nemesisOf(S)} is in every race, which all score for the season` : `Rivals ${Math.round(T.skill * 100)}% sharp${T.upg ? `, their cars at upgrade level ${T.upg}` : ', stock cars'}`;
+  $('cr-body').innerHTML = `<div class="cr-tabs">${tabs}</div><p class="cr-tier">${esc(T.blurb)}. ${esc(rules)}; prize money ×${T.pay}${prestigeOf(S) ? ` (×${prestigePay(S).toFixed(1)} prestige)` : ''}.</p>${lock}${T.elite && open ? seasonPanel() : ''}`
+    + ser + group('Open cups', T.events.filter(e => isCup(e) && !seriesOf(e))) + group('Specials', T.events.filter(e => ['trial', 'mode', 'onemake'].includes(e.kind))) + group(T.events.some(e => e.kind === 'final') ? 'Boss and final' : 'Boss', T.events.filter(e => e.kind === 'boss' || e.kind === 'final'));
+  $('cr-actions').innerHTML = `<button type="button" class="cta" data-act="garage">Garage &amp; showroom</button><div class="btn-row"><button type="button" class="btn" data-act="close">Back to the menu</button>${S.champion ? '<button type="button" class="btn" data-act="prestige" title="Start again at Rookie with every car you own: rivals sharper and better built, prize money up">Prestige</button>' : ''}<button type="button" class="btn cr-quiet" data-act="restart">New career</button></div>`;
+}
+// the Elite season: the table so far, events done, and the nemesis record
+function seasonPanel() {
+  const se = seasonOf(S), tab = seasonTable(S), evs = TIERS.filter(t => t.elite).flatMap(t => t.events), N = S.nemesis;
+  const me = tab.findIndex(x => x.name === 'You'), rows = tab.slice(0, 6).concat(me >= 6 ? [tab[me]] : []);
+  const table = rows.length ? `<table class="lg-table">${rows.map(x => `<tr class="${x.name === 'You' ? 'me' : ''}"><td class="rp">${ordinal(tab.indexOf(x) + 1)}</td><td>${esc(x.name)}${x.name === nemesisOf(S) ? '<span class="rs">nemesis</span>' : ''}</td><td class="rt">${x.pts} pts</td></tr>`).join('')}</table>` : '<p class="cr-tier">No Elite races yet this season.</p>';
+  return `<h3 class="cr-h">Season ${se.n} <small>${Object.keys(se.done).length} of ${evs.length} events done · the top three are paid at the end</small></h3>${table}`
+    + `<p class="cr-tier">Nemesis: <b>${esc(nemesisOf(S))}</b>${N && N.beat + N.lost ? ` · you've beaten them ${N.beat} time${N.beat === 1 ? '' : 's'}, they've beaten you ${N.lost}` : ''}.</p>`;
 }
 
 // ---------- an event: its rounds, stars and objectives, the standings ----------
@@ -119,6 +133,7 @@ function drawEvent() {
       : ev.kind === 'boss' ? `One on one. ${ev.driver}'s ${vehicleById(ev.vehicle).name} carries upgrade level ${T.upg}, and the driver is sharper than the field. Win for the ${vehicleById(ev.vehicle).name}, a purse and the next tier.`
         : ev.kind === 'final' ? 'Seven rivals, all four bosses among them, every car fully upgraded. Win for the gold Stretch Limo and the title.'
           : ev.kind === 'onemake' ? `Everyone drives a stock ${vehicleById(ev.make).name}: we lend you one. Stars: podium, win, objective.`
+            : modeOf(ev) === 'derby' && cup ? `A derby every round, ${careerDefs(S, ev).length} cars: a wrecked car is out, the last one running wins (at the bell, the least damaged). Points 10-8-6-5-4-3-2-1 each round.`
             : ev.mode === 'derby' ? 'Six cars, no laps: a wrecked car is out, the last one running wins (at the bell, the least damaged). Stars: a podium, the win, the objective.'
               : 'Stars: a podium (top two of four), the win, the objective.';
   const F = FORMATS[formatOf(ev)], fmtRule = F.weight.destruct > 0 ? ` ${F.name}: placed on race points plus ${F.weight.destruct}× destruction points (${(P => `a rival wrecked ${P.wreck}, a panel torn off ${P.panel}, a fence or gate smashed ${P.smash}, a road car taken out ${P.takedown}`)({ ...DESTRUCT, ...F.pts })}), and paid for both.` : '';
@@ -208,6 +223,7 @@ function act(b) {
   else if (a === 'buy') { const s = buyCar(S, b.dataset.id); if (s) { store(s); draw(); } }
   else if (a === 'race') raceRound(view.id);
   else if (a === 'reset') { const ev = eventById(view.id); store({ ...S, cups: { ...S.cups, [ev.id]: { id: ev.id, round: 0, pts: {}, results: [] } } }); if (b.classList.contains('cta')) raceRound(ev.id); else draw(); }
+  else if (a === 'prestige') { if (window.confirm(`Prestige ${(S.prestige || 0) + 1}: start again at Rookie, keeping every car and its parts. Rivals are sharper and better built, and prize money goes up. Your stars, cups and cash start over.`)) { const s = prestige(S); if (s) { store(s); view = { v: 'hub', tier: 0 }; draw(); } } }
   else if (a === 'restart') { if (window.confirm('Start a new career? Your cars, cash and stars will be lost.')) { store(null); view = { v: 'start' }; draw(); } }
 }
 function raceRound(id) {
@@ -231,7 +247,7 @@ export function careerRaceDefs() {
 /** The mode of the career round being raced: 'race', or a Showdown / checkpoint special's mode. */
 /** The format of the career round being raced (data/formats.js). */
 export const careerFormat = () => { const ev = G.career && eventById(G.career.ev); return ev ? formatOf(ev) : 'race'; };
-export const careerMode = () => { const ev = G.career && eventById(G.career.ev); return ev && ev.kind === 'mode' ? ev.mode : 'race'; };
+export const careerMode = () => { const ev = G.career && eventById(G.career.ev); return ev ? modeOf(ev) : 'race'; };
 // the finishing order: a Race by the flag, a Showdown by crown time, a checkpoint match by points (as the results table)
 function finishOrder() {
   const R = race; if (R.derby) return derbyOrder(R); if (!R.sd) return ranking(R);
@@ -243,12 +259,14 @@ export function careerResults() {
   const c = G.career; if (!c || !S) return false;
   const ev = eventById(c.ev), cup = isCup(ev), fid = formatOf(ev), pi = race.cars.indexOf(race.player), scored = scoreOrder(finishOrder(), race.cars, G.tally, fid), order = scored.map(x => x.c), place = order.indexOf(race.player) + 1, n = order.length, t = { ...G.tally, ...G.tally.d[pi] }, P = race.player;
   const w = order[0], gap = P.finished && w.finished ? P.finishTime - w.finishTime : -1;
-  const tierWas = topTier(S), out = scoreRace(S, ev, c.k, place, n, { ...t, gap }, P.finished ? P.finishTime : 0); let s = out.state, trophy = 0, tcash = 0, run = null, done = false, cupPlace = 0;
+  const nem = isElite(ev) ? order.findIndex(x => x.name === nemesisOf(S)) + 1 : 0;
+  const tierWas = topTier(S), out = scoreRace(S, ev, c.k, place, n, { ...t, gap, nemesis: nem }, P.finished ? P.finishTime : 0); let s = out.state, trophy = 0, tcash = 0, run = null, done = false, cupPlace = 0;
   if (cup) {
     run = scoreRound(cupRun(ev), order.map(x => x.name)); s = { ...s, cups: { ...s.cups, [ev.id]: run } };
     done = cupDone(ev, run); cupPlace = standings(run).findIndex(x => x.name === 'You') + 1;
     if (done) { const a = awardTrophy(s, ev, cupPlace); s = a.state; tcash = a.cash; trophy = cupPlace <= 3 ? cupPlace : 0; }
   }
+  const sr = seasonRace(s, ev, order.map(x => x === P ? 'You' : x.name), !cup || done); s = sr.state; const season = sr.over;
   store(s); G.career = { ...c, done: done || !cup };
   const opened = topTier(S) > tierWas ? TIERS[topTier(S)] : null, labels = starLabels(ev, c.k, n);
   $('res-stage').textContent = cup ? `${ev.name} · round ${c.k + 1} of ${roundsOf(ev).length}: ${G.world.stage.name}` : `${ev.name} · ${kindText(ev)}: ${G.world.stage.name}`;
@@ -260,6 +278,8 @@ export function careerResults() {
     out.prize ? (ev.kind === 'final' ? `Champion of Champions! The gold ${vehicleById(out.prize).name} is yours.` : `You beat ${ev.driver}! The ${vehicleById(out.prize).name} is in your garage.`) : '',
     opened ? `${opened.name} tier open! New events and new cars in the showroom.` : '',
     ev.kind === 'boss' && !beaten(S, ev) ? `Beat ${ev.driver} to win the ${vehicleById(ev.vehicle).name} and open the next tier.` : '',
+    nem ? (place < nem ? `You beat your nemesis ${nemesisOf(S)} (${ordinal(nem)}).` : `Your nemesis ${nemesisOf(S)} beat you (${ordinal(nem)}).`) : '',
+    season ? `Season ${season.n} over: you finished ${ordinal(season.place)}${season.cash ? ` and won ${money(season.cash)}` : ''}. Season ${season.n + 1} starts now.` : '',
     FORMATS[fid].weight.destruct > 0 ? (m => `${FORMATS[fid].name}: placed on finish and destruction. You: ${m.race} for your finish, ${m.destruct} destruction points; the top car ${scored[0].c.name} (${scored[0].race} + ${scored[0].destruct}).`)(scored.find(x => x.c === P)) : '',
   ].filter(Boolean);
   $('res-career').innerHTML = `${starsHTML}<table class="cr-cash">${lines}<tr class="tot"><td>Total</td><td class="rt">${money(out.cash + tcash)}</td></tr></table><p class="cr-bank">Bank ${money(S.cash)}</p>${news.map(x => `<p class="cr-news">${esc(x)}</p>`).join('')}`;
