@@ -97,6 +97,14 @@ dirt oval with two big kickers, whoops, a mud pit and crates on the back straigh
 street circuit of square corners between Armco and houses with a fast chicane; a speed course on a salt lake, two
 straights with boost pads and sweepers you can almost take flat. They're in the series too.
 
+**Track versions** (stages 30-35, `src/data/versions.js`): a stage at night or in the rain, made from the stage itself
+(`versionOf(stage, 'night' | 'rain')`): same road, seed and set pieces, new light and colours, and the weather element's
+options (`core/elements/weather.js`). `wet: 0..1` takes `WET.GRIP` (20%) off the tyres' hold on the road (not on grass,
+mud, fords or ice, which are as slick as they get) and lowers the AI's corner speeds to match; `rain` draws streaks and
+`night` moonlight, a pool of headlight ahead of every racer and a red glow behind (`render/elements/weather.js`). Which
+versions are raced is the list `VERSIONED` in `src/data/stages/index.js` (appended after the drawn stages, so stage
+numbers never move); the career uses them by name ("Ravenrock Gorge in the Rain").
+
 **A car for each stage:** the garage remembers your pick for the selected stage (by stage name, `G.stageCars`), and
 the last pick is the default for stages with none yet. The stage list shows each stage's car, the garage tags the
 vehicles that suit the stage (off-road stats on gravel and snow, speed and grip on tarmac), and the league screen has a

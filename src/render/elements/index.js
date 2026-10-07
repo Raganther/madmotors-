@@ -33,6 +33,7 @@ import { initGateVis, updateGateVis } from '../gates.js';
 import { addHammers, updateHammers } from './hammer.js';
 import { initWeaponVis, updateWeaponVis } from '../weapons.js';
 import { addSnowfall, updateSnowfall } from './snowfall.js';
+import { addWeather, updateWeather } from './weather.js';
 import { addBreakables, newBreakablesRace, updateBreakables } from './breakables.js';
 import { addKit, newKitRace, updateKit } from './kit.js';
 import { addArena } from './arena.js';
@@ -90,5 +91,7 @@ const breakables = { name: 'breakables', build(group, tr) { addBreakables(group,
 
 const kit = { name: 'kit', build(group, tr, terr, stage) { addKit(group, tr, terr, stage); }, newRace() { newKitRace(); }, update() { updateKit(); } };   // towns from the world kit (stage.towns)
 
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena];
+const weather = { name: 'weather', build(group, tr, terr, stage) { addWeather(group, stage); }, update(dt, now) { updateWeather(dt, now); } };   // rain and night (stage.rain, stage.night)
+
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

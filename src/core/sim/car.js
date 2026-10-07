@@ -1,4 +1,6 @@
 import { CAR_HL, CAR_HW, HALF, PHYS, SURF, WALL } from '../constants.js';
+import { WET } from '../elements/weather.js';
+const LOOSE = { grass: 1, mud: 1, ford: 1, ice: 1 };   // already as slippery as they get: rain doesn't change them
 import { clamp, wrapAngle } from '../math.js';
 import { hitBarrier, wallAt, wallPos } from './barriers.js';
 import { collideObstacles } from './obstacles.js';
@@ -112,7 +114,7 @@ export function stepCar(c, dt, W, racing) {
     vf += a * dt;
     if (inp.throttle <= 0 && inp.brake <= 0 && Math.abs(vf) < 1) vf *= Math.max(0, 1 - 3 * dt);
     const hb = inp.handbrake > 0 && Math.abs(vf) > 6;
-    const slick = c.oilT > 0 ? 0.22 : 1;                                    // on an oil slick the tyres barely hold
+    const slick = (c.oilT > 0 ? 0.22 : 1) * (tr.wet && !LOOSE[c.surface] ? 1 - WET.GRIP * tr.wet : 1);   // an oil slick: the tyres barely hold; a wet road (elements/weather.js): less
     const vg = V ? V.grip * (rough ? Math.sqrt(V.off) : 1) : 1;
     const latMax = (hb ? PHYS.HB_LAT : S.latMax) * (0.8 + 0.2 * mod) * slick * vg;
     const grip = (hb ? 1.4 : S.grip) * slick * vg;

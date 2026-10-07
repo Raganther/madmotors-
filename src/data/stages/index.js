@@ -28,5 +28,9 @@ import bangerOval from './banger-oval.js';
 import monsterStadium from './monster-stadium.js';
 import oldTownGp from './old-town-gp.js';
 import saltFlats from './salt-flats.js';
+import { versionOf } from '../versions.js';
 
-export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins, flyoverTangle, openCountry, sundayPark, harbourSprint, hayBaleFarm, villageGreen, scrapyardBowl, mudPit, stadium, bangerOval, monsterStadium, oldTownGp, saltFlats];
+const BASE = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins, flyoverTangle, openCountry, sundayPark, harbourSprint, hayBaleFarm, villageGreen, scrapyardBowl, mudPit, stadium, bangerOval, monsterStadium, oldTownGp, saltFlats];
+// Track versions (data/versions.js): stages raced at night or in the rain, appended after every drawn stage
+export const VERSIONED = [['Mountain Loop', 'night'], ['Old Town GP', 'night'], ['Salt Flats', 'night'], ['Harbour Sprint', 'rain'], ['Ravenrock Gorge', 'rain'], ['Bogwood Rally', 'rain']];
+export const STAGES = [...BASE, ...VERSIONED.map(([name, v]) => versionOf(BASE.find(s => s.name === name), v))];
