@@ -4,6 +4,7 @@ import { G } from '../game.js';
 import { AudioSys } from '../audio/audio.js';
 import { CAR_HL, CAR_HW } from '../core/constants.js';
 import { clamp, lerp, wrapAngle } from '../core/math.js';
+import { groundAt } from '../core/track/query.js';
 import { WRECK_T, carWear } from '../core/sim/damage.js';
 import { SD } from '../core/modes/showdown.js';
 import { CAR_DEFS, TRAFFIC_KINDS } from '../data/cars.js';
@@ -261,6 +262,7 @@ export function drawCar(c, v, dt, now) {
   c.squash *= Math.exp(-dt * 7); v.body.scale.y = 1 - c.squash * 0.22 / (v.soft || 1); v.sag = (v.sag || 0) + ((v.broken ? 1 : 0) - (v.sag || 0)) * Math.min(1, dt * 6);
   v.body.position.y = (v.lift || 0) - c.squash * 0.08 * (v.soft || 1) + (1 - Math.cos(v.flipA || 0)) * 0.85 - v.sag * (v.wr || 0.42) * 0.8;   // lifted so a flipped shell rests on its roof; dropped when the wheels are gone   // lifted so a flipped shell rests on its roof
   v.spin += c.vf * dt / (v.wr || 0.42); v.wheels.forEach(w => w.rotation.x = v.spin);
+  suspend(c, v, dt);
   v.steer.forEach(p => p.rotation.y = -c.inp.steer * 0.42);
   const braking = !v.parts.tails && ((c.inp.brake > 0.05 && c.vf > 0.5) || (c.inp.handbrake > 0 && Math.abs(c.vf) > 3));
   if (v.braking !== braking) { v.braking = braking; v.tailM.color.setHex(braking ? 0xFF4A36 : 0x8E2016); v.glow.forEach(g => g.visible = braking); }
@@ -272,6 +274,27 @@ export function drawCar(c, v, dt, now) {
   const bash = c.wpn && c.wpn.doorT > 0 ? c.wpn.doorSide : 0;
   updatePanels(v, c, dt, now, id => bash === 1 && id === 'doorR' ? 1.15 : bash === -1 && id === 'doorL' ? -1.15 : 0);
   if (c.wpn) { swingDoors(c, v, dt); updateMount(c, v, dt, now); }
+}
+// Suspension (looks only): each wheel finds the ground under itself and moves up or down from where the body says it
+// is, within its travel (longer on soft, long-travel cars: v.soft), so wheels follow bumps, kerbs and whoops on their
+// own, hang down in the air and tuck up on landing. The physics is unchanged (core/sim/car.js has one contact point).
+const SUSP = { TRAVEL: 0.13, MAX: 0.36, UP: 0.7 };
+function suspend(c, v, dt) {
+  const W = G.world && G.world.W; if (!W || !c.pr || !v.wheels.length) return;
+  const tr = W.tr, i = Math.max(0, Math.min(tr.N - 1, c.pr.i)), T = Math.min(SUSP.MAX, SUSP.TRAVEL * (v.soft || 1)), n = v.n;
+  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+  if (!v.susp) v.susp = v.wheels.map(w => ({ y0: w.parent.position.y, s: 0 }));
+  v.wheels.forEach((w, k) => {
+    const p = w.parent, S = v.susp[k], px = p.position.x, pz = p.position.z;
+    let tgt = -T;                                                                       // in the air: hanging down
+    if (c.onGround) {
+      const ox = px * fz + pz * fx, oz = pz * fz - px * fx;                              // the wheel's offset on the ground (local x is (fz, -fx))
+      const g = groundAt(W, c.pr.s + ox * tr.tx[i] + oz * tr.tz[i], c.pr.lat + ox * tr.rx[i] + oz * tr.rz[i], c.dx + ox, c.dz + oz);
+      const plane = c.dy - (n.x * ox + n.z * oz) / (n.y || 1);                            // where the body's plane puts it
+      tgt = clamp(g - plane, -T, T * SUSP.UP) - c.squash * T * 0.8;                       // and tucked up as it lands
+    }
+    S.s += (tgt - S.s) * Math.min(1, dt * (c.onGround ? 22 : 7)); p.position.y = S.y0 + S.s;
+  });
 }
 // door bashing (core/features/weapons.js): a door panel in the car's colour swings out on the side it was flung open,
 // hinged at the front, and closes again. Built the first time a car uses one.
