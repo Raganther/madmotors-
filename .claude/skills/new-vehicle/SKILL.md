@@ -66,3 +66,5 @@ sending a garage screenshot and one in-race shot per new vehicle.
 - The Asset Lab lists cars by vehicle id (`npm run labshot -- taxi`), not by pack id (`car-taxi`).
 - A family car's Blender pack must stay inside the car budget (tests/assets.test.js): busy extras (spare tyres) want
   few vertices.
+- A body may have no wing (or bumper): render code that knocks parts about must check for them (render/vehicles.js
+  updateCarDamageVis). Unit tests don't build meshes; the e2e's Elite race and a damaged full field catch it.

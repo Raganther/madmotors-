@@ -74,9 +74,9 @@ export function detachPart(c, v, m) {
 }
 export function updateCarDamageVis(c, v) {
   const d = c.dmg, P = v.parts;
-  if (d.f > 0.25 && P.bumper < 1) { P.bumper = 1; v.bumper.rotation.x = 0.35; v.bumper.position.y -= 0.12; v.bumper.rotation.z = (Math.random() - 0.5) * 0.4; }
+  if (d.f > 0.25 && P.bumper < 1) { P.bumper = 1; if (v.bumper) { v.bumper.rotation.x = 0.35; v.bumper.position.y -= 0.12; v.bumper.rotation.z = (Math.random() - 0.5) * 0.4; } }
   if (d.f > 0.55 && P.bumper < 2) { P.bumper = 2; detachPart(c, v, v.bumper); }
-  if (d.b > 0.3 && P.wing < 1) { P.wing = 1; v.wing.rotation.z = (Math.random() < 0.5 ? -1 : 1) * 0.3; v.wing.position.y -= 0.08; }
+  if (d.b > 0.3 && P.wing < 1) { P.wing = 1; if (v.wing) { v.wing.rotation.z = (Math.random() < 0.5 ? -1 : 1) * 0.3; v.wing.position.y -= 0.08; } }   // (not every car has a wing: data/families.js)
   if (d.b > 0.6 && P.wing < 2) { P.wing = 2; detachPart(c, v, v.wing); v.struts.forEach(m => detachPart(c, v, m)); }
   if (d.f > 0.35 && !P.heads) { P.heads = 1; v.heads.forEach(m => m.visible = false); const [x, y, z] = [c.x + Math.sin(c.yaw) * 1.7, c.y, c.z + Math.cos(c.yaw) * 1.7]; glassBits(x, y - 0.4, z, 5, c.pr.i); }
   if (d.b > 0.35 && !P.tails) { P.tails = 1; v.tails.forEach(m => m.visible = false); }

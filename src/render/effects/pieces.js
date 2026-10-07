@@ -26,7 +26,7 @@ export function flingPiece(src, vx, vy, vz, spin, { life = 7, hint = 0, keep = f
  *  keep: leave the car's own parts showing (a Showdown blow-up, where the car is back on the road at once). */
 export function breakApart(c, v, { power = 1, keep = false } = {}) {
   if (!v) return;
-  const parts = [...(power >= 1 ? v.wheels : v.wheels.filter(() => Math.random() < power)), v.bumper, v.wing, ...(v.struts || []), ...(v.heads || []).slice(0, 1), ...(v.tails || []).slice(0, 1)];
+  const parts = [...(power >= 1 ? v.wheels : v.wheels.filter(() => Math.random() < power)), v.bumper, v.wing, ...(v.struts || []), ...(v.heads || []).slice(0, 1), ...(v.tails || []).slice(0, 1)].filter(Boolean);
   // a full wreck strips it to the shell: every panel, the glass and the roof go too (render/anatomy.js)
   if (power >= 1 && v.panels && Object.keys(v.panels).length) parts.push(...Object.values(v.panels), v.cabin, ...v.dentable.filter(m => m !== v.cabin && !Object.values(v.panels).includes(m) && m.userData.home && m.position.y > v.cabin.position.y - 0.1));
   for (const m of parts) {
