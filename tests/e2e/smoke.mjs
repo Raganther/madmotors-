@@ -166,6 +166,12 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   const sd = await race('rookie-king', 8);
   await page.screenshot({ path: path.join(outDir, 'career-showdown.png') });
   await page.click('#menu-btn'); await page.keyboard.press('Escape');
+  // G2: a demolition rally round (data/formats.js): placed on finish and destruction, the results say so
+  const demo = await race('seaside-double', 40); const demoNote = await page.evaluate(() => document.getElementById('res-career').textContent);
+  if (!/Demolition rally: placed on finish and destruction/.test(demoNote)) errors.push('career demolition rally: no format note in the results: ' + demoNote.slice(0, 200));
+  await page.screenshot({ path: path.join(outDir, 'career-demolition.png') });
+  await page.click('#menu-btn'); await page.keyboard.press('Escape');
+  console.log(`career demolition rally: ${demo.cars.length} cars, results note ok`);
   await page.click('#career-btn');
   await page.screenshot({ path: path.join(outDir, 'career-hub2.png') });
   const bossOpen = await page.$eval('.cr-item[data-id="rookie-boss"]', b => !b.disabled); await page.keyboard.press('Escape');

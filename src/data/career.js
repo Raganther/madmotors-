@@ -13,6 +13,7 @@
 import { CAR_DEFS, MORE_RIVALS } from './cars.js';
 import { vehicleById } from './vehicles.js';
 import { entryOK } from './disciplines.js';
+import { FORMATS, formatOf } from './formats.js';
 import { PART_MAX, TYRE_KINDS, buildOf, buildVeh, slotById } from './parts.js';
 import { GEAR, GEAR_PRICE, SIGNATURES, WEAPONS, WEAPON_IDS, WEAPON_MAX, WEAPON_PRICE, loadoutOf } from './weapons.js';
 
@@ -78,6 +79,7 @@ const rivalLoad = (L, gear) => { const lv = L > 1 ? Object.fromEntries(WEAPON_ID
 
 export const PLACE_CASH = [1000, 750, 550, 400, 300, 220, 160, 120];
 export const BONUS = { air: 30, drift: 20, hit: 15, clean: 150, obj: 250 };
+export const DESTRUCT_CASH = { wrecked: 150, panels: 40, smashed: 20, takedowns: 60 };   // per item, times the format's destruct weight
 export const TROPHY_CASH = [2500, 1500, 800];
 export const MEDAL_CASH = [450, 700, 1000];   // time trial: bronze, silver, gold
 export const DUEL_GAP = 5;   // a duel (a boss): the first star for finishing this close behind (seconds)
@@ -95,8 +97,9 @@ export const PAINTS = [
 // objectives: the third star of a race. n is a count over the whole race
 const OBJ = {
   drift: n => ({ k: 'drift', n }), air: n => ({ k: 'air', n }), hits: n => ({ k: 'hits', n }), clean: () => ({ k: 'clean' }),
+  wrecked: n => ({ k: 'wrecked', n }), smashed: n => ({ k: 'smashed', n }),
 };
-const { drift, air, hits, clean } = OBJ;
+const { drift, air, hits, clean, wrecked, smashed } = OBJ;
 const R = (stage, obj) => ({ stage, obj });
 // the specials and the boss of a tier: single races
 const trial = (id, name, stage, par) => ({ id, kind: 'trial', name, blurb: 'Alone against the clock: bronze, silver and gold times', stage, par });
@@ -107,10 +110,10 @@ export const TIERS = [
   { id: 'rookie', name: 'Rookie', blurb: 'Friendly locals on the easy roads', skill: 0.88, upg: 0, pay: 1, events: [
     { id: 'rookie-cup', kind: 'cup', name: 'Rookie Cup', blurb: 'Four easy tracks: steering, drifting, dirt and jumps, then weapons', rounds: [R('Sunday Park', clean()), R('Harbour Sprint', drift(4)), R('Hay Bale Farm', air(3)), R('Village Green', hits(3))] },
     { id: 'sunday-loops', kind: 'cup', name: 'Sunday Loops', blurb: 'Three short circuits to learn the lines', rounds: [R('Mountain Loop', drift(4)), R('Red Mesa Canyon', air(10)), R('Bogwood Rally', clean())] },
-    { id: 'seaside-double', kind: 'cup', name: 'Seaside Double', blurb: 'The park, the harbour and the farm again, a little sharper', rounds: [R('Harbour Sprint', hits(3)), R('Hay Bale Farm', clean()), R('Sunday Park', drift(3))] },
+    { id: 'seaside-double', kind: 'cup', format: 'demolition', name: 'Seaside Smash', blurb: 'Demolition rally through the harbour and the farm: smashed fences and gates score as well as your place', rounds: [R('Harbour Sprint', smashed(4)), R('Hay Bale Farm', smashed(3)), R('Sunday Park', drift(3))] },
     trial('park-sprint', 'Park Sprint', 'Sunday Park', 78.4),
     mode('rookie-king', 'showdown', 'King of the Loop', 'Mountain Loop', drift(3), 'Showdown against three rivals: hold the lead to bank crown time'),
-    onemake('ice-cream-derby', 'icecream', 'Ice Cream Derby', 'Village Green', hits(3), 'Everyone in an Ice Cream Van round the fete: pure driving'),
+    { ...onemake('ice-cream-derby', 'icecream', 'Ice Cream Derby', 'Village Green', wrecked(1), 'Everyone in an Ice Cream Van round the fete\'s figure of eight: points for your place and for the vans you take out'), format: 'figure8' },
     boss('rookie-boss', 'Brannigan', 'monster', 'Red Mesa Canyon', 20, air(10), 'One on one with the Monster Truck over the jumps. Win it and it\'s yours'),
     { id: 'pocket-rockets', kind: 'cup', disc: 'oddball', name: 'Pocket Rockets', blurb: 'Oddballs only: karts, trikes, bikes and vans', rounds: [R('Sunday Park', hits(3)), R('Harbour Sprint', drift(4)), R('Village Green', clean())] },
   ] },
@@ -123,7 +126,7 @@ export const TIERS = [
     onemake('kart-chaos', 'kart', 'Kart Chaos', 'Corkscrew Spire', drift(4), 'Eight Go-Karts round the spire'),
     boss('club-boss', 'Lindqvist', 'wedge', 'Ravenrock Gorge', 26, clean(), 'The Group B ace on the viaducts. Beat Lindqvist and the Wedge is yours'),
     { id: 'downhill-classic', kind: 'cup', name: 'Downhill Classic', blurb: 'The four original downhill runs, top to bottom: fast, steep and unforgiving', rounds: [R('Summit Meadow', drift(2)), R('Pine Forest', clean()), R('Quarry Run', air(2)), R('Village Descent', hits(4))] },
-    { id: 'heavyweights', kind: 'cup', disc: 'heavy', name: 'Heavyweights', blurb: 'Trucks, vans and limos: the biggest wins', rounds: [R('Village Descent', hits(4)), R('Scrapyard Smash', air(3)), R('Mountain Pass', clean())] },
+    { id: 'heavyweights', kind: 'cup', disc: 'heavy', format: 'banger', name: 'Heavyweights', blurb: 'Banger racing for trucks, vans and limos: wrecks score', rounds: [R('Village Descent', wrecked(1)), R('Scrapyard Smash', air(3)), R('Mountain Pass', clean())] },
   ] },
   { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.97, upg: 2, pay: 2.6, events: [
     { id: 'wild-cup', kind: 'cup', name: 'Wild Cup', blurb: 'The wildest tracks, each with a shortcut to find', rounds: [R('Corkscrew Spire', clean()), R('Scrapyard Smash', air(4)), R('Mesa Leap', air(4)), R('Temple Ruins', hits(8)), R('Glacier Rift', drift(5))] },
@@ -131,7 +134,7 @@ export const TIERS = [
     { id: 'long-haul', kind: 'cup', name: 'Long Haul', blurb: 'The big circuits', rounds: [R('Ravenrock Gorge', hits(12)), R('Flyover Tangle', drift(8)), R('Thunder Falls', clean())] },
     trial('mesa-attack', 'Mesa Time Attack', 'Mesa Leap', 114.3),
     mode('mesa-showdown', 'showdown', 'Mesa Showdown', 'Red Mesa Canyon', air(6), 'King of the Hill over the mesa jumps'),
-    onemake('monster-mash', 'monster', 'Monster Mash', 'Scrapyard Smash', hits(6), 'Eight Monster Trucks in the scrapyard'),
+    { ...onemake('monster-mash', 'monster', 'Monster Mash', 'Scrapyard Smash', wrecked(2), 'Eight Monster Trucks in the scrapyard: a banger race, wrecks score'), format: 'banger' },
     boss('pro-boss', 'Moreau', 'formula', 'Flyover Tangle', 28, drift(6), 'The Formula Racer through the flyovers. Win and it\'s yours'),
     { id: 'tarmac-gp', kind: 'cup', disc: 'road', name: 'Tarmac GP', blurb: 'Road cars on the smoothest circuits', rounds: [R('Mountain Loop', drift(6)), R('Flyover Tangle', hits(10)), R('Corkscrew Spire', clean()), R('Summit Meadow', drift(2))] },
   ] },
@@ -248,7 +251,8 @@ export function careerDefs(s, ev, order = null) {
 export const objDone = (o, t) => o.k === 'clean' ? t.wrecks === 0 && t.respawns === 0 : (t[o.k] || 0) >= o.n;
 export function objText(o) {
   const pl = (n, a, b = a + 's') => `${n} ${n === 1 ? a : b}`;
-  return o.k === 'clean' ? 'A clean race: no wrecks, no resets' : o.k === 'drift' ? `${pl(o.n, 'drift boost')}` : o.k === 'air' ? `${pl(o.n, 'big air')}` : o.k === 'hits' ? `Hit rivals ${pl(o.n, 'time')} with weapons` : '';
+  return o.k === 'clean' ? 'A clean race: no wrecks, no resets' : o.k === 'drift' ? `${pl(o.n, 'drift boost')}` : o.k === 'air' ? `${pl(o.n, 'big air')}` : o.k === 'hits' ? `Hit rivals ${pl(o.n, 'time')} with weapons`
+    : o.k === 'wrecked' ? `Wreck ${pl(o.n, 'rival')}` : o.k === 'smashed' ? `Smash ${pl(o.n, 'fence, gate or wall', 'fences, gates or walls')}` : '';
 }
 /** The top places that count as a podium in a field of n (top 3 of 8, top 2 of 4, only a win in a duel). */
 export const podiumOf = n => Math.max(1, Math.min(3, Math.floor(n / 2)));
@@ -272,6 +276,9 @@ export function scoreRace(s, ev, k, place, n, t, time = 0) {
   if (t.air) lines.push([`Big air ×${t.air}`, pay(BONUS.air * t.air)]);
   if (t.drift) lines.push([`Drift boosts ×${t.drift}`, pay(BONUS.drift * t.drift)]);
   if (t.hits) lines.push([`Weapon hits ×${t.hits}`, pay(BONUS.hit * t.hits)]);
+  // destruction (data/formats.js): paid in the formats that weigh it
+  const wd = (FORMATS[formatOf(ev)] || FORMATS.race).weight.destruct;
+  if (wd > 0) for (const [k, label] of [['wrecked', 'Rivals wrecked'], ['panels', 'Panels torn off'], ['smashed', 'Scenery smashed'], ['takedowns', 'Road cars taken out']]) if (t[k]) lines.push([`${label} ×${t[k]}`, pay(DESTRUCT_CASH[k] * t[k] * wd)]);
   if (t.wrecks === 0 && t.respawns === 0) lines.push(['Clean race', pay(BONUS.clean)]);
   if (mask & 4 && ev.kind !== 'trial') lines.push(['Objective', pay(BONUS.obj)]);
   // a boss or the final won for the first time: the purse and the prize car

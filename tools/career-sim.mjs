@@ -6,6 +6,8 @@
 import * as M from '../src/core/index.js';
 import { STAGES } from '../src/data/stages/index.js';
 import { SHOP, TIERS, allowed, careerDefs, newCareer, roundsOf, scoreRace, tierCars } from '../src/data/career.js';
+import { formatOf } from '../src/data/formats.js';
+import { newTally, scoreOrder, tallyEvent } from '../src/data/scoring.js';
 
 const args = process.argv.slice(2), opt = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
 const want = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--')));
@@ -13,22 +15,20 @@ const skills = opt('skill', '0.88,0.95').split(',').map(Number), CAR = opt('car'
 const PICK = { rookie: 'coupe', club: 'hotrod', pro: 'hover', legend: 'police' };
 const worlds = new Map();
 const world = name => { if (!worlds.has(name)) { const st = STAGES.find(s => s.name === name), tr = M.buildTrack(st); worlds.set(name, { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: !!st.armco }); } return worlds.get(name); };
-export function simRace(defs, W, skill, seed0 = 7) {
+// one round, any format (data/formats.js): the race, or a Showdown / checkpoint match played to its end; the result
+// order is the format's (finish and destruction: data/scoring.js)
+export function simRace(defs, W, skill, seed0 = 7, ev = {}) {
   let seed = seed0; Math.random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-  const R = M.createRace(W, defs, { weapons: true }); R.phase = 'racing'; R.autoPlayer = true; R.player.ai.skill = skill;
-  const t = { air: 0, drift: 0, hits: 0, wrecks: 0, respawns: 0 }, pi = R.cars.indexOf(R.player); let time = 0;
-  while (time < 420 && !R.player.finished) {
+  const mode = ev.kind === 'mode' ? ev.mode : 'race', R = M.createRace(W, defs, { weapons: true, mode }); R.phase = 'racing'; R.autoPlayer = true; R.player.ai.skill = skill;
+  const t = newTally(R.cars.length), pi = R.cars.indexOf(R.player); let time = 0;
+  const over = () => R.sd ? R.sd.phase === 'over' : R.player.finished;
+  while (time < 420 && !over()) {
     M.raceStep(R, 1 / 120, W); time += 1 / 120;
-    for (const c of R.cars.concat(R.traffic, R.parked || [])) {
-      for (const e of c.events) {
-        if (c === R.player) { if (e.t === 'bigair') t.air++; else if (e.t === 'drift') t.drift++; else if (e.t === 'wreck') t.wrecks++; else if (e.t === 'respawn') t.respawns++; }
-        else if (R.cars.includes(c) && ['missile-hit', 'harpoon-hit', 'pulse-hit', 'oil-hit'].includes(e.t) && e.from === pi) t.hits++;
-        else if (e.t === 'door-hit' && e.by === pi && R.cars.includes(c)) t.hits++;
-      }
-      c.events.length = 0;
-    }
+    for (const c of R.cars.concat(R.traffic, R.parked || [])) { for (const e of c.events) tallyEvent(t, R.cars, c, e, R.time, pi); c.events.length = 0; }
   }
-  return { place: R.player.finished ? R.player.place : R.cars.length, n: R.cars.length, t, time: R.player.finished ? R.player.finishTime : 0 };
+  const finish = R.sd ? R.cars.map((c, k) => ({ c, v: (R.sd.kind === 'crown' ? R.sd.crown : R.sd.points)[k] })).sort((a, b) => b.v - a.v || b.c.progress - a.c.progress).map(x => x.c) : M.ranking(R);
+  const order = scoreOrder(finish, R.cars, t, formatOf(ev)).map(x => x.c), place = R.sd || R.player.finished ? order.indexOf(R.player) + 1 : R.cars.length;
+  return { place, n: R.cars.length, t: { ...t, ...t.d[pi] }, time: R.player.finished ? R.player.finishTime : 0 };
 }
 if (process.argv[1] && process.argv[1].endsWith('career-sim.mjs')) {
   for (const T of TIERS) {
@@ -38,11 +38,10 @@ if (process.argv[1] && process.argv[1].endsWith('career-sim.mjs')) {
       let s = newCareer(car); if (UPG) s.cars[car] = { eng: +UPG, tyr: +UPG, sus: +UPG, arm: +UPG };
       const places = [];
       for (const ev of T.events) roundsOf(ev).forEach((r, k) => {
-        if (ev.kind === 'mode') return;   // Showdown / checkpoint matches aren't simulated here
-        // a class cup the pick can't enter: the priciest car of the class on sale in the tier, upgraded the same
+        // a discipline cup the pick can't enter: the priciest car of it on sale in the tier, upgraded the same
         const id = allowed(ev, car) ? car : tierCars(TIERS.indexOf(T)).filter(x => allowed(ev, x)).sort((a, b) => SHOP[b].price - SHOP[a].price)[0];
         s = { ...s, car: id, cars: { ...s.cars, [id]: s.cars[car] } };
-        const res = simRace(careerDefs(s, ev), world(r.stage), sk);
+        const res = simRace(careerDefs(s, ev), world(r.stage), sk, 7, ev);
         if (ev.kind === 'trial' && args.includes('--par')) console.log(`  par ${ev.id}: ${res.time.toFixed(1)} s (${id}, skill ${sk})`);
         const out = scoreRace(s, ev, k, res.place, res.n, res.t, res.time); s = out.state; places.push(res.place);
         if (args.includes('--v')) console.log(`  ${ev.name} ${k + 1} ${id} ${r.stage.padEnd(16)} ${res.place}/${res.n} ${'★'.repeat((out.stars & 1) + (out.stars >> 1 & 1) + (out.stars >> 2 & 1))} +${out.cash} ${JSON.stringify(res.t)}`);

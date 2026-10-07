@@ -309,6 +309,17 @@ that panel (it opens and flies off with it). Rivals show the tier's parts (engin
 garage a car's upgrades screen is a turntable (`src/render/showcar.js`): a part goes on with the car up on jacks. Try
 any part on any car in the Workshop's Cars tab.
 
+### Event formats and scoring
+
+A career event names its `format` (`src/data/formats.js`; none means its kind's: a cup or one-make is a Race, a time
+trial a Trial, a boss a Boss, a special its mode). Each format weighs **race** points (10-8-6-5-4-3-2-1 for the
+finishing place) against **destruction** points (`DESTRUCT`: a rival wrecked or a panel torn off within 3 s of your hit,
+a fence, gate or wall smashed, a road car taken out). A Race has no destruction weight, so its result is the finishing
+order; a Banger race, a Demolition rally (smashed scenery worth more) and a Figure of eight re-sort the field by both,
+and the career pays for the destruction too (`DESTRUCT_CASH`). `src/data/scoring.js` keeps the tally from car events for
+every racer, for the game and for `npm run career`, which now simulates every format, Showdown and checkpoint specials
+included. Derby is listed but waits for its mode (G3).
+
 ### Disciplines and ratings
 
 Every car has two measured ratings, banded D C B A S (`src/data/ratings.js`): **pace** (% of lap time against the stock
