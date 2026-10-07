@@ -16,7 +16,9 @@ export function placeObstacles(tr, terr, stage) {
   const x0 = Math.min(-195, tr.minX - 90), x1 = Math.max(195, tr.maxX + 90), z0 = tr.minZ - 80, z1 = tr.maxZ + 110, area = (x1 - x0) * (z1 - z0);
   const kit = terr.kit, at0 = () => [x0 + rnd() * (x1 - x0), z0 + rnd() * (z1 - z0)];
   // inside a town (core/kit/layout.js) nothing grows: a candidate there is drawn again (only stages with towns)
-  const at = kit ? () => { let p = at0(); for (let k = 0; k < 8 && kit.inZone(p[0], p[1], 2); k++) p = at0(); return p; } : at0;
+  // nor inside a derby arena's ring (core/elements/arena.js)
+  const ar = tr.arena, taken = (x, z) => (kit && kit.inZone(x, z, 2)) || (ar && Math.hypot(x - ar.x, z - ar.z) < ar.r + 6);
+  const at = kit || ar ? () => { let p = at0(); for (let k = 0; k < 8 && taken(p[0], p[1]); k++) p = at0(); return p; } : at0;
   const items = [];
   // trees: a pine or a round-topped tree on a trunk; r is what a car hits (a pine's low skirt of branches, a trunk)
   for (let k = 0, n = Math.round(area * (stage.trees ? stage.trees.density : 0)); k < n; k++) {
@@ -48,6 +50,7 @@ export function placeObstacles(tr, terr, stage) {
     items.push({ kind: OB.BUSH, x, y: terr.at(x, z) + 0.2 * s, z, s, sy: s * 0.7, ry: rnd() * TAU, color: pick(C.round), r: 0.9 * s, soft: true });
   }
   if (tr.open) placeOpen(tr, terr, stage, items, rnd, pick);
+  if (ar) for (let k = items.length - 1; k >= 0; k--) if (Math.hypot(items[k].x - ar.x, items[k].z - ar.z) < ar.r + 4) items.splice(k, 1);   // an arena's floor is clear
   const grid = new Map(), key = (cx, cz) => cx * 100003 + cz;
   items.forEach((o, k) => { if (!o.r) return; const g = key(Math.floor(o.x / CELL), Math.floor(o.z / CELL)); let a = grid.get(g); if (!a) grid.set(g, a = []); a.push(k); });
   return {

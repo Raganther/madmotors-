@@ -7,7 +7,7 @@ import { toughOf } from './impact.js';
 export const DMG_K = 0.03, WRECK_T = 1.6;
 export function damageCar(c, x, z, v, k, ix, iz) {
   if (c.wreckT > 0 || c.ghost > 0) return;
-  const amt = Math.max(0, v - 4) * DMG_K * k / toughOf(c); if (amt <= 0) return;   // tough vehicles take less (sim/impact.js)
+  const amt = Math.max(0, v - 4) * DMG_K * k * (c.dmgK ?? 1) / toughOf(c); if (amt <= 0) return;   // tough vehicles take less (sim/impact.js)
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), dx = x - c.x, dz = z - c.z;
   const fwd = (dx * fx + dz * fz) / c.hl, rgt = (dx * -fz + dz * fx) / c.hw;
   const zone = Math.abs(fwd) > Math.abs(rgt) ? (fwd > 0 ? 'f' : 'b') : (rgt > 0 ? 'r' : 'l');

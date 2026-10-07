@@ -30,6 +30,9 @@ New behaviour belongs in elements (`/new-element`), never special cases for this
    `towns: [{ style, at, len, side, steep }]` (data/styles.js; README "The world kit"), not the old `village` scatter.
    Find where a town fits with a few test builds (count `terr.kit.solid` houses per span) and look at it in a shot. Borrow a
    palette from the nearest stage and shift it; make it recognisably its own at a glance.
+4. A derby arena instead of a course: a small circuit (one `['a', r, 360, 0, { open: 'field' }]` makes a ring) and
+   `arena: { ring, props, ramps }` (core/elements/arena.js); it's raced as a derby. Check it with `npm run derby -- <name>`
+   (one car left well inside the time at both skills) and the Workshop's Derby arena tab.
 4. Features switch on from the stage (traffic, trains, parked, rockfall, hazards...): only where they fit the theme.
 
 ## 3. Iterate until it's clean (the stage is not done before all of these)

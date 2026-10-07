@@ -1,5 +1,6 @@
 import { FEATURES } from '../features/index.js';
 import { SD_KINDS, initShowdown, sdLeader, showdownStep } from '../modes/showdown.js';
+import { derbyControl, derbyStep, initDerby } from '../modes/derby.js';
 import { clamp, mulberry32 } from '../math.js';
 import { aiControl } from './ai.js';
 import { makeBarriers } from './barriers.js';
@@ -23,6 +24,7 @@ export function createRace(W, defs, opts = {}) {
   for (const f of FEATURES) if (f.init) f.init(R, W);
   R.mode = opts.mode || 'race';
   if (SD_KINDS[R.mode]) initShowdown(R, SD_KINDS[R.mode]);
+  if (R.mode === 'derby') initDerby(R);   // last car running (modes/derby.js)
   return R;
 }
 /** Advance the whole race by one fixed step (STEP = 1/120 s). @param {import('../types.js').Race} R @param {number} dt @param {import('../types.js').World} W */
@@ -47,11 +49,12 @@ export function raceStep(R, dt, W) {
       const sp = Math.hypot(c.vx, c.vz); c.inp.steer = 0; c.inp.handbrake = 0;
       c.inp.throttle = typeof c.hold === 'number' && sp < c.hold ? 1 : 0; c.inp.brake = c.hold === true && c.vf > 0.5 ? 1 : 0;   // (brake at a standstill would reverse)
     }
+    else if (R.derby && (!c.isPlayer || R.autoPlayer || c.out)) derbyControl(R, c, W);
     else if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt, R.hazards, R.sd && R.sd.gate);
     if (c.finished && c.progress > tr.finishIdx + 18) { c.inp.throttle = 0; c.inp.brake = c.vf > 0.5 ? 0.7 : 0; c.inp.handbrake = c.vf > 0.5 ? 0 : 1; }   // pull up and stay put (no creeping backwards)
     c.mod = lead ? clamp(1 + (lead.progress - c.progress) / 300, 1, 1.08)                // Showdown: everyone chasing the leader gets a tow
       : c.isPlayer ? 1 : clamp(1 + (P.progress - c.progress) / 1400, 0.93, 1.08);
-    stepCar(c, dt, W, racing); if (racing) healCar(c, dt);
+    stepCar(c, dt, W, racing); if (racing && !R.derby) healCar(c, dt);   // a derby's damage stays
     if (!c.finished) {
       const slide = Math.abs(c.vr), sp = Math.hypot(c.vx, c.vz);
       if (c.onGround && c.surface !== 'grass' && slide > 4 && sp > 13) c.driftT += dt;
@@ -60,17 +63,18 @@ export function raceStep(R, dt, W) {
         c.driftT = 0;
       }
     }
-    if (tr.loopN && racing && !c.finished) {
+    if (tr.loopN && racing && !c.finished && !R.derby) {
       const ln = Math.floor((c.progress - tr.startIdx) / tr.loopN);
       if (ln > c.lap && ln < tr.laps) { c.lap = ln; c.events.push({ t: 'lap', n: ln + 1 }); }
     }
-    if (racing && !c.finished && !R.sd && c.progress >= tr.finishIdx) { c.finished = true; c.finishTime = R.time; c.place = ++R.nFinished; c.events.push({ t: 'finish' }); }
+    if (racing && !c.finished && !R.sd && !R.derby && c.progress >= tr.finishIdx) { c.finished = true; c.finishTime = R.time; c.place = ++R.nFinished; c.events.push({ t: 'finish' }); }
   }
   for (const f of FEATURES) if (f.move) f.move(R, W, dt, all, racing);
   for (const f of FEATURES) if (f.spawn) f.spawn(R, W, dt);
   collideCars(all); collideCars(all);
   for (const f of FEATURES) if (f.after) f.after(R, W, dt);
   if (R.sd) showdownStep(R, W, dt);
+  if (R.derby) derbyStep(R, W, dt);
 }
 export function ranking(R) {
   return R.cars.slice().sort((a, b) => {

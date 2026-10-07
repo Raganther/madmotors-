@@ -9,6 +9,7 @@ export const WORKSHOP_TABS = [
   { id: 'weapons', name: 'Weapons range', blurb: 'Pick any weapon, fire it at dummies or at rivals driving the loop, and see what each hit costs them', live: true },
   { id: 'elements', name: 'Track elements', blurb: 'A small loop per track element (jumps, bridges, mud, ferry, gates...) with the debug readout' },
   { id: 'destruct', name: 'Destruction yard', blurb: 'Any car into crates, hay, a fence, a farm gate or concrete blocks at a set speed: what breaks, what bounces, what it costs', live: true },
+  { id: 'derby', name: 'Derby arena', blurb: 'A derby in any arena (scrapyard, mud pit, stadium) with any car against five rivals: drive it or watch the AI fight', live: true },
   { id: 'kit', name: 'Scenery kit', blurb: 'A town in each style (village, alpine, seaside, farm, desert, industrial) along the loop: drive or fly round it, smash its fences and gates', live: true },
 ];
 

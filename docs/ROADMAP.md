@@ -22,8 +22,9 @@ The plan agreed for the next stretch of work. Update the status table at the end
 | (G1 later) | Use the caps in events (G5 tiers); ratings in the AI field picker | open |
 | G2 | Events and scoring from data | done: data/formats.js (race, banger, demolition rally, figure of eight, derby (waits for G3), trial, boss, showdown, deuce, tiebreak) each weighing race points against destruction points; data/scoring.js tallies wrecks and torn panels (blamed on the last hitter within 3 s), smashed scenery and takedowns for every car; the result order and cash follow the format; Heavyweights and Monster Mash are banger races, Seaside Smash a demolition rally, Ice Cream Derby a figure of eight; npm run career simulates every format incl. modes |
 | (G2 later) | AI that drives for destruction points in banger formats; a live destruction readout in the HUD | open |
-| G3 | Derby: mode, arenas, AI | next |
-| G4 | Economy and pacing dashboard | planned |
+| G3 | Derby: mode, arenas, AI | done: core/modes/derby.js (wrecked = out, no healing, scaled damage, last car running, time-up by damage), derby AI (targets, lead, wall avoidance, retreat when hurt, back off for a run-up), arena element (flat floor, unbreakable ring, props, ramps), Scrapyard Bowl, Mud Pit, The Stadium and the Banger Oval derby track, overhead fitted camera and HUD, career derbies (Club, Pro, Legend) and the Oval Bangers cup, npm run derby, Workshop Derby arena tab |
+| (G3 later) | A crossover figure of eight at grade; derby AI that plays the format in banger races; arena Blender pieces | open |
+| G4 | Economy and pacing dashboard | next |
 | G5 | Career v2 structure | planned |
 | G6 | Content waves | planned |
 
@@ -296,4 +297,4 @@ F0 → F1 → F2 → F3 → { F4, F5, F6 can run in any order } → G1 → G2 �
   the user what to try in the Workshop.
 
 ## Next step
-G3: the derby (mode, arenas, derby AI), on its own PR.
+G4: the economy sheet and the pacing dashboard, on its own PR.

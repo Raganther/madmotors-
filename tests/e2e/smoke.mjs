@@ -432,6 +432,14 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
     if (!(n > 6)) fail(`kit ${st}: only ${n} houses`); console.log(`workshop kit: ${st}, ${n} houses`);
   }
   await wp.screenshot({ path: path.join(outDir, 'workshop-kit.png') });
+  // G3: a derby in the stadium, the AI driving every car, played to the end: one car left, the results up
+  await wp.click('#ws-hub-btn'); await wp.waitForSelector('#ws-hub:not([hidden])'); await wp.click('[data-tab=derby]'); await live('derby');
+  await wp.click('[data-ar="The Stadium"]'); await wp.waitForFunction(() => window.__dr.G.world.stage.name === 'The Stadium' && window.__dr.G.state === 'racing' && window.__dr.race.derby, null, { timeout: 60000 });
+  const dby = await wp.evaluate(() => { const d = window.__dr; d.race.autoPlayer = true; for (let k = 0; k < 400 && d.race.derby.phase === 'run'; k++) d.step(0.5);
+    return { phase: d.race.derby.phase, t: Math.round(d.race.derby.t), left: d.race.cars.filter(c => !c.out).length, cars: d.race.cars.length, ring: d.G.world.tr.breakables.filter(b => b.arena).length }; });
+  await wp.waitForTimeout(400); await wp.screenshot({ path: path.join(outDir, 'workshop-derby.png') });
+  if (dby.phase !== 'over' || dby.left > 1 || dby.cars !== 6 || dby.ring < 40) fail('derby: ' + JSON.stringify(dby));
+  console.log(`workshop derby: The Stadium, ${dby.cars} cars, over at ${dby.t}s, ${dby.left} left, ${dby.ring} ring pieces and props`);
   await wp.click('#ws-hub-btn'); await wp.click('[data-tab=elements]'); await wp.click('[data-sb=jump]');
   await wp.waitForFunction(() => window.__dr.G.world.stage.name === 'Sandbox: jump' && window.__dr.G.state !== 'menu', null, { timeout: 60000 });
   console.log('workshop elements: sandbox jump opened'); await wp.close();

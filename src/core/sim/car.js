@@ -92,6 +92,7 @@ export function stepCar(c, dt, W, racing) {
   let pr = c.pr;
   const al0 = Math.abs(pr.lat), side0 = pr.lat >= 0 ? 1 : -1, wallSide0 = wallAt(W, pr.i, side0);
   c.surface = (al0 < HALF + 0.4 || (wallSide0 && al0 < wallPos(W, pr.i, side0) + 1.2)) ? W.surf : 'grass';
+  if (tr.arena && Math.hypot(c.x - tr.arena.x, c.z - tr.arena.z) < tr.arena.r) c.surface = W.surf;   // a derby arena's floor is all one surface (elements/arena.js)
   if (tr.mud && al0 < HALF + 1.5) { const m = tr.mud[tr.bi(pr.i)]; if (m) c.surface = m === 2 ? 'ford' : 'mud'; }   // a bog or a water splash
   if (tr.ice && al0 < HALF + 0.4 && tr.ice[tr.bi(pr.i)]) c.surface = 'ice';      // an ice patch
   if (tr.dirt && c.surface === W.surf && tr.dirt[tr.bi(pr.i)]) c.surface = 'gravel';   // a dirt track (off-road shortcuts)

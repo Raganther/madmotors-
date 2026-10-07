@@ -21,13 +21,13 @@ export function simRace(defs, W, skill, seed0 = 7, ev = {}) {
   let seed = seed0; Math.random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const mode = ev.kind === 'mode' ? ev.mode : 'race', R = M.createRace(W, defs, { weapons: true, mode }); R.phase = 'racing'; R.autoPlayer = true; R.player.ai.skill = skill;
   const t = newTally(R.cars.length), pi = R.cars.indexOf(R.player); let time = 0;
-  const over = () => R.sd ? R.sd.phase === 'over' : R.player.finished;
+  const over = () => R.sd ? R.sd.phase === 'over' : R.derby ? R.derby.phase === 'over' : R.player.finished;
   while (time < 420 && !over()) {
     M.raceStep(R, 1 / 120, W); time += 1 / 120;
     for (const c of R.cars.concat(R.traffic, R.parked || [])) { for (const e of c.events) tallyEvent(t, R.cars, c, e, R.time, pi); c.events.length = 0; }
   }
-  const finish = R.sd ? R.cars.map((c, k) => ({ c, v: (R.sd.kind === 'crown' ? R.sd.crown : R.sd.points)[k] })).sort((a, b) => b.v - a.v || b.c.progress - a.c.progress).map(x => x.c) : M.ranking(R);
-  const order = scoreOrder(finish, R.cars, t, formatOf(ev)).map(x => x.c), place = R.sd || R.player.finished ? order.indexOf(R.player) + 1 : R.cars.length;
+  const finish = R.derby ? M.derbyOrder(R) : R.sd ? R.cars.map((c, k) => ({ c, v: (R.sd.kind === 'crown' ? R.sd.crown : R.sd.points)[k] })).sort((a, b) => b.v - a.v || b.c.progress - a.c.progress).map(x => x.c) : M.ranking(R);
+  const order = scoreOrder(finish, R.cars, t, formatOf(ev)).map(x => x.c), place = R.sd || R.derby || R.player.finished ? order.indexOf(R.player) + 1 : R.cars.length;
   return { place, n: R.cars.length, t: { ...t, ...t.d[pi] }, time: R.player.finished ? R.player.finishTime : 0 };
 }
 if (process.argv[1] && process.argv[1].endsWith('career-sim.mjs')) {

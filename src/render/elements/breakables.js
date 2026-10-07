@@ -42,7 +42,8 @@ export const SHAPES = {
 export function addBreakables(group, tr) {
   vis = []; chunkMeshes = [];
   for (const b of tr.breakables || []) {
-    const K = BREAKABLES[b.kind], g = new THREE.Group(); g.position.set(b.x, tr.H[tr.u0(b.b)], b.z); g.rotation.y = b.yaw; group.add(g);
+    const K = BREAKABLES[b.kind]; if (K.arena) continue;                            // an arena's wall ring: render/elements/arena.js
+    const g = new THREE.Group(); g.position.set(b.x, b.y ?? tr.H[tr.u0(b.b)], b.z); g.rotation.y = b.yaw; group.add(g);
     SHAPES[b.kind](g, K); vis.push({ b, g, shown: true });
   }
   chunkGroup = new THREE.Group(); group.add(chunkGroup);

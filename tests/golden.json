@@ -835,6 +835,158 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Scrapyard Bowl": {
+   "samples": 635,
+   "loopN": 163,
+   "terrain": [
+    101,
+    74,
+    2596.813
+   ],
+   "times": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "respawns": [
+    17,
+    13,
+    16,
+    11
+   ],
+   "wrecks": [
+    15,
+    13,
+    16,
+    11
+   ],
+   "progress": [
+    6.381,
+    163.545,
+    160,
+    168.062
+   ],
+   "broken": 3,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Mud Pit": {
+   "samples": 674,
+   "loopN": 176,
+   "terrain": [
+    101,
+    75,
+    4903.555
+   ],
+   "times": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "respawns": [
+    15,
+    14,
+    12,
+    19
+   ],
+   "wrecks": [
+    14,
+    14,
+    12,
+    18
+   ],
+   "progress": [
+    178.168,
+    178.388,
+    183.779,
+    175.096
+   ],
+   "broken": 5,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "The Stadium": {
+   "samples": 710,
+   "loopN": 188,
+   "terrain": [
+    101,
+    76,
+    3699.635
+   ],
+   "times": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "respawns": [
+    7,
+    9,
+    3,
+    9
+   ],
+   "wrecks": [
+    6,
+    9,
+    3,
+    8
+   ],
+   "progress": [
+    190.17,
+    188.51,
+    0,
+    186.064
+   ],
+   "broken": 3,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Banger Oval": {
+   "samples": 2918,
+   "loopN": 462,
+   "terrain": [
+    106,
+    100,
+    2826.587
+   ],
+   "times": [
+    93.058,
+    91.483,
+    93.15,
+    93.217
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    2813.355,
+    2839.624,
+    2810.315,
+    2808.201
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

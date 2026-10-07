@@ -119,13 +119,19 @@ export function updateCamera(dt, snap) {
   } else if (race.sd && race.sd.focus) {
     // Showdown: frame the leader (the core decides who that is, and judges who has dropped off this view)
     const f = race.sd.focus; tx = f.x; ty = f.y; tz = f.z; if (race.sd.camSnap) { race.sd.camSnap = false; snap = true; }
+  } else if (race.derby && G.world.tr.arena) {
+    // a derby: frame the fight, the player and the cars still running near them, pulled towards the arena's middle
+    const A = G.world.tr.arena, P = race.player, live = race.cars.filter(c => !c.out && Math.hypot(c.x - P.x, c.z - P.z) < 40);
+    let x0 = P.x, x1 = P.x, z0 = P.z, z1 = P.z; for (const c of live) { x0 = Math.min(x0, c.x); x1 = Math.max(x1, c.x); z0 = Math.min(z0, c.z); z1 = Math.max(z1, c.z); }
+    tx = ((x0 + x1) / 2) * 0.7 + A.x * 0.3; tz = ((z0 + z1) / 2) * 0.7 + A.z * 0.3; ty = A.floor; G.derbyFit = clamp(Math.max(x1 - x0, z1 - z0) * 1.3 + 22, 40, A.r * 2.2);
   } else {
     const c = race.player; sp = Math.hypot(c.vx, c.vz); tx = (c.dx ?? c.x) + c.vx * 0.42; tz = (c.dz ?? c.z) + c.vz * 0.42; ty = c.dy ?? c.y;
   }
   // which way the camera looks: the chosen mode (the menu's attract view is always classic), eased when it changes
   let mode = G.state === 'menu' || !race ? 'classic' : G.camMode in CAM_MODES ? G.camMode : 'classic';
   const PM = CAM_MODES[mode]; if ((PM.persp || PM.tv) && race.sd) mode = 'chase';
-  G.persp = !!((PM.persp || PM.tv) && !race.sd);
+  if (race && race.derby && G.state !== 'menu') mode = 'classic';   // a derby: the overhead view, fitted to the fight
+  G.persp = !!((PM.persp || PM.tv) && !race.sd && !(race && race.derby));
   if (G.persp) {
     const was = G.perspWas; G.perspWas = true;
     G.shake *= Math.exp(-dt * 7);
@@ -153,6 +159,7 @@ export function updateCamera(dt, snap) {
     vh += clamp((drop - 12) * 0.35, 0, 16);
     if (tr.town && tr.town[tr.bi(c.pr.i)]) vh -= 6;
   }
+  if (race && race.derby && G.state !== 'menu' && G.world.tr.arena) vh = G.derbyFit || 50;
   if (aspect < 1) vh *= PORTRAIT;
   if (Math.min(innerWidth, innerHeight) < 520) vh *= 0.85;                            // a phone: the cars were specks
   if (G.state === 'menu') vh = 58; else vh *= (CAM_ZOOMS[G.camZoom] || CAM_ZOOMS.normal).k;
