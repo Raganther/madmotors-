@@ -10,6 +10,8 @@ import { decodePack, packIds, packOf, packTris } from '../render/assets/index.js
 import MANIFEST from '../assets/gen/manifest.json';
 import { G } from '../game.js';
 import { PART_MAX, SLOTS } from '../data/parts.js';
+import { ratingOf } from '../data/ratings.js';
+import { DISCIPLINES, discsOf } from '../data/disciplines.js';
 
 // The Asset Lab (?lab, the menu's Asset Lab button, or its own build: `npm run lab`): every asset on a turntable,
 // Classic and Blender side by side in turn, near and far detail, wireframe, triangles and draw calls, under any stage's
@@ -158,6 +160,7 @@ function stats() {
   const it = itemOf(S.id), p = packOf(it.pack), man = MANIFEST[it.pack], info = R.info.render;
   document.getElementById('lab-stats').textContent = `${it.label}  (${cur.blender ? 'Blender' : 'Classic'}, ${S.near ? 'near' : 'far'})\n`
     + (S.wire ? `drawn: wireframe, ${info.calls} draw calls\n` : `drawn: ${info.triangles} triangles, ${info.calls} draw calls\n`)
+    + (it.fam === 'cars' ? (r => `rating: pace ${r.bands.tarmac} tarmac (${r.tarmac}%), ${r.bands.loose} loose (${r.loose}%), toughness ${r.bands.tough} (${r.tough})\n${discsOf(it.id, S.build).map(d => DISCIPLINES[d].name).join(', ')}\n`)(ratingOf(it.id, S.build)) : '')
     + (p ? `pack ${it.pack}: ${packTris(p, 'hi')} near / ${packTris(p, 'lo')} far tris, ${man ? man.kb : '?'} KB` : 'no Blender pack yet');
 }
 function listNotes() {

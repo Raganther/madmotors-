@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { bossOf, eventOpen, medals, paintCar, PAINTS, PAINT_PRICE, tierMaxStars, CAREER_RIVALS, CLASSES, allowed, fitTyres, armoury, buyWeapon, fitGear, buyUpgrade, careerPlayer, classesOf, upgradedVeh, SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, careerField, eventById, forSale, newCareer, podiumOf, roundsOf, scoreRace, tierCars, tierOpen, tierStars, topTier, totalStars } from '../src/data/career.js';
+import { bossOf, eventOpen, medals, paintCar, PAINTS, PAINT_PRICE, tierMaxStars, CAREER_RIVALS, allowed, fitTyres, armoury, buyWeapon, fitGear, buyUpgrade, careerPlayer, upgradedVeh, SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, careerField, eventById, forSale, newCareer, podiumOf, roundsOf, scoreRace, tierCars, tierOpen, tierStars, topTier, totalStars } from '../src/data/career.js';
+import { DISCIPLINES } from '../src/data/disciplines.js';
 import { SLOTS } from '../src/data/parts.js';
 import { STAGES } from '../src/data/stages/index.js';
 import { VEHICLES } from '../src/data/vehicles.js';
@@ -77,16 +78,12 @@ describe('career rules', () => {
     expect(awardTrophy(b.state, ev, 2).cash).toBe(0); expect(awardTrophy(s, ev, 5).cash).toBe(0);
   });
 });
-describe('career classes and upgrades', () => {
-  it('classes pick the cars they say', () => {
-    expect(classesOf('kart')).toContain('small'); expect(classesOf('buggy')).toContain('offroad'); expect(classesOf('mixer')).toContain('heavy');
-    expect(classesOf('formula')).toContain('tarmac'); expect(classesOf('buggy')).not.toContain('tarmac'); expect(classesOf('firetruck')).not.toContain('tarmac');
-  });
-  it('every class cup can be entered with cars on sale by then, and its field is all of the class', () => {
-    for (const [ti, t] of TIERS.entries()) for (const ev of t.events.filter(e => e.cls)) {
-      expect(CLASSES[ev.cls], ev.id).toBeTruthy();
+describe('career disciplines and upgrades', () => {
+  it('every discipline cup can be entered with cars on sale by then, and its field is all of the discipline', () => {
+    for (const [ti, t] of TIERS.entries()) for (const ev of t.events.filter(e => e.disc)) {
+      expect(DISCIPLINES[ev.disc], ev.id).toBeTruthy();
       expect(tierCars(ti).filter(id => allowed(ev, id)).length, ev.id).toBeGreaterThanOrEqual(2);
-      for (const d of careerField(ev)) expect(allowed(ev, d.vehicle), `${ev.id}: ${d.name} in ${d.vehicle}`).toBe(true);
+      for (const d of careerField(ev)) expect(allowed(ev, d.vehicle, d.build), `${ev.id}: ${d.name} in ${d.vehicle}`).toBe(true);
     }
   });
   it('rivals carry the tier upgrade level; the player their own', () => {

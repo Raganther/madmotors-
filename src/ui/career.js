@@ -1,5 +1,5 @@
 import { G } from '../game.js';
-import { CLASSES, DUEL_GAP, PAINTS, PAINT_PRICE, SHOP, STARTERS, TIERS, allowed, awardTrophy, beaten, bossOf, buyCar, armoury, buyUpgrade, buyWeapon, canEnter, careerPlayer, fitGear, fitTyres, weaponLevel, careerDefs, classesOf, eventById, eventMaxStars, eventOpen, eventStars, forSale, medals, newCareer, objText, paintCar, podiumOf, roundMask, roundsOf, scoreRace, selectCar, tierMaxStars, tierOf, tierOpen, tierStars, topTier, totalStars, upgLevel, upgradedVeh } from '../data/career.js';
+import { DUEL_GAP, PAINTS, PAINT_PRICE, SHOP, STARTERS, TIERS, allowed, awardTrophy, beaten, bossOf, buyCar, armoury, buyUpgrade, buyWeapon, canEnter, careerPlayer, fitGear, fitTyres, weaponLevel, careerDefs, eventById, eventMaxStars, eventOpen, eventStars, forSale, medals, newCareer, objText, paintCar, podiumOf, roundMask, roundsOf, scoreRace, selectCar, tierMaxStars, tierOf, tierOpen, tierStars, topTier, totalStars, upgLevel, upgradedVeh } from '../data/career.js';
 import { scoreRound, standings } from '../data/leagues.js';
 import { STAGES } from '../data/stages/index.js';
 import { VEHICLES, vehicleById } from '../data/vehicles.js';
@@ -7,6 +7,8 @@ import { ranking } from '../core/sim/race.js';
 import { vehicleThumb } from '../render/thumbs.js';
 import { showCar } from '../render/showcar.js';
 import { PART_MAX, SLOTS, TYRE_KINDS, buildOf } from '../data/parts.js';
+import { DISCIPLINES, discsOf, entryWhy } from '../data/disciplines.js';
+import { ratingOf } from '../data/ratings.js';
 import { GEAR, GEAR_IDS, GEAR_PRICE, WEAPONS, WEAPON_MAX, WEAPON_PRICE } from '../data/weapons.js';
 import { $ } from './dom.js';
 import { fmt, ordinal } from './format.js';
@@ -39,7 +41,7 @@ function kindText(ev) {
   if (ev.kind === 'onemake') return `One-make: ${vehicleById(ev.make).name}`;
   if (ev.kind === 'boss') return `Duel: ${ev.driver} in the ${vehicleById(ev.vehicle).name}`;
   if (ev.kind === 'final') return 'The final';
-  return ev.cls ? `${CLASSES[ev.cls].name} cars only` : 'Cup';
+  return ev.disc ? `${DISCIPLINES[ev.disc].name} cars only${ev.maxPace ? `, pace ${ev.maxPace} or below` : ''}${ev.maxTough ? `, toughness ${ev.maxTough} or below` : ''}` : 'Cup';
 }
 
 export function openCareer(v) { S = loadCareer(); v = v || (S ? view : { v: 'start' }); view = S ? v : { v: 'start' }; draw(); $('career').hidden = false; const f = $('career').querySelector('.cta, .cr-item, .cr-tab'); if (f) f.focus({ preventScroll: true }); $('cr-body').scrollTop = 0; }
@@ -59,7 +61,10 @@ function pictures() {
   next();
 }
 // a car's card: picture, name, class chips, stat bars (with your upgrades on a car you own), then `foot` (buttons)
-const chips = id => classesOf(id).map(k => `<span class="cr-cls">${CLASSES[k].name}</span>`).join('');
+// a car's disciplines and its ratings (data/disciplines.js, data/ratings.js), with its parts on if it's yours
+const own = id => S && S.cars[id] ? buildOf(S.cars[id]) : null;
+const rateChip = id => { const r = ratingOf(id, own(id)); return `<span class="cr-rate" title="Pace: ${r.tarmac > 0 ? '+' : ''}${r.tarmac}% on tarmac, ${r.loose > 0 ? '+' : ''}${r.loose}% on loose ground against the stock coupe. Toughness: ${r.tough}× the coupe (D C B A S)">Pace <b class="b${r.bands.tarmac}">${r.bands.tarmac}</b>/<b class="b${r.bands.loose}">${r.bands.loose}</b> Tough <b class="b${r.bands.tough}">${r.bands.tough}</b></span>`; };
+const chips = id => discsOf(id, own(id)).map(k => `<span class="cr-cls">${DISCIPLINES[k].name}</span>`).join('') + rateChip(id);
 const pips = (L, max = PART_MAX) => Array.from({ length: max }, (_, i) => `<i class="cr-pip${i < L ? ' on' : ''}"></i>`).join('');
 const upgSum = id => { const on = S && S.cars[id] ? SLOTS.filter(u => upgLevel(S, id, u.id)) : []; return on.length ? `<span class="cr-upgs">${on.map(u => `<span title="${esc(u.looks[upgLevel(S, id, u.id) - 1])}">${u.name}${pips(upgLevel(S, id, u.id))}</span>`).join('')}</span>` : ''; };
 const carCard = (v, foot, cls = '', note = '') => `<div class="cr-car ${cls}"><img data-car="${v.id}" alt="" width="240" height="150"><b>${esc(v.name)}</b><span class="cr-chips">${chips(v.id)}${note}</span>`
@@ -120,9 +125,9 @@ function drawEvent() {
   const table = standings(run, ['You']), rows = cup && run.round ? table.map((s, i) => `<tr class="${s.name === 'You' ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td>${esc(s.name)}${s.wins ? `<span class="rs">${s.wins} win${s.wins > 1 ? 's' : ''}</span>` : ''}</td><td class="rt">${s.pts} pts</td></tr>`).join('') : '';
   const rival = ev.kind === 'boss' ? `<div class="cr-rival"><img data-car="${ev.vehicle}" data-stock="1" alt="" width="240" height="150"><span><b>${esc(ev.driver)}</b><small>${esc(vehicleById(ev.vehicle).name)}${beaten(S, ev) ? ' · beaten' : ' · the prize'}</small></span></div>` : '';
   $('cr-body').innerHTML = `${rival}<ol class="lg-rounds cr-rounds">${rounds}</ol>${rows ? `<table class="lg-table">${rows}</table>` : ''}`;
-  const lent = ev.make ? vehicleById(ev.make) : null, car = lent || vehicleById(S.car), ok = canEnter(S, ev), fits = Object.keys(S.cars).filter(id => allowed(ev, id));
+  const lent = ev.make ? vehicleById(ev.make) : null, car = lent || vehicleById(S.car), ok = canEnter(S, ev), fits = Object.keys(S.cars).filter(id => allowed(ev, id, own(id)));
   const next = roundsOf(ev)[cup ? Math.min(run.round, roundsOf(ev).length - 1) : 0];
-  const why = ok ? '' : `<p class="cr-lock">${esc(ev.name)} is for ${CLASSES[ev.cls].name.toLowerCase()} cars (${CLASSES[ev.cls].blurb}): ${fits.length ? 'pick one of yours in the garage' : 'buy one in the showroom'}.</p>`;
+  const why = ok ? '' : `<p class="cr-lock">${esc(ev.name)} is ${esc(entryWhy(ev, S.car, own(S.car)))}: ${fits.length ? 'pick one of yours in the garage' : 'buy one in the showroom'}.</p>`;
   const drive = lent ? `<div class="cr-drive"><img data-car="${lent.id}" data-stock="1" alt="" width="120" height="75"><span><b>${esc(lent.name)}</b><small>Lent for this race, stock</small></span></div>`
     : `<button type="button" class="cr-drive" data-act="garage"><img data-car="${car.id}" alt="" width="120" height="75"><span><b>${esc(car.name)}</b><small>${ok ? 'Change car' : 'Not allowed here: change car'}</small></span>${upgSum(car.id)}</button>`;
   const go = cup ? (done ? `<button type="button" class="cta" data-act="reset"${ok ? '' : ' disabled'}>Race it again</button>` : `<button type="button" class="cta" data-act="race"${ok ? '' : ' disabled'}>Race round ${run.round + 1}: ${esc(next.stage)}</button>`)
@@ -132,8 +137,8 @@ function drawEvent() {
 
 // ---------- the garage: your cars and the showroom ----------
 function drawGarage() {
-  const ev = back.v === 'event' ? eventById(back.id) : null, fit = id => ev && ev.cls ? (allowed(ev, id) ? `<span class="cr-cls fit">Fits ${esc(ev.name)}</span>` : '') : '';
-  $('cr-title').textContent = 'Garage'; $('cr-sub').textContent = `Your cars, their upgrades and paint, and the showroom. New cars arrive as you open each tier; bosses give you theirs.${ev && ev.cls ? ` ${ev.name} takes ${CLASSES[ev.cls].name.toLowerCase()} cars only.` : ''}`;
+  const ev = back.v === 'event' ? eventById(back.id) : null, fit = id => ev && ev.disc ? (allowed(ev, id, own(id)) ? `<span class="cr-cls fit">Fits ${esc(ev.name)}</span>` : '') : '';
+  $('cr-title').textContent = 'Garage'; $('cr-sub').textContent = `Your cars, their upgrades and paint, and the showroom. New cars arrive as you open each tier; bosses give you theirs.${ev && ev.disc ? ` ${ev.name} takes ${DISCIPLINES[ev.disc].name.toLowerCase()} cars only.` : ''}`;
   const mine = VEHICLES.filter(v => S.cars[v.id]), sale = forSale(S), top = topTier(S);
   const later = Object.keys(SHOP).filter(id => !S.cars[id] && SHOP[id].tier > top).sort((a, b) => SHOP[a].price - SHOP[b].price);
   const own = mine.map(v => carCard(v, `<span class="cr-btns">${v.id === S.car ? '<span class="cr-tag">Driving</span>' : `<button type="button" class="btn" data-act="drive" data-id="${v.id}">Drive this</button>`}<button type="button" class="btn" data-act="tune" data-id="${v.id}">Upgrades &amp; paint</button></span>`, v.id === S.car ? 'on' : '', fit(v.id))).join('');

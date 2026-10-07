@@ -141,7 +141,7 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await page.click('.cr-item[data-id="pocket-rockets"]');
   const cls = await page.evaluate(() => ({ disabled: document.querySelector('#cr-actions .cta').disabled, why: (document.querySelector('#cr-actions .cr-lock') || {}).textContent }));
   await page.screenshot({ path: path.join(outDir, 'career-class.png') });
-  if (upg.eng !== 1 || upg.kind !== 'gravel' || !upg.show || upg.cash !== 9000 - 1500 || upg.pips !== 1 || !cls.disabled || !/small/.test(cls.why || '')) errors.push('career upgrades/classes: ' + JSON.stringify({ upg, cls }));
+  if (upg.eng !== 1 || upg.kind !== 'gravel' || !upg.show || upg.cash !== 9000 - 1500 || upg.pips !== 1 || !cls.disabled || !/Oddball/.test(cls.why || '')) errors.push('career upgrades/classes: ' + JSON.stringify({ upg, cls }));
   await page.keyboard.press('Escape');
   console.log(`career: tabs ${tabs.join(' | ')}; round 1 scored, ${res.rows} in the table, bank $${res.cash}, tally ${JSON.stringify(res.tally)}; back to "${back.title}"; showroom ${shop.length} cars; engine level ${upg.eng}; Pocket Rockets refuses the hatch: ${cls.disabled}`);
 }

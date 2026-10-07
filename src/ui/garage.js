@@ -1,4 +1,6 @@
 import { G } from '../game.js';
+import { DISCIPLINES, discsOf } from '../data/disciplines.js';
+import { ratingOf } from '../data/ratings.js';
 import { VEHICLES, vehicleById } from '../data/vehicles.js';
 import { vehicleThumb } from '../render/thumbs.js';
 import { $ } from './dom.js';
@@ -11,6 +13,8 @@ import { saveStageVehicles, saveVehicle } from './storage.js';
 const BARS = [['Speed', v => v.top], ['Acceleration', v => v.accel], ['Grip', v => v.grip], ['Off-road', v => v.off], ['Weight', v => 1 / v.im]];
 const pct = (label, x) => label === 'Weight' ? Math.round(Math.min(100, Math.max(8, (x - 0.35) / 2.1 * 100))) : Math.round(Math.min(100, Math.max(8, 50 + (x - 1) * 200)));
 const STD = { accel: 1, top: 1, grip: 1, off: 1, im: 1 };
+// its disciplines and stock ratings (data/disciplines.js, data/ratings.js: measured, D C B A S)
+const discLine = id => { const r = ratingOf(id).bands; return discsOf(id).map(d => DISCIPLINES[d].name).join(' · ') + ` — pace ${r.tarmac}/${r.loose}, tough ${r.tough}`; };
 export function statsHTML(v) {
   const s = v.veh || STD;
   return BARS.map(([n, f]) => `<div class="gs"><span>${n}</span><i><b style="width:${pct(n, f(s))}%"></b></i></div>`).join('');
@@ -38,7 +42,7 @@ function build() {
   const grid = $('garage-grid'); built = true;
   for (const v of VEHICLES) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'g-card'; b.dataset.id = v.id; b.setAttribute('aria-pressed', 'false');
-    b.innerHTML = `<img alt="" width="240" height="150"><span class="g-name"></span><span class="g-suits">Suits this stage</span><span class="g-blurb"></span><span class="g-stats">${statsHTML(v)}</span>`;
+    b.innerHTML = `<img alt="" width="240" height="150"><span class="g-name"></span><span class="g-suits">Suits this stage</span><span class="g-blurb"></span><span class="g-stats">${statsHTML(v)}</span><span class="g-disc">${discLine(v.id)}</span>`;
     b.querySelector('.g-name').textContent = v.name; b.querySelector('.g-blurb').textContent = v.blurb;
     b.addEventListener('click', () => setVehicle(v.id));
     grid.appendChild(b);
