@@ -19,9 +19,12 @@ Run from the repo root. Stop and fix at the first failure; never commit red.
    short plain-English title of what a player would notice, a body with the why and anything golden-related, then the
    attribution trailers the session asks for.
 5. **Push**: `git push -u origin <branch>`; retry on network errors only (2s, 4s, 8s, 16s).
-6. **Publish**: `npm run build`, then publish `dist/index.html` with the Artifact tool to the game's existing artifact
-   URL (`url` = the one in CLAUDE.md or earlier in the session). Never publish a new URL for the game. If Blender assets
-   or the Asset Lab changed, also `npm run lab` and publish `dist-lab/index.html` to the lab artifact (CLAUDE.md).
+6. **Publish**: `npm run build && node tools/split.mjs dist`, then publish `dist/publish/index.html` with
+   `files: { "game.js": "dist/publish/game.js" }` to the game's existing artifact URL (`url` = the one in CLAUDE.md or
+   earlier in the session). Never publish a new URL for the game. If Blender assets or the Asset Lab changed, also
+   `npm run lab && node tools/split.mjs dist-lab` and publish `dist-lab/publish/index.html` (+ its game.js) to the lab
+   artifact (CLAUDE.md). Trap: an artifact page has a size limit of about 4.7 MB, and past it the publish fails with a
+   misleading error about "artifact-pr-review machinery": that's the size, not the content. Hence the split.
 7. **Tell the user** in plain words what changed for them, what was verified (check, e2e, screenshots) and anything
    you didn't verify. Send the screenshots that show the change.
 
