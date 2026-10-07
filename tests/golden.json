@@ -987,6 +987,120 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Monster Stadium": {
+   "samples": 3394,
+   "loopN": 464,
+   "terrain": [
+    109,
+    100,
+    7442.485
+   ],
+   "times": [
+    119.6,
+    116.192,
+    124.833,
+    119.883
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3328.615,
+    3327.036,
+    3284.084,
+    3332.368
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Old Town GP": {
+   "samples": 4306,
+   "loopN": 1040,
+   "terrain": [
+    154,
+    153,
+    8128.103
+   ],
+   "times": [
+    138.108,
+    137.958,
+    142.542,
+    138.075
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    4227.796,
+    4227.188,
+    4196.005,
+    4227.232
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Salt Flats": {
+   "samples": 6002,
+   "loopN": 2928,
+   "terrain": [
+    309,
+    309,
+    578485.978
+   ],
+   "times": [
+    156.358,
+    155.767,
+    155.867,
+    155.8
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    5892.309,
+    5917.811,
+    5914.543,
+    5916.509
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

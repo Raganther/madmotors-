@@ -25,5 +25,8 @@ import scrapyardBowl from './scrapyard-bowl.js';
 import mudPit from './mud-pit.js';
 import stadium from './stadium.js';
 import bangerOval from './banger-oval.js';
+import monsterStadium from './monster-stadium.js';
+import oldTownGp from './old-town-gp.js';
+import saltFlats from './salt-flats.js';
 
-export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins, flyoverTangle, openCountry, sundayPark, harbourSprint, hayBaleFarm, villageGreen, scrapyardBowl, mudPit, stadium, bangerOval];
+export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins, flyoverTangle, openCountry, sundayPark, harbourSprint, hayBaleFarm, villageGreen, scrapyardBowl, mudPit, stadium, bangerOval, monsterStadium, oldTownGp, saltFlats];

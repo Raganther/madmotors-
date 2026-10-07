@@ -12,7 +12,7 @@ import { GEAR, GEAR_PRICE, WEAPON_PRICE } from './weapons.js';
 //   payouts  place cash, style bonuses, trophies, medals, purses: times the tier's pay (TIER_PAY) and the format's (FORMAT_PAY)
 export const START_CASH = 1500;
 export const CAR_BASE = [3200, 9000, 19000, 38000], PACE_K = 0.06, TOUGH_K = 0.5, RESALE = 0.6;
-export const TIER_PAY = [1, 1.7, 2.6, 3.8];
+export const TIER_PAY = [1, 1.7, 2.6, 3.8, 5];   // Rookie, Club, Pro, Legend, Elite
 export const FORMAT_PAY = { race: 1, banger: 1.1, demolition: 1.1, figure8: 1, derby: 1.2, trial: 1, boss: 1, showdown: 1, deuce: 1, tiebreak: 1 };
 export const PLACE_CASH = [1000, 750, 550, 400, 300, 220, 160, 120];
 export const BONUS = { air: 30, drift: 20, hit: 15, clean: 150, obj: 250 };
@@ -20,6 +20,8 @@ export const DESTRUCT_CASH = { wrecked: 150, panels: 40, smashed: 20, takedowns:
 export const TROPHY_CASH = [2500, 1500, 800];
 export const MEDAL_CASH = [450, 700, 1000];   // time trial: bronze, silver, gold
 export const BOSS_PURSE = 3000, FINAL_PURSE = 25000, PAINT_PRICE = 800;
+export const SEASON_CASH = [40000, 24000, 14000];   // an Elite season's top three (G5)
+export const PRESTIGE_PAY = 0.2;   // each prestige level pays this much more (and rivals are harder: data/career.js PRESTIGE)
 const round = x => x < 10000 ? Math.round(x / 250) * 250 : Math.round(x / 500) * 500;
 /** The price of car id in tier `tier`'s showroom. */
 export function carPrice(id, tier) {

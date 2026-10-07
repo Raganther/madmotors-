@@ -9,6 +9,18 @@ import { navControl } from './nav.js';
 import { breakSpeed } from './impact.js';
 const breachOpen = (W, k) => (W.brk || []).some(o => o.alt === k && o.broken);
 
+// personalities (G5: data/career.js gives them to Elite rivals). A blocker moves across to cover whoever is closing from
+// behind; the nemesis does it to the player only (and both are keener with weapons: features/weapons.js)
+const BLOCK = { BEHIND: 18, MIX: 0.55 };
+function blockLane(c, cars, lane) {
+  const P = c.ai.persona; if (P !== 'blocker' && P !== 'nemesis') return lane;
+  let best = null, bd = BLOCK.BEHIND;
+  for (const o of cars) {
+    if (o === c || o.ghost > 0 || o.traffic || o.parked || (P === 'nemesis' && !o.isPlayer)) continue;
+    const d = c.progress - o.progress; if (d > 1.5 && d < bd && Math.abs(o.y - c.y) < 3) { bd = d; best = o; }
+  }
+  return best ? lane * (1 - BLOCK.MIX) + best.pr.lat * BLOCK.MIX : lane;
+}
 /** Before each fork pick a route, the branch or the main road, at random (stage.branches[k].share = the branch's
  *  chance), so the pack splits. */
 function chooseRoute(c, tr, W) {
@@ -59,6 +71,7 @@ export function aiControl(c, W, cars, dt, hazards, gate) {
     const dx = o.x - c.x, dz = o.z - c.z, ahead = dx * fx + dz * fz;                // pass it (not while queuing at a standstill)
     if (sp > 4 && ahead > 0 && ahead < 11 + Math.max(0, (c.vx - o.vx) * fx + (c.vz - o.vz) * fz) * 0.9) { const dl = o.pr.lat - pr.lat; if (Math.abs(dl) < 2.8) lane += (dl >= 0 ? -1 : 1) * 3.2; }
   }
+  if (ai.persona) lane = blockLane(c, cars, lane);
   // leader hazards: steer for the clear side of an oil slick, or between the cows; better drivers see them sooner
   let hzSlow = 99;
   if (hazards) for (const h of hazards) {
