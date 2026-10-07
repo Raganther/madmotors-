@@ -1,5 +1,5 @@
 import { G } from '../game.js';
-import { DUEL_GAP, PAINTS, PAINT_PRICE, SHOP, STARTERS, TIERS, allowed, awardTrophy, beaten, bossOf, buyCar, armoury, buyUpgrade, buyWeapon, canEnter, careerPlayer, fitGear, fitTyres, weaponLevel, careerDefs, eventById, eventMaxStars, eventOpen, eventStars, forSale, medals, newCareer, objText, paintCar, podiumOf, roundMask, roundsOf, scoreRace, selectCar, tierMaxStars, tierOf, tierOpen, tierStars, topTier, totalStars, upgLevel, upgradedVeh } from '../data/career.js';
+import { DUEL_GAP, PAINTS, PAINT_PRICE, SHOP, STARTERS, TIERS, allowed, awardTrophy, beaten, bossOf, buyCar, armoury, buyUpgrade, buyWeapon, canEnter, careerPlayer, fitGear, fitTyres, weaponLevel, careerDefs, eventById, eventMaxStars, eventOpen, eventStars, forSale, medals, newCareer, objText, paintCar, podiumOf, roundMask, roundsOf, scoreRace, selectCar, sellCar, sellPrice, tierMaxStars, tierOf, tierOpen, tierStars, topTier, totalStars, upgLevel, upgradedVeh } from '../data/career.js';
 import { scoreRound, standings } from '../data/leagues.js';
 import { STAGES } from '../data/stages/index.js';
 import { VEHICLES, vehicleById } from '../data/vehicles.js';
@@ -147,7 +147,7 @@ function drawGarage() {
   $('cr-title').textContent = 'Garage'; $('cr-sub').textContent = `Your cars, their upgrades and paint, and the showroom. New cars arrive as you open each tier; bosses give you theirs.${ev && ev.disc ? ` ${ev.name} takes ${DISCIPLINES[ev.disc].name.toLowerCase()} cars only.` : ''}`;
   const mine = VEHICLES.filter(v => S.cars[v.id]), sale = forSale(S), top = topTier(S);
   const later = Object.keys(SHOP).filter(id => !S.cars[id] && SHOP[id].tier > top).sort((a, b) => SHOP[a].price - SHOP[b].price);
-  const own = mine.map(v => carCard(v, `<span class="cr-btns">${v.id === S.car ? '<span class="cr-tag">Driving</span>' : `<button type="button" class="btn" data-act="drive" data-id="${v.id}">Drive this</button>`}<button type="button" class="btn" data-act="tune" data-id="${v.id}">Upgrades &amp; paint</button></span>`, v.id === S.car ? 'on' : '', fit(v.id))).join('');
+  const own = mine.map(v => carCard(v, `<span class="cr-btns">${v.id === S.car ? '<span class="cr-tag">Driving</span>' : `<button type="button" class="btn" data-act="drive" data-id="${v.id}">Drive this</button>`}<button type="button" class="btn" data-act="tune" data-id="${v.id}">Upgrades &amp; paint</button>${v.id !== S.car && mine.length > 1 ? `<button type="button" class="btn" data-act="sell" data-id="${v.id}" title="Sells for ${money(sellPrice(S, v.id))}: 60% of its price and of what you've spent on it">Sell · ${money(sellPrice(S, v.id))}</button>` : ''}</span>`, v.id === S.car ? 'on' : '', fit(v.id))).join('');
   const shop = sale.sort((a, b) => SHOP[a].price - SHOP[b].price).map(id => { const v = vehicleById(id), p = SHOP[id].price;
     return carCard(v, S.cash >= p ? `<button type="button" class="cta" data-act="buy" data-id="${id}">Buy · ${money(p)}</button>` : `<span class="cr-tag dim">${money(p)} · ${money(p - S.cash)} to go</span>`, '', fit(id)); }).join('');
   const soon = later.map(id => carCard(vehicleById(id), `<span class="cr-tag dim">${money(SHOP[id].price)} · opens in ${esc(TIERS[SHOP[id].tier].name)}</span>`, 'locked')).join('');
@@ -203,6 +203,7 @@ function act(b) {
   else if (a === 'gear') { const s = fitGear(S, view.id, b.dataset.g); if (s) { store(s); draw(); } }
   else if (a === 'tyres') { const s = fitTyres(S, view.id, b.dataset.k); if (s) { store(s); draw(true); } }
   else if (a === 'paint') { const s = paintCar(S, view.id, +b.dataset.p); if (s) { store(s); draw(true); } }
+  else if (a === 'sell') { const id = b.dataset.id; if (window.confirm(`Sell the ${vehicleById(id).name} for ${money(sellPrice(S, id))}?`)) { const s = sellCar(S, id); if (s) { store(s); draw(); } } }
   else if (a === 'drive') { store(selectCar(S, b.dataset.id)); draw(); }
   else if (a === 'buy') { const s = buyCar(S, b.dataset.id); if (s) { store(s); draw(); } }
   else if (a === 'race') raceRound(view.id);
