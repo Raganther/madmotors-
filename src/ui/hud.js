@@ -104,7 +104,7 @@ export function updateHUD(dt) {
   } else $('wpn').hidden = true;
   $('touch').classList.toggle('nowpn', !race.weapons);
   const wrong = P.wrongT > 1 && !race.derby, missed = P.gateMiss && !P.finished;
-  $('warn').textContent = missed ? 'Missed a gate: follow the arrow back' : wrong ? 'Wrong way' : (P.stuckT > 3 ? (isTouch ? 'Stuck? Tap Reset' : 'Stuck? Press R to reset') : '');
+  $('warn').textContent = missed ? 'Missed a gate: follow the arrow back' : wrong ? 'Wrong way' : (P.stuckT > 3 && !P.out ? (isTouch ? 'Stuck? Tap Reset' : 'Stuck? Press R to reset') : '');
   $('warn').hidden = !(missed || wrong || P.stuckT > 3);
 }
 // checkpoint modes: each car's points as pips toward the target (a bar past it: it's two-clear time), and the call

@@ -51,6 +51,9 @@ const bboxOf = (m, g) => { g.computeBoundingBox(); return g.boundingBox.clone().
 /** Cut car body `out` (from buildCarModel; K the kit) into its panels. Returns { id: mesh } (empty when the car has no
  *  shell big enough to cut, e.g. a kart: its damage shows the old way). Each panel mesh sits at its hinge with
  *  userData.hinge = { axis: 'x'|'y', open: the angle it swings open to }, and joins the dentable list. */
+// the colours of the insides an open bonnet or boot shows: a mid-grey lining (was black: it read as a hole), the engine
+// in metal with a red rocker cover, a chrome air filter, a dark radiator, the boot's carpet, the spare and a toolbox
+const BAY = { lining: 0x4A4F58, block: 0x8D939C, cover: 0xC8352A, chrome: 0xD3D7DD, radiator: 0x23262D, battery: 0x1E1E22, hose: 0x2B2F3A, carpet: 0x5C5650, tyre: 0x1E1E22, toolbox: 0xD7261E };
 export function carvePanels(K, out, def, body, tubColor) {
   const vol = b => (b.max.x - b.min.x) * (b.max.y - b.min.y) * (b.max.z - b.min.z);
   const cand = K.dentable.filter(m => m !== out.cabin && m.parent === body && m.userData.home && m.userData.home.color === def.color && !m.rotation.x && !m.rotation.y && !m.rotation.z);
@@ -79,10 +82,57 @@ export function carvePanels(K, out, def, body, tubColor) {
     pm.name = p.id; K.dentable.push(pm); panels[p.id] = pm;
   }
   if (!Object.keys(panels).length) return {};
+  if (m.material.side !== THREE.DoubleSide) { m.material = m.material.clone(); m.material.side = THREE.DoubleSide; for (const pm of Object.values(panels)) pm.material = m.material; }   // an open lid shows its underside, not the trim on its far face
   // the tub inside: the shell's own far shape, shrunk a little and dark (a convex shell keeps it out of sight)
   const tub = (m.userData.lod || [m.geometry])[0].clone(), c = B.getCenter(new THREE.Vector3()).sub(m.position);
   tub.translate(-c.x, -c.y, -c.z).scale(0.9, 0.86, 0.94).translate(c.x, c.y, c.z); tub.deleteAttribute('color');
-  K.part(tub, tubColor, m.position.x, m.position.y, m.position.z, [Wd, H, L]);
+  // open-topped where the bonnet and the boot are (else its lid hides the bay): only what's below the cut line stays there
+  const open = cutGeometry(tub, m.position.toArray(), [[2, zf], [2, zr], [1, yb]], (x, y, z) => y > yb && ((panels.bonnet && z > zf) || (panels.boot && z < zr)) ? 'lid' : 'tub').tub;
+  const lin = K.part(open || tub, BAY.lining, m.position.x, m.position.y, m.position.z, [Wd, H, L]); lin.material = lin.material.clone(); lin.material.side = THREE.DoubleSide;   // seen from inside
+  // the trim on the lids (stripes, a scoop, a boot spoiler that isn't the wing) rides with them: anything small whose
+  // middle is over the lid and that sits on top of it moves onto the lid's hinge, so it opens with it
+  const fixed = new Set([m, out.cabin, out.bumper, out.wing, ...(out.struts || []), ...(out.heads || []), ...(out.tails || []), ...K.dentable, ...Object.values(panels)]);
+  for (const [id, pm] of Object.entries(panels)) {
+    if (id !== 'bonnet' && id !== 'boot') continue;
+    const lb = bboxOf(pm, pm.geometry); lb.expandByScalar(0.06);
+    for (const o of [...body.children]) {
+      if (!o.isMesh || fixed.has(o) || o.material.isMeshBasicMaterial || !o.userData.home) continue;
+      const ob = bboxOf(o, o.geometry);
+      const cx2 = (ob.min.x + ob.max.x) / 2, over = ob.max.z > lb.min.z && ob.min.z < lb.max.z;
+      if (!over || cx2 < lb.min.x || cx2 > lb.max.x || ob.min.y < lb.min.y - 0.05 || ob.max.x - ob.min.x > lb.max.x - lb.min.x + 0.1) continue;
+      // a stripe that runs on past the lid's hinge edge is cut there: the lid's piece opens with it, the rest stays put
+      const hz = id === 'bonnet' ? lb.min.z : lb.max.z, onLid = z => id === 'bonnet' ? z > hz : z < hz;
+      if (!onLid(ob.min.z) || !onLid(ob.max.z)) {
+        const geos = o.userData.lod || [o.geometry], cuts = geos.map(g => cutGeometry(g, o.position.toArray(), [[2, hz]], (x, y, z) => onLid(z) ? 'lid' : 'stay'));
+        if (cuts.some(c => !c.lid || !c.stay)) continue;
+        const lid = new THREE.Mesh(cuts[0].lid, o.material); lid.position.copy(o.position); lid.rotation.copy(o.rotation); lid.castShadow = o.castShadow; body.add(lid);
+        if (o.userData.lod) { o.userData.lod = cuts.map(c => c.stay); lid.userData.lod = cuts.map(c => c.lid); K.lod.swap.push(lid); o.geometry = o.userData.lod[K.lod.on ? 1 : 0]; lid.geometry = lid.userData.lod[K.lod.on ? 1 : 0]; } else o.geometry = cuts[0].stay;
+        lid.userData.home = { ...o.userData.home }; pm.attach(lid);
+      } else pm.attach(o);
+    }
+  }
+  // what an open bonnet or boot shows: an engine and a boot, sized from the shell (below the panel's lowest cut, so
+  // they stay hidden while it's shut)
+  const top = yb + 0.5 * (B.max.y - yb), cx = (B.min.x + B.max.x) / 2;
+  if (panels.bonnet) {
+    const z0 = zf + 0.08, z1 = B.max.z - 0.32, zl = z1 - z0, zm = (z0 + z1) / 2, w = Wd * 0.5, bh = Math.max(0.14, top - yb);
+    if (zl > 0.25) {
+      K.box(w, bh, zl * 0.72, BAY.block, cx, yb + bh / 2, zm - zl * 0.08);                                   // the block
+      K.box(w * 0.86, 0.06, zl * 0.6, BAY.cover, cx, yb + bh + 0.03, zm - zl * 0.08);                         // the rocker cover
+      K.part(d => new THREE.CylinderGeometry(0.17, 0.17, 0.07, d ? 24 : 10), BAY.chrome, cx + w * 0.18, yb + bh + 0.08, zm - zl * 0.05, [0.34, 0.07, 0.34]);   // the air filter
+      K.box(Wd * 0.62, bh * 0.9, 0.06, BAY.radiator, cx, yb + bh * 0.45, z1 + 0.18);                              // the radiator
+      K.box(0.22, 0.16, 0.18, BAY.battery, cx - Wd * 0.33, yb + 0.08, zm + zl * 0.2);                          // the battery
+      for (const s of [-1, 1]) K.box(0.05, 0.05, zl * 0.5, BAY.hose, cx + s * w * 0.62, yb + bh * 0.7, zm);      // hoses
+    }
+  }
+  if (panels.boot) {
+    const z1 = zr - 0.08, z0 = B.min.z + 0.28, zl = z1 - z0, zm = (z0 + z1) / 2;
+    if (zl > 0.25) {
+      K.box(Wd * 0.78, 0.04, zl, BAY.carpet, cx, yb + 0.02, zm);                                              // the boot floor
+      K.part(d => new THREE.CylinderGeometry(Math.min(0.3, zl * 0.4), Math.min(0.3, zl * 0.4), 0.16, d ? 24 : 10), BAY.tyre, cx - Wd * 0.16, yb + 0.12, zm, [0.6, 0.16, 0.6]);   // the spare, lying flat
+      K.box(0.32, 0.16, 0.2, BAY.toolbox, cx + Wd * 0.22, yb + 0.12, zm);                                     // a toolbox
+    }
+  }
   // what's left of the shell, both levels (its undented copy too)
   const rest = levels.map(lv => pick(lv, 'shell'));
   if (m.userData.lod) { m.userData.lod = rest; m.userData.origs = rest.map(copy); m.geometry = rest[K.lod.on ? 1 : 0]; } else m.geometry = rest[0];

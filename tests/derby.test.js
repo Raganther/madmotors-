@@ -29,6 +29,7 @@ describe('the derby', () => {
     expect(R.cars.filter(c => !c.out).length).toBeLessThanOrEqual(1); expect(R.derby.out.length).toBeGreaterThanOrEqual(R.cars.length - 1);
     expect(M.derbyOrder(R)[0]).toBe(R.cars[R.derby.winner]); expect(outs.filter(o => o[0] === 'derby-out').length).toBe(R.derby.out.length);
     for (const c of R.cars.filter(c => c.out)) expect(c.wreckT).toBeGreaterThan(1e6);
+    const out = R.cars.find(c => c.out), at = [out.x, out.z]; M.respawn(out, world(arenaStage('Scrapyard Bowl')).W); expect([out.x, out.z]).toEqual(at);   // Reset does nothing once you're out: the wreck stays put
   });
   it('the order: survivors by health, then the wrecked, last out first; races without it are untouched', () => {
     const { R } = derby(arenaStage('The Stadium'), 20), ord = M.derbyOrder(R), alive = ord.filter(c => !c.out);

@@ -58,6 +58,7 @@ function packSpot(c, W, i0) {
 }
 export function respawn(c, W) {
   if (c.traffic) { c.dead = true; return; }
+  if (c.out) return;                                                                   // out of a derby (modes/derby.js): the wreck stays where it died
   const tr = W.tr, sf = c.safe;
   if (sf && tr.open && tr.open[tr.bi(sf.i)] && sf.d < 100) {                        // open country: back where it was last going well
     c.x = sf.x; c.z = sf.z; c.yaw = sf.yaw; c.vx = Math.sin(sf.yaw) * 5; c.vz = Math.cos(sf.yaw) * 5; c.vy = 0; c.strandT = 0;

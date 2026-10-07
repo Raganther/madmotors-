@@ -101,6 +101,7 @@ export function repairCarVis(v) {
   repairPanels(v);
   v.heads.forEach(m => m.visible = true); v.tails.forEach(m => m.visible = true); v.cabin.material = v.glassM;
   v.parts = { bumper: 0, wing: 0, heads: 0, tails: 0, crack: 0 }; v.wreckFx = 0;
+  v.root.traverse(o => { const M = o.isMesh && o.material; if (M && M.userData && M.userData.c0 !== undefined) { M.color.setHex(M.userData.c0); delete M.userData.c0; } });   // unscorched (derbyWreck)
   v.flipA = 0; v.flipV = 0; v.wheels.forEach(w => w.visible = true); v.broken = false; v.sag = 0;   // pooled road-car meshes come back whole
 }
 export function visOf(c) { return c.traffic ? c.vis : carVis[race.cars.indexOf(c)]; }
@@ -120,8 +121,9 @@ export function wreckFx(c, isPlayer, near) {
   const v = visOf(c);
   sparks(c.x, c.y, c.z, 16); shockwave(c.x, c.y, c.z, 7, 0xFFB03A);
   for (let k = 0; k < 12; k++) emit(c.x + (Math.random() - 0.5) * 2, c.y + 0.8, c.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 7, 2 + Math.random() * 4, (Math.random() - 0.5) * 7, 1 + Math.random(), 1.4 + Math.random(), k % 3 ? 0x3A3A3A : 0xFF8A2E, -1);
-  if (v) { breakApart(c, v, { power: 1 }); v.wreckFx = 1; }                          // wheels, bumper, wing and lights fly off
-  c.smokeT = WRECK_T;
+  if (v && c.out) derbyWreck(v);                                                    // a derby: the shell stays, out of the fight but in the way
+  else if (v) { breakApart(c, v, { power: 1 }); v.wreckFx = 1; }                     // wheels, bumper, wing and lights fly off
+  c.smokeT = c.out ? 1e9 : WRECK_T;
   if (isPlayer) { G.shake = Math.min(1.6, G.shake + 1.2); G.slowmo = Math.max(G.slowmo, 0.3); if (!race.sd) callout('Wrecked!'); }
   if (isPlayer || near) AudioSys.crash('car', isPlayer ? 1 : 0.5);
 }
@@ -146,6 +148,16 @@ export function takedownFx(c, e, isPlayer, near) {
   if (isPlayer || near) AudioSys.crash('car', isPlayer ? 1 : 0.6);
 }
 const _scorch = new THREE.Color(0x1A1612);
+// a car out of a derby (core/modes/derby.js): it stays where it died, a scorched and battered shell that smokes till the
+// end and that the others still hit and shove. Only the bumper, the wing and a wheel or two come off; the paint and
+// trim are scorched (each car has its own materials; repairCarVis puts the colours back)
+function derbyWreck(v) {
+  for (const m of [v.bumper, v.wing, ...(v.struts || [])]) if (m && m.visible) flingPiece(m, (Math.random() - 0.5) * 8, 4 + Math.random() * 3, (Math.random() - 0.5) * 8, 8, { life: 8 });
+  v.wheels.filter(() => Math.random() < 0.35).forEach(w => flingPiece(w, (Math.random() - 0.5) * 6, 3 + Math.random() * 3, (Math.random() - 0.5) * 6, 10, { life: 8 }));
+  v.heads.forEach(m => m.visible = false); v.tails.forEach(m => m.visible = false);
+  v.root.traverse(o => { if (!o.isMesh || !o.material || !o.material.color || o.material.isMeshBasicMaterial) return; const M = o.material; if (M.userData.c0 === undefined) M.userData.c0 = M.color.getHex(); M.color.lerp(_scorch, 0.6); });
+  v.wreckFx = 1;
+}
 // Showdown blow-up: a fireball and a smoke column on top of the wreck, in the car's colour
 export function sdBoomFx(c, onScreen) {
   const col = c.def.color; if (onScreen) breakApart(c, visOf(c), { power: 0.7, keep: true });   // bits of it fly; the car itself is already back behind the leader
