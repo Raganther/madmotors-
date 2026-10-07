@@ -126,7 +126,7 @@ export const TIERS = [
     { id: 'pocket-rockets', kind: 'cup', disc: 'oddball', name: 'Pocket Rockets', blurb: 'Oddballs only: karts, trikes, bikes and vans', rounds: [R('Sunday Park', hits(3)), R('Harbour Sprint', drift(4)), R('Village Green', clean())] },
     series('rookie-road', 'road', 'Rookie Road', 'Road cars on the easy tarmac (pace A or below)', [R('Sunday Park', drift(3)), R('Harbour Sprint in the Rain', clean()), R('Mountain Loop', hits(3))], { maxPace: 'A' }),
     series('rookie-rally', 'rally', 'Gravel Cup', 'Rally cars on gravel and dirt', [R('Hay Bale Farm', air(2)), R('Bogwood Rally', drift(3)), R('Red Mesa Canyon', clean())]),
-    series('rookie-offroad', 'offroad', 'Farm Track Trophy', 'Off-road cars round the farm, the quarry and the stadium', [R('Hay Bale Farm', clean()), R('Quarry Run', air(2)), R('Monster Stadium', air(6))]),
+    series('rookie-offroad', 'offroad', 'Farm Track Trophy', 'Off-road cars round the farm, the building site and the stadium', [R('Hay Bale Farm', clean()), R('Building Site', air(3)), R('Monster Stadium', air(6))]),
     derbies('rookie-derby', 'Banger Bash', 'Three derbies: the oval, the scrapyard and the mud. Derby cars only', [R('Banger Oval', wrecked(1)), R('Scrapyard Bowl', wrecked(1)), R('Mud Pit', wrecked(2))]),
   ] },
   { id: 'club', name: 'Club', blurb: 'Weekend racers who know the tracks', skill: 0.92, upg: 1, pay: TIER_PAY[1], events: [
@@ -139,12 +139,12 @@ export const TIERS = [
     derby('scrapyard-derby', 'Scrapyard Derby', 'Scrapyard Bowl', wrecked(2), 'Six cars in the tyre-walled bowl: wreck the rest, be the last one running'),
     boss('club-boss', 'Lindqvist', 'wedge', 'Ravenrock Gorge', 26, clean(), 'The Group B ace on the viaducts. Beat Lindqvist and the Wedge is yours'),
     { id: 'downhill-classic', kind: 'cup', name: 'Downhill Classic', blurb: 'The four original downhill runs, top to bottom: fast, steep and unforgiving', rounds: [R('Summit Meadow', drift(2)), R('Pine Forest', clean()), R('Quarry Run', air(2)), R('Village Descent', hits(4))] },
-    { id: 'oval-bangers', kind: 'cup', format: 'banger', name: 'Oval Bangers', blurb: 'Banger racing on the oval and round the village green: wrecks score', rounds: [R('Banger Oval', wrecked(1)), R('Village Green', hits(4)), R('Banger Oval', wrecked(2))] },
+    { id: 'oval-bangers', kind: 'cup', format: 'banger', name: 'Oval Bangers', blurb: 'Banger racing on the oval, round the village green and through the building site: wrecks score', rounds: [R('Banger Oval', wrecked(1)), R('Village Green', hits(4)), R('Building Site', smashed(1)), R('Banger Oval', wrecked(2))] },
     { id: 'heavyweights', kind: 'cup', disc: 'heavy', format: 'banger', name: 'Heavyweights', blurb: 'Banger racing for trucks, vans and limos: wrecks score', rounds: [R('Village Descent', wrecked(1)), R('Scrapyard Smash', air(3)), R('Mountain Pass', clean())] },
     series('club-road', 'road', 'Club Tarmac', 'Road cars round the old town and the loops (pace A or below)', [R('Old Town GP', drift(4)), R('Mountain Loop at Night', clean()), R('Harbour Sprint', hits(4))], { maxPace: 'A' }),
     series('club-rally', 'rally', 'Club Rally', 'Rally cars through the woods, the quarry and the canyon', [R('Bogwood Rally', clean()), R('Quarry Run', air(2)), R('Red Mesa Canyon', drift(5)), R('Hay Bale Farm', air(3))]),
     derbies('club-derby', 'Club Derby Series', 'Three derbies, scrapyard to stadium. Derby cars only', [R('Scrapyard Bowl', wrecked(2)), R('Banger Oval', wrecked(2)), R('The Stadium', wrecked(1))]),
-    series('club-oddball', 'oddball', 'Odd Club', 'Oddballs on the spire, the green and in the stadium', [R('Corkscrew Spire', drift(4)), R('Village Green', hits(4)), R('Monster Stadium', air(6))]),
+    series('club-oddball', 'oddball', 'Odd Club', 'Oddballs on the spire, the seafront and in the stadium', [R('Corkscrew Spire', drift(4)), R('Seafront', hits(4)), R('Monster Stadium', air(6))]),
   ] },
   { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.93, upg: 2, pay: TIER_PAY[2], events: [
     { id: 'wild-cup', kind: 'cup', name: 'Wild Cup', blurb: 'The wildest tracks, each with a shortcut to find', rounds: [R('Corkscrew Spire', clean()), R('Scrapyard Smash', air(4)), R('Mesa Leap', air(4)), R('Temple Ruins', hits(8)), R('Glacier Rift', drift(5))] },
@@ -158,7 +158,7 @@ export const TIERS = [
     { id: 'tarmac-gp', kind: 'cup', disc: 'road', name: 'Tarmac GP', blurb: 'Road cars on the smoothest circuits', rounds: [R('Mountain Loop', drift(6)), R('Flyover Tangle', hits(10)), R('Corkscrew Spire', clean()), R('Summit Meadow', drift(2))] },
     series('pro-rally', 'rally', 'Pro Rally', 'Rally cars on ice, mud and the temple stones, and the woods in the rain', [R('Bogwood Rally in the Rain', drift(6)), R('Glacier Rift', clean()), R('Quarry Run', air(3)), R('Temple Ruins', hits(6))]),
     derbies('pro-derby', 'Pro Derby Series', 'Three derbies, harder hitters. Derby cars only', [R('Mud Pit', wrecked(2)), R('Scrapyard Bowl', wrecked(3)), R('The Stadium', wrecked(2))]),
-    series('pro-oddball', 'oddball', 'Strange Days', 'Oddballs on the quays, in the scrapyard and over the mesa', [R('Harbour Sprint', drift(6)), R('Scrapyard Smash', air(4)), R('Mesa Leap', clean())]),
+    series('pro-oddball', 'oddball', 'Strange Days', 'Oddballs on the quays, round the building site and over the mesa', [R('Harbour Sprint', drift(6)), R('Building Site', air(4)), R('Mesa Leap', clean())]),
   ] },
   { id: 'legend', name: 'Legend', blurb: 'The best in the mountains', skill: 0.935, upg: 3, pay: TIER_PAY[3], events: [
     { id: 'grand-tour', kind: 'cup', name: 'Grand Tour', blurb: 'Six of the best, back to back, Ravenrock in the rain', rounds: [R('Mountain Pass', clean()), R('Ravenrock Gorge in the Rain', hits(12)), R('Thunder Falls', drift(6)), R('Bogwood Rally', air(10)), R('Glacier Rift', clean()), R('Temple Ruins', hits(10))] },
@@ -181,7 +181,7 @@ export const TIERS = [
     series('elite-rally', 'rally', 'Elite Rally', 'Rally cars on ice, mud and gravel', [R('Glacier Rift', clean()), R('Bogwood Rally', drift(6)), R('Temple Ruins', hits(8)), R('Red Mesa Canyon', air(12))]),
     series('elite-offroad', 'offroad', 'Elite Off-road', 'Off-road cars, open country and the stadium', [R('Open Country', clean()), R('Monster Stadium', air(10)), R('Frostpeak', drift(5)), R('Quarry Run', air(3))]),
     derbies('elite-derby', 'Elite Derby', 'Eight-car derbies. Derby cars only', [R('The Stadium', wrecked(3)), R('Scrapyard Bowl', wrecked(3)), R('Mud Pit', wrecked(3))]),
-    series('elite-oddball', 'oddball', 'Elite Oddball', 'Oddballs, twelve at a time', [R('Monster Stadium', air(8)), R('Harbour Sprint', hits(8)), R('Mesa Leap', clean())]),
+    series('elite-oddball', 'oddball', 'Elite Oddball', 'Oddballs, twelve at a time', [R('Monster Stadium', air(8)), R('Seafront', hits(8)), R('Mesa Leap', clean())]),
   ] },
 ];
 export const tierById = id => TIERS.find(t => t.id === id);

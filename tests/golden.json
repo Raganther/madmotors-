@@ -1329,6 +1329,82 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Building Site": {
+   "samples": 4666,
+   "loopN": 955,
+   "terrain": [
+    141,
+    141,
+    11838.861
+   ],
+   "times": [
+    135.583,
+    132.392,
+    133.175,
+    132.567
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3856.082,
+    3887.278,
+    3887.296,
+    3884.555
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Seafront": {
+   "samples": 5338,
+   "loopN": 1123,
+   "terrain": [
+    156,
+    156,
+    9756.886
+   ],
+   "times": [
+    142.125,
+    139.067,
+    142.483,
+    141.033
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    4539.323,
+    4557.606,
+    4528.039,
+    4557.083
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {
