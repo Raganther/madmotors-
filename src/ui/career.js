@@ -238,7 +238,7 @@ function finishOrder() {
 /** Score the career round just finished (called by showResults): stars, cash, the cup table, unlocks, prizes. */
 export function careerResults() {
   const c = G.career; if (!c || !S) return false;
-  const ev = eventById(c.ev), cup = isCup(ev), fmt = formatOf(ev), pi = race.cars.indexOf(race.player), scored = scoreOrder(finishOrder(), race.cars, G.tally, fmt), order = scored.map(x => x.c), place = order.indexOf(race.player) + 1, n = order.length, t = { ...G.tally, ...G.tally.d[pi] }, P = race.player;
+  const ev = eventById(c.ev), cup = isCup(ev), fid = formatOf(ev), pi = race.cars.indexOf(race.player), scored = scoreOrder(finishOrder(), race.cars, G.tally, fid), order = scored.map(x => x.c), place = order.indexOf(race.player) + 1, n = order.length, t = { ...G.tally, ...G.tally.d[pi] }, P = race.player;
   const w = order[0], gap = P.finished && w.finished ? P.finishTime - w.finishTime : -1;
   const tierWas = topTier(S), out = scoreRace(S, ev, c.k, place, n, { ...t, gap }, P.finished ? P.finishTime : 0); let s = out.state, trophy = 0, tcash = 0, run = null, done = false, cupPlace = 0;
   if (cup) {
@@ -257,7 +257,7 @@ export function careerResults() {
     out.prize ? (ev.kind === 'final' ? `Champion of Champions! The gold ${vehicleById(out.prize).name} is yours.` : `You beat ${ev.driver}! The ${vehicleById(out.prize).name} is in your garage.`) : '',
     opened ? `${opened.name} tier open! New events and new cars in the showroom.` : '',
     ev.kind === 'boss' && !beaten(S, ev) ? `Beat ${ev.driver} to win the ${vehicleById(ev.vehicle).name} and open the next tier.` : '',
-    FORMATS[fmt].weight.destruct > 0 ? (m => `${FORMATS[fmt].name}: placed on finish and destruction. You: ${m.race} for your finish, ${m.destruct} destruction points; the top car ${scored[0].c.name} (${scored[0].race} + ${scored[0].destruct}).`)(scored.find(x => x.c === P)) : '',
+    FORMATS[fid].weight.destruct > 0 ? (m => `${FORMATS[fid].name}: placed on finish and destruction. You: ${m.race} for your finish, ${m.destruct} destruction points; the top car ${scored[0].c.name} (${scored[0].race} + ${scored[0].destruct}).`)(scored.find(x => x.c === P)) : '',
   ].filter(Boolean);
   $('res-career').innerHTML = `${starsHTML}<table class="cr-cash">${lines}<tr class="tot"><td>Total</td><td class="rt">${money(out.cash + tcash)}</td></tr></table><p class="cr-bank">Bank ${money(S.cash)}</p>${news.map(x => `<p class="cr-news">${esc(x)}</p>`).join('')}`;
   $('res-career').hidden = false; $('results').querySelector('.card').classList.add('cr-wide');
