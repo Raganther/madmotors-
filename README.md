@@ -83,12 +83,20 @@ cup. A stage's `river` can take a `color` (a lighter tint for a pond or the sea)
 mode `createRace(W, defs, { mode: 'derby' })`. No laps, no finish line: a wrecked car is out for good (a shell to drive
 round), damage doesn't mend (and is scaled by `DERBY.DMG` so a fight lasts), the last car running wins, and at the time
 limit the survivors rank by damage. The derby AI (`derbyControl`) picks a target (near, battered, or whoever hit it
-last), drives at it with a little lead, keeps off the arena wall, circles away while badly hurt (not in the endgame),
-and backs off for a run-up when it's shoving at walking pace. An **arena** is a stage with `arena: { ring, props,
-ramps }` (`src/core/elements/arena.js`) on a small circuit tagged `open: 'field'`: a flat floor out to a ring of an
-unbreakable wall kind (tyres, a concrete wall, hay bales), breakable props on the floor and earth ramps; the circuit is
-only where the cars line up. Any stage with an arena is raced as a derby, from the menu too. The Banger Oval is a derby
-*track*: a short oval for banger races (data/formats.js). The camera frames the fight overhead; the HUD shows the cars
+last), drives at it with a little lead, keeps off the walls and steers round the runs inside the arena, circles away
+while badly hurt (not in the endgame), breaks off for a run-up when two cars only chase each other's tails, and backs
+off when it's shoving at walking pace. A wrecked car stays where it died as a scorched shell till the end (you can
+still ram it and shove it); your Reset is hidden once you're out and the camera watches whoever wrecked you. An
+**arena** is a stage with `arena: { ring, shape, walls, ramps, pits, props }` (`src/core/elements/arena.js`) on a small
+circuit tagged `open: 'field'`: a flat floor of any outline (`shape`, points in the segs' screen axes round the
+circuit's middle: bays, necks, lobes; none = a circle) walled with an unbreakable kind (tyres, a concrete wall, hay
+bales), `walls` runs of the same inside it (islands, wedges, alleys), earth `ramps` (placed with a direction, or a
+number at random), mud and water `pits` (a dip that drives as mud or a ford) and breakable props on the floor; the
+circuit is only where the cars line up, so keep the walls off the grid (lower right of the loop). `arenaWall`,
+`arenaOut` and `inArena` answer where a point is. Scrapyard Bowl is a lopsided yard with a car-stack island, pockets
+and a crusher bay up a neck; Mud Pit a kidney of a field split by a hedge, with wallows and a pond to jump; The
+Stadium a figure of eight with a jump each way in the neck. Any stage with an arena is raced as a derby, from the menu too. The Banger Oval is a derby
+*track*: a short oval for banger races (data/formats.js). The camera follows you (high and back for the open floor); the HUD shows the cars
 left, the clock and your health. In the career, every tier has a derby series and derbies are specials from Club up, for Derby cars (data/disciplines.js:
 toughness B or better). `npm run derby` plays every arena at two skills; the Workshop's Derby arena tab (`?workshop=derby&arena=stadium`) starts one.
 

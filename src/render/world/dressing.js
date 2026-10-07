@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { HALF, WALL } from '../../core/constants.js';
 import { TAU, mulberry32 } from '../../core/math.js';
+import { arenaOut } from '../../core/elements/arena.js';
 import { _c, addInstanced, flat, mergeAll } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { quality } from '../renderer.js';
@@ -34,7 +35,7 @@ export function addDressing(group, tr, terr, stage) {
     if (rnd() < 0.35) continue;
     const j = Math.floor(i), lat = side * (HALF + 2.5 + Math.pow(rnd(), 1.4) * COVER.BAND), along = (rnd() - 0.5) * 4;
     const x = tr.xs[j] + tr.rx[j] * lat + tr.tx[j] * along, z = tr.zs[j] + tr.rz[j] * lat + tr.tz[j] * along;
-    if (!free(x, z, HALF + 1.8) || wet(x, z) || (tr.arena && Math.hypot(x - tr.arena.x, z - tr.arena.z) < tr.arena.r + 1)) continue;
+    if (!free(x, z, HALF + 1.8) || wet(x, z) || (tr.arena && arenaOut(tr.arena, x, z) < 1)) continue;
     const y = terr.at(x, z), r = rnd();
     if (snow || pale) { if (r < 0.35) pebbles.push({ x, y, z, ry: rnd() * TAU, sx: 0.5 + rnd() * 0.7, sy: 0.4 + rnd() * 0.5, sz: 0.5 + rnd() * 0.7, color: _c.set(C.rock).offsetHSL(0, 0, (rnd() - 0.5) * 0.12).getHex() }); continue; }
     if (r < 0.72) { _c.copy(g0).lerp(g1, rnd()).offsetHSL((rnd() - 0.5) * 0.04, dry ? -0.15 : 0.06, dry ? -0.02 + rnd() * 0.06 : -0.03 + rnd() * 0.1); if (dry) _c.lerp(new THREE.Color(0xA89060), 0.5); tufts.push({ x, y, z, ry: rnd() * TAU, sx: 1.1 + rnd() * 1.2, sy: 0.7 + rnd() * 0.9, sz: 1.1 + rnd() * 1.2, color: _c.getHex() }); }
@@ -49,7 +50,7 @@ export function addDressing(group, tr, terr, stage) {
     const i = Math.min(N - 2, Math.max(0, Math.floor(i0 + (rnd() - 0.5) * FURN.JIT)));
     if (openAt(i) || townAt(i) || tr.tunnel[i] || tr.bridge[i] || rnd() < 0.25) continue;
     const lat = side * (WALL + 3.5 + rnd() * 3), x = tr.xs[i] + tr.rx[i] * lat, z = tr.zs[i] + tr.rz[i] * lat;
-    if (!free(x, z, WALL + 1.5) || wet(x, z) || (tr.arena && Math.hypot(x - tr.arena.x, z - tr.arena.z) < tr.arena.r + 4)) continue;
+    if (!free(x, z, WALL + 1.5) || wet(x, z) || (tr.arena && arenaOut(tr.arena, x, z) < 4)) continue;
     const y = terr.at(x, z), face = Math.atan2(tr.xs[i] - x, tr.zs[i] - z), r = rnd(), tx = Math.cos(face), tz = -Math.sin(face);   // (tx, tz): along the road
     if (dry || stage.surface === 'gravel') {
       if (r < 0.5) for (let k = -1; k <= 1; k++) bales.push({ x: x + tx * k * 1.5, y: y + 0.45, z: z + tz * k * 1.5, ry: face, sx: 1.4, sy: 0.9, sz: 0.9, color: 0xE2C265 });

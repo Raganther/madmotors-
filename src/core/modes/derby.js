@@ -1,20 +1,22 @@
 import { clamp, wrapAngle } from '../math.js';
+import { arenaWall } from '../elements/arena.js';
 
 // Derby (G3): createRace(W, defs, { mode: 'derby' }). No laps and no finish line: everyone fights in the arena (an
 // `arena` stage, core/elements/arena.js) or on any circuit, and a wrecked car is out for good (it stays where it died, a
 // burnt shell to drive round). Damage doesn't mend. The last car running wins; at the time limit the survivors rank by
 // the damage they've taken. Result order: survivors (least damage first), then the wrecked, last out first.
 // The derby AI (derbyControl) picks a target (the nearest, the most battered, whoever hit it last), drives at it with a
-// little lead, steers away from the arena wall and from the shells, backs off to circle while it's badly hurt (until the
-// last two, or late on), and
-// reverses out when it's stuck. Damage is scaled by DERBY.DMG (c.dmgK, sim/damage.js) so a derby lasts. Deterministic: no R.rnd, no Math.random.
-export const DERBY = { TIME: 150, DMG: 0.45, LAST: 1, STUCK_T: 1, BACK_T: 1, SLOW: 5, HURT: 0.72, EDGE: 10, LEAD: 0.35, REVENGE: 4 };
+// little lead, keeps off the arena's walls (the outline and the runs inside it) and steers round them, backs off while
+// it's badly hurt (until the last two, or late on), breaks off for a run-up when two cars only chase each other's tails,
+// and reverses out when it's stuck. Damage is scaled by DERBY.DMG (c.dmgK, sim/damage.js) so a derby lasts.
+// Deterministic: no R.rnd, no Math.random.
+export const DERBY = { TIME: 150, DMG: 0.33, LAST: 1, STUCK_T: 1, BACK_T: 1, SLOW: 5, HURT: 0.72, EDGE: 10, PROBE: 3, LEAD: 0.35, REVENGE: 4, ORBIT: 16, ORBIT_T: 2.5, RUN_T: 1.4 };
 /** Health 0..1: 1 - the worst-hit zone. */
 export const health = c => 1 - Math.max(c.dmg.f, c.dmg.b, c.dmg.l, c.dmg.r);
 const live = c => !c.out;
 export function initDerby(R) {
   R.derby = { t: 0, time: DERBY.TIME, out: [], outT: [], phase: 'run', winner: -1 };
-  for (const c of R.cars) { c.out = false; c.dmgK = DERBY.DMG; c.dai = { tgt: -1, stuckT: 0, backT: 0, side: 1 }; c.hitBy = -1; c.hitT = -1e9; }
+  for (const c of R.cars) { c.out = false; c.dmgK = DERBY.DMG; c.dai = { tgt: -1, stuckT: 0, backT: 0, side: 1, orbT: 0, runT: 0 }; c.hitBy = -1; c.hitT = -1e9; }
 }
 /** The derby's order right now: the survivors (healthiest first), then the wrecked, last out first. */
 export function derbyOrder(R) {
@@ -56,14 +58,27 @@ export function derbyControl(R, c, W) {
   if (best < 0) { gx = ar ? ar.x : c.x; gz = ar ? ar.z : c.z; }
   else {
     const T = R.cars[best];
-    if (hurt) {   // badly hurt: keep away, circling the arena the far side from the target
-      const cx = ar ? ar.x : T.x, cz = ar ? ar.z : T.z, a = Math.atan2(c.x - cx, c.z - cz) + 0.5 * A.side, r = ar ? ar.r * 0.6 : 20;
-      gx = cx + Math.sin(a) * r; gz = cz + Math.cos(a) * r;
-    } else { const d = Math.hypot(T.x - c.x, T.z - c.z), lead = clamp(d / Math.max(8, sp), 0, 1.2) * DERBY.LEAD; gx = T.x + T.vx * lead; gz = T.z + T.vz * lead; }
+    if (hurt) {   // badly hurt: keep away, heading on round the arena away from the target
+      const ex = c.x - T.x, ez = c.z - T.z, a = Math.atan2(ex, ez) + 0.6 * A.side;
+      gx = c.x + Math.sin(a) * 20; gz = c.z + Math.cos(a) * 20;
+    } else if (A.runT > 0) {   // breaking off for a run-up: away from the target, then turn and come back fast
+      A.runT -= 1 / 120; const ex = c.x - T.x, ez = c.z - T.z, e = Math.hypot(ex, ez) || 1; gx = c.x + ex / e * 20; gz = c.z + ez / e * 20;
+    } else {
+      const d = Math.hypot(T.x - c.x, T.z - c.z), lead = clamp(d / Math.max(8, sp), 0, 1.2) * DERBY.LEAD; gx = T.x + T.vx * lead; gz = T.z + T.vz * lead;
+      // two cars chasing each other's tails round and round at walking pace do no damage: one breaks off for a run-up
+      const off = Math.abs(wrapAngle(Math.atan2(T.x - c.x, T.z - c.z) - c.yaw));
+      if (d < DERBY.ORBIT && off > 0.9) A.orbT += 1 / 120; else A.orbT = Math.max(0, A.orbT - 1 / 240);
+      if (A.orbT > DERBY.ORBIT_T + (k0 % 3) * 0.7) { A.orbT = 0; A.runT = DERBY.RUN_T; }
+    }
   }
-  // keep off the arena wall: near the edge, aim back in
-  if (ar) { const ex = c.x - ar.x, ez = c.z - ar.z, r = Math.hypot(ex, ez); if (r > ar.r - DERBY.EDGE) { const k = (r - (ar.r - DERBY.EDGE)) / DERBY.EDGE; gx += (-ex / r) * 25 * k; gz += (-ez / r) * 25 * k; } }
+  // keep off the arena's walls (the outline and the runs inside it): near one, aim away from it
+  if (ar) { const w = arenaWall(ar, c.x, c.z); if (w.d < DERBY.EDGE) { const k = (DERBY.EDGE - w.d) / DERBY.EDGE; gx += w.nx * 25 * k; gz += w.nz * 25 * k; } }
   let want = wrapAngle(Math.atan2(gx - c.x, gz - c.z) - c.yaw);
+  // a wall run in the way (an island, a wedge): look a few headings either side and take the nearest clear one
+  if (ar && ar.walls.length) {
+    const reach = Math.hypot(gx - c.x, gz - c.z) - 3, clear = h => { const a = c.yaw + h; for (const s of [4, 8, 12]) { if (s > reach) break; const w = arenaWall(ar, c.x + Math.sin(a) * s, c.z + Math.cos(a) * s); if (w.d < DERBY.PROBE) return false; } return true; };
+    if (!clear(want)) for (const dh of [0.5, -0.5, 1, -1, 1.6, -1.6].map(v => v * A.side)) if (clear(want + dh)) { want = wrapAngle(want + dh); break; }
+  }
   // stuck (pushing a wall, a shell or a pile of cars, going nowhere): back out, turning, then charge again
   if (A.backT > 0) { A.backT -= 1 / 120; inp.throttle = 0; inp.brake = 1; inp.steer = -A.side; return; }
   if (sp < DERBY.SLOW && Math.abs(c.inp.throttle) > 0.5) A.stuckT += 1 / 120; else A.stuckT = Math.max(0, A.stuckT - 1 / 60);   // shoving at walking pace does no damage: back off for a run-up

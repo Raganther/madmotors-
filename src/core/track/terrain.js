@@ -5,7 +5,7 @@ import { clamp, lerp, smoothstep } from '../math.js';
 import { railAt, railProject } from './rails.js';
 import { placeObstacles } from './obstacles.js';
 import { layoutTowns } from '../kit/layout.js';
-import { arenaRamps } from '../elements/arena.js';
+import { arenaOut, arenaRamps } from '../elements/arena.js';
 import { OPEN } from '../elements/open.js';
 
 export function riverDist(rv, x, z) {
@@ -60,7 +60,7 @@ export function buildTerrain(tr, stage) {
       }
       const qt = tr.nearestTun(x, z);
       if (qt && qt.d < HALF + 18 && !pastMouth(tr, qt.i, x, z)) { const roof = tr.H[qt.i] + 11; v = Math.max(v, lerp(roof, tr.H[qt.i] - 1, smoothstep(HALF + 9, HALF + 18, qt.d))); }
-      if (tr.arena) { const A = tr.arena, ad = Math.hypot(x - A.x, z - A.z); if (ad < A.r + 16) { v = lerp(A.floor + arenaRamps(A, x, z), v, smoothstep(A.r + 2, A.r + 16, ad)); if (ad < A.r + 1) dd = HALF + 2; } }   // a derby arena: a flat floor (elements/arena.js)
+      if (tr.arena) { const A = tr.arena; if (Math.hypot(x - A.x, z - A.z) < A.r + 16) { const ad = arenaOut(A, x, z); if (ad < 16) { v = lerp(A.floor + arenaRamps(A, x, z), v, smoothstep(2, 16, ad)); if (ad < 1) dd = HALF + 2; } } }   // a derby arena: a flat floor out to its outline (elements/arena.js)
       h[r * cols + c] = v; dist[r * cols + c] = dd; nearI[r * cols + c] = q ? q.i : -1;
     }
   }

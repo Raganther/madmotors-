@@ -80,7 +80,7 @@ const gates = { name: 'gates', init: initGateVis, update(dt, now) { updateGateVi
 const weapons = { name: 'weapons', init: initWeaponVis, update(dt, now) { updateWeaponVis(dt, now); } };   // missiles in flight
 const hammer = { name: 'hammer', build(group, tr) { addHammers(group, tr); }, update() { updateHammers(); } };
 const ice = { name: 'ice', build(group, tr) { addIce(group, tr); } };
-const arena = { name: 'arena', build(group, tr) { addArena(group, tr); } };   // a derby arena's wall ring
+const arena = { name: 'arena', build(group, tr, terr) { addArena(group, tr, terr); } };   // a derby arena's walls, pits and lights
 const snowfall = { name: 'snowfall', build(group, tr, terr, stage) { addSnowfall(group, stage); }, update(dt, now) { updateSnowfall(dt, now); } };   // weather (stage.snowfall)
 
 const wear = { name: 'wear', build(group, tr, terr, stage) { addWear(group, tr, terr, stage); }, newRace() { newWearRace(); }, update(dt) { updateWear(dt); } };   // every stage (features/wear.js)

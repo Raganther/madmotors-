@@ -1,6 +1,7 @@
 import { HALF } from '../constants.js';
 import { TAU, mulberry32 } from '../math.js';
 import { GATE, OPEN, TRAIL, onTrail } from '../elements/open.js';
+import { arenaOut } from '../elements/arena.js';
 
 // Scenery you can hit: trees, cacti and rocks are solid, bushes are soft (you plough through, they flatten). Placed
 // once per stage from its seed (render/world/scenery.js draws exactly these), and kept in a coarse grid so a car only
@@ -17,7 +18,7 @@ export function placeObstacles(tr, terr, stage) {
   const kit = terr.kit, at0 = () => [x0 + rnd() * (x1 - x0), z0 + rnd() * (z1 - z0)];
   // inside a town (core/kit/layout.js) nothing grows: a candidate there is drawn again (only stages with towns)
   // nor inside a derby arena's ring (core/elements/arena.js)
-  const ar = tr.arena, taken = (x, z) => (kit && kit.inZone(x, z, 2)) || (ar && Math.hypot(x - ar.x, z - ar.z) < ar.r + 6);
+  const ar = tr.arena, taken = (x, z) => (kit && kit.inZone(x, z, 2)) || (ar && Math.hypot(x - ar.x, z - ar.z) < ar.r + 6 && arenaOut(ar, x, z) < 6);
   const at = kit || ar ? () => { let p = at0(); for (let k = 0; k < 8 && taken(p[0], p[1]); k++) p = at0(); return p; } : at0;
   const items = [];
   // trees: a pine or a round-topped tree on a trunk; r is what a car hits (a pine's low skirt of branches, a trunk)
@@ -50,7 +51,7 @@ export function placeObstacles(tr, terr, stage) {
     items.push({ kind: OB.BUSH, x, y: terr.at(x, z) + 0.2 * s, z, s, sy: s * 0.7, ry: rnd() * TAU, color: pick(C.round), r: 0.9 * s, soft: true });
   }
   if (tr.open) placeOpen(tr, terr, stage, items, rnd, pick);
-  if (ar) for (let k = items.length - 1; k >= 0; k--) if (Math.hypot(items[k].x - ar.x, items[k].z - ar.z) < ar.r + 4) items.splice(k, 1);   // an arena's floor is clear
+  if (ar) for (let k = items.length - 1; k >= 0; k--) if (arenaOut(ar, items[k].x, items[k].z) < 4) items.splice(k, 1);   // an arena's floor is clear
   const grid = new Map(), key = (cx, cz) => cx * 100003 + cz;
   items.forEach((o, k) => { if (!o.r) return; const g = key(Math.floor(o.x / CELL), Math.floor(o.z / CELL)); let a = grid.get(g); if (!a) grid.set(g, a = []); a.push(k); });
   return {
