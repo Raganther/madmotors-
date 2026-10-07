@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { G } from '../../game.js';
 import { HALF, WALL } from '../../core/constants.js';
 import { TAU, mulberry32 } from '../../core/math.js';
+import { arenaOut, inArena } from '../../core/elements/arena.js';
 import { _c, _e, _m, _p, _q, _s, addInstanced, flat } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import * as SH from './shapes.js';
@@ -47,7 +48,12 @@ export function addScenery(group, tr, terr, stage) {
     for (const s of [-1, 1]) arms.push({ x, y: y + 1.1, z, ry: face, color: col, f, part: s < 0 ? 2 : 3 });
   };
   if (tr.arena) {   // a derby arena (core/elements/arena.js): the crowd stands round the outside of the ring, facing in
-    const A = tr.arena; for (let a = 0; a < TAU; a += 2.6 / A.r) if (rnd() < 0.7) { const d = A.r + 2.5 + rnd() * 4, x = A.x + Math.sin(a) * d, z = A.z + Math.cos(a) * d; addFan(x, z, Math.atan2(A.x - x, A.z - z)); }
+    const A = tr.arena, P = A.poly;   // along each side of the outline, a few metres out (skipping spots that fall back inside, by a bay)
+    for (let i = 0; i < P.length; i++) {
+      const [x1, z1] = P[i], [x2, z2] = P[(i + 1) % P.length], L = Math.hypot(x2 - x1, z2 - z1); let nx = (z2 - z1) / L, nz = -(x2 - x1) / L;
+      if (inArena(A, (x1 + x2) / 2 + nx * 2, (z1 + z2) / 2 + nz * 2)) { nx = -nx; nz = -nz; }
+      for (let t = 1.3; t < L; t += 2.6) if (rnd() < 0.7) { const d = 2.5 + rnd() * 4, x = x1 + (x2 - x1) * t / L + nx * d, z = z1 + (z2 - z1) * t / L + nz * d; if (arenaOut(A, x, z) > 2) addFan(x, z, Math.atan2(-nx, -nz)); }
+    }
   } else for (const hp of tr.hairpins) for (let i = hp.a; i <= hp.b; i += 3) {
     if (rnd() < 0.45) continue;
     const lat = hp.side * (WALL + 2.5 + rnd() * 3.5), x = tr.xs[i] + tr.rx[i] * lat, z = tr.zs[i] + tr.rz[i] * lat, q = tr.nearest(x, z);

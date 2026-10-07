@@ -5,7 +5,7 @@
 //   node tools/shot.mjs garage              the garage, top and bottom, once every vehicle's picture is drawn
 //   node tools/shot.mjs workshop[:tab]      the Workshop hub, or a tab (crash, weapons: its opening run, two seconds in)
 // Stage is a 1-based number or (part of) its name. Metres are from the start line (1 sample = 1 m; past one lap on a circuit is lap 2).
-// Default: 5 points spread over the first lap. Files go to tools/out/shot-<id>-<m>.png. Exits 1 on page errors.
+// Default: 5 points spread over the first lap. A derby arena takes seconds into the fight instead (default 3 12 25). Files go to tools/out/shot-<id>-<m>.png. Exits 1 on page errors.
 import { chromium } from 'playwright';
 import path from 'node:path';
 import { mkdirSync } from 'node:fs';
@@ -54,10 +54,18 @@ const info = await page.evaluate(() => {
   const d = window.__dr; window.requestAnimationFrame = () => 0;   // we drive the frames
   d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; d.G.hintTimer = 0;
   for (const e of ['hint', 'countdown']) document.getElementById(e).hidden = true;
-  const tr = d.G.world.tr; return { name: d.G.world.stage.name, s0: tr.startIdx, len: tr.loopN || tr.finishIdx - tr.startIdx };
+  const tr = d.G.world.tr; return { name: d.G.world.stage.name, s0: tr.startIdx, len: tr.loopN || tr.finishIdx - tr.startIdx, derby: !!d.race.derby };
 });
 if (evalJs) await page.evaluate(js => { const d = window.__dr; (0, eval)('(d) => {' + js + '}')(d); }, evalJs);
 const pts = marks.length ? marks.map(Number) : [0.1, 0.3, 0.5, 0.7, 0.9].map(f => Math.round(f * info.len));
+if (info.derby) {   // a derby has no distance: the marks are seconds into the fight
+  for (const t of marks.length ? marks.map(Number) : [3, 12, 25]) {
+    await page.evaluate(t => { const d = window.__dr; while (d.race.time < t - 1 && d.race.derby.phase === 'run') { for (let k = 0; k < 4; k++) { d.flow.savePrev(); d.core.raceStep(d.race, d.core.STEP, d.G.world.W); } d.flow.handleEvents(); } d.step(1); }, t);
+    const file = `tools/out/shot-${id}-${t}s.png`; await page.screenshot({ path: file }); console.log(`${file}  (${info.name}, derby ${t} s)`);
+  }
+  if (errs.length) console.log('page errors:\n  ' + errs.join('\n  '));
+  await browser.close(); process.exit(errs.length ? 1 : 0);
+}
 for (const m of pts) {
   const got = await page.evaluate(tgt => {
     const d = window.__dr, P = d.race.player; let n = 0;

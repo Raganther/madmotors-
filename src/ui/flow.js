@@ -133,7 +133,7 @@ export function handleEvents() {
         case 'cp-miss': callout('Nobody through the gate'); break;
         case 'sd-streak': if (c.isPlayer) { callout(`Crown streak ×${e.mult}!`); AudioSys.tone(880, 0.1, 0.07, 'triangle', 1.3); } break;
         case 'sd-spawn': sdSpawnFx(c); if (c.isPlayer) { callout(e.slot === 'front' ? 'Back in, ahead!' : e.slot === 'beside' ? 'Back in, alongside!' : 'Back in, behind!'); AudioSys.tone(440, 0.25, 0.08, 'triangle', 2); } break;
-        case 'derby-out': flash(c.x, c.y + 1, c.z, 6, 0xFFB03A, 0.4); if (near) AudioSys.crash('car', 0.8); callout(c.isPlayer ? 'Wrecked: you\'re out!' : `${c.name} is out! ${e.left} left`); break;
+        case 'derby-out': flash(c.x, c.y + 1, c.z, 6, 0xFFB03A, 0.4); if (near) AudioSys.crash('car', 0.8); callout(c.isPlayer ? 'Wrecked: you\'re out! Watching the rest' : `${c.name} is out! ${e.left} left`); if (c.isPlayer) $('reset-btn').hidden = true; break;   // out is out: the wreck stays put (core respawn)
         case 'derby-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? 'You win the derby!' : `${w.name} wins the derby${e.timeUp ? ' on damage' : ''}`); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
         case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? `You win the ${MODE_NAME[G.mode]}!` : `${w.name} wins the ${MODE_NAME[G.mode]}`); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
         case 'finish':
@@ -263,7 +263,7 @@ export function selectStage(i, cb) {
 export function startRace(idx) {
   AudioSys.init();
   selectStage(idx, () => {
-    race = newRace(); clearSkids(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0; G.tally = G.career ? newTally(race.cars.length) : null; G.tallyFmt = G.career ? careerFormat() : null;
+    $('reset-btn').hidden = false; race = newRace(); clearSkids(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0; G.tally = G.career ? newTally(race.cars.length) : null; G.tallyFmt = G.career ? careerFormat() : null;
     G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; G.sdTick = 0; $('edge').className = '';
     $('menu').hidden = true; $('garage').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
     $('stage-name').textContent = G.editDrive ? `Test drive: ${STAGES[idx].name}` : `Stage ${idx + 1}: ${STAGES[idx].name}`; $('quit-btn').textContent = G.editDrive ? 'Back to editor' : G.career ? 'Career menu' : 'Choose stage';

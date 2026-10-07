@@ -120,10 +120,11 @@ export function updateCamera(dt, snap) {
     // Showdown: frame the leader (the core decides who that is, and judges who has dropped off this view)
     const f = race.sd.focus; tx = f.x; ty = f.y; tz = f.z; if (race.sd.camSnap) { race.sd.camSnap = false; snap = true; }
   } else if (race.derby && G.world.tr.arena) {
-    // a derby: frame the fight, the player and the cars still running near them, pulled towards the arena's middle
-    const A = G.world.tr.arena, P = race.player, live = race.cars.filter(c => !c.out && Math.hypot(c.x - P.x, c.z - P.z) < 40);
-    let x0 = P.x, x1 = P.x, z0 = P.z, z1 = P.z; for (const c of live) { x0 = Math.min(x0, c.x); x1 = Math.max(x1, c.x); z0 = Math.min(z0, c.z); z1 = Math.max(z1, c.z); }
-    tx = ((x0 + x1) / 2) * 0.7 + A.x * 0.3; tz = ((z0 + z1) / 2) * 0.7 + A.z * 0.3; ty = A.floor; G.derbyFit = clamp(Math.max(x1 - x0, z1 - z0) * 1.3 + 22, 40, A.r * 2.2);
+    // a derby: follow the player (a little ahead of where they're going); once they're out, the car that put them out,
+    // or the nearest one still running, a little further back
+    const P = race.player, by = P.out && race.cars[P.hitBy], live = race.cars.filter(c => !c.out);
+    const F = !P.out ? P : by && !by.out ? by : live.sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z))[0] || P;
+    tx = (F.dx ?? F.x) + F.vx * 0.3; tz = (F.dz ?? F.z) + F.vz * 0.3; ty = F.dy ?? F.y; G.derbyFit = P.out ? 52 : 44;
   } else {
     const c = race.player; sp = Math.hypot(c.vx, c.vz); tx = (c.dx ?? c.x) + c.vx * 0.42; tz = (c.dz ?? c.z) + c.vz * 0.42; ty = c.dy ?? c.y;
   }
