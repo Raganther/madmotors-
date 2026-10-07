@@ -1101,6 +1101,310 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Mountain Loop at Night": {
+   "samples": 5519,
+   "loopN": 1791,
+   "terrain": [
+    173,
+    227,
+    71002.22
+   ],
+   "times": [
+    181.208,
+    176.017,
+    179.175,
+    177.492
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    5409,
+    5440.024,
+    5441.051,
+    5440.593
+   ],
+   "broken": 0,
+   "trafficSeen": 18,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Old Town GP at Night": {
+   "samples": 4306,
+   "loopN": 1040,
+   "terrain": [
+    154,
+    153,
+    8128.103
+   ],
+   "times": [
+    138.45,
+    138.308,
+    143.408,
+    138.408
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    4227.278,
+    4227.14,
+    4196.178,
+    4226.828
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Salt Flats at Night": {
+   "samples": 6002,
+   "loopN": 2928,
+   "terrain": [
+    309,
+    309,
+    578485.978
+   ],
+   "times": [
+    155.833,
+    155.233,
+    155.183,
+    155.117
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    5892.265,
+    5917.908,
+    5919.753,
+    5921.892
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Harbour Sprint in the Rain": {
+   "samples": 3866,
+   "loopN": 1240,
+   "terrain": [
+    139,
+    139,
+    7507.409
+   ],
+   "times": [
+    120.592,
+    116.758,
+    125.233,
+    120.625
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3787.73,
+    3787.801,
+    3756.223,
+    3787.767
+   ],
+   "broken": 2,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Ravenrock Gorge in the Rain": {
+   "samples": 7184,
+   "loopN": 3519,
+   "terrain": [
+    236,
+    231,
+    436451.479
+   ],
+   "times": [
+    245.033,
+    239.775,
+    244.283,
+    241.675
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    7074.213,
+    7103.201,
+    7099.125,
+    7102.36
+   ],
+   "broken": 0,
+   "trafficSeen": 24,
+   "trainHits": 0,
+   "rockHits": 1,
+   "rocks": 8
+  },
+  "Bogwood Rally in the Rain": {
+   "samples": 3101,
+   "loopN": 985,
+   "terrain": [
+    146,
+    140,
+    37568.756
+   ],
+   "times": [
+    117.408,
+    114.5,
+    120.075,
+    117.792
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3018.039,
+    3020.185,
+    2991.017,
+    3019.494
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Building Site": {
+   "samples": 4666,
+   "loopN": 955,
+   "terrain": [
+    141,
+    141,
+    11838.861
+   ],
+   "times": [
+    135.583,
+    132.392,
+    133.175,
+    132.567
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3856.082,
+    3887.278,
+    3887.296,
+    3884.555
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Seafront": {
+   "samples": 5338,
+   "loopN": 1123,
+   "terrain": [
+    156,
+    156,
+    9756.886
+   ],
+   "times": [
+    142.125,
+    139.067,
+    142.483,
+    141.033
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    4539.323,
+    4557.606,
+    4528.039,
+    4557.083
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

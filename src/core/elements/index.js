@@ -39,13 +39,14 @@ import { element as open } from './open.js';
 import { element as breakables } from './breakables.js';
 import { element as kit } from './kit.js';
 import { element as arena } from './arena.js';
+import { element as weather } from './weather.js';
 
-export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops, yump, ice, dirt, hammer, open, breakables, kit, arena];
+export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops, yump, ice, dirt, hammer, open, breakables, kit, arena, weather];
 export const elementPhase = (phase, ...args) => { for (const e of ELEMENTS) if (e[phase]) e[phase](...args); };
 
 // stage options that belong to the stage itself rather than to an element
 const BASE_KEYS = ['name', 'blurb', 'type', 'laps', 'seed', 'surface', 'hillAmp', 'armco', 'startHeading', 'light', 'colors', 'trees', 'rocks', 'bushes', 'cacti',
-  'village', 'soft', 'alpine', 'snowfall', 'strata', 'river', 'segs', 'branches', 'traffic', 'plan', 'grade', 'carve', 'L', 'W'];
+  'village', 'soft', 'alpine', 'snowfall', 'strata', 'river', 'segs', 'branches', 'traffic', 'plan', 'grade', 'carve', 'L', 'W', 'base', 'version'];   // base, version: a track version's stage and kind (data/versions.js)
 export const SECTION_TAGS = Object.fromEntries(ELEMENTS.flatMap(e => Object.entries(e.tags || {}).map(([t, d]) => [t, `${e.name}: ${d}`])));
 export const STAGE_KEYS = new Set(BASE_KEYS.concat(ELEMENTS.flatMap(e => Object.keys(e.stageKeys || {}))));
 /** Catch typos early: unknown section tags or stage options throw, listing what's allowed. */

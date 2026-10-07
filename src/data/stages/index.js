@@ -28,5 +28,16 @@ import bangerOval from './banger-oval.js';
 import monsterStadium from './monster-stadium.js';
 import oldTownGp from './old-town-gp.js';
 import saltFlats from './salt-flats.js';
+import buildingSite from './building-site.js';
+import seafront from './seafront.js';
+import { versionOf } from '../versions.js';
 
-export const STAGES = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins, flyoverTangle, openCountry, sundayPark, harbourSprint, hayBaleFarm, villageGreen, scrapyardBowl, mudPit, stadium, bangerOval, monsterStadium, oldTownGp, saltFlats];
+// Stages and track versions (data/versions.js: [stage name, 'night' | 'rain'], made from a stage listed earlier), in menu
+// order. Append only: a stage's number never moves.
+const LIST = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins, flyoverTangle, openCountry, sundayPark, harbourSprint, hayBaleFarm, villageGreen, scrapyardBowl, mudPit, stadium, bangerOval, monsterStadium, oldTownGp, saltFlats,
+  ['Mountain Loop', 'night'], ['Old Town GP', 'night'], ['Salt Flats', 'night'], ['Harbour Sprint', 'rain'], ['Ravenrock Gorge', 'rain'], ['Bogwood Rally', 'rain'],
+  buildingSite, seafront];
+/** The track versions raced: [stage name, version]. */
+export const VERSIONED = LIST.filter(Array.isArray);
+export const STAGES = [];
+for (const e of LIST) STAGES.push(Array.isArray(e) ? versionOf(STAGES.find(s => s.name === e[0]), e[1]) : e);
