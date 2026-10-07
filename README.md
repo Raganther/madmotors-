@@ -48,8 +48,8 @@ stocks more cars as tiers open. Rivals drive cars that belong in the tier and ge
 (`TIERS[].skill`), and from Club on their cars carry upgrades (`TIERS[].upg`: level 1 in Club up to 3 in Legend).
 Your cars take upgrades too: parts in seven slots, three levels each (`SLOTS` in `src/data/parts.js`; see "Upgrade
 parts" below), bought per car in the garage; they multiply the vehicle's `veh` handling, so stock cars fall behind as
-you climb. Some cups are for one class (`CLASSES`: small, off-road, heavy,
-tarmac, judged on stock stats), so a garage of one car can't win everything.
+you climb. Some cups are for one discipline (see "Disciplines and ratings" below), so a garage of one car can't win
+everything.
 Each tier also has specials (a time trial for bronze/silver/gold stars against `par`, a Showdown, Deuce or Tiebreak
 against three rivals, a one-make race where everyone gets the same stock car) and a **boss**: a duel with a star
 driver in their signature car, a notch sharper than the field. Enough stars in the tier open the boss;
@@ -116,6 +116,7 @@ npm run check      # lint + tests: run before every commit
 | `npm run layout -- 7` | Top-down plan of stage 7's road: heights, bridges, tunnels, river, railways, near-misses between road sections |
 | `npm run terrain -- gorge` | Shaded relief map of a stage's terrain |
 | `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
+| `npm run ratings` | Measure every vehicle's pace (tarmac, loose) and toughness and how much each stat moves a lap → `src/data/ratings-data.js` (commit it; a test fails when it's stale) |
 | `npm run destruct [-- kmh]` | What each vehicle can smash: the speed it breaks each breakable from, and a real run into each at a set speed |
 | `npm run career -- [tier] [--car id] [--skill 0.88,0.95] [--v]` | Career pacing: every round of a tier raced by the AI at a casual and a good skill; places, stars, cash |
 | `npm run bench -- 5 7` | Render-time benchmark for stages 5 and 7 (software renderer: compare runs, not absolute ms) |
@@ -308,6 +309,20 @@ that panel (it opens and flies off with it). Rivals show the tier's parts (engin
 garage a car's upgrades screen is a turntable (`src/render/showcar.js`): a part goes on with the car up on jacks. Try
 any part on any car in the Workshop's Cars tab.
 
+### Disciplines and ratings
+
+Every car has two measured ratings, banded D C B A S (`src/data/ratings.js`): **pace** (% of lap time against the stock
+coupe, on tarmac and on loose stages: solo AI laps) and **toughness** (the coupe is 1: damage it deals hitting a parked
+car, over damage it takes in that crash and one into the Armco). `npm run ratings` measures them, and also how much a 10%
+change in each handling stat moves a lap, which is how a build's parts move its pace; a roll cage and armour scale
+its toughness the way the damage code uses them. The numbers live in `src/data/ratings-data.js` with a key of what they
+were measured from: change a vehicle's handling, the physics or the damage numbers and `tests/ratings.test.js` asks for
+a fresh `npm run ratings`.
+Disciplines (`src/data/disciplines.js`) are what a car is for: Road, Rally, Off-road, Heavy and Oddball by vehicle, and
+Derby earned by toughness B or better (so a roll cage can get a coupe in). A career event's entry is
+`{ disc, maxPace?, maxTough? }`: the discipline, and optional caps on the bands. The garage, the career's cards and the
+Workshop's Cars tab show both.
+
 ### The Workshop
 
 One place to try any part of the game on its own, without a race or the career around it: the menu's Workshop button,
@@ -372,6 +387,7 @@ has a note box; both go to Claude with the track.
    `grip`, `off`, `im`; hitbox `hw`/`hl`). The garage lists it, with its picture and stat bars.
 3. An AI rival to drive it in bigger fields: an entry in `MORE_RIVALS` (`src/data/cars.js`; the menu's Rivals setting goes
    up to 3 + that many).
+   Put it in its disciplines (`src/data/disciplines.js`) and run `npm run ratings` (commit `src/data/ratings-data.js`).
    Upgrade parts (`src/render/parts.js`) fit any body without per-car work: check a full build in the Workshop's Cars tab.
 4. `npm run check`: a test races every vehicle alone on a tarmac and a dirt stage and wants it within 10% of the coupe.
 

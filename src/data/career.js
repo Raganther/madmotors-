@@ -8,10 +8,11 @@
 // Champion of Champions, puts you up against every boss at once.
 // Rivals get quicker every tier (their skill is scaled, and their cars carry the tier's upgrade level), so the later
 // tiers need upgrades (the part slots of data/parts.js: engine, tyres, suspension, armour, aero, ram bar, roll cage), a better car and better driving. Some cups are
-// for one class of car (small, off-road, heavy, tarmac: CLASSES), so it pays to own more than one.
+// for one discipline (Road, Rally, Off-road, Heavy, Oddball, Derby: data/disciplines.js), so it pays to own more than one.
 // Pure data and rules: the UI keeps the state in localStorage and calls these; tests/career.test.js checks them.
 import { CAR_DEFS, MORE_RIVALS } from './cars.js';
 import { vehicleById } from './vehicles.js';
+import { entryOK } from './disciplines.js';
 import { PART_MAX, TYRE_KINDS, buildOf, buildVeh, slotById } from './parts.js';
 import { GEAR, GEAR_PRICE, SIGNATURES, WEAPONS, WEAPON_IDS, WEAPON_MAX, WEAPON_PRICE, loadoutOf } from './weapons.js';
 
@@ -27,19 +28,12 @@ export const SHOP = {
   snowcat: { price: 18000, tier: 2 }, hover: { price: 20000, tier: 2 },
   monster: { price: 26000, tier: 2 }, wedge: { price: 30000, tier: 2 }, formula: { price: 38000, tier: 3 }, rocket: { price: 45000, tier: 3 }, limo: { price: 50000, tier: 3 },
 };
-// ---------- classes and upgrades ----------
+// ---------- entry (disciplines) and upgrades ----------
 const STD = { accel: 1, top: 1, grip: 1, off: 1, im: 1 };
 const base = id => vehicleById(id).veh || STD;
-/** Car classes, judged on a vehicle's stock stats (data/vehicles.js). A cup with `cls` only takes cars of that class. */
-export const CLASSES = {
-  small: { name: 'Small', blurb: 'karts, trikes and bikes', test: id => base(id).im >= 1.5 },
-  offroad: { name: 'Off-road', blurb: 'off-road grip 1.1 or more', test: id => base(id).off >= 1.1 },
-  heavy: { name: 'Heavy', blurb: 'the heavyweights', test: id => base(id).im <= 0.6 },
-  tarmac: { name: 'Tarmac', blurb: 'road cars built for tarmac', test: id => base(id).off <= 1 && base(id).im >= 0.9 },
-};
-export const classesOf = id => Object.keys(CLASSES).filter(k => CLASSES[k].test(id));
-/** Can car id enter event ev? */
-export const allowed = (ev, id) => !ev.cls || CLASSES[ev.cls].test(id);
+/** Can car id (with build b: its parts, data/parts.js) enter event ev? Its entry is { disc, maxPace?, maxTough? }
+ *  (data/disciplines.js); an event without a disc is open to all. */
+export const allowed = (ev, id, b) => entryOK(ev, id, b);
 /** A vehicle's handling with upgrade levels `lv` (a build: data/parts.js; none = stock). */
 export const upgradedVeh = (id, lv) => buildVeh(base(id), lv);
 /** Respray car id in paint p (an index into PAINTS; -1 = its stock livery). */
@@ -118,33 +112,33 @@ export const TIERS = [
     mode('rookie-king', 'showdown', 'King of the Loop', 'Mountain Loop', drift(3), 'Showdown against three rivals: hold the lead to bank crown time'),
     onemake('ice-cream-derby', 'icecream', 'Ice Cream Derby', 'Village Green', hits(3), 'Everyone in an Ice Cream Van round the fete: pure driving'),
     boss('rookie-boss', 'Brannigan', 'monster', 'Red Mesa Canyon', 20, air(10), 'One on one with the Monster Truck over the jumps. Win it and it\'s yours'),
-    { id: 'pocket-rockets', kind: 'cup', cls: 'small', name: 'Pocket Rockets', blurb: 'Karts, trikes and sidecars only', rounds: [R('Sunday Park', hits(3)), R('Harbour Sprint', drift(4)), R('Village Green', clean())] },
+    { id: 'pocket-rockets', kind: 'cup', disc: 'oddball', name: 'Pocket Rockets', blurb: 'Oddballs only: karts, trikes, bikes and vans', rounds: [R('Sunday Park', hits(3)), R('Harbour Sprint', drift(4)), R('Village Green', clean())] },
   ] },
   { id: 'club', name: 'Club', blurb: 'Weekend racers who know the tracks', skill: 0.94, upg: 1, pay: 1.7, events: [
     { id: 'circuit-series', kind: 'cup', name: 'Circuit Series', blurb: 'Switchbacks, viaducts, jumps and a waterfall', rounds: [R('Mountain Loop', hits(8)), R('Mountain Pass', drift(6)), R('Ravenrock Gorge', clean()), R('Red Mesa Canyon', air(12)), R('Thunder Falls', hits(8))] },
-    { id: 'mud-snow', kind: 'cup', cls: 'offroad', name: 'Mud & Snow', blurb: 'Loose surfaces all the way: off-road cars only', rounds: [R('Quarry Run', air(3)), R('Bogwood Rally', air(8)), R('Frostpeak', drift(5)), R('Open Country', clean())] },
+    { id: 'mud-snow', kind: 'cup', disc: 'offroad', name: 'Mud & Snow', blurb: 'Loose surfaces all the way: off-road cars only', rounds: [R('Quarry Run', air(3)), R('Bogwood Rally', air(8)), R('Frostpeak', drift(5)), R('Open Country', clean())] },
     { id: 'high-roads', kind: 'cup', name: 'High Roads', blurb: 'Tunnels, ledges and a spire', rounds: [R('Mountain Pass', hits(8)), R('Corkscrew Spire', drift(6)), R('Temple Ruins', clean())] },
     trial('frost-attack', 'Frostpeak Time Attack', 'Frostpeak', 116.7),
     mode('falls-deuce', 'deuce', 'Deuce at the Falls', 'Thunder Falls', hits(4), 'Checkpoints, first to 4, win by two'),
     onemake('kart-chaos', 'kart', 'Kart Chaos', 'Corkscrew Spire', drift(4), 'Eight Go-Karts round the spire'),
     boss('club-boss', 'Lindqvist', 'wedge', 'Ravenrock Gorge', 26, clean(), 'The Group B ace on the viaducts. Beat Lindqvist and the Wedge is yours'),
     { id: 'downhill-classic', kind: 'cup', name: 'Downhill Classic', blurb: 'The four original downhill runs, top to bottom: fast, steep and unforgiving', rounds: [R('Summit Meadow', drift(2)), R('Pine Forest', clean()), R('Quarry Run', air(2)), R('Village Descent', hits(4))] },
-    { id: 'heavyweights', kind: 'cup', cls: 'heavy', name: 'Heavyweights', blurb: 'Trucks, vans and limos: the biggest wins', rounds: [R('Village Descent', hits(4)), R('Scrapyard Smash', air(3)), R('Mountain Pass', clean())] },
+    { id: 'heavyweights', kind: 'cup', disc: 'heavy', name: 'Heavyweights', blurb: 'Trucks, vans and limos: the biggest wins', rounds: [R('Village Descent', hits(4)), R('Scrapyard Smash', air(3)), R('Mountain Pass', clean())] },
   ] },
   { id: 'pro', name: 'Pro', blurb: 'Full-time drivers in sharp cars', skill: 0.97, upg: 2, pay: 2.6, events: [
     { id: 'wild-cup', kind: 'cup', name: 'Wild Cup', blurb: 'The wildest tracks, each with a shortcut to find', rounds: [R('Corkscrew Spire', clean()), R('Scrapyard Smash', air(4)), R('Mesa Leap', air(4)), R('Temple Ruins', hits(8)), R('Glacier Rift', drift(5))] },
-    { id: 'frozen-north', kind: 'cup', cls: 'offroad', name: 'Frozen North', blurb: 'Snow, ice and open country: off-road cars only', rounds: [R('Frostpeak', clean()), R('Glacier Rift', air(3)), R('Open Country', hits(6))] },
+    { id: 'frozen-north', kind: 'cup', disc: 'offroad', name: 'Frozen North', blurb: 'Snow, ice and open country: off-road cars only', rounds: [R('Frostpeak', clean()), R('Glacier Rift', air(3)), R('Open Country', hits(6))] },
     { id: 'long-haul', kind: 'cup', name: 'Long Haul', blurb: 'The big circuits', rounds: [R('Ravenrock Gorge', hits(12)), R('Flyover Tangle', drift(8)), R('Thunder Falls', clean())] },
     trial('mesa-attack', 'Mesa Time Attack', 'Mesa Leap', 114.3),
     mode('mesa-showdown', 'showdown', 'Mesa Showdown', 'Red Mesa Canyon', air(6), 'King of the Hill over the mesa jumps'),
     onemake('monster-mash', 'monster', 'Monster Mash', 'Scrapyard Smash', hits(6), 'Eight Monster Trucks in the scrapyard'),
     boss('pro-boss', 'Moreau', 'formula', 'Flyover Tangle', 28, drift(6), 'The Formula Racer through the flyovers. Win and it\'s yours'),
-    { id: 'tarmac-gp', kind: 'cup', cls: 'tarmac', name: 'Tarmac GP', blurb: 'Road cars on the smoothest circuits', rounds: [R('Mountain Loop', drift(6)), R('Flyover Tangle', hits(10)), R('Corkscrew Spire', clean()), R('Summit Meadow', drift(2))] },
+    { id: 'tarmac-gp', kind: 'cup', disc: 'road', name: 'Tarmac GP', blurb: 'Road cars on the smoothest circuits', rounds: [R('Mountain Loop', drift(6)), R('Flyover Tangle', hits(10)), R('Corkscrew Spire', clean()), R('Summit Meadow', drift(2))] },
   ] },
   { id: 'legend', name: 'Legend', blurb: 'The best in the mountains', skill: 0.98, upg: 3, pay: 3.8, events: [
     { id: 'grand-tour', kind: 'cup', name: 'Grand Tour', blurb: 'Six of the best, back to back', rounds: [R('Mountain Pass', clean()), R('Ravenrock Gorge', hits(12)), R('Thunder Falls', drift(6)), R('Bogwood Rally', air(10)), R('Glacier Rift', clean()), R('Temple Ruins', hits(10))] },
-    { id: 'dirt-masters', kind: 'cup', cls: 'offroad', name: 'Dirt Masters', blurb: 'Gravel, mud and snow, flat out: off-road cars only', rounds: [R('Quarry Run', clean()), R('Bogwood Rally', drift(6)), R('Frostpeak', hits(10)), R('Open Country', air(2)), R('Glacier Rift', drift(6))] },
-    { id: 'top-speed', kind: 'cup', cls: 'tarmac', name: 'Top Speed', blurb: 'Fast roads for fast tarmac cars', rounds: [R('Summit Meadow', clean()), R('Mountain Loop', drift(8)), R('Flyover Tangle', hits(12)), R('Mesa Leap', air(5)), R('Corkscrew Spire', clean())] },
+    { id: 'dirt-masters', kind: 'cup', disc: 'offroad', name: 'Dirt Masters', blurb: 'Gravel, mud and snow, flat out: off-road cars only', rounds: [R('Quarry Run', clean()), R('Bogwood Rally', drift(6)), R('Frostpeak', hits(10)), R('Open Country', air(2)), R('Glacier Rift', drift(6))] },
+    { id: 'top-speed', kind: 'cup', disc: 'road', name: 'Top Speed', blurb: 'Fast roads for fast tarmac cars', rounds: [R('Summit Meadow', clean()), R('Mountain Loop', drift(8)), R('Flyover Tangle', hits(12)), R('Mesa Leap', air(5)), R('Corkscrew Spire', clean())] },
     trial('flyover-attack', 'Flyover Time Attack', 'Flyover Tangle', 147.7),
     mode('legend-tiebreak', 'tiebreak', 'Legend Tiebreak', 'Temple Ruins', hits(6), 'Checkpoints, first to 7, win by two'),
     onemake('rocket-run', 'rocket', 'Rocket Run', 'Summit Meadow', clean(), 'Eight Rocket Cars down the mountain'),
@@ -224,7 +218,7 @@ function bossDef(name, vehicle, L, k) {
   return { ...asDef(d, vehicleById(vehicle)), skill: Math.min(1, d.skill * k + 0.02), veh, im: veh.im, build: buildOf(lv), wpn: rivalLoad(L, 'shield') };
 }
 function cupField(ev, T, ti) {
-  const ok = tierCars(ti).filter(id => allowed(ev, id)), lv = { eng: T.upg, tyr: T.upg, sus: T.upg }, order = DRIVERS.slice().sort((a, b) => hash(ev.id + a.name) - hash(ev.id + b.name));
+  const lv = { eng: T.upg, tyr: T.upg, sus: T.upg }, ok = tierCars(ti).filter(id => allowed(ev, id, buildOf(lv))), order = DRIVERS.slice().sort((a, b) => hash(ev.id + a.name) - hash(ev.id + b.name));
   const own = order.filter(d => ok.includes(d.vehicle)), rest = order.filter(d => !ok.includes(d.vehicle));
   const pick = [...own, ...rest].slice(0, CAREER_RIVALS);
   return pick.map((d, k) => {
@@ -241,7 +235,7 @@ export function careerPlayer(s, id = s.car, ev = null) {
   return { ...asDef(coupe, vehicleById(id), paint || vehicleById(id)), veh, im: veh.im, build: buildOf(own), wpn: loadoutOf(own) };
 }
 /** Can the player race event ev in their current car? (One-make races lend you the car.) */
-export const canEnter = (s, ev) => !!ev.make || allowed(ev, s.car);
+export const canEnter = (s, ev) => !!ev.make || allowed(ev, s.car, buildOf(s.cars[s.car]));
 /** Race defs for a round: the field, then the player at the back of the grid (from round 2 of a cup the grid lines up
  *  in reverse championship order: `order` is the championship order, best first). */
 export function careerDefs(s, ev, order = null) {

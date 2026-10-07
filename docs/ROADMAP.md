@@ -18,8 +18,9 @@ The plan agreed for the next stretch of work. Update the status table at the end
 | (F5 later) | Blender-authored part shapes and anchors; parts knocked off by damage; sidegrades for other slots | open |
 | F6 | Weapon modules: levels, loadouts, signature weapons | done: data/weapons.js (three levels for every weapon, gear: flares, shield, magnet), weapon numbers all in WPN, five signature weapons (water cannon, cement trail, stinger, crush, jingle) found by their own vehicle, mounts on the cabin's roof anchor, career Armoury per car (rivals by tier, bosses shielded), Workshop range levels and gear, balance per level |
 | (F6 later) | Weapon mounts as Blender parts; per-car pickup bias in the data; more signature weapons as new vehicles arrive | open |
-| G1 | Disciplines and ratings | next |
-| G2 | Events and scoring from data | planned |
+| G1 | Disciplines and ratings | done: npm run ratings measures pace (tarmac, loose) and toughness for every vehicle plus stat sensitivities, so any build is rated (bands D-S, data/ratings.js); a test fails when they're stale; disciplines Road, Rally, Off-road, Heavy, Oddball, Derby (earned by toughness) replace the classes; event entry { disc, maxPace?, maxTough? }; shown in the garage, career and Workshop |
+| (G1 later) | Use the caps in events (G5 tiers); ratings in the AI field picker | open |
+| G2 | Events and scoring from data | next |
 | G3 | Derby: mode, arenas, AI | planned |
 | G4 | Economy and pacing dashboard | planned |
 | G5 | Career v2 structure | planned |
@@ -294,4 +295,4 @@ F0 → F1 → F2 → F3 → { F4, F5, F6 can run in any order } → G1 → G2 �
   the user what to try in the Workshop.
 
 ## Next step
-G1: disciplines and ratings (the game layer starts), on its own PR.
+G2: events and scoring from data (formats and race / destruction weighting), on its own PR.

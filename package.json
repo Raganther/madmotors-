@@ -24,7 +24,8 @@
     "shot": "vite build --logLevel error && node tools/shot.mjs",
     "assets": "sh tools/assets.sh",
     "lab": "vite build --mode lab --outDir dist-lab",
-    "labshot": "vite build --logLevel error && node tools/labshot.mjs"
+    "labshot": "vite build --logLevel error && node tools/labshot.mjs",
+    "ratings": "node tools/ratings.mjs"
   },
   "dependencies": {
     "three": "0.128.0"
