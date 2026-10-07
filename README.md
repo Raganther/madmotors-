@@ -25,6 +25,14 @@ harpoon (hooks the car ahead: you're reeled in, they're held back). F fires. Cra
 racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets
 missiles and harpoons, the front oil and shockwaves). Q swings a door into the car beside you (the side is picked
 for you). The AI uses all of it. On touch there are Fire and Door buttons; a gamepad uses B and the bumpers.
+Weapons have levels and cars carry gear (`src/data/weapons.js`; a race def's `wpn: { lv, gear }`): each level swaps
+some of the core's `WPN` numbers (a longer gun burst, wider slicks, glue at level 3, a bigger shockwave, a longer tow,
+twin missiles). Gear works by itself: flares draw off a missile locked on to you, a shield soaks up the next hit, a
+magnet pulls crates in from across the road. Five vehicles find a **signature weapon** in crates too (`SIGNATURES`):
+the fire engine's water cannon, the mixer's cement trail, the police car's stinger, the monster truck's crush (a leap
+that slams whoever is near when it lands) and the ice cream van's jingle (everyone in earshot stutters). In the career
+they're bought per car in the garage's Armoury; rivals carry the tier's level, bosses a shield. The Workshop's Weapons
+range fires any weapon at any level at targets with any gear; `npm run balance -- --level 2` prices a level.
 
 **Leagues** (menu: Leagues; `src/data/leagues.js`, `src/ui/league.js`): a championship over a named run of stages
 (Rookie Cup, Circuit Series, Mud & Snow, Wild Cup), raced as Races against a fixed field of seven. Points go

@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { G } from '../game.js';
-import { missilePos, roadPos, WPN } from '../core/features/weapons.js';
+import { ITEMS, missilePos, roadPos, WPN } from '../core/features/weapons.js';
 import { emit } from './effects/particles.js';
 import { debris } from './effects/debris.js';
 import { shockwave } from './effects/rings.js';
-import { canvasTex } from './geometry.js';
+import { canvasTex, mergeAll } from './geometry.js';
+import { HALF } from '../core/constants.js';
 import { scene } from './renderer.js';
 import { race } from '../ui/flow.js';
 
@@ -14,7 +15,7 @@ import { race } from '../ui/flow.js';
 const L = c => new THREE.MeshLambertMaterial({ color: c }), B = c => new THREE.MeshBasicMaterial({ color: c });
 const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); return b; };
 const cyl = (r, l, m, x = 0, y = 0, z = 0) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 10).rotateX(Math.PI / 2), m); c.position.set(x, y, z); return c; };
-let missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, fi = 0, si = 0, di = 0;
+let jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, fi = 0, si = 0, di = 0;
 const MAXB = 80, _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _y = new THREE.Vector3(0, 1, 0);
 export function initWeaponVis() {
   const white = L(0xF2F2EE), red = L(0xD8203A), flame = B(0xFFB03A);
@@ -60,6 +61,22 @@ export function initWeaponVis() {
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0x2A2A2A })); line.frustumCulled = false; line.visible = false; scene.add(line);
     hookPool.push({ g, line });
   }
+  // wet cement: a grey splat with darker ridges (F6 signature: the mixer)
+  const cemTex = canvasTex(128, 128, (g, w, h) => {
+    const gr = g.createRadialGradient(w / 2, h / 2, w * 0.2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(150,148,140,1)'); gr.addColorStop(0.75, 'rgba(126,124,118,0.95)'); gr.addColorStop(1, 'rgba(110,108,100,0)');
+    g.fillStyle = gr; g.beginPath(); for (let a = 0; a <= 20; a++) { const t = a / 20 * Math.PI * 2, r = w * 0.48 * (0.82 + 0.12 * Math.sin(a * 3.1)); g.lineTo(w / 2 + Math.cos(t) * r, h / 2 + Math.sin(t) * r); } g.fill();
+    g.strokeStyle = 'rgba(90,88,84,0.6)'; g.lineWidth = 3; for (let k = 0; k < 5; k++) { g.beginPath(); g.arc(w / 2, h / 2, 10 + k * 9, k, k + 2.2); g.stroke(); }
+  });
+  cementPool = [];
+  for (let k = 0; k < 48; k++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(WPN.CEMENT_R * 2.3, WPN.CEMENT_R * 2.3).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: cemTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 })); m.renderOrder = 2; m.visible = false; scene.add(m); cementPool.push(m); }
+  // stinger: a black strip right across the road with a row of steel spikes (the police car's)
+  const spikes = []; for (let k = 0; k < 40; k++) spikes.push(new THREE.ConeGeometry(0.07, 0.22, 4).translate((k / 39 - 0.5) * HALF * 2, 0.13, (k % 2) * 0.12 - 0.06));
+  const stripG = mergeAll([new THREE.BoxGeometry(HALF * 2 + 0.6, 0.06, 0.42).translate(0, 0.03, 0), ...spikes]);
+  // the water cannon's jet: a pale cone of water from the nozzle, flickering, as long as the jet reaches
+  const jetTex = canvasTex(8, 64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.7)'); gr.addColorStop(1, 'rgba(255,255,255,1)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });   // fades out where the jet breaks up
+  const jetG = new THREE.CylinderGeometry(0.9, 0.16, 1, 12, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
+  jetPool = []; for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(jetG, new THREE.MeshBasicMaterial({ color: 0xCFEAFF, map: jetTex, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide })); m.visible = false; scene.add(m); jetPool.push(m); }
+  stripPool = []; for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(stripG, L(0x22252B)); m.visible = false; scene.add(m); stripPool.push(m); }
   // fireballs and flashes (additive glow sprites), smoke puffs (soft grey sprites), shockwave domes, and the red ring
   // under a car a missile is homing on
   const smokeTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
@@ -91,7 +108,7 @@ export function updateWeaponVis(dt, now) {
   if (G.state !== 'paused') updateFx(dt);
   const tr = G.world && G.world.tr, R = race, S = R && R.wpn, on = tr && G.state !== 'menu';
   if (targetRing) targetRing.visible = false;
-  for (const p of missiles) p.g.visible = false; for (const c of crates) c.g.visible = false; for (const m of slickPool) m.visible = false; for (const h of hookPool) { h.g.visible = false; h.line.visible = false; }
+  for (const p of missiles) p.g.visible = false; for (const c of crates) c.g.visible = false; for (const m of slickPool) m.visible = false; for (const m of cementPool) m.visible = false; for (const m of jetPool) m.visible = false; for (const m of stripPool) m.visible = false; for (const h of hookPool) { h.g.visible = false; h.line.visible = false; }
   if (tracers) tracers.count = 0;
   if (!on || !R) return;
   (R.missiles || []).forEach((m, k) => {
@@ -124,6 +141,22 @@ export function updateWeaponVis(dt, now) {
   tracers.count = nb;
   if (tracers.count) tracers.instanceMatrix.needsUpdate = true;
   S.slicks.forEach((o, j) => { const m = slickPool[j % slickPool.length], p = roadPos(tr, o.s, o.lat, 0.1); m.position.set(p.x, p.y, p.z); m.rotation.y = o.id; m.visible = true; const k = Math.min(1, o.t * 4) * (1 - (o.hits || 0) * 0.18); m.scale.setScalar(Math.max(0.3, k)); });
+  (S.cement || []).forEach((o, j) => { const m = cementPool[j % cementPool.length], p = roadPos(tr, o.s, o.lat, 0.09); m.position.set(p.x, p.y, p.z); m.rotation.y = o.id * 1.7; m.visible = true; const k = Math.min(1, o.t * 5) * (o.t > WPN.CEMENT_LIFE - 2 ? (WPN.CEMENT_LIFE - o.t) / 2 : 1); m.scale.setScalar(Math.max(0.05, k)); });
+  (S.strips || []).forEach((o, j) => { const m = stripPool[j % stripPool.length], p = roadPos(tr, o.s, 0, 0.02); m.position.set(p.x, p.y, p.z); m.rotation.y = tr.th[p.i]; m.visible = true; });
+  // the jets and tunes playing right now: the fire engine's water, the ice cream van's notes
+  let nj = 0;
+  for (const c of R.cars) {   // the jets (drawn even when paused)
+    const w = c.wpn; if (!w || !(w.waterT > 0) || nj >= jetPool.length) continue;
+    const m = jetPool[nj++], fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), L = WPN.WATER_R * (0.85 + 0.1 * Math.sin(now * 23 + nj));
+    m.visible = true; m.position.set((c.dx ?? c.x) + fx * (c.hl + 0.3), (c.dy ?? c.y) + 1.5, (c.dz ?? c.z) + fz * (c.hl + 0.3)); m.rotation.set(-0.06, c.yaw, 0); m.scale.set(1 + 0.15 * Math.sin(now * 31), 1, L); m.material.opacity = 0.35 + 0.15 * Math.sin(now * 17);
+  }
+  if (G.state === 'racing') for (const c of R.cars) {
+    const w = c.wpn; if (!w) continue;
+    if (w.waterT > 0) { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), x = (c.dx ?? c.x) + fx * (c.hl + 0.4), y = (c.dy ?? c.y) + 1.7, z = (c.dz ?? c.z) + fz * (c.hl + 0.4);
+      for (let k = 0; k < 6; k++) { const a = (Math.random() - 0.5) * WPN.WATER_CONE * 0.8, sp = 26 + Math.random() * 10, dx = Math.sin(c.yaw + a), dz = Math.cos(c.yaw + a); emit(x, y, z, c.vx + dx * sp, 1.5 + Math.random() * 2, c.vz + dz * sp, 0.7, 0.9 + Math.random() * 0.6, k % 3 ? 0xCFE8FF : 0xFFFFFF, -9, 'solid'); } }
+    if (w.jingleT > 0 && Math.random() < dt * 9) { const a = Math.random() * Math.PI * 2; emit((c.dx ?? c.x) + Math.cos(a) * 1.2, (c.dy ?? c.y) + 2.6, (c.dz ?? c.z) + Math.sin(a) * 1.2, Math.cos(a) * 2, 2.5, Math.sin(a) * 2, 1.2, 0.45, [0xF46FAE, 0xFFD21F, 0x8FD3FF][Math.floor(Math.random() * 3)], 1, 'solid'); }
+    if (w.jingleT > 0 && Math.floor(w.jingleT * 2) !== w.ringK) { w.ringK = Math.floor(w.jingleT * 2); shockwave(c.x, c.y, c.z, (w.jingleR || WPN.JINGLE_R) * 0.9, 0xF6B8D0); }
+  }
   S.hooks.forEach((h, j) => {
     const v = hookPool[j % hookPool.length], A = R.cars[h.from], T = h.to >= 0 ? R.cars[h.to] : null;
     const p = h.tow && T ? { x: T.dx ?? T.x, y: (T.dy ?? T.y) + 0.9, z: T.dz ?? T.z } : place(v.g, tr, h.s, h.lat, 1.0);
@@ -142,7 +175,7 @@ export function missileBlast(e) {
 }
 export function missilePuff(e) { flash(e.x, e.y, e.z, 4, 0xFFFFFF, 0.3); for (let k = 0; k < 10; k++) emit(e.x, e.y, e.z, (Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3, 0.8, 1.2, 0x9A9A9A, -0.8); }
 export function pickupFx(e) { shockwave(e.x, e.y, e.z, 3.5, 0xFFC72C); for (let k = 0; k < 14; k++) emit(e.x, e.y + 1.2, e.z, (Math.random() - 0.5) * 6, 3 + Math.random() * 4, (Math.random() - 0.5) * 6, 0.5, 0.5, k % 2 ? 0xFFC72C : 0x8A5A2B, -3, 'solid'); }
-export function pulseFx(c) { dome(c.x, c.y, c.z, WPN.PULSE_R, 0x6EC8FF); flash(c.x, c.y + 1, c.z, 7, 0x9ADCFF, 0.3); shockwave(c.x, c.y, c.z, WPN.PULSE_R, 0x6EC8FF); shockwave(c.x, c.y + 0.5, c.z, WPN.PULSE_R * 0.6, 0xCFEFFF); for (let k = 0; k < 30; k++) { const a = k / 30 * Math.PI * 2; emit(c.x, c.y + 0.8, c.z, Math.cos(a) * 16, 0.5, Math.sin(a) * 16, 0.4, 0.6, 0x9ADCFF, 0); } }
+export function pulseFx(c) { const PR = (c.wpn && c.wpn.pulseR) || WPN.PULSE_R; dome(c.x, c.y, c.z, PR, 0x6EC8FF); flash(c.x, c.y + 1, c.z, 7, 0x9ADCFF, 0.3); shockwave(c.x, c.y, c.z, PR, 0x6EC8FF); shockwave(c.x, c.y + 0.5, c.z, PR * 0.6, 0xCFEFFF); for (let k = 0; k < 30; k++) { const a = k / 30 * Math.PI * 2; emit(c.x, c.y + 0.8, c.z, Math.cos(a) * 16, 0.5, Math.sin(a) * 16, 0.4, 0.6, 0x9ADCFF, 0); } }
 export function oilDropFx(c) { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); for (let k = 0; k < 10; k++) emit(c.x - fx * 2.2, c.y + 0.5, c.z - fz * 2.2, (Math.random() - 0.5) * 2, 1 + Math.random() * 2, (Math.random() - 0.5) * 2, 0.5, 0.4, 0x1A1820, -9, 'solid'); }
 /** A round leaving the gun: a bright star at the muzzle, a puff of smoke, and a brass casing kicked out of the side. */
 export function muzzleFx(c) {
@@ -153,6 +186,23 @@ export function muzzleFx(c) {
 }
 export function bulletHitFx(e, from) {
   if (from) streaks.push({ a: { x: from.dx ?? from.x, y: (from.dy ?? from.y) + 1.4, z: from.dz ?? from.z }, b: { x: e.x, y: e.y + 0.8, z: e.z }, t: 0.09 }); flash(e.x, e.y + 0.4, e.z, 1.6, 0xFFFFFF, 0.12); for (let k = 0; k < 6; k++) emit(e.x, e.y, e.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.25, 0.25, 0xFFD27A, -4); }
+
+/** The monster truck landing on its crush: a dust ring, the ground shaking, bits flying. */
+export function crushFx(e) {
+  shockwave(e.x, e.y, e.z, e.r || WPN.CRUSH_R, 0xC9A26A); shockwave(e.x, e.y + 0.3, e.z, (e.r || WPN.CRUSH_R) * 0.6, 0xE8D5B0);
+  for (let k = 0; k < 8; k++) smoke(e.x + (Math.random() - 0.5) * 5, e.y + 0.5, e.z + (Math.random() - 0.5) * 5, 3 + Math.random() * 2, 0xB79C78, 1.4, 1);
+  for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; emit(e.x, e.y + 0.3, e.z, Math.cos(a) * 11, 2 + Math.random() * 3, Math.sin(a) * 11, 0.5, 0.6, 0x8A7356, -9, 'solid'); }
+}
+/** A shield taking a hit (gear): a blue bubble round the car. */
+export function shieldFx(c) { dome(c.x, c.y, c.z, 3.4, 0x7FD4FF); flash(c.x, c.y + 1, c.z, 4, 0xBFE8FF, 0.25); }
+/** Flares (gear): hot sparks fired up and back, drawing the missile off. */
+export function flaresFx(c) {
+  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+  for (let k = 0; k < 10; k++) { const s = k % 2 ? 1 : -1; emit(c.x - fx, c.y + 1.6, c.z - fz, c.vx * 0.6 - fx * 6 - fz * s * (3 + k), 7 + Math.random() * 3, c.vz * 0.6 - fz * 6 + fx * s * (3 + k), 1.4, 0.6, k % 3 ? 0xFFE08A : 0xFFFFFF, 6, 'solid'); }
+  flash(c.x, c.y + 2, c.z, 5, 0xFFE08A, 0.3);
+}
+/** A stinger puncture or a car bogging down in cement. */
+export function stingerFx(e) { flash(e.x, e.y + 0.4, e.z, 2, 0xFFFFFF, 0.12); for (let k = 0; k < 10; k++) emit(e.x, e.y + 0.3, e.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 2, (Math.random() - 0.5) * 6, 0.6, 0.3, 0x2A2A2A, -9, 'solid'); }
 
 // ---------- weapon mounts on the cars ----------
 // Every car has a mount under its roof: when it's holding a weapon, that weapon's module rises out of the roof
@@ -172,6 +222,11 @@ function module(item) {
   else if (item === 'oil') { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.8, 12).rotateZ(Math.PI / 2), L(0x1C1C22)); g.add(d); g.add(box(0.82, 0.1, 0.72, yel)); g.add(cyl(0.07, 0.5, steel, 0, -0.1, -0.5)); g.position.z = -0.4; }
   else if (item === 'pulse') { const t = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.09, 8, 20).rotateX(Math.PI / 2), steel); g.add(t); const core = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 8), new THREE.MeshBasicMaterial({ color: 0x6EC8FF })); core.position.y = 0.2; g.add(core); g.add(cyl(0.05, 0.5, steel, 0, 0.05, 0).rotateX(Math.PI / 2)); g.userData.core = core; }
   else if (item === 'harpoon') { g.add(box(0.36, 0.32, 0.5, dark)); g.add(cyl(0.12, 1.2, steel, 0, 0.06, 0.4)); const head = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.38, 6).rotateX(Math.PI / 2), L(0x3A3F46)); head.position.set(0, 0.06, 1.12); g.add(head); g.userData.head = head; }
+  else if (item === 'water') { g.add(cyl(0.3, 0.3, red, 0, 0, -0.1)); g.add(cyl(0.11, 1.3, steel, 0, 0.05, 0.6)); const tip = cyl(0.16, 0.18, L(0xC9A23A), 0, 0.05, 1.28); g.add(tip); g.rotation.x = -0.12; }
+  else if (item === 'cement') { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, 0.8, 10).rotateX(Math.PI / 2 - 0.5), L(0x8A8C90)); d.position.z = -0.5; g.add(d); g.add(box(0.3, 0.06, 0.7, L(0x6B6E73), 0, -0.2, -1.0)); }
+  else if (item === 'stinger') { g.add(box(1.1, 0.16, 0.36, L(0x22252B))); for (let k = 0; k < 5; k++) g.add(box(0.2, 0.17, 0.37, yel, -0.44 + k * 0.22, 0.005, 0)); g.position.z = -0.5; }
+  else if (item === 'crush') { for (let k = 0; k < 3; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 6, 14).rotateX(Math.PI / 2), red); t.position.y = k * 0.14; g.add(t); } }
+  else if (item === 'jingle') { const horn = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.6, 12, 1, true).rotateX(-Math.PI / 2), L(0xF6B8D0)); horn.position.z = 0.3; g.add(horn); g.add(cyl(0.12, 0.4, steel, 0, 0, -0.1)); g.userData.core = horn; }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
@@ -180,14 +235,15 @@ export function makeMount(v) {
   const p0 = v.root.position.clone(), q0 = v.root.quaternion.clone(); v.root.position.set(0, 0, 0); v.root.quaternion.identity(); v.root.updateMatrixWorld(true);
   const bb = new THREE.Box3(), tmp = new THREE.Box3();
   v.body.traverse(o => { if (o.isMesh && o.visible && o.geometry && !o.material.transparent) { o.geometry.computeBoundingBox(); tmp.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); bb.union(tmp); } });
+  // the roof anchor: the top of the cabin, over its middle (a wing or a roll cage's lamps stand clear of it)
+  const cb = v.cabin && new THREE.Box3().setFromObject(v.cabin), roof = cb && !cb.isEmpty() ? Math.max(cb.max.y, bb.isEmpty() ? 0 : bb.min.y + 0.8) : bb.isEmpty() ? 1.2 : bb.max.y;
   v.root.position.copy(p0); v.root.quaternion.copy(q0); v.root.updateMatrixWorld(true);
-  const roof = bb.isEmpty() ? 1.2 : bb.max.y;
-  const g = new THREE.Group(); g.position.y = roof - 0.05; v.body.add(g);
-  const mods = {}; for (const it of ['missile', 'gun', 'oil', 'pulse', 'harpoon']) { const m = module(it); m.visible = false; g.add(m); mods[it] = m; }
+  const g = new THREE.Group(); g.position.set(0, roof - 0.05, cb && !cb.isEmpty() ? (cb.min.z + cb.max.z) / 2 : 0); v.body.add(g);
+  const mods = {}; for (const it of ITEMS) { const m = module(it); m.visible = false; g.add(m); mods[it] = m; }
   return { g, mods, up: 0, held: null, kick: 0 };
 }
 export function updateMount(c, v, dt, now) {
-  const w = c.wpn, want = w.item || (w.gunT > 0 ? 'gun' : null);
+  const w = c.wpn, want = w.item || (w.gunT > 0 ? 'gun' : w.waterT > 0 ? 'water' : w.jingleT > 0 ? 'jingle' : w.cementT > 0 ? 'cement' : null);
   if (!want && !v.mount) return;
   if (!v.mount) v.mount = makeMount(v);
   const M = v.mount;

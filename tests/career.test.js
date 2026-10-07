@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bossOf, eventOpen, medals, paintCar, PAINTS, PAINT_PRICE, tierMaxStars, CAREER_RIVALS, CLASSES, allowed, fitTyres, buyUpgrade, careerPlayer, classesOf, upgradedVeh, SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, careerField, eventById, forSale, newCareer, podiumOf, roundsOf, scoreRace, tierCars, tierOpen, tierStars, topTier, totalStars } from '../src/data/career.js';
+import { bossOf, eventOpen, medals, paintCar, PAINTS, PAINT_PRICE, tierMaxStars, CAREER_RIVALS, CLASSES, allowed, fitTyres, armoury, buyWeapon, fitGear, buyUpgrade, careerPlayer, classesOf, upgradedVeh, SHOP, STARTERS, TIERS, awardTrophy, buyCar, careerDefs, careerField, eventById, forSale, newCareer, podiumOf, roundsOf, scoreRace, tierCars, tierOpen, tierStars, topTier, totalStars } from '../src/data/career.js';
 import { SLOTS } from '../src/data/parts.js';
 import { STAGES } from '../src/data/stages/index.js';
 import { VEHICLES } from '../src/data/vehicles.js';
@@ -113,6 +113,17 @@ describe('career classes and upgrades', () => {
     const g = fitTyres(s, 'coupe', 'gravel'), q = careerPlayer(g);
     expect(g.cash).toBe(s.cash); expect(g.cars.coupe.tyr).toBe(1); expect(q.veh.off).toBeCloseTo(1.03); expect(q.veh.grip).toBeCloseTo(1.02 * 1.01); expect(q.build.tyrKind).toBe('gravel');
     expect(fitTyres(g, 'coupe', 'gravel')).toBe(null); expect(fitTyres(g, 'coupe', 'road').cars.coupe.tyrKind).toBe(undefined);
+  });
+  it('the armoury: weapon levels per car (the signature weapon only on its own vehicle), gear bought once and swapped free; rivals and bosses are armed by tier', () => {
+    expect(armoury('coupe')).toEqual(['missile', 'gun', 'oil', 'pulse', 'harpoon']); expect(armoury('firetruck')).toContain('water'); expect(armoury('coupe')).not.toContain('water');
+    let s = { ...newCareer('coupe'), cash: 20000 };
+    s = buyWeapon(s, 'coupe', 'gun'); expect(s.cars.coupe.wl.gun).toBe(2); expect(s.cash).toBe(17500);
+    s = buyWeapon(s, 'coupe', 'gun'); expect(buyWeapon(s, 'coupe', 'gun')).toBe(null); expect(buyWeapon(s, 'coupe', 'water')).toBe(null);
+    s = fitGear(s, 'coupe', 'shield'); const c1 = s.cash; s = fitGear(s, 'coupe', 'flares'); s = fitGear(s, 'coupe', 'shield');
+    expect(s.cash).toBe(c1 - 3000); expect(s.cars.coupe.gear).toBe('shield');
+    expect(careerPlayer(s).wpn).toEqual({ lv: { gun: 3 }, gear: 'shield' }); expect(careerPlayer(newCareer('coupe')).wpn).toBe(null);
+    expect(careerField(TIERS[0].events[0])[0].wpn).toBe(null); expect(careerField(TIERS[3].events[0])[0].wpn.lv.missile).toBe(3);
+    expect(careerField(TIERS.find(t => t.id === 'club').events.find(e => e.kind === 'boss'))[0].wpn.gear).toBe('shield');
   });
   it('a career saved before the parts (F5) loads as it was', () => {
     const old = { ...newCareer('coupe'), cars: { coupe: { eng: 2, tyr: 1, sus: 3, arm: 1, paint: 4 } } }, p = careerPlayer(old);

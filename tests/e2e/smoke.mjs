@@ -135,7 +135,7 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   // upgrades: tune the hatch, buy engine level 1; a class cup (small cars only) won't take the hatch
   await page.click('[data-act="tune"][data-id="hatch"]'); await page.click('[data-act="upg"][data-u="eng"]'); await page.click('[data-act="tyres"][data-k="gravel"]');   // parts (data/parts.js): fitted on the turntable
   await page.waitForTimeout(1300);
-  const upg = await page.evaluate(() => ({ kind: JSON.parse(localStorage.getItem('downhill-rush-career')).cars.hatch.tyrKind, show: !!document.querySelector('.cr-show canvas'), eng: JSON.parse(localStorage.getItem('downhill-rush-career')).cars.hatch.eng, cash: JSON.parse(localStorage.getItem('downhill-rush-career')).cash, pips: document.querySelectorAll('.cr-urows li:first-child .cr-pip.on').length }));
+  const upg = await page.evaluate(() => ({ kind: JSON.parse(localStorage.getItem('downhill-rush-career')).cars.hatch.tyrKind, show: !!document.querySelector('.cr-show canvas'), eng: JSON.parse(localStorage.getItem('downhill-rush-career')).cars.hatch.eng, cash: JSON.parse(localStorage.getItem('downhill-rush-career')).cash, pips: document.querySelector('.cr-urows').querySelectorAll('li:first-child .cr-pip.on').length }));
   await page.screenshot({ path: path.join(outDir, 'career-upgrades.png') });
   await page.click('[data-act="garage2"]'); await page.click('[data-act="back"]'); await page.click('[data-act="hub"]');
   await page.click('.cr-item[data-id="pocket-rockets"]');
@@ -398,6 +398,17 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   await wp.evaluate(() => window.__dr.step(2.5)); await wp.waitForTimeout(400);
   const wlog = await wp.textContent('#ws-log'); if (!wlog.includes('Missile →')) fail('no missile hit on the dummies: ' + wlog);
   console.log('workshop weapons: ' + wlog.split('km/h')[0] + 'km/h...'); await wp.screenshot({ path: path.join(outDir, 'workshop-weapons.png') });
+  // F6: every weapon at level 3 (signature weapons included) at targets with shields; each one fired and used up
+  await wp.click('[data-lv="3"]'); await wp.click('[data-gear="shield"]');
+  const fired = [];
+  for (const it of ['missile', 'gun', 'oil', 'pulse', 'harpoon', 'water', 'cement', 'stinger', 'crush', 'jingle']) {
+    await wp.click('#ws-line'); await wp.click(`[data-it=${it}]`); await wp.click('#ws-fire');
+    const st = await wp.evaluate(() => { window.__dr.step(0.6); const w = window.__dr.race.player.wpn; return { lv: w.load && w.load.lv && w.load.lv.missile, busy: w.gunT > 0 || w.waterT > 0 || w.cementT > 0 || w.jingleT > 0 || w.crushT > 0 || window.__dr.race.missiles.length > 0 || w.uses < 2 }; });
+    fired.push(it + (st.busy ? '' : '?')); if (st.lv !== 3) fail('workshop: weapon level not set: ' + JSON.stringify(st));
+    if (it === 'water') await wp.screenshot({ path: path.join(outDir, 'workshop-water.png') });
+    await wp.evaluate(() => window.__dr.step(1.5));
+  }
+  console.log('workshop weapons at level 3 vs shields: ' + fired.join(' '));
   // the destruction yard: the monster truck through the concrete at 100 km/h, the blocks left on the road
   await wp.click('#ws-hub-btn'); await wp.waitForSelector('#ws-hub:not([hidden])'); await wp.click('[data-tab=destruct]'); await live('destruct');
   await wp.selectOption('#ws-car', 'monster'); await live('destruct'); await wp.waitForFunction(() => window.__dr.race.player.def.vehicle === 'monster', null, { timeout: 60000 });

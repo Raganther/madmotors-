@@ -21,7 +21,7 @@ import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
 import { camera, renderer, scene } from '../render/renderer.js';
 import { resetDirt } from '../render/effects/dirt.js';
-import { bulletHitFx, flash, missileBlast, missilePuff, mountKick, oilDropFx, pickupFx, pulseFx, smoke, muzzleFx } from '../render/weapons.js';
+import { bulletHitFx, crushFx, flaresFx, shieldFx, stingerFx, flash, missileBlast, missilePuff, mountKick, oilDropFx, pickupFx, pulseFx, smoke, muzzleFx } from '../render/weapons.js';
 import { landDust } from '../render/effects/carfx.js';
 import { carVis, setRoster, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
@@ -114,6 +114,15 @@ export function handleEvents() {
         case 'pulse-hit': flash(c.x, c.y + 1, c.z, 3.5, 0x9ADCFF, 0.3); for (let k = 0; k < 6; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.3, 0.3, 0xBFE8FF, -2); if (c.isPlayer) { callout('Shockwave! Engine out!'); G.shake = Math.min(1.4, G.shake + 0.7); } break;
         case 'harpoon-hit': { flash(c.x, c.y + 1, c.z, 2.2, 0xFFFFFF, 0.15); sparks(c.x, c.y + 0.8, c.z, 8); const by = race.cars[e.from]; if (c.isPlayer) callout(`Harpooned by ${by.name}!`); else if (by === race.player) callout(`Hooked ${c.name}!`); if (near) AudioSys.crash('metal', 0.4); break; }
         case 'missile-lock': if (c.isPlayer) { callout(`${race.cars[e.from].name} fired a missile at you!`); AudioSys.beep(1500, 0.1); AudioSys.tone(1200, 0.25, 0.05, 'square', 1.2); } break;
+        case 'water-hit': for (let k = 0; k < 10; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.6, 0.5, 0xCFE8FF, -9, 'solid'); if (c.isPlayer) callout('Soaked!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`Hosed ${c.name}!`); break;
+        case 'cement-hit': if (c.isPlayer) callout('Stuck in cement!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} is in your cement!`); break;
+        case 'stinger-hit': stingerFx(e); if (near) AudioSys.burst(0.3, 'highpass', 2400, 0.4); if (c.isPlayer) callout('Stinger! Tyres shredded'); else if (race.cars[e.from] === race.player) callout(`${c.name} hit the stinger!`); break;
+        case 'crush': crushFx(e); if (near) { AudioSys.crash('car', 1); AudioSys.burst(0.6, 'lowpass', 90, 0.6); G.shake = Math.min(1.4, G.shake + (c.isPlayer ? 0.8 : 0.4)); } break;
+        case 'crush-hit': if (c.isPlayer) callout('Crushed!'); else if (race.cars[e.from] === race.player) callout(`Crushed ${c.name}!`); break;
+        case 'jingle-hit': if (c.isPlayer) callout('Ice cream! Engine stuttering'); break;
+        case 'shield': shieldFx(c); if (near) AudioSys.tone(1200, 0.25, 0.05, 'sine', 0.6); if (c.isPlayer) callout('Shield!'); break;
+        case 'shield-hit': flash(e.x, e.y + 1, e.z, 2.5, 0x9ADCFF, 0.15); break;
+        case 'flares': flaresFx(c); if (near) AudioSys.burst(0.3, 'bandpass', 3000, 0.3); if (c.isPlayer) callout('Flares! Missile decoyed'); else if (race.cars[e.from] === race.player) callout(`${c.name} fired flares`); break;
         case 'missile-hit': missileBlast(e); if (near) { AudioSys.crash('car', 1); AudioSys.burst(0.7, 'lowpass', 140, 0.7); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1.1); callout('Hit by a missile!'); } else if (race.cars[e.from] === race.player) callout(`Direct hit on ${c.name}!`); break;
         case 'missile-fizzle': missilePuff(e); break;
         case 'door': if (near) AudioSys.burst(0.12, 'bandpass', 1500, 0.12); break;
@@ -135,7 +144,7 @@ export function handleEvents() {
   }
 }
 // the player's race for the career results: big airs, drift boosts, weapon hits on rivals (not bullets), wrecks, resets
-const HITS = ['missile-hit', 'harpoon-hit', 'pulse-hit', 'oil-hit'];
+const HITS = ['missile-hit', 'harpoon-hit', 'pulse-hit', 'oil-hit', 'water-hit', 'cement-hit', 'stinger-hit', 'crush-hit', 'jingle-hit'];
 function tally(c, e, pi) {
   const t = G.tally;
   if (c === race.player) { if (e.t === 'bigair') t.air++; else if (e.t === 'drift') t.drift++; else if (e.t === 'wreck') t.wrecks++; else if (e.t === 'respawn') t.respawns++; }
@@ -157,7 +166,7 @@ function cpPoint(e) {
   if (e.state !== 'win') callout(call ? (me ? `Checkpoint! ${call}` : call) : me ? `Checkpoint! ${pts}` : `${who} takes the gate`);
   AudioSys.tone(me ? 988 : 587, 0.16, 0.08, 'triangle', me ? 1.5 : 0.8);
 }
-export const ITEM_NAME = { missile: 'Homing missile', gun: 'Machine gun', oil: 'Oil slick', pulse: 'Shockwave', harpoon: 'Harpoon' };
+export const ITEM_NAME = { missile: 'Homing missile', gun: 'Machine gun', oil: 'Oil slick', pulse: 'Shockwave', harpoon: 'Harpoon', water: 'Water cannon', cement: 'Cement trail', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle' };
 // firing: the effect and sound for each weapon
 function useFx(c, item, near) {
   const v = near ? 1 : 0.4;
@@ -165,6 +174,11 @@ function useFx(c, item, near) {
   else if (item === 'oil') { oilDropFx(c); if (near) AudioSys.burst(0.2, 'lowpass', 500, 0.25); }
   else if (item === 'pulse') { pulseFx(c); AudioSys.burst(0.5 * v, 'lowpass', 160, 0.6); AudioSys.tone(180, 0.5, 0.08 * v, 'sine', 3); }
   else if (item === 'harpoon') { AudioSys.tone(900, 0.2, 0.06 * v, 'triangle', 0.4); AudioSys.burst(0.15 * v, 'bandpass', 1800, 0.15); }
+  else if (item === 'water') AudioSys.burst(0.4 * v, 'highpass', 1200, 2.4);
+  else if (item === 'cement') AudioSys.burst(0.3 * v, 'lowpass', 300, 1.5);
+  else if (item === 'stinger') AudioSys.tone(300, 0.15, 0.06 * v, 'square', 0.8);
+  else if (item === 'crush') { AudioSys.burst(0.4 * v, 'lowpass', 200, 0.4); if (c.isPlayer) AudioSys.tone(140, 0.4, 0.08, 'sawtooth', 2); }
+  else if (item === 'jingle') [784, 659, 698, 784, 880, 784, 659, 523].forEach((f, k) => setTimeout(() => AudioSys.tone(f, 0.22, 0.06 * v, 'triangle'), k * 240));   // the van's chimes
 }
 function sdCrown(e) {
   const pi = race.cars.indexOf(race.player), to = race.cars[e.to];
