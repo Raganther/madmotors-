@@ -464,6 +464,16 @@ has a note box; both go to Claude with the track.
    Upgrade parts (`src/render/parts.js`) fit any body without per-car work: check a full build in the Workshop's Cars tab.
 4. `npm run check`: a test races every vehicle alone on a tarmac and a dirt stage and wants it within 10% of the coupe.
 
+**A car in a family** (the quick way, G6): a car can be built from a shared chassis instead of by hand. `src/data/
+families.js` holds the families (`saloon`, `sports`: length, width, deck, nose and tail drop, the glasshouse, wheels,
+bumper, wing) and `FAMILY_CARS`, each car the few numbers it changes plus named extras (a taxi sign, a roof box, a
+light pod, spare tyres in a load bed, a cage, armour plates, mud flaps, side pipes, an open cockpit with the driver).
+The Classic body is `src/render/families.js`, the Blender one `blender/chassis.py`, both from the same numbers
+(`tools/assets.sh` hands them to Blender as JSON), so a new family car is: its `FAMILY_CARS` entry, its garage line
+in `src/data/vehicles.js` (model = its id), steps 3 and 4 above, then `npm run assets -- car-<id>` and a look in the
+Asset Lab (`npm run labshot -- <id>`: Blender beside Classic). A new extra goes in both builders. The first wave: City
+Cab, Rally Estate, Ranch Pickup and Banger (saloon), GT Racer and Roadster (sports).
+
 ## Blender assets (the asset lab)
 
 Every visual asset can come from two providers: the **Classic** builders (code: `render/carmodels.js`,

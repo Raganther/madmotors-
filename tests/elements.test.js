@@ -286,11 +286,11 @@ describe('the garage', () => {
     const std = raceDefs(VEHICLES[0]); expect(std.map(d => d.model)).toEqual(CAR_DEFS.map(d => d.model));
     expect(std.find(d => d.player).veh).toBeUndefined();
     const h = raceDefs(VEHICLES.find(v => v.id === 'hatch')); expect(h.find(d => d.player).model).toBe('hatch'); expect(h.filter(d => d.model === 'hatch').length).toBe(1);
-    expect(new Set(VEHICLES.map(v => v.id)).size).toBe(VEHICLES.length); expect(VEHICLES.length).toBe(19);
+    expect(new Set(VEHICLES.map(v => v.id)).size).toBe(VEHICLES.length); expect(VEHICLES.length).toBe(25);
   });
-  it('a full field: one of every vehicle, 19 cars on the grid, the player at the back; everyone gets round', () => {
+  it('a full field: one of every vehicle, 25 cars on the grid, the player at the back; everyone gets round', () => {
     const defs = raceDefs(VEHICLES[0], MAX_RIVALS);
-    expect(defs.length).toBe(19); expect(new Set(defs.map(d => d.model)).size).toBe(19); expect(defs.at(-1).player).toBe(true);
+    expect(defs.length).toBe(25); expect(new Set(defs.map(d => d.model)).size).toBe(25); expect(defs.at(-1).player).toBe(true);
     expect(raceDefs(VEHICLES.find(v => v.id === 'kart'), MAX_RIVALS).filter(d => d.model === 'kart').length).toBe(1);   // whoever drove it takes a coupe
     expect(raceDefs(VEHICLES[0], 1).map(d => d.name)).toEqual(['Okafor', 'You']);
     for (const st of [M.STAGES[0], M.STAGES[10]]) {
