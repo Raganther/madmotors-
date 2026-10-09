@@ -141,6 +141,8 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await page.click('.cr-item[data-id="pocket-rockets"]');
   const cls = await page.evaluate(() => ({ disabled: document.querySelector('#cr-actions .cta').disabled, why: (document.querySelector('#cr-actions .cr-lock') || {}).textContent }));
   await page.screenshot({ path: path.join(outDir, 'career-class.png') });
+  await page.click('.cr-drive[data-act="garage"]'); await page.waitForSelector('.cr-cars');   // the garage from an event that takes one discipline marks the cars that fit (it crashed: a shadowed helper)
+  if (!(await page.$('.cr-cars'))) errors.push('career garage from an event did not open'); await page.click('[data-act="back"]');
   if (upg.eng !== 1 || upg.kind !== 'gravel' || !upg.show || upg.cash !== 9000 - 1500 || upg.pips !== 1 || !cls.disabled || !/Oddball/.test(cls.why || '')) errors.push('career upgrades/classes: ' + JSON.stringify({ upg, cls }));
   await page.keyboard.press('Escape');
   console.log(`career: tabs ${tabs.join(' | ')}; round 1 scored, ${res.rows} in the table, bank $${res.cash}, tally ${JSON.stringify(res.tally)}; back to "${back.title}"; showroom ${shop.length} cars; engine level ${upg.eng}; Pocket Rockets refuses the hatch: ${cls.disabled}`);
