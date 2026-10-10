@@ -109,6 +109,10 @@ straights with boost pads and sweepers you can almost take flat. They're in the 
 foundations that heavy cars smash open, a spoil-heap kicker, two wrecking balls on the demolition block, a mud wallow,
 pallets of crates at the roadside), and **Seafront**, a tarmac lap with boost pads along the promenade by the sea, a cut
 along the sand round the pier, the harbour's lifting bridge and the old town. Both are in the career's oddball cups.
+**Village Hill** (stage 38) came from the user's Sketch pad: an off-piste climb (gates across a meadow, up through an
+alpine village, over a stream and a boulder field with rockfall), then a ridge road and switchbacks down to the start.
+A town on an open leg is plots only (no pavement, lamps or side roads), its plots keep off the open-country trail, and
+the AI's way across open country (`sim/nav.js`) goes round houses and walls and through fences.
 The stage list (`src/data/stages/index.js` LIST) is append only, versions included, so a stage's number never moves.
 
 **Track versions** (stages 30-35, `src/data/versions.js`): a stage at night or in the rain, made from the stage itself

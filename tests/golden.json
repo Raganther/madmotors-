@@ -1405,6 +1405,44 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Village Hill": {
+   "samples": 4254,
+   "loopN": 2054,
+   "terrain": [
+    247,
+    220,
+    164021.389
+   ],
+   "times": [
+    157.358,
+    155.225,
+    164.85,
+    161.025
+   ],
+   "respawns": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "wrecks": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "progress": [
+    4174.587,
+    4174.892,
+    4144.24,
+    4174.892
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 4,
+   "rocks": 4
   }
  },
  "walls": {

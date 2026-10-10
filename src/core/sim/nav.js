@@ -1,6 +1,7 @@
 import { HALF, SURF } from '../constants.js';
 import { clamp } from '../math.js';
 import { GATE, OPEN, TRAIL } from '../elements/open.js';
+import { BREAKABLES } from '../../data/breakables.js';
 
 // Finding the way across open country (elements/open.js). For every waypoint (each gate, and each place an open leg
 // rejoins a road) a distance field over a 2 m grid covering the open country: how far it is to drive to the waypoint
@@ -34,6 +35,16 @@ function build(W) {
     if (o.soft) { stamp(o.x, o.z, o.r + 1, k => { cost[k] += 0.6; }); continue; }
     if (!o.r) continue;
     stamp(o.x, o.z, o.r + NEAR, (k, d) => { if (d < o.r + BLOCK) cost[k] = Infinity; else cost[k] += 1.5; });
+  }
+  // the world kit's pieces (core/kit/layout.js: a village in open country): houses, barns and anything strong are
+  // walls to go round; a fence or a bin is only a little slower to go through
+  for (const p of (T.kit && T.kit.solid) || []) {
+    if (p.x < x0 - 20 || p.x > x1 + 20 || p.z < z0 - 20 || p.z > z1 + 20) continue;
+    const K = BREAKABLES[p.kind] || {}, wall = !(K.hp < 20), sy = Math.sin(p.yaw), cy = Math.cos(p.yaw), m = wall ? BLOCK : 0.5;
+    stamp(p.x, p.z, Math.hypot(p.w, p.d) / 2 + NEAR, k => {
+      const dx = x0 + (k % cols) * CELL - p.x, dz = z0 + Math.floor(k / cols) * CELL - p.z, a = Math.abs(dx * sy + dz * cy) - p.w / 2, b = Math.abs(dx * cy - dz * sy) - p.d / 2;
+      if (a < m && b < m) cost[k] = wall ? Infinity : cost[k] + 1.5; else if (wall && a < NEAR && b < NEAR && cost[k] !== Infinity) cost[k] += 1.5;
+    });
   }
   for (let i = 0; i < N; i++) if (tr.open[tr.bi(i)] === OPEN.stream) stamp(tr.xs[i], tr.zs[i], 70, k => { cost[k] += 0.3; });   // wading is slow anyway (the ford surface)
   // the trail (elements/open.js): quicker than the grass either side, so the AI takes it unless cutting across pays
