@@ -30,6 +30,7 @@ The plan agreed for the next stretch of work. Update the status table at the end
 | G5 | Career v2 structure | done: every tier runs Road, Rally, Off-road and Derby series and an Oddball cup (Rookie and Club Road capped at pace A; a derby series is a cup of derbies), Buggy and Cement Mixer moved to the Rookie showroom; boss tracks Monster Stadium, Old Town GP and Salt Flats; the Elite tier (opened by the final): twelve-car fields whose parts are matched to your car's pace, blocker and bomber personalities in core AI and weapons, a nemesis in every race with a record, seasons scored on every Elite race with prize money and titles; prestige (start again with the garage, sharper and better-built rivals, more pay); npm run career covers Elite and the season; tests/career-v2.test.js |
 | (G5 later) | A Workshop view of an Elite field (personas, rated builds); nemesis taunts and a rivalry screen; season-long sim test; Elite derby AI personalities | open |
 | G6 | Content waves | in progress: wave 1a done (track versions: data/versions.js night and rain from any stage, core/elements/weather.js wet grip and AI corner speeds, rain and headlight visuals, six versions raced in the career); wave 1b done (special tracks Building Site and Seafront, in the oddball cups; the stage list is append only); wave 1c done (car families: data/families.js chassis numbers drawn by render/families.js and blender/chassis.py; six cars: City Cab, Rally Estate, Ranch Pickup, Banger, GT Racer, Roadster, each with a rival, ratings and a showroom price; bigger grids close up). Next waves: more families toward ~20 new cars, reverse versions, a burning town |
+| Tools | Sketch pad: drawings for Claude | done: menu Sketch pad (src/ui/sketch.js): pen with Pencil pressure, marker, eraser, line, arrow, box, circle, words, ten colours, three sizes, undo/redo, pinch zoom, grid or plain paper; Send to Claude stores the picture and strokes as assets in the `sketches` collection, My sketches shows Claude's replies and reopens a sketch to draw on |
 | (G6 later) | Reverse versions; a burning town; more families |  open |
 
 
@@ -297,7 +298,7 @@ F0 → F1 → F2 → F3 → { F4, F5, F6 can run in any order } → G1 → G2 �
 - **Tools:** the phase's own headless tool (`destruct`, `balance`, `career`, `sandbox`) shows its target numbers.
 - **Visual changes:** screenshots from `npm run shot` / `npm run labshot`, before and after, which get looked at, plus
   `npm run bench` against the previous run.
-- **Ship:** publish to https://claude.ai/artifact/VWoYkDJ6JEu65zXEbELwwC. Update `docs/ROADMAP.md` status, and tell
+- **Ship:** publish to https://claude.ai/artifact/6PU1DKmhM5TwS8nRXJa92V. Update `docs/ROADMAP.md` status, and tell
   the user what to try in the Workshop.
 
 ## Next step

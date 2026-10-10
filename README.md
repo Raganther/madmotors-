@@ -469,6 +469,13 @@ In the game, the menu's **Track editor** (`src/ui/editor.js`, geometry in `src/c
 dragging from the open end carries the track on. The Comment tool pins notes anywhere on the plan, and each section
 has a note box; both go to Claude with the track.
 
+The menu's **Sketch pad** (`src/ui/sketch.js`) is for ideas that aren't a track yet: a 1600 x 1200 sheet (grid or
+plain) with a pen that follows Apple Pencil pressure, a marker, an eraser, line, arrow, box, circle and words, ten
+colours, three sizes, undo / redo and pinch zoom (with a Pencil, fingers only move the paper). Strokes are kept as
+data (`{ k, c, w, p: [x, y, pressure, ...] }`), so a sketch is redrawn from them and can be reopened. "Send to Claude"
+uploads the picture (PNG) and the strokes (JSON) as assets and writes a `sketches` doc; My sketches lists them with
+Claude's replies. Without the database they're kept in this browser.
+
 ## Adding a vehicle
 
 1. A body builder in `src/render/carmodels.js` (`MODELS.<name>`): outline, wheels (`K.wheels`), the damage parts, and

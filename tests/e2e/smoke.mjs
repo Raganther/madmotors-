@@ -274,6 +274,26 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   console.log(`editor: ${drawn} ${pins} comment; test drive ${drove ? 'ran' : 'FAILED'}; back in the editor ${back}`);
   await page.click('#ed-exit'); await page.evaluate(() => localStorage.removeItem('downhill-rush-editor'));
 }
+// sketch pad: a pen stroke and a box, undo and redo, send it (no database here: kept on this device), reopen it
+{
+  await page.evaluate(() => { localStorage.removeItem('downhill-rush-sketch'); localStorage.removeItem('downhill-rush-sketches'); });
+  await page.click('#sketch-btn'); await page.waitForTimeout(100);
+  const box = await page.locator('#sk-paper').boundingBox(), cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  await page.mouse.move(cx - 150, cy); await page.mouse.down();
+  for (let i = 1; i <= 30; i++) await page.mouse.move(cx - 150 + i * 10, cy + Math.sin(i / 4) * 60);
+  await page.mouse.up();
+  await page.click('#sk-tools [data-tool="rect"]'); await page.mouse.move(cx - 80, cy - 80); await page.mouse.down(); await page.mouse.move(cx + 80, cy + 80, { steps: 5 }); await page.mouse.up();
+  await page.click('#sk-undo'); await page.click('#sk-redo');
+  const strokes = await page.evaluate(() => JSON.parse(localStorage.getItem('downhill-rush-sketch')).strokes.map(s => s.k).join(','));
+  await page.fill('#sk-title', 'e2e: a sketch'); await page.click('#sk-send'); await page.fill('#sk-msg', 'e2e: a message'); await page.click('#sk-sendgo');
+  const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('downhill-rush-sketches') || '[]'));
+  await page.click('#sk-mine'); const items = await page.locator('#sk-listbody .sk-item').count();
+  await page.click('#sk-listclose'); await page.click('#sk-new'); await page.click('#sk-mine'); await page.click('#sk-listbody [data-open]');
+  const back = await page.evaluate(() => JSON.parse(localStorage.getItem('downhill-rush-sketch')).strokes.length);
+  if (strokes !== 'pen,rect' || kept.length !== 1 || kept[0].title !== 'e2e: a sketch' || !/^data:image/.test(kept[0].thumb) || items !== 1 || back !== 2) errors.push('sketch pad: ' + JSON.stringify({ strokes, kept: kept.length, items, back }));
+  console.log(`sketch pad: strokes ${strokes}; sent ${kept.length} (kept on this device), listed ${items}, reopened with ${back} strokes`);
+  await page.click('#sk-exit'); await page.evaluate(() => { localStorage.removeItem('downhill-rush-sketch'); localStorage.removeItem('downhill-rush-sketches'); });
+}
 // every camera: a Race draws from each (the perspective ones really are perspective), Showdown modes stay top-down
 {
   await page.evaluate(() => window.__dr.flow.startRace(6)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 6, null, { timeout: 30000 });

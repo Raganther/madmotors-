@@ -35,6 +35,13 @@ the shape and read every comment and note as the brief for that spot. Turn one i
 (its segs are already frozen metres; keep them, add the look and the set pieces the comments ask for), then `update`
 `tracks/<id>` with `{ reply, status: "done" }`.
 
+The menu's Sketch pad is the user drawing an idea for you (a track, a set piece, anything; not tied to an existing
+stage or size): collection `sketches` (title, message, `shot` = the picture, a PNG asset id: `Artifact` `read` with
+`path` = that id to see it; `strokes` = a JSON asset of the strokes on a 1600 x 1200 sheet; `of` = the sketch it was
+reopened from). Look at the picture, read the message as the brief, build what it asks for (a stage with `/new-stage`,
+a piece with `/new-element`), then `update` `sketches/<id>` with `{ reply, status: "done" }`; the reply shows in
+My sketches.
+
 The Asset Lab's Notes box lands in collection `assetNotes` (asset, pack, provider = blender|classic, text): in the
 game artifact's db when opened from the game's menu, in the lab artifact's db when opened on its own. Check both;
 answer the same way (`{ reply, status: "done" }`), rebuild with `npm run assets -- <pack>`.
@@ -54,8 +61,9 @@ answer the same way (`{ reply, status: "done" }`), rebuild with `npm run assets 
   draws one asks `blenderPack` / `sceneryPack` / `kitPack` and must keep its Classic path working (Models: Classic, and
   Auto on Graphics: Low). Behaviour (damage, animation, collisions) stays in code; a pack brings shapes, parts and pivots.
 - Publish by `npm run build && node tools/split.mjs dist`, then publishing `dist/publish/index.html` with
-  `files: { "game.js": "dist/publish/game.js" }` to the existing artifact, https://claude.ai/artifact/VWoYkDJ6JEu65zXEbELwwC
-  (pass it as `url`; it keeps its db + assets capabilities); dist is not committed. (A single-file page is over the
+  `files: { "game.js": "dist/publish/game.js" }` to the existing artifact, https://claude.ai/artifact/6PU1DKmhM5TwS8nRXJa92V
+  (pass it as `url`; it keeps its db + assets capabilities); dist is not committed. (It moved here on 2026-10-10: the
+  old game artifact could no longer be opened, so notes and tracks sent before then are not in this database.) (A single-file page is over the
   artifact size limit, ~4.7 MB; the error it gives talks about "pr-review machinery".) The user's notes and tracks live
   in that artifact's database. When assets or the lab change, also `npm run lab && node tools/split.mjs dist-lab` and
   publish `dist-lab/publish/index.html` (+ its game.js) to the lab artifact above. Work on a branch off `main` and merge
