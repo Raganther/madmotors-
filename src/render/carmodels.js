@@ -16,6 +16,9 @@ import { FAMILY_IDS, chassisOf } from '../data/families.js';
 // buildCarModel then cuts the body shell into a bonnet, a boot and doors on hinges (render/anatomy.js) and fits the
 // upgrade parts in def.build (render/parts.js).
 // +z is the front, y up, ground at 0. The garage (data/vehicles.js) lists them all.
+// number plates: white with a black border and a made-up registration (close-up dressing, K.dress)
+let plateM = null;
+const plateTex = () => { const c = document.createElement('canvas'); c.width = 128; c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#F4F2E8'; g.fillRect(0, 0, 128, 32); g.strokeStyle = '#111'; g.lineWidth = 3; g.strokeRect(2, 2, 124, 28); g.fillStyle = '#111'; g.font = 'bold 22px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('MAD 38', 64, 17); const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t; };
 const DARK = 0x2B2F3A, GLASS = 0x253450, CHROME = 0xD3D7DD, TYRE = 0x1E1E22, LAMP = 0xFFF6C8;
 // the Blender palette's names (blender/kit.py PALETTE) as the kit's colours; paint and accent come from the car
 export const HD_COL = { glass: GLASS, chrome: CHROME, trim: DARK, tyre: TYRE, hub: 0xC9CCD4, metal: 0x8D939C, white: 0xF4F4F0, red: 0xE0402F, yellow: 0xFFC72C, dark: 0x1C2340, wood: 0x8A5E3B, skin: 0xE0B08A,
@@ -102,6 +105,33 @@ function kit(def, root, body) {
       if (![zf, zr].every(z => [-hh / 2, hh / 2].every(y => flatAt(B.w / 2, y, z - p.z, 0) && flatAt(-B.w / 2, y, z - p.z, 0))) || !flatAt(0, B.h / 2, zf + 0.08 - p.z, 1)) return;
       for (const s of [-1, 1]) for (const z of [zf, zr]) add(0.008, hh, 0.014, p.x + s * (B.w / 2 + 0.002), p.y, z);   // door front and back
       add(B.w - 2 * B.r - 0.1, 0.008, 0.014, p.x, p.y + B.h / 2 + 0.002, zf + 0.08);                                  // bonnet
+    },
+    /** The small stuff a real car has (close-up only), placed from its main paint panel and its cabin: door mirrors in
+     *  body colour, door handles, number plates front and back, twin exhaust tips, wipers at the foot of the screen,
+     *  an aerial and a fuel cap. Only on a plain closed body (a box shell with a cabin on it): odd shapes keep theirs. */
+    dress(main, cabin, color, panels = {}, blender = false) {
+      // a mesh's size and middle: a kit box knows its own; anything else (a Blender body) from its geometry's bounds
+      const size = m => { if (!m) return null; const u = m.userData.box; if (u) return u.tilted ? null : { w: u.w, h: u.h, d: u.d, c: m.position }; const g = (m.userData.lod || [m.geometry])[0]; g.computeBoundingBox(); const b = g.boundingBox, v = b.getSize(new THREE.Vector3()); return { w: v.x, h: v.y, d: v.z, c: b.getCenter(new THREE.Vector3()).applyEuler(m.rotation).add(m.position) }; };
+      const B = size(main), C = size(cabin);
+      if (!B || !C || C.d < 0.9 || B.d < 2.5 || C.w > B.w + 0.05) return;
+      const p = B.c, q = C.c, yb = p.y - B.h / 2, zF = p.z + B.d / 2, zR = p.z - B.d / 2;
+      const add = (geo, c, x, y, z, ry = 0) => { const m = new THREE.Mesh(geo, typeof c === 'number' ? mat(c) : c); m.position.set(x, y, z); m.rotation.y = ry; m.visible = lod.on; body.add(m); lod.hi.push(m); return m; };
+      if (!plateM) plateM = new THREE.MeshLambertMaterial({ map: plateTex() });
+      const cF = q.z + C.d / 2, cY = q.y - C.h / 2;
+      for (const s of [-1, 1]) {
+        const mx = s * (C.w / 2 + 0.13); if (!blender) {
+        add(new THREE.BoxGeometry(0.2, 0.12, 0.08), color, mx, cY + 0.12, cF - 0.18);                     // mirror housing
+        add(new THREE.BoxGeometry(0.17, 0.09, 0.012), CHROME, mx, cY + 0.12, cF - 0.225);                 // its glass, facing back
+        add(new THREE.BoxGeometry(0.1, 0.04, 0.05), DARK, s * (C.w / 2 + 0.03), cY + 0.1, cF - 0.18);     // its arm
+        add(new THREE.BoxGeometry(C.w * 0.36, 0.015, 0.025), DARK, s * C.w * 0.2, cY + 0.025, cF + 0.07, s * 0.12); }   // wiper (a Blender body brings its own mirrors and wipers)
+        const h = add(new THREE.BoxGeometry(0.02, 0.035, 0.16), CHROME, s * (B.w / 2 + 0.012), p.y + B.h * 0.18, q.z + C.d * 0.05), door = panels[s > 0 ? 'doorL' : 'doorR'];   // door handle
+        if (door) door.attach(h);   // it opens (and flies off) with its door
+        add(new THREE.CylinderGeometry(0.045, 0.05, 0.16, 10).rotateX(Math.PI / 2), CHROME, s * Math.min(0.42, B.w * 0.22), yb + 0.1, zR - 0.04);   // exhaust tip
+      }
+      add(new THREE.PlaneGeometry(0.52, 0.12), plateM, 0, p.y + B.h * 0.08, zR - 0.016, Math.PI);         // rear plate, between the tail lights
+      add(new THREE.PlaneGeometry(0.52, 0.12), plateM, 0, p.y - B.h * 0.12, zF + 0.016);               // front plate
+      add(new THREE.CylinderGeometry(0.008, 0.012, 0.55, 5), DARK, -C.w * 0.34, q.y + C.h / 2 + 0.27, q.z - C.d * 0.35);   // aerial
+      add(new THREE.CylinderGeometry(0.06, 0.06, 0.012, 12).rotateZ(Math.PI / 2), DARK, B.w / 2 + 0.006, p.y + B.h * 0.2, zR + B.d * 0.18);   // fuel cap
     },
     /** Wheels: [x, z, radius, width] each; the front pair steers. knobbly = off-road tread blocks. */
     wheels(list, { knobbly = false, hub = 0xC9CCD4 } = {}) {
@@ -520,7 +550,12 @@ export function buildCarModel(def, root, body, provider) {
   const K = kit(def, root, body), pack = provider !== 'classic' && blenderPack('car-' + def.model, provider === 'blender');
   const out = pack ? buildBlenderCar(K, def, pack) : (MODELS[def.model] || MODELS.hatch)(K, def);
   const paint = K.dentable.filter(m => m !== out.cabin && m.userData.home.color === def.color && m.userData.box), vol = m => m.userData.box.w * m.userData.box.h * m.userData.box.d;
-  const panels = carvePanels(K, out, def, body, DARK);                                 // bonnet, boot and doors on hinges (render/anatomy.js)
+  const panels = carvePanels(K, out, def, body, DARK);
+  {   // mirrors, handles, plates, exhausts (close-up): on the biggest painted panel, kit box or Blender body
+    const bv = m => { const g = (m.userData.lod || [m.geometry])[0]; g.computeBoundingBox(); const v = g.boundingBox.getSize(new THREE.Vector3()); return v.x * v.y * v.z; };
+    const main = pack ? K.dentable.filter(m => m !== out.cabin && m.parent === body && m.userData.home && m.userData.home.color === def.color).sort((a, b) => bv(b) - bv(a))[0] : paint.slice().sort((a, b) => vol(b) - vol(a))[0];
+    K.dress(main, out.cabin, def.color, panels, !!pack);
+  }                                 // bonnet, boot and doors on hinges (render/anatomy.js)
   if (!Object.keys(panels).length) K.seams(paint.sort((a, b) => vol(b) - vol(a))[0], out.cabin);   // painted-on shut lines where there are no real ones
   const fit = fitParts(K, out, def.build, body, panels, { DARK, CHROME, LAMP, ACCENT: def.accent });   // upgrade parts (render/parts.js)
   mergeStatic(body, out, K);

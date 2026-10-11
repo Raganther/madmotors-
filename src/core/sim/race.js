@@ -48,6 +48,7 @@ export function raceStep(R, dt, W) {
     if (c.hold) {                                                                     // the Workshop's test cars (nothing else sets it): parked, or held at a speed
       const sp = Math.hypot(c.vx, c.vz); c.inp.steer = 0; c.inp.handbrake = 0;
       c.inp.throttle = typeof c.hold === 'number' && sp < c.hold ? 1 : 0; c.inp.brake = c.hold === true && c.vf > 0.5 ? 1 : 0;   // (brake at a standstill would reverse)
+      if (c.hold === true) c.stuckT = 0;                                              // parked on purpose: never 'stuck' and respawned
     }
     else if (R.derby && (!c.isPlayer || R.autoPlayer || c.out)) derbyControl(R, c, W);
     else if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt, R.hazards, R.sd && R.sd.gate);
