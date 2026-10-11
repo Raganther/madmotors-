@@ -76,6 +76,9 @@ every car and its parts, against rivals `PRESTIGE.SKILL` sharper and a parts lev
 `PRESTIGE_PAY` more prize money. The garage's paint shop resprays a car
 (`PAINTS`) for a fee; the player's career car wears it in the race. A cup's top three win a trophy (paid once per step up). Career races always have weapons on;
 Quick Race and Leagues are untouched. The state is one localStorage entry (`downhill-rush-career`).
+An event can carry `arms: { weapon: bias }` (the Artillery Cup, Barrage): every car's crate odds lean to those weapons
+(`careerDefs` puts it on each def's `wpn.bias`, read by `pickupOdds`). The new dirt stages and family cars have their
+own events: Hill & Dale (Rookie), the Artillery Cup and Van Wars (Club), Rally Raid (Pro), Dead Fast and Barrage (Legend).
 `npm run career` races every career round with the AI at a casual and a good player's skill and prints places,
 stars and cash: tune `TIERS`, prices and payouts against it.
 

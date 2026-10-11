@@ -207,11 +207,11 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   if (hub.heads.length < 6 || !hub.prestige || !hub.nem || el.n !== 12 || !el.nem || el.personas < 2 || !/nemesis Delgado/.test(el.news) || !el.season || !Object.keys(el.season.pts).length) errors.push('career elite: ' + JSON.stringify({ hub, ...el, news: el.news.slice(0, 200) }));
   console.log(`career elite: ${hub.heads.join(' | ')}; a round of ${el.n} cars, ${el.personas} with a personality, season points for ${el.season ? Object.keys(el.season.pts).length : 0}`);
 }
-// the Rivals setting: a full field of 25 (one of every vehicle), then down to a single rival; the meshes follow
+// the Rivals setting: a full field of 29 (one of every vehicle), then down to a single rival; the meshes follow
 {
   await page.evaluate(() => window.__dr.flow.toMenu()); await page.evaluate(() => { document.getElementById('garage').hidden = true; });
-  for (const [btn, want] of [['#rivals-more', 25], ['#rivals-less', 2]]) {
-    while (await page.$eval(btn, b => !b.disabled)) await page.click(btn);
+  for (const [btn, want] of [['#rivals-more', 29], ['#rivals-less', 2]]) {
+    while (await page.$eval(btn, b => !b.disabled)) await page.$eval(btn, b => b.click());   // pressed directly: behind a full field's menu the frames are too slow for click()'s stability wait
     await page.evaluate(() => window.__dr.flow.startRace(0)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 0, null, { timeout: 30000 });
     const got = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; for (let k = 0; k < 30; k++) d.step(1 / 30);
       return { n: d.race.cars.length, vis: d.carVis.length, same: d.race.cars.every((c, k) => d.carVis[k].def.model === c.def.model), rows: document.querySelectorAll('#standings li:not(.gap)').length }; });

@@ -37,6 +37,7 @@ import { addWeather, updateWeather } from './weather.js';
 import { addBreakables, newBreakablesRace, updateBreakables } from './breakables.js';
 import { addKit, newKitRace, updateKit } from './kit.js';
 import { addArena } from './arena.js';
+import { addAmbient, updateAmbient } from './ambient.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
 const river = { name: 'river', build(group, tr) { addRiver(group, tr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
@@ -93,5 +94,7 @@ const kit = { name: 'kit', build(group, tr, terr, stage) { addKit(group, tr, ter
 
 const weather = { name: 'weather', build(group, tr, terr, stage) { addWeather(group, stage); }, update(dt, now) { updateWeather(dt, now); } };   // rain and night (stage.rain, stage.night)
 
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather];
+const ambient = { name: 'ambient', build(group, tr, terr, stage) { addAmbient(group, terr, stage); }, update(dt, now) { updateAmbient(dt, now); } };   // a TV helicopter and birds (looks only)
+
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather, ambient];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };
