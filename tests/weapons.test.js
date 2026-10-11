@@ -21,11 +21,23 @@ describe('weapons', () => {
     R.cars.forEach((c, k) => put(c, 200 + k * 3, -5, 0));
     put(P, 300, -3, 25); put(T, 340, 3, 22);
     expect(M.missileTarget(R, P)).toBe(1);
-    P.wpn.item = 'missile'; P.wpn.uses = 1; P.inp.fire = true; M.raceStep(R, 1 / 120, Wd); expect(R.missiles.length).toBe(1); expect(P.wpn.item).toBe(null);
+    P.wpn.item = 'missile'; P.wpn.uses = 1; P.wpn.lockTgt = 1; P.wpn.lockK = 1;   // locked (the lock itself: the next test)
+    P.inp.fire = true; M.raceStep(R, 1 / 120, Wd); expect(R.missiles.length).toBe(1); expect(R.missiles[0].tgt).toBe(1); expect(P.wpn.item).toBe(null);
     let hit = null; for (let t = 0; t < 3 && !hit; t += 1 / 120) { M.raceStep(R, 1 / 120, Wd); hit = T.events.find(e => e.t === 'missile-hit'); T.events.length = 0; }
     expect(hit).toBeTruthy(); expect(hit.from).toBe(2);
     expect(Math.hypot(T.vx, T.vz)).toBeLessThan(12); expect(Math.abs(T.spin)).toBeGreaterThan(1);
     expect(T.wreckT > 0).toBe(false);                                                   // it hurts, it doesn't wreck
+  });
+  it('the lock: it builds while the car ahead stays in your sights; fired early the missile flies straight, fired locked it homes', () => {
+    const { R, Wd } = race(true), P = R.player, T = R.cars[1];
+    R.cars.forEach((c, k) => put(c, 200 + k * 3, -5, 0)); put(P, 300, -3, 0); put(T, 340, 3, 0);
+    P.wpn.item = 'missile'; P.wpn.uses = 1; const seen = [];
+    for (let k = 0; k < 30; k++) { M.raceStep(R, 1 / 120, Wd); put(P, 300, -3, 0); put(T, 340, 3, 0); }   // a quarter of a second: not locked yet
+    expect(P.wpn.lockTgt).toBe(1); expect(P.wpn.lockK).toBeGreaterThan(0.1); expect(P.wpn.lockK).toBeLessThan(1); expect(M.lockedOn(R, P)).toBe(-1);
+    for (let k = 0; k < 150; k++) { M.raceStep(R, 1 / 120, Wd); put(P, 300, -3, 0); put(T, 340, 3, 0); seen.push(...P.events.map(e => e.t)); P.events.length = 0; }
+    expect(M.lockedOn(R, P)).toBe(1); expect(seen).toContain('locked');
+    P.wpn.lockK = 0.5; P.inp.fire = true; M.raceStep(R, 1 / 120, Wd); expect(R.missiles[0].tgt).toBe(-1);   // early: a dumb shot
+    R.missiles.length = 0; P.wpn.item = 'missile'; P.wpn.uses = 1; P.wpn.lockTgt = 1; P.wpn.lockK = 1; P.inp.fire = true; M.raceStep(R, 1 / 120, Wd); expect(R.missiles[0].tgt).toBe(1);
   });
   it('one door button: it swings on whichever side the car is, shoves it away and dents it a little', () => {
     for (const lat of [3, -3]) {
@@ -71,7 +83,7 @@ describe('weapons', () => {
 describe('weapon modules', () => {
   const raceW = (pdef = {}, odef = {}) => { seedRandom(9); const Wd = W(), defs = DEFS.map(d => d.player ? { ...d, ...pdef } : { ...d, ...odef }); const R = M.createRace(Wd, defs, { weapons: true }); R.phase = 'racing'; return { R, Wd, P: R.player }; };
   // the player at `at` holding `item`, the others at `gaps` along and `lats` across from it
-  const setup = (item, lats, gaps, pdef, odef, at = 400) => { const s = raceW(pdef, odef), { R, P } = s; R.cars.forEach((c, k) => put(c, 150 + k * 20, 0, 0)); put(P, at, 0, 22); R.cars.filter(c => c !== P).forEach((c, k) => put(c, at + gaps[k], lats[k], 22)); P.wpn.item = item; P.wpn.uses = M.ITEM_USES[item]; P.inp.fire = true; return s; };
+  const setup = (item, lats, gaps, pdef, odef, at = 400) => { const s = raceW(pdef, odef), { R, P } = s; R.cars.forEach((c, k) => put(c, 150 + k * 20, 0, 0)); put(P, at, 0, 22); R.cars.filter(c => c !== P).forEach((c, k) => put(c, at + gaps[k], lats[k], 22)); P.wpn.item = item; P.wpn.uses = M.ITEM_USES[item]; if (item === 'missile') { P.wpn.lockTgt = M.missileTarget(R, P); P.wpn.lockK = 1; } P.inp.fire = true; return s; };
   const run = (R, Wd, secs, on) => { for (let k = 0; k < secs * 120; k++) { M.raceStep(R, 1 / 120, Wd); for (const c of R.cars) { if (on) c.events.forEach(e => on(e, c)); c.events.length = 0; } } };
   const L3 = it => ({ wpn: { lv: { [it]: 3 } } });
   it('levels: a longer gun burst, a wider pulse, twin missiles, glue in the oil', () => {
@@ -80,6 +92,18 @@ describe('weapon modules', () => {
     { const { R, Wd } = setup('missile', [-3, 3, 0], [30, 45, -70], L3('missile')); M.raceStep(R, 1 / 120, Wd); expect(R.missiles.length).toBe(2); expect(new Set(R.missiles.map(m => m.tgt)).size).toBe(2); }
     const after = lv => { const { R, Wd } = setup('oil', [0, 5, -5], [-14, -60, -60], lv); let v = 99; run(R, Wd, 2, (e, c) => { if (e.t === 'oil-hit') v = Math.hypot(c.vx, c.vz); }); return v; };
     expect(after(L3('oil'))).toBeLessThan(after({}) - 3);
+  });
+  it('the mortar: a shell lands where the car ahead will be, throws and dents it, and leaves a crater that jolts the next car through', () => {
+    const { R, Wd, P } = setup('mortar', [0, 6, -6], [55, -60, -70]), T = R.cars[0]; const seen = [];
+    M.raceStep(R, 1 / 120, Wd); expect(R.wpn.shells.length).toBe(1); expect(R.wpn.shells[0].tgt).toBe(0);
+    run(R, Wd, 2.2, (e, c) => { if (c === T) seen.push(e.t); });
+    expect(seen).toContain('mortar-hit'); expect(T.dmg.f + T.dmg.b + T.dmg.l + T.dmg.r).toBeGreaterThan(0);
+    expect(R.wpn.craters.length).toBe(1);
+    const k = R.wpn.craters[0], hits = []; put(P, Math.round(k.s) - 12, k.lat, 22); P.inp.throttle = 0; P.inp.steer = 0;   // the player, hands off, straight at it
+    run(R, Wd, 1.2, (e, c) => { if (c === P) hits.push(e.t); });
+    expect(hits).toContain('crater-hit');
+    expect(L3('mortar').wpn.lv.mortar).toBe(3);
+    { const s3 = setup('mortar', [0, 6, -6], [55, -60, -70], L3('mortar')); M.raceStep(s3.R, 1 / 120, s3.Wd); expect(s3.R.wpn.shells.length).toBe(3); expect(s3.R.wpn.shells[0].r).toBeGreaterThan(6.5); }
   });
   it('gear: flares draw a missile off, a shield soaks up a hit, then both recharge', () => {
     for (const gear of ['flares', 'shield']) {
@@ -90,11 +114,13 @@ describe('weapon modules', () => {
     }
   });
   it('signature weapons come with their vehicle, and only with it', () => {
-    const { R, Wd } = raceW({ vehicle: 'firetruck' }); R.autoPlayer = true; const got = [];
-    run(R, Wd, 150, (e, c) => { if (e.t === 'pickup') got.push([c.isPlayer, e.item]); });
+    const { R, Wd } = raceW({ vehicle: 'firetruck' }), got = [];
     expect(R.player.wpn.sig).toBe('water');
-    expect(got.some(([p, it]) => p && it === 'water')).toBe(true);
-    expect(got.some(([p, it]) => !p && M.SIG_ITEMS.includes(it))).toBe(false);
+    const odds = c => Object.fromEntries(M.ITEMS.map((it, q) => [it, M.pickupOdds(R, c)[q]]));
+    expect(odds(R.player).water).toBeGreaterThan(1); for (const it of M.SIG_ITEMS) if (it !== 'water') expect(odds(R.player)[it]).toBe(0);
+    for (const c of R.cars) if (!c.isPlayer) for (const it of M.SIG_ITEMS) expect(odds(c)[it]).toBe(0);
+    R.autoPlayer = true; run(R, Wd, 150, (e, c) => { if (e.t === 'pickup') got.push([c.isPlayer, e.item]); });
+    expect(got.length).toBeGreaterThan(8); expect(got.some(([p, it]) => !p && M.SIG_ITEMS.includes(it))).toBe(false);
   });
   it('the water cannon shoves the car ahead aside, cement and the stinger catch the car behind, the crush slams a neighbour, the jingle stutters everyone near', () => {
     const lat0 = (() => { const { R, Wd } = setup('water', [0, 5, -5], [14, -60, -70]); R.player.inp.fire = false; run(R, Wd, 1.5); return R.cars[0].pr.lat; })();

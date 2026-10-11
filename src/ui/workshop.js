@@ -137,7 +137,7 @@ function lineUp() {
 function give(it) { const w = P().wpn; if (!w) return; w.item = it; w.uses = ITEM_USES[it]; arm(); }
 // the level on the player's weapons and the gear on the targets (data/weapons.js), straight onto the race's cars
 function arm() { const w = P().wpn; if (!w) return; w.load = { lv: Object.fromEntries(ITEMS.map(k => [k, S.lv])) }; for (const c of rivals()) if (c.wpn) c.wpn.gear = S.gear || null; }
-const HITS = { 'missile-hit': 'Missile', 'bullet-hit': 'Bullet', 'oil-hit': 'Oil', 'pulse-hit': 'Shockwave', 'harpoon-hit': 'Harpoon', 'door-hit': 'Door' };
+const HITS = { 'missile-hit': 'Missile', 'mortar-hit': 'Mortar', 'crater-hit': 'Crater', 'bullet-hit': 'Bullet', 'oil-hit': 'Oil', 'pulse-hit': 'Shockwave', 'harpoon-hit': 'Harpoon', 'door-hit': 'Door' };
 function onEvent(c, e) {
   if (S.tab === 'destruct' && c.isPlayer) {
     if (e.t === 'break') { S.outcome = 'broke'; log(`Smashed through the ${BREAKABLES[e.kind].name.toLowerCase()} at ${Math.round(e.v * 3.6)} km/h`); }

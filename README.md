@@ -19,15 +19,21 @@ drive *through* it scores (a leader on the wrong line can miss it). Win by two, 
 (3-3 is deuce, then advantage), Tiebreak first to 7. The rules are in the same file (`R.sd.kind`, `CP`).
 
 **Weapons** (menu: Weapons on/off, every mode; `src/core/features/weapons.js`): drive through a **?** crate with
-nothing in hand to get one of five weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
-tracers), an oil slick (two, dropped behind), a shockwave (blows the cars round you away and cuts their engines) and a
-harpoon (hooks the car ahead: you're reeled in, they're held back). F fires. Crates are offered up the road to every
+nothing in hand to get one of six weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
+tracers), an oil slick (two, dropped behind), a shockwave (blows the cars round you away and cuts their engines), a
+harpoon (hooks the car ahead: you're reeled in, they're held back) and a mortar. F fires. The missile has to **lock**
+first: holding one, keep the car ahead in your sights and corner brackets close in on it (`WPN.LOCK_T`, quicker at
+level 2) until they flash red: fired locked it homes in on that car, fired early it flies straight down the road
+(`lockedOn`; the target hears the lock and gets a warning). The **mortar** lobs a shell high onto where the car ahead
+will be (a red ring on the road shows where it's coming down, so it can be dodged); the blast throws everyone near
+and leaves a **crater** in the road (missiles that miss leave small ones) that jolts, scrubs and knocks aside any car
+driving into it for the rest of the race, and the AI steers round craters and rings (`W.craters`, `sim/ai.js`). Crates are offered up the road to every
 racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets
 missiles and harpoons, the front oil and shockwaves). Q swings a door into the car beside you (the side is picked
 for you). The AI uses all of it. On touch there are Fire and Door buttons; a gamepad uses B and the bumpers.
 Weapons have levels and cars carry gear (`src/data/weapons.js`; a race def's `wpn: { lv, gear }`): each level swaps
 some of the core's `WPN` numbers (a longer gun burst, wider slicks, glue at level 3, a bigger shockwave, a longer tow,
-twin missiles). Gear works by itself: flares draw off a missile locked on to you, a shield soaks up the next hit, a
+twin missiles, a bigger mortar blast, then a three-shell barrage). Gear works by itself: flares draw off a missile locked on to you, a shield soaks up the next hit, a
 magnet pulls crates in from across the road. Five vehicles find a **signature weapon** in crates too (`SIGNATURES`):
 the fire engine's water cannon, the mixer's cement trail, the police car's stinger, the monster truck's crush (a leap
 that slams whoever is near when it lands) and the ice cream van's jingle (everyone in earshot stutters). In the career

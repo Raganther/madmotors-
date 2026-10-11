@@ -30,7 +30,7 @@ export { mudRuns } from './elements/mud.js';
 export { ICE_SLOW } from './elements/ice.js';
 export { HAMMER, hammerLat } from './elements/hammer.js';
 export { ARENA, arenaOut, arenaWall, inArena, arenaPit } from './elements/arena.js';
-export { ITEMS, ITEM_USES, SIG_ITEMS, WPN, doorSide, missilePos, missileTarget, wv } from './features/weapons.js';
+export { ITEMS, ITEM_USES, SIG_ITEMS, WPN, doorSide, lockedOn, missilePos, missileTarget, mortarTarget, pickupOdds, wv } from './features/weapons.js';
 export { STAGES } from '../data/stages/index.js';
 export { FEATURES } from './features/index.js';
 export * from './sim/view.js';
