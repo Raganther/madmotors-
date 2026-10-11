@@ -439,7 +439,7 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   const wall = await crash('wall'); if (!(await wp.evaluate(() => Math.max(window.__dr.race.player.dmg.l, window.__dr.race.player.dmg.r)) > 0)) fail('the Armco crash did no damage');
   console.log(`workshop crash: side-on damage ${side.map(d => d.toFixed(2))}, Armco ${wall.map(d => d.toFixed(2))}`); await wp.screenshot({ path: path.join(outDir, 'workshop-crash.png') });
   await wp.click('#ws-hub-btn'); await wp.waitForSelector('#ws-hub:not([hidden])'); await wp.click('[data-tab=weapons]'); await live('weapons');
-  await wp.click('[data-it=missile]'); await wp.click('#ws-fire');
+  await wp.click('[data-it=missile]'); await wp.evaluate(() => window.__dr.step(1.5)); await wp.click('#ws-fire');   // hold it on the dummies for the lock first
   await wp.evaluate(() => window.__dr.step(2.5)); await wp.waitForTimeout(400);
   const wlog = await wp.textContent('#ws-log'); if (!wlog.includes('Missile →')) fail('no missile hit on the dummies: ' + wlog);
   console.log('workshop weapons: ' + wlog.split('km/h')[0] + 'km/h...'); await wp.screenshot({ path: path.join(outDir, 'workshop-weapons.png') });
