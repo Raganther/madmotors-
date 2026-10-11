@@ -24,6 +24,10 @@ export const FAMILY_CARS = {
   pickup: { family: 'saloon', base: 0.62, deck: 1.22, cab: { zf: 0.4, zr: -0.45, roof: 1.78 }, bed: true, wheels: [1.0, 1.25, -1.2, 0.52, 0.4], knobbly: true, bumper: 'bar', extras: ['tyres', 'lamps'] },
   stockcar: { family: 'saloon', bumper: 'bar', extras: ['cage', 'plates'] },
   gt: { family: 'sports', W: 2.0, wing: 2, extras: ['pipes'] },
+  van: { family: 'saloon', L: 2.15, W: 1.9, base: 0.4, deck: 1.05, nose: 0.15, tail: 0, cab: { zf: 1.05, zr: -2.0, roof: 2.05, rake: 0.55, taper: 0.95 }, wheels: [0.92, 1.35, -1.45, 0.38, 0.3], bumper: 'black', extras: ['rack'] },
+  hearse: { family: 'saloon', L: 2.4, cab: { zf: 0.55, zr: -2.12, roof: 1.56, taper: 0.9 }, wheels: [0.92, 1.42, -1.7, 0.38, 0.3], bumper: 'chrome', extras: [] },
+  pocket: { family: 'sports', L: 1.7, W: 1.86, cab: { zf: 0.35, zr: -1.45, roof: 1.42, rake: 0.45, taper: 0.86 }, wheels: [0.9, 1.1, -1.1, 0.36, 0.32], bumper: 'black', wing: 1, extras: ['pipes'] },
+  drift: { family: 'sports', W: 2.02, wing: 2, bumper: 'black', extras: ['flaps', 'pipes'] },
   roadster: { family: 'sports', L: 1.82, cab: { zf: 0.15, zr: -0.5, roof: 1.0 }, open: true, wheels: [0.94, 1.18, -1.1, 0.36, 0.32], bumper: 'chrome', wing: 0, extras: ['helmet'] },
 };
 /** The full chassis for family car id: the family's numbers with the car's on top. */

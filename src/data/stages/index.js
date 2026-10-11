@@ -31,13 +31,15 @@ import saltFlats from './salt-flats.js';
 import buildingSite from './building-site.js';
 import seafront from './seafront.js';
 import villageHill from './village-hill.js';
+import duneRally from './dune-rally.js';
+import highlandRally from './highland-rally.js';
 import { versionOf } from '../versions.js';
 
 // Stages and track versions (data/versions.js: [stage name, 'night' | 'rain'], made from a stage listed earlier), in menu
 // order. Append only: a stage's number never moves.
 const LIST = [summitMeadow, pineForest, quarryRun, villageDescent, mountainLoop, mountainPass, ravenrockGorge, redMesa, thunderFalls, bogwoodRally, frostpeak, corkscrewSpire, scrapyardSmash, mesaLeap, glacierRift, templeRuins, flyoverTangle, openCountry, sundayPark, harbourSprint, hayBaleFarm, villageGreen, scrapyardBowl, mudPit, stadium, bangerOval, monsterStadium, oldTownGp, saltFlats,
   ['Mountain Loop', 'night'], ['Old Town GP', 'night'], ['Salt Flats', 'night'], ['Harbour Sprint', 'rain'], ['Ravenrock Gorge', 'rain'], ['Bogwood Rally', 'rain'],
-  buildingSite, seafront, villageHill];
+  buildingSite, seafront, villageHill, duneRally, highlandRally];
 /** The track versions raced: [stage name, version]. */
 export const VERSIONED = LIST.filter(Array.isArray);
 export const STAGES = [];

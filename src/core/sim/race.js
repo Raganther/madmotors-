@@ -14,7 +14,7 @@ import { healCar } from './damage.js';
 export function gridSlots(n) {
   if (n <= 4) return [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
   const L = n > 15 ? [-4.3, -1.45, 1.45, 4.3] : [-3.5, 0, 3.5], rows = Math.ceil(n / L.length), gap = rows > 5 ? 24 / (rows - 1) : 6;   // a full field goes four abreast
-  return Array.from({ length: n }, (_, k) => [30 - Math.floor(k / L.length) * gap, L[k % L.length]]);
+  return Array.from({ length: n }, (_, k) => [Math.round(30 - Math.floor(k / L.length) * gap), L[k % L.length]]);   // a whole sample: the track is looked up by index
 }
 /** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'|'deuce'|'tiebreak', weapons?: boolean}} [opts] @returns {import('../types.js').Race} */
 export function createRace(W, defs, opts = {}) {

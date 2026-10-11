@@ -1443,6 +1443,82 @@
    "trainHits": 0,
    "rockHits": 4,
    "rocks": 4
+  },
+  "Dune Rally": {
+   "samples": 3104,
+   "loopN": 986,
+   "terrain": [
+    139,
+    142,
+    28278.586
+   ],
+   "times": [
+    110.917,
+    106.608,
+    114.417,
+    108.525
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3021.29,
+    3019.38,
+    2994.059,
+    3020.411
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Highland Rally": {
+   "samples": 3122,
+   "loopN": 992,
+   "terrain": [
+    143,
+    135,
+    38295.74
+   ],
+   "times": [
+    112.875,
+    110.742,
+    115.492,
+    112.475
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    3039.243,
+    3038.225,
+    3012.267,
+    3038.791
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

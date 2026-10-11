@@ -119,6 +119,10 @@ along the sand round the pier, the harbour's lifting bridge and the old town. Bo
 alpine village, over a stream and a boulder field with rockfall), then a ridge road and switchbacks down to the start.
 A town on an open leg is plots only (no pavement, lamps or side roads), its plots keep off the open-country trail, and
 the AI's way across open country (`sim/nav.js`) goes round houses and walls and through fences.
+**Dune Rally** and **Highland Rally** (stages 39-40) follow Bogwood's recipe (the new-stage skill's design rules):
+~37 s dirt laps with a beat every few seconds. Dune: a dune crest jump, washboard whoops, a hairpin through a red rock
+arch, an oasis splash, a double jump, a mud wallow. Highland: a crest, burns to splash through on a hillside edge, a
+hairpin, cattle-grid whoops, a stone bridge over a gully, a peat bog, a double jump, under purple heather.
 The stage list (`src/data/stages/index.js` LIST) is append only, versions included, so a stage's number never moves.
 
 **Track versions** (stages 30-35, `src/data/versions.js`): a stage at night or in the rain, made from the stage itself
