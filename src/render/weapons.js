@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { G } from '../game.js';
-import { ITEMS, missilePos, roadPos, WPN } from '../core/features/weapons.js';
+import { ITEMS, missilePos, roadPos, shellPos, WPN } from '../core/features/weapons.js';
+import { CRATER } from '../core/features/craters.js';
 import { emit } from './effects/particles.js';
 import { debris } from './effects/debris.js';
 import { shockwave } from './effects/rings.js';
@@ -10,12 +11,12 @@ import { scene } from './renderer.js';
 import { race } from '../ui/flow.js';
 
 // Weapons visuals (core/features/weapons.js): weapon crates on the road, missiles in flight, tracer rounds, oil
-// slicks, the harpoon and its line, blasts and puffs. The weapon mounts that rise out of the cars' roofs are
+// slicks, the harpoon and its line, mortar shells and the rings where they'll land, craters in the road, blasts and puffs. The weapon mounts that rise out of the cars' roofs are
 // makeMount / updateMount, driven from render/vehicles.js.
 const L = c => new THREE.MeshLambertMaterial({ color: c }), B = c => new THREE.MeshBasicMaterial({ color: c });
 const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); return b; };
 const cyl = (r, l, m, x = 0, y = 0, z = 0) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 10).rotateX(Math.PI / 2), m); c.position.set(x, y, z); return c; };
-let minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, fi = 0, si = 0, di = 0;
+let minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, fi = 0, si = 0, di = 0, shellPool = [], craterDecals = null, craterRims = null;
 const MAXB = 80, _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _y = new THREE.Vector3(0, 1, 0);
 export function initWeaponVis() {
   const white = L(0xF2F2EE), red = L(0xD8203A), flame = B(0xFFB03A);
@@ -95,6 +96,30 @@ export function initWeaponVis() {
   for (let k = 0; k < 24; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: fireTex, depthWrite: false, transparent: true })); sp.renderOrder = 6; sp.visible = false; scene.add(sp); flashes.push({ sp, t: 1, life: 1, size: 1 }); }
   for (let k = 0; k < 64; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, depthWrite: false, transparent: true })); sp.visible = false; scene.add(sp); smokes.push({ sp, t: 1, life: 1, size: 1, vy: 0 }); }
   for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x6EC8FF, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.visible = false; scene.add(m); domes.push({ m, t: 1, size: 1 }); }
+  // mortar shells: a dark olive round with a red band, and a red ring on the road where each will come down
+  shellPool = [];
+  for (let k = 0; k < 12; k++) {
+    const g = new THREE.Group(), body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), L(0x3E4632)); body.scale.set(1, 1, 1.5); g.add(body);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.06, 6, 14), L(0xD8203A)); g.add(band); g.scale.setScalar(1.4); g.visible = false; scene.add(g);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xFF3A2A, transparent: true, opacity: 0.6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
+    ring.renderOrder = 3; ring.visible = false; scene.add(ring); shellPool.push({ g, ring, id: -1 });
+  }
+  // craters: a scorched hole in the tarmac (a decal, dark in the middle, cracks running out) and a ring of broken
+  // asphalt lumps round its lip; every crater in two instanced meshes
+  const crTex = canvasTex(128, 128, (g, w, h) => {
+    const c = w / 2, rnd = (k => () => (k = (k * 16807) % 2147483647) / 2147483647)(7);
+    const sc = g.createRadialGradient(c, c, w * 0.2, c, c, w / 2); sc.addColorStop(0, 'rgba(30,26,22,0.9)'); sc.addColorStop(0.7, 'rgba(40,34,28,0.55)'); sc.addColorStop(1, 'rgba(40,34,28,0)');
+    g.fillStyle = sc; g.fillRect(0, 0, w, h);                                                       // the scorch round it
+    g.beginPath(); for (let a = 0; a <= 28; a++) { const t = a / 28 * Math.PI * 2, r = w * 0.37 * (0.86 + 0.18 * rnd()); g.lineTo(c + Math.cos(t) * r, c + Math.sin(t) * r); } g.closePath();
+    const hole = g.createRadialGradient(c, c * 1.06, 2, c, c, w * 0.4); hole.addColorStop(0, '#0B0908'); hole.addColorStop(0.55, '#231D18'); hole.addColorStop(0.85, '#4A4038'); hole.addColorStop(1, '#6A6058');
+    g.fillStyle = hole; g.fill();                                                                   // the hole: darkest at the bottom
+    g.strokeStyle = 'rgba(15,12,10,0.8)'; g.lineWidth = 1.6;
+    for (let k = 0; k < 9; k++) { const t = rnd() * Math.PI * 2; let x = c + Math.cos(t) * w * 0.33, y = c + Math.sin(t) * w * 0.33; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += Math.cos(t + (rnd() - 0.5)) * w * 0.035; y += Math.sin(t + (rnd() - 0.5)) * w * 0.035; g.lineTo(x, y); } g.stroke(); }   // cracks
+  });
+  craterDecals = new THREE.InstancedMesh(new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: crTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }), CRATER.MAX);
+  craterDecals.count = 0; craterDecals.frustumCulled = false; craterDecals.renderOrder = 2; scene.add(craterDecals);
+  const lumps = []; for (let k = 0; k < 11; k++) { const a = k / 11 * Math.PI * 2 + (k % 3) * 0.2, r = 0.92 + (k % 2) * 0.1, sz = 0.16 + (k % 4) * 0.05; lumps.push(new THREE.BoxGeometry(sz * 1.6, sz, sz).rotateY(a * 1.7).rotateX(0.3 * (k % 3 - 1)).translate(Math.cos(a) * r, sz * 0.35, Math.sin(a) * r)); }
+  craterRims = new THREE.InstancedMesh(mergeAll(lumps), L(0x4A4744), CRATER.MAX); craterRims.count = 0; craterRims.frustumCulled = false; craterRims.castShadow = true; scene.add(craterRims);
   targetRing = new THREE.Mesh(new THREE.RingGeometry(2.1, 2.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xFF2A2A, transparent: true, opacity: 0.8, depthWrite: false, depthTest: false }));
   targetRing.renderOrder = 9; targetRing.visible = false; scene.add(targetRing);
 }
@@ -117,6 +142,7 @@ export function updateWeaponVis(dt, now) {
   if (G.state !== 'paused') updateFx(dt);
   const tr = G.world && G.world.tr, R = race, S = R && R.wpn, on = tr && G.state !== 'menu';
   if (targetRing) targetRing.visible = false;
+  for (const v of shellPool) { v.g.visible = false; v.ring.visible = false; } if (craterDecals) { craterDecals.count = 0; craterRims.count = 0; }
   for (const p of missiles) p.g.visible = false; for (const c of crates) c.g.visible = false; for (const m of slickPool) m.visible = false; for (const m of cementPool) m.visible = false; for (const m of jetPool) m.visible = false; for (const m of stripPool) m.visible = false; for (const m of minePool) m.g.visible = false; for (const h of hookPool) { h.g.visible = false; h.line.visible = false; }
   if (tracers) tracers.count = 0;
   if (!on || !R) return;
@@ -133,7 +159,14 @@ export function updateWeaponVis(dt, now) {
     }
     p.id = m.id; p.last = pos;
   });
+  drawCraters(tr, R.craters);
   if (!S) return;
+  (S.shells || []).forEach((m, j) => {   // the shell on its arc, smoke behind it; the ring on the road tightening as it falls
+    const v = shellPool[j % shellPool.length], p = shellPos(m); if (m.t < 0) return;
+    v.g.visible = true; v.g.position.set(p.x, p.y, p.z); v.g.rotation.set(-Math.PI / 2 + p.f * Math.PI, Math.atan2(m.x1 - m.x0, m.z1 - m.z0), 0);
+    v.ring.visible = true; v.ring.position.set(m.x1, m.y1 + 0.12, m.z1); const rs = m.blast * (1.25 - 0.35 * p.f) * (1 + 0.06 * Math.sin(now * 20)); v.ring.scale.set(rs, 1, rs); v.ring.material.opacity = 0.35 + 0.5 * p.f;
+    if (G.state === 'racing' && (v.puffT = (v.puffT || 0) - dt) <= 0) { v.puffT = 0.06; smoke(p.x, p.y, p.z, 1.1, 0xDADADA, 0.7, 0.2); }
+  });
   S.crates.forEach((k, j) => { const c = crates[j % crates.length]; place(c.g, tr, k.s, k.lat, 1.3 + Math.sin(now * 2.5 + k.id) * 0.2); c.g.visible = true; c.b.rotation.set(now * 0.9 + k.id, now * 1.3, 0); c.r.material.opacity = 0.3 + 0.2 * Math.sin(now * 4 + k.id); });
   let nb = 0;
   for (const b of S.bullets) {
@@ -174,6 +207,26 @@ export function updateWeaponVis(dt, now) {
     v.g.visible = true; v.line.visible = true;
     const a = v.line.geometry.attributes.position; a.setXYZ(0, A.dx ?? A.x, (A.dy ?? A.y) + 1.3, A.dz ?? A.z); a.setXYZ(1, p.x, p.y, p.z); a.needsUpdate = true;
   });
+}
+// every crater in the road: the decal on the road's slope at that spot, the broken lip round it
+const _e = new THREE.Euler();
+function drawCraters(tr, list) {
+  if (!craterDecals || !list || !list.length) return;
+  let n = 0;
+  for (const o of list) {
+    if (n >= CRATER.MAX) break;
+    const i = Math.max(1, Math.min(tr.N - 2, o.i)), run = Math.hypot(tr.xs[i + 1] - tr.xs[i - 1], tr.zs[i + 1] - tr.zs[i - 1]) || 1, pitch = Math.atan2(tr.H[i + 1] - tr.H[i - 1], run);
+    _q.setFromEuler(_e.set(-pitch, tr.th[i], 0, 'YXZ'));
+    _m.compose(_p.set(o.x, o.y + 0.05, o.z), _q, _s.set(o.r * 1.35, 1, o.r * 1.35)); craterDecals.setMatrixAt(n, _m);
+    _q.setFromEuler(_e.set(-pitch, tr.th[i] + o.id, 0, 'YXZ')); _m.compose(_p.set(o.x, o.y + 0.02, o.z), _q, _s.set(o.r, 1 + o.r * 0.12, o.r)); craterRims.setMatrixAt(n, _m);
+    n++;
+  }
+  craterDecals.count = craterRims.count = n; craterDecals.instanceMatrix.needsUpdate = true; craterRims.instanceMatrix.needsUpdate = true;
+}
+/** A shell blowing a crater: tarmac and earth thrown up out of the hole. */
+export function craterFx(e) {
+  for (let k = 0; k < 12; k++) debris(e.x + (Math.random() - 0.5) * 2, e.y + 0.3, e.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 14, 5 + Math.random() * 8, (Math.random() - 0.5) * 14, k % 3 ? 0x3A3836 : 0x5E4A36, 0.35, 0.18, 0.5, 2);
+  for (let k = 0; k < 4; k++) smoke(e.x + (Math.random() - 0.5) * 3, e.y + 1, e.z + (Math.random() - 0.5) * 3, 5 + Math.random() * 3, 0x6E5E4C, 2.2, 1.2);
 }
 /** A missile hitting a car: fireball, smoke, sparks and bits, a shock ring. */
 export function missileBlast(e) {
@@ -243,6 +296,7 @@ function module(item) {
   else if (item === 'stinger') { g.add(box(1.1, 0.16, 0.36, L(0x22252B))); for (let k = 0; k < 5; k++) g.add(box(0.2, 0.17, 0.37, yel, -0.44 + k * 0.22, 0.005, 0)); g.position.z = -0.5; }
   else if (item === 'crush') { for (let k = 0; k < 3; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 6, 14).rotateX(Math.PI / 2), red); t.position.y = k * 0.14; g.add(t); } }
   else if (item === 'mine') { g.add(box(0.9, 0.12, 0.8, dark)); for (const s of [-1, 1]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.16, 12), L(0x4B5A3A)); d.position.set(s * 0.22, 0.14, 0); g.add(d); const lp = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), B(0xFF2A2A)); lp.position.set(s * 0.22, 0.26, 0); g.add(lp); } g.position.z = -0.45; }
+  else if (item === 'mortar') { g.add(box(0.8, 0.2, 0.8, dark)); const tube = cyl(0.2, 1.1, L(0x4B5A3A), 0, 0.45, 0.1); tube.rotation.x = -0.9; g.add(tube); const lip = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.04, 6, 12), dark); lip.position.set(0, 0.85, 0.42); lip.rotation.x = Math.PI / 2 - 0.9; g.add(lip); }
   else if (item === 'jingle') { const horn = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.6, 12, 1, true).rotateX(-Math.PI / 2), L(0xF6B8D0)); horn.position.z = 0.3; g.add(horn); g.add(cyl(0.12, 0.4, steel, 0, 0, -0.1)); g.userData.core = horn; }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;

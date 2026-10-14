@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import M from './core-under-test.js';
 import { seedRandom } from './scenarios.js';
 import { WORKSHOP_STAGE } from '../src/data/workshop.js';
+import { addCrater } from '../src/core/features/craters.js';
 const ytr = M.buildTrack(WORKSHOP_STAGE);
 
 const DEFS = [
@@ -88,6 +89,28 @@ describe('weapon modules', () => {
     run(R, Wd, 2.5, (e, c) => { if (e.t === 'mine-hit' && c !== P && !hit) hit = { vy: c.vy, v: Math.hypot(c.vx, c.vz) }; if (e.t === 'mine-boom') boom++; });
     expect(boom).toBe(1); expect(hit).not.toBe(null); expect(hit.vy).toBeGreaterThan(2); expect(hit.v).toBeLessThan(18);
     expect(P.wpn.uses).toBe(1); expect(R.wpn.mines.length).toBe(0);
+  });
+  it('mortar: a shell lobbed over the car ahead lands on it 1.5 s later, throws it up and slowed, and leaves a crater in the road', () => {
+    const { R, Wd, P } = setup('mortar', [0, 6, -6], [45, -70, -80]); const T = R.cars.find(c => c !== P && c.progress > P.progress); let hit = null, boom = 0;
+    run(R, Wd, 0.1); expect(R.wpn.shells.length).toBe(1); expect(P.wpn.uses).toBe(1);
+    run(R, Wd, 2, (e, c) => { if (e.t === 'mortar-hit' && c === T && !hit) hit = { vy: c.vy, v: Math.hypot(c.vx, c.vz) }; if (e.t === 'mortar-boom') boom++; });
+    expect(boom).toBe(1); expect(hit).not.toBe(null); expect(hit.vy).toBeGreaterThan(2); expect(hit.v).toBeLessThan(18);
+    expect(R.craters.length).toBe(1); expect(Math.hypot(R.craters[0].x - T.x, R.craters[0].z - T.z)).toBeLessThan(30);
+  });
+  it('a crater in the road jolts a car that drives into it: slower, kicked up; nothing is dug on a bridge deck; the AI steers round one it sees', () => {
+    const { R, Wd } = race(true), O = R.cars[0];
+    R.cars.forEach((c, k) => put(c, 150 + k * 20, -6, 0));
+    const at = (i, lat) => [tr.xs[i] + tr.rx[i] * lat, tr.zs[i] + tr.rz[i] * lat];
+    expect(addCrater(R, Wd, ...at(420, 0), 'mortar')).toBeTruthy();
+    put(O, 405, 0, 25); O.hold = 25; let jolt = null;
+    for (let k = 0; k < 120 && !jolt; k++) { M.raceStep(R, 1 / 120, Wd); jolt = O.events.find(e => e.t === 'crater-hit'); O.events.length = 0; }
+    expect(jolt).toBeTruthy(); expect(O.vy).toBeGreaterThan(0.5); expect(Math.hypot(O.vx, O.vz)).toBeLessThan(24.5);
+    const deck = tr.bridge.findIndex((b, i) => b && i > tr.startIdx); if (deck > 0) expect(addCrater(R, Wd, ...at(deck, 0), 'mortar')).toBe(null);
+    // the AI: with a crater on its line it goes round it
+    const { R: R2, Wd: W2 } = race(true), A = R2.cars[0]; R2.cars.forEach((c, k) => put(c, 150 + k * 20, -6, 0)); put(A, 600, 0, 22);
+    addCrater(R2, W2, ...at(640, A.pr.lat), 'mortar'); let hits = 0;
+    for (let k = 0; k < 360; k++) { M.raceStep(R2, 1 / 120, W2); hits += A.events.filter(e => e.t === 'crater-hit').length; A.events.length = 0; }
+    expect(hits).toBe(0);
   });
   it('blasts reach the scenery: a mine breaks the crates near it, a missile even concrete, and nothing far off', () => {
     const Wy = { tr: ytr, terr: M.buildTerrain(ytr, WORKSHOP_STAGE), surf: WORKSHOP_STAGE.surface, armco: true }, R = M.createRace(Wy, DEFS, { weapons: true });

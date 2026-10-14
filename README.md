@@ -22,7 +22,11 @@ drive *through* it scores (a leader on the wrong line can miss it). Win by two, 
 nothing in hand to get one of five weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
 tracers), an oil slick (two, dropped behind), a shockwave (blows the cars round you away and cuts their engines) and a
 harpoon (hooks the car ahead: you're reeled in, they're held back), plus proximity mines (two, dropped behind: the
-car that sets one off is thrown up and slowed). Blasts reach the scenery: a missile that hits or runs out, a mine, a
+car that sets one off is thrown up and slowed) and the mortar (two shells, lobbed high over the cars ahead: each lands
+1.5 s later where its target will be along the road, marked by a red ring while it falls; level 3 drops a barrage of
+three). Mortar shells, missiles and mines dig craters in the road where they go off (`src/core/features/craters.js`):
+they stay for the race, merge into bigger holes, and a car that drops into one is slowed a little, kicked up and slewed
+(dented at speed); the AI steers round the ones it sees ahead. Blasts reach the scenery: a missile that hits or runs out, a mine, a
 shockwave and the monster truck's crush break fences, crates and even concrete near them, crack or knock holes in
 buildings and shove rubble about, and a missile that flies into a wall goes off there (`blastScenery`). F fires. Crates are offered up the road to every
 racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets
@@ -425,7 +429,8 @@ bar (nudge bar, bull bar, plough: `veh.ram`, what breaks scenery) and roll cage 
 box, the panels), so every car of either provider takes every part, and a part on the bonnet, boot or a door rides on
 that panel (it opens and flies off with it). Rivals show the tier's parts (engine, tyres, suspension). In the career
 garage a car's upgrades screen is a turntable (`src/render/showcar.js`): a part goes on with the car up on jacks. Try
-any part on any car in the Workshop's Cars tab.
+any part on any car in the Workshop's Cars tab, or drive a car with any build on the Upgrades tab (`G.workshop.build`
+replaces the player's def's `build` and `veh` in `newRace`).
 
 ### The economy and pacing
 
@@ -480,6 +485,8 @@ or `?workshop` (the hub) / `?workshop=<tab>`. Tabs live in `src/data/workshop.js
   other input for them. Nothing else sets it, so races and golden runs are untouched.
 - **Destruction yard**: any car into crates, hay, a fence, a gate or concrete blocks (a row of `props` on the loop's far
   straight) at a set speed: what breaks, the speed after, mass and toughness.
+- **Upgrades**: any car with any level of each part (and road or gravel tyres), rebuilt and driven round the loop (or by
+  the autopilot), with what the build does to its handling.
 - **Scenery kit**: the loop with a town in any style along both straights (`?workshop=kit&style=seaside`): drive or fly
   round it, smash its fences and gates.
 - Each roadmap phase adds its tab: a new system gets a Workshop tab, a
