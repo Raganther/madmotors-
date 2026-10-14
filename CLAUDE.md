@@ -33,7 +33,8 @@ The menu's Track editor lets the user lay out a circuit (an existing gorge stage
 those land in collection `tracks` (name, base, closes, message, `stage` = the stage object with `segs`, `comments` =
 pins the user dropped on the plan `{ n, text, sec, metres, off, a, b }`, `notes` = per-section notes `{ sec, text }`;
 sections are numbered from 1). The user can also draw a track freehand (base "drawn"): it's their design, so follow
-the shape and read every comment and note as the brief for that spot. Turn one into a real stage with `/new-stage`
+the shape and read every comment and note as the brief for that spot. The Terrain builder sends base "terrain": a painted
+landscape (`stage.ground`, core/track/ground.js) with a road on it; keep both and build on top. Turn one into a real stage with `/new-stage`
 (its segs are already frozen metres; keep them, add the look and the set pieces the comments ask for), then `update`
 `tracks/<id>` with `{ reply, status: "done" }`.
 

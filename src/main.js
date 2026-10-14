@@ -9,6 +9,7 @@ import { wireLeagues, leagueNext } from './ui/league.js';
 import { wireCareer, careerNext } from './ui/career.js';
 import { initNotes } from './ui/notes.js';
 import { initEditor } from './ui/editor.js';
+import { initTerrainBuilder } from './ui/terrain-builder.js';
 import { openWorkshop, workshopParam } from './ui/workshop.js';
 import { AudioSys } from './audio/audio.js';
 import { STEP } from './core/constants.js';
@@ -92,7 +93,7 @@ export function wireUI() {
   $('models-btn').addEventListener('click', () => { setModelMode(MODEL_MODES[(MODEL_MODES.indexOf(modelMode) + 1) % MODEL_MODES.length]); modelsLabel(); rebuildCars(); });
   modelsLabel();
   for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
-  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); wireCareer(); initNotes(); initEditor(); $('lab-btn').addEventListener('click', () => openWorkshop()); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
+  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); wireCareer(); initNotes(); initEditor(); initTerrainBuilder(); $('lab-btn').addEventListener('click', () => openWorkshop()); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
   for (const b of document.querySelectorAll('.cam-btn')) b.addEventListener('click', () => setCamera(nextCamera()));
   for (const b of document.querySelectorAll('.zoom-btn')) b.addEventListener('click', () => setCamera(G.camMode, nextZoom()));
 }

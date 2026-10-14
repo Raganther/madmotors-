@@ -523,6 +523,16 @@ In the game, the menu's **Track editor** (`src/ui/editor.js`, geometry in `src/c
 dragging from the open end carries the track on. The Comment tool pins notes anywhere on the plan, and each section
 has a note box; both go to Claude with the track.
 
+The menu's **Terrain builder** (`src/ui/terrain-builder.js`, landscape in `src/core/track/ground.js`) starts from the
+land instead: an 800 m square of ground seen in 3D, shaped with the Raise / Lower / Smooth / Flatten brushes (a
+height grid every 8 m, contours every 5 m), then the Road tool paints the track's line on it (the same `fromStroke`).
+The road's heights come from the ground under it (`roadOnGround`: short sections, smoothed over 30 m, no steeper than
+14%), so the climbs and drops are the land's. The stage it makes is a gorge stage with `ground` = { a0, b0, cell,
+cols, rows, h } in plan metres from the start line: `circuit.js` uses it as the ground away from the road (no
+generated hills, no far/near profiles), and the road cuts and fills across it with guard rails along the drops.
+"Send to Claude" stores it in `tracks` with base "terrain". To make a real stage of one, keep `ground` and `segs`
+and add the look and set pieces on top.
+
 ## Adding a vehicle
 
 1. A body builder in `src/render/carmodels.js` (`MODELS.<name>`): outline, wheels (`K.wheels`), the damage parts, and

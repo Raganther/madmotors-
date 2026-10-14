@@ -274,6 +274,24 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   console.log(`editor: ${drawn} ${pins} comment; test drive ${drove ? 'ran' : 'FAILED'}; back in the editor ${back}`);
   await page.click('#ed-exit'); await page.evaluate(() => localStorage.removeItem('downhill-rush-editor'));
 }
+// terrain builder: raise a hill, paint a lap across the land (it closes by itself), test drive it on that land, come back
+{
+  await page.evaluate(() => localStorage.removeItem('downhill-rush-terrain'));
+  await page.click('#terrain-btn'); await page.waitForTimeout(500);
+  const box = await page.locator('#tb-view').boundingBox(), cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  await page.click('#tb [data-tool="raise"]'); await page.mouse.move(cx, cy - 40); await page.mouse.down(); await page.mouse.move(cx + 20, cy - 30, { steps: 4 }); await page.waitForTimeout(2500); await page.mouse.up();
+  const raised = await page.textContent('#tb-status');
+  await page.click('#tb [data-tool="road"]'); await page.mouse.move(cx + 300, cy); await page.mouse.down();
+  for (let i = 1; i <= 60; i++) { const t = i / 60 * Math.PI * 2; await page.mouse.move(cx + Math.cos(t) * 300, cy + Math.sin(t) * 150); }
+  await page.mouse.up();
+  const laid = await page.textContent('#tb-status');
+  await page.click('#tb-drive'); const drove = await page.waitForFunction(() => window.__dr.G.editDrive && window.__dr.race && window.__dr.G.world.stage.ground, null, { timeout: 30000 }).then(() => true, () => false);
+  await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; d.step(2); d.flow.toMenu(); });
+  const back = await page.evaluate(() => !document.getElementById('tb').hidden);
+  if (/to 0 m/.test(raised) || !/closes: a lap/.test(laid) || !drove || !back) errors.push('terrain builder: ' + JSON.stringify({ raised, laid, drove, back }));
+  console.log(`terrain builder: ${raised.split(' ·')[0]}; ${laid}; test drive ${drove ? 'ran' : 'FAILED'}; back in the builder ${back}`);
+  await page.click('#tb-exit'); await page.evaluate(() => localStorage.removeItem('downhill-rush-terrain'));
+}
 // every camera: a Race draws from each (the perspective ones really are perspective), Showdown modes stay top-down
 {
   await page.evaluate(() => window.__dr.flow.startRace(6)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 6, null, { timeout: 30000 });

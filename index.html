@@ -159,7 +159,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .gs i{height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden} .gs b{display:block;height:100%;background:var(--yellow);border-radius:3px}
 @media (max-width:520px){ .garage-grid{grid-template-columns:1fr 1fr;gap:8px} .g-blurb{display:none} .gs{grid-template-columns:62px 1fr;font-size:11px} .g-name{font-size:14px} }
 .btn-row button{flex:1;min-width:120px}
-#editor{position:fixed;inset:0;background:#141A30;display:flex;flex-direction:column;z-index:4;color:#fff}
+#editor,#tb{position:fixed;inset:0;background:#141A30;display:flex;flex-direction:column;z-index:4;color:#fff}
 .ed-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 12px;background:var(--panel);font-size:14px} .ed-title{font-family:var(--display);font-weight:400;color:var(--yellow);font-size:18px}
 .ed-bar label{display:flex;align-items:center;gap:6px} .ed-bar input,.ed-bar select,.ed-f input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:4px 6px;font:inherit} #ed-laps{width:48px} #ed-name{width:150px}
 .ed-bar .btn,.ed-bar .cta{padding:7px 12px;font-size:14px;min-width:0} .ed-btns{display:flex;gap:6px;margin-left:auto}
@@ -183,6 +183,11 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .ed-acts{display:flex;flex-wrap:wrap;gap:5px} .ed-acts button{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:8px;padding:4px 8px;font-size:12px} .ed-acts .ed-del{color:#FF8A7A;border-color:rgba(255,138,122,.5)}
 .ed-list{list-style:none;margin:0;padding:6px;overflow-y:auto;flex:1;min-height:0;font-size:13px} .ed-list li{padding:5px 8px;border-radius:7px;cursor:pointer} .ed-list li:hover{background:rgba(255,255,255,.06)} .ed-list li.on{background:rgba(255,199,44,.18)} .ed-list b{color:var(--yellow);margin-right:4px}
 .ed-send{display:flex;gap:6px;padding:8px;border-top:1px solid rgba(255,255,255,.1)} .ed-send textarea{flex:1;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:14px;padding:6px} .ed-send .cta{padding:8px 12px;font-size:14px}
+.tb-main{flex:1;position:relative;min-height:0} #tb-view{width:100%;height:100%;display:block;touch-action:none;cursor:grab} #tb-view.raise,#tb-view.lower,#tb-view.smooth,#tb-view.flatten{cursor:none} #tb-view.road{cursor:crosshair}
+#tb .tb-left{position:absolute;left:10px;top:10px;right:10px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;pointer-events:none} #tb .tb-left>*{pointer-events:auto} #tb .ed-tools{position:static;flex-wrap:wrap} #tb-legend{position:absolute;left:10px;bottom:8px;color:#1C2340;font-size:12px;background:rgba(255,255,255,.7);border-radius:6px;padding:2px 6px;max-width:calc(100% - 20px)}
+.tb-brush{display:flex;flex-direction:column;gap:4px;background:var(--panel);border-radius:10px;padding:8px 10px;font-size:13px} .tb-brush label{display:flex;align-items:center;gap:8px;justify-content:space-between} .tb-brush input{width:120px} .tb-brush[hidden]{display:none}
+#tb .ed-zoom{top:auto;bottom:34px}
+.tb-foot{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--panel)} .tb-foot textarea{flex:1;min-width:200px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:14px;padding:6px} .tb-foot .btn,.tb-foot .cta{padding:7px 12px;font-size:14px;min-width:0}
 @media (max-width:760px){ .ed-main{grid-template-columns:1fr;grid-template-rows:44vh 1fr} .ed-side{border-left:0;border-top:1px solid rgba(255,255,255,.1)} .ed-btns{margin-left:0} #ed-name{width:110px} }
 #note-bar{position:fixed;left:50%;top:calc(var(--top) + 104px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;background:var(--panel);border-radius:14px;padding:8px 12px;max-width:calc(100% - 24px);box-sizing:border-box;font-size:15px}
 #note-bar small{display:block;color:var(--mist);font-size:12px} #note-bar .btn,#note-bar .cta{padding:8px 14px;font-size:15px;min-width:0}
@@ -314,7 +319,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
       <dt>Q</dt><dd>Swing a door into the car beside you</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
-    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="models-btn" class="ghost-btn" type="button">Models: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button><button id="lab-btn" class="ghost-btn" type="button">Workshop</button></div>
+    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="models-btn" class="ghost-btn" type="button">Models: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button><button id="terrain-btn" class="ghost-btn" type="button">Terrain builder</button><button id="lab-btn" class="ghost-btn" type="button">Workshop</button></div>
   </div>
 </div>
 
@@ -365,6 +370,22 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   </div>
 </div>
 
+<div id="tb" hidden>
+  <div class="ed-bar">
+    <b class="ed-title">Terrain builder</b>
+    <label>Name <input id="tb-name" maxlength="40"></label>
+    <label>Laps <input id="tb-laps" type="number" min="1" max="9"></label>
+    <label>Surface <select id="tb-surface"><option value="tarmac">Tarmac</option><option value="gravel">Gravel</option><option value="snow">Snow</option></select></label>
+    <span class="ed-btns"><button id="tb-close" class="btn" type="button">Close the loop</button><button id="tb-drive" class="cta" type="button">Test drive</button><button id="tb-exit" class="btn" type="button">Exit</button></span>
+  </div>
+  <div id="tb-status" class="ed-status"></div>
+  <div class="tb-main"><canvas id="tb-view"></canvas>
+    <div class="tb-left"><div class="ed-tools" role="toolbar" aria-label="Terrain tools"><button type="button" data-tool="view">&#10021; View</button><button type="button" data-tool="raise">&#9650; Raise</button><button type="button" data-tool="lower">&#9660; Lower</button><button type="button" data-tool="smooth">&#8776; Smooth</button><button type="button" data-tool="flatten">&#9644; Flatten</button><button type="button" data-tool="road">&#9998; Road</button><button type="button" id="tb-undo" disabled>Undo</button></div>
+    <div id="tb-brush" class="tb-brush"><label>Size <input id="tb-size" type="range" min="15" max="160" step="5"></label><label>Strength <input id="tb-power" type="range" min="1" max="10" step="1"></label></div></div>
+    <div class="ed-zoom"><button id="tb-left" type="button" aria-label="Turn left">&#10226;</button><button id="tb-right" type="button" aria-label="Turn right">&#10227;</button><button id="tb-top" type="button">Top</button><button id="tb-zoomin" type="button" aria-label="Zoom in">+</button><button id="tb-zoomout" type="button" aria-label="Zoom out">&minus;</button><button id="tb-fit" type="button">Fit</button></div>
+    <small id="tb-legend"></small></div>
+  <div class="tb-foot"><button id="tb-clearroad" class="btn" type="button">Clear road</button><button id="tb-clearground" class="btn" type="button">Flatten all</button><textarea id="tb-msg" rows="1" maxlength="2000" placeholder="A message for Claude about this track (optional)"></textarea><button id="tb-send" class="cta" type="button">Send to Claude</button></div>
+</div>
 <div id="editor" hidden>
   <div class="ed-bar">
     <b class="ed-title">Track editor</b>

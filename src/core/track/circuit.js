@@ -1,6 +1,7 @@
 import { HALF, SURF, WALL } from '../constants.js';
 import { TAU, lerp, makeNoise, mulberry32, smoothWrap, smoothstep, wrapAngle } from '../math.js';
 import { railAt } from './rails.js';
+import { groundXZ } from './ground.js';
 import { ELEMENTS, elementPhase } from '../elements/index.js';
 import { branchRoute, plainRoute } from './route.js';
 
@@ -249,7 +250,8 @@ export function finishLoop(stage, g, seed) {
     return v;
   };
   // gorge tracks: ground height comes from the nearest road section's profile (far = up-screen side, near = camera side)
-  const PF = gorge ? { far: smoothG(ch.far, 12), near: smoothG(ch.near, 12),
+  const GR = stage.ground ? groundXZ(stage.ground) : null;   // a painted landscape (the Terrain builder): the ground is that, the road cuts and fills across it
+  const PF = gorge && !GR ? { far: smoothG(ch.far, 12), near: smoothG(ch.near, 12),
     rF: smoothG(ch.rampF, 12), rN: smoothG(ch.rampN, 12),
     dot: Float32Array.from(th0, t => -Math.cos(t) * -Math.SQRT1_2 + Math.sin(t) * -Math.SQRT1_2) } : null;   // how much the road's right side faces up-screen
   // profile for one side of sample i (side = +1 right, -1 left): roads running up/down the screen blend far and near
@@ -264,7 +266,7 @@ export function finishLoop(stage, g, seed) {
     const regional = k > 0 ? idw(x, z) + Math.max(0, up - 330) * 0.45 + 18 * Math.max(0, noise.fbm(x * 0.005 + 7, z * 0.005 - 3, 3) + 0.2) : 0;
     return lerp(nearV, regional, k) + 4 * noise.fbm(x * 0.012 + 2.2, z * 0.012 - 4.1, 3) * smoothstep(HALF + 3, HALF + 25, q.d);
   };
-  const base = gorge ? profBase : (x, z) => idw(x, z) + shape(x, z) + 5 * noise.fbm(x * 0.006 + 2.2, z * 0.006 - 4.1, 2);
+  const base = GR || (gorge ? profBase : (x, z) => idw(x, z) + shape(x, z) + 5 * noise.fbm(x * 0.006 + 2.2, z * 0.006 - 4.1, 2));
   const carveW = g.pass ? (x, z) => 1 - smoothstep(380, 440, toAB(x, z)[1]) : null;
   const own = (i, j) => { const r = nb(i, j); return (i < N0) === (r < N0) ? r : i; };   // along the same route only (a branch's bends don't wall off the main road)
   for (let i = 0; i < NB; i++) {
@@ -283,7 +285,7 @@ export function finishLoop(stage, g, seed) {
           else if (!W[i] && pr < -3) W[i] = 2;                          // guard rail along the drop
         }
       }
-    } else if (g.pass) {
+    } else if (g.pass || GR) {
       if (!tunnel0[i]) {
         const rx = -Math.cos(th0[i]), rz = Math.sin(th0[i]);
         const L = base(xs0[i] - rx * 18, zs0[i] - rz * 18) - (stage.carve || 0) * 0.6, R = base(xs0[i] + rx * 18, zs0[i] + rz * 18) - (stage.carve || 0) * 0.6;
@@ -346,8 +348,8 @@ export function finishLoop(stage, g, seed) {
     L.visA = Math.max(0, a); L.visB = Math.min(L.len, b);
   }
   const out = { N, xs, zs, th, tx, tz, rx, rz, k, ks, H, jump, wallL, wallR, kerbL, kerbR, vmax, hairpins, finishIdx: startIdx + laps * N0, startIdx, noise, base, nearest, nearestT,
-    minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge, tunnel, nearestTun, carve: stage.carve || 0, carveW, margin: g.pass ? 230 : gorge ? 120 : 95,
-    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, gridS: gorge ? 4 : 3, edge: gorge ? HALF + 4 : HALF + 15, ...route, twin };
+    minZ, maxZ, minX, maxX, surface: stage.surface, seed, bridge, tunnel, nearestTun, carve: stage.carve || 0, carveW, margin: g.pass ? 230 : GR ? 200 : gorge ? 120 : 95,
+    loopN: N0, laps, crossX: 0, crossZ: 0, river: g.river || null, gridS: gorge ? 4 : 3, edge: GR ? HALF + 12 : gorge ? HALF + 4 : HALF + 15, ...route, twin };
   if (NA) { const L0 = q => q && (q.i = u0(q.i), q); out.nearest = (x, z) => L0(nearest(x, z)); out.nearestT = (x, z) => L0(nearestT(x, z)); out.nearestTun = (x, z) => L0(nearestTun(x, z)); }
   elementPhase('track', ctx, out);                                 // each element's fields (town, gallery, rails, ...)
   // samples with nothing under the road line (hollow elements): the terrain doesn't flatten into them
