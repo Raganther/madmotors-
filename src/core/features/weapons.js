@@ -26,7 +26,7 @@ import { blastStructures, solidAt as wallAt } from './structures.js';
 //   mortar   a shell lobbed high up the road: it lands MORTAR_FLIGHT s later where the car ahead will be (or MORTAR_AHEAD
 //            m up the road), with a ring on the road showing where; the blast throws, slows and dents everyone within
 //            MORTAR_R m and leaves a crater in the road. Craters (missiles that miss leave small ones too) stay for the
-//            rest of the race: a car driving into one is jolted up, scrubbed and knocked off its line. A mine leaves one too.
+//            rest of the race: a car driving into one is jolted up, scrubbed and knocked off its line.
 // Crates are placed for everyone, not just the leader: each racer gets one offered 60-100 m up the road on its own
 // timer (quicker the further back it is), and a crate nobody can reach any more is cleared away.
 // Door bash (Road Rash with doors), always there: one button, the door on the side with a car beside you swings open;
@@ -56,7 +56,7 @@ export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_
   MORTAR_R: 5.5, MORTAR_FLIGHT: 1.7, MORTAR_RANGE: 130, MORTAR_AHEAD: 60, MORTAR_DMG: 4, MORTAR_POP: 5, MORTAR_PUSH: 7, MORTAR_SCRUB: 0.55, SHELLS: 1, SHELL_GAP: 0.3,
   CRATER_R: 3.1, CRATER_LIFE: 50, CRATER_MAX: 14, CRATER_HOP: 2.6, CRATER_SCRUB: 0.92, CRATER_SPIN: 1.2, CRATER_KICK: 2.2, FIZZLE_CRATER: 1.7,
   FLARE_COOL: 20, SHIELD_COOL: 18, SHIELD_ON: 1, MAGNET: 2.4, SIG_ODDS: 1.5,
-  MINE_ARM: 0.8, MINE_TRIG: 3, MINE_BLAST: 5, MINE_DMG: 6.5, MINE_POP: 6.5, MINE_SLOW: 0.42, MINE_LIFE: 40, MINE_CRATER: 2.2,
+  MINE_ARM: 0.8, MINE_TRIG: 3, MINE_BLAST: 5, MINE_DMG: 6.5, MINE_POP: 6.5, MINE_SLOW: 0.42, MINE_LIFE: 40,
   BLAST_MISSILE: [5, 48], BLAST_MINE: [5, 40], BLAST_MORTAR: [6, 50], BLAST_PULSE: 26, BLAST_CRUSH: 36 };   // scenery blasts: [radius m, power (as a car's impact)]
 export const ITEMS = ['missile', 'gun', 'oil', 'pulse', 'harpoon', 'water', 'cement', 'stinger', 'crush', 'jingle', 'mortar', 'mine'];
 export const ITEM_USES = { missile: 1, gun: 1, oil: 2, pulse: 1, harpoon: 1, water: 1, cement: 1, stinger: 2, crush: 1, jingle: 1, mortar: 1, mine: 2 };
@@ -212,7 +212,7 @@ function use(R, W, c) {
   else if (it === 'stinger') R.wpn.strips.push({ id: R.wpn.next++, s: c.progress - c.hl - 3, t: 0, from: k, left: wv(c, it, 'STINGER_HITS'), hit: [] });
   else if (it === 'crush') { c.vy = WPN.CRUSH_V; c.onGround = false; c.airT = 0; w.crushT = 2; w.crushR = wv(c, it, 'CRUSH_R'); w.crushUp = 0.15; }
   else if (it === 'jingle') { w.jingleT = WPN.JINGLE_T; w.jingleR = wv(c, it, 'JINGLE_R'); w.jingled = []; }
-  else if (it === 'mine') { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); R.wpn.mines.push({ id: R.wpn.next++, x: c.x - fx * (c.hl + 1.6), y: c.y, z: c.z - fz * (c.hl + 1.6), s: c.progress - c.hl - 1.6, lat: onRoad(tr, c), t: 0, from: k, blast: wv(c, it, 'MINE_BLAST'), dmg: wv(c, it, 'MINE_DMG') }); }
+  else if (it === 'mine') { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); R.wpn.mines.push({ id: R.wpn.next++, x: c.x - fx * (c.hl + 1.6), y: c.y, z: c.z - fz * (c.hl + 1.6), t: 0, from: k, blast: wv(c, it, 'MINE_BLAST'), dmg: wv(c, it, 'MINE_DMG') }); }
   c.events.push({ t: 'use', item: it, lv: levelOf(w.load, it) });
   if (--w.uses <= 0) { w.item = null; w.uses = 0; }
 }
@@ -469,7 +469,7 @@ function mines(R, W, dt) {
       c.spin += (S.rng() < 0.5 ? -1 : 1) * 3 * f; c.boost = 0; damageCar(c, m.x, m.z, m.dmg * f, 1, 0, 0);
       c.events.push({ t: 'mine-hit', from: m.from, x: c.x, y: c.y, z: c.z });
     }
-    blastScenery(R, m.x, m.z, WPN.BLAST_MINE[0], WPN.BLAST_MINE[1], m.from); if (Math.abs(m.lat) < HALF) addCrater(R, W, m.s, m.lat, WPN.MINE_CRATER);
+    blastScenery(R, m.x, m.z, WPN.BLAST_MINE[0], WPN.BLAST_MINE[1], m.from);
     return false;
   });
 }

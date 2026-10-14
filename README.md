@@ -27,7 +27,7 @@ first: holding one, keep the car ahead in your sights and corner brackets close 
 level 2) until they flash red: fired locked it homes in on that car, fired early it flies straight down the road
 (`lockedOn`; the target hears the lock and gets a warning). The **mortar** lobs a shell high onto where the car ahead
 will be (a red ring on the road shows where it's coming down, so it can be dodged); the blast throws everyone near
-and leaves a **crater** in the road (missiles that miss and mines leave small ones) that jolts, scrubs and knocks aside any car
+and leaves a **crater** in the road (missiles that miss leave small ones) that jolts, scrubs and knocks aside any car
 driving into it for the rest of the race, and the AI steers round craters and rings (`W.craters`, `sim/ai.js`). Blasts reach the scenery: a missile that hits or runs out, a mine, a mortar
 shell, a shockwave and the monster truck's crush break fences, crates and even concrete near them, crack or knock holes
 in buildings and shove rubble about, and a missile that flies into a wall goes off there (`blastScenery`). Crates are offered up the road to every
