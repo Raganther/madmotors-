@@ -35,8 +35,9 @@ export const CAM_MODES = {
 };
 export const CAM_ZOOMS = { close: { name: 'Close', k: 0.6 }, near: { name: 'Near', k: 0.78 }, normal: { name: 'Normal', k: 1 }, far: { name: 'Far', k: 1.3 } };
 const PORTRAIT = 1.25;
-export const DYN = { SPAN: 60 * Math.PI / 180, VIEW: 40 * Math.PI / 180, BLD: 45 * Math.PI / 180, FRONT: 0.6, KEEP: 0.3, RATE: 0.55, EASE: 0.9, EL: 30 * Math.PI / 180, EL_SLOPE: 6 * Math.PI / 180 };
-const dyn = { az: null, target: null };
+export const DYN = { SPAN: 60 * Math.PI / 180, VIEW: 40 * Math.PI / 180, BLD: 45 * Math.PI / 180, FRONT: 0.6, KEEP: 0.3, RATE: 0.55, EASE: 0.9, EL: 30 * Math.PI / 180, EL_SLOPE: 6 * Math.PI / 180,
+  SIGHT: 140, HIDE: 0.35, EL_MAX: 62 * Math.PI / 180, EL_RATE: 0.6 };   // hills between the camera and the car: look-out (m), cost per m of hill in the way, how far up it may tilt (rad, rad/s)
+const dyn = { az: null, target: null, el: null };
 // Dynamic Low's bearing (radians, the camera's side of the car) and its height angle
 function dynamicDir(dt, snap, out) {
   const P = race.player, tr = G.world.tr, base = Math.atan2(CAM_MODES.low.dir[0], CAM_MODES.low.dir[2]);
@@ -55,13 +56,21 @@ function dynamicDir(dt, snap, out) {
     for (const k of [0, 1, 2, 3]) for (const s of [1, -1]) cands.push([o.f + k * Math.PI / 2 + s * DYN.BLD, -0.2]);   // (a little preferred)
     break;
   }
-  const cost = ([a, pen]) => { const off = Math.abs(wrapAngle(a - base)); return off > DYN.SPAN ? 9 + off : off * 0.5 + pen; };
+  // hills and mountains in the way: from each side, how far the ground stands above the line of sight to the car
+  const terr = G.world.terr, cx = P.dx ?? P.x, cy = (P.dy ?? P.y) + 1, cz = P.dz ?? P.z;
+  const hidden = (a, el) => { const sx = Math.sin(a), sz = Math.cos(a), tn = Math.tan(el); let m = 0; for (let h = 6; h <= DYN.SIGHT; h += h < 40 ? 4 : 8) m = Math.max(m, terr.at(cx + sx * h, cz + sz * h) - (cy + h * tn)); return m; };
+  for (let k = -3; k <= 3; k++) cands.push([base + k * DYN.SPAN / 3, 0.15]);           // more sides to see from, when the road's ones are behind a hill
+  const el0 = DYN.EL - clamp(grade * 1.5, 0, 1) * DYN.EL_SLOPE;
+  const cost = ([a, pen]) => { const off = Math.abs(wrapAngle(a - base)); return (off > DYN.SPAN ? 9 + off : off * 0.5 + pen) + Math.min(6, hidden(a, el0) * DYN.HIDE); };
   let best = cands[0]; for (const c of cands) if (cost(c) < cost(best)) best = c;
   if (dyn.target === null || snap) dyn.target = best[0];
   else if (cost(best) < cost([dyn.target, 0]) - DYN.KEEP || Math.abs(wrapAngle(dyn.target - base)) > DYN.SPAN) dyn.target = best[0];   // only for a clearly better angle: no dithering
   if (dyn.az === null || snap) dyn.az = dyn.target;
   else { const want = wrapAngle(dyn.target - dyn.az) * (1 - Math.exp(-dt * DYN.EASE)); dyn.az += clamp(want, -DYN.RATE * dt, DYN.RATE * dt); }
-  const el = DYN.EL - clamp(grade * 1.5, 0, 1) * DYN.EL_SLOPE;
+  // still a hill in the way from where we are: tilt up (towards looking straight down) just enough to see over it
+  let elW = el0; while (elW < DYN.EL_MAX && hidden(dyn.az, elW) > 0.5) elW += 4 * Math.PI / 180;
+  dyn.el = dyn.el == null || snap ? elW : dyn.el + clamp(elW - dyn.el, -DYN.EL_RATE * dt * 0.5, DYN.EL_RATE * dt);   // up quickly, down gently
+  const el = dyn.el;
   return out.set(Math.sin(dyn.az) * Math.cos(el), Math.sin(el), Math.cos(dyn.az) * Math.cos(el));
 }   // a tall screen sees less road across, so pull out a little (not so far the cars are specks)
 let tv = null; const _look = new THREE.Vector3(), _cam = new THREE.Vector3();
@@ -184,7 +193,7 @@ export function updateCamera(dt, snap) {
     const el = CAM_MODES.chase.el; _want.set(-Math.sin(chaseHd) * Math.cos(el), Math.sin(el), -Math.cos(chaseHd) * Math.cos(el));
     if (!race.sd) { tx += Math.sin(chaseHd) * 7; tz += Math.cos(chaseHd) * 7; }   // look further up the road: it's up the screen
   } else if (PM.dynamic && race && !race.sd && true) { chaseHd = null; dynamicDir(dt, snap, _want); }
-  else { chaseHd = null; dyn.az = dyn.target = null; _want.set(...CAM_MODES[mode].dir).normalize(); }
+  else { chaseHd = null; dyn.az = dyn.target = dyn.el = null; _want.set(...CAM_MODES[mode].dir).normalize(); }
   camDir.lerp(_want, snap ? 1 : 1 - Math.exp(-dt * 5)).normalize();
   G.camDir = [camDir.x, camDir.y, camDir.z]; if (race) race.camDir = G.camDir;   // the touch wheel and Showdown's "on screen" follow it
   const k = snap ? 1 : 1 - Math.exp(-dt * (G.state === 'menu' ? 2.5 : 5));
