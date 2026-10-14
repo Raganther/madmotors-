@@ -5,7 +5,7 @@ import { FORMATS, RACE_PTS, destructPts } from './formats.js';
 // wrecked or stripped of a panel (within ATTRIB s of its last hit on them: a bump, a door, any weapon), breakables and building walls
 // it smashed, buildings it brought down and road cars it took out. The game (ui/flow.js) and the career sim (tools/career-sim.mjs) both feed it.
 export const ATTRIB = 3;
-const HITS = ['missile-hit', 'harpoon-hit', 'pulse-hit', 'oil-hit', 'water-hit', 'cement-hit', 'stinger-hit', 'crush-hit', 'jingle-hit'];
+const HITS = ['missile-hit', 'harpoon-hit', 'pulse-hit', 'oil-hit', 'water-hit', 'cement-hit', 'stinger-hit', 'crush-hit', 'jingle-hit', 'mine-hit'];
 /** A fresh tally for a race of n cars. */
 export const newTally = n => ({ air: 0, drift: 0, hits: 0, wrecks: 0, respawns: 0, d: Array.from({ length: n }, () => ({ wrecked: 0, panels: 0, smashed: 0, takedowns: 0, razed: 0 })), by: Array(n).fill(null) });
 /** Count event e on car c (cars: the racers, pi: the player's index, now: race time). Returns what it scored for whom

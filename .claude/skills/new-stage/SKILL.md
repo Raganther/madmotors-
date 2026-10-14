@@ -66,3 +66,8 @@ New behaviour belongs in elements (`/new-element`), never special cases for this
   every gate (`tests/offpiste.test.js` does this for Open Country: add yours to it).
 - `tests/scenery.test.js` checks every stage for gaps in the road, open tunnel mouths, ground through bridge decks and
   piers on roads: if one fails on your stage, fix the segs or the element, not the test.
+- Buildings (`buildings`, core/elements/structures.js): `at`/`lat` puts one beside the main road facing it (the barrier
+  in front comes out); a building that should stand on a branch (a short cut it blocks) needs `a`/`b` (screen axes
+  round the circuit's middle) and `road: true`: build the track, take the branch's middle sample (`tr.NM + n/2`) and
+  convert it (a = ((x - cx) - (z - cz)) / sqrt2, b = (-(z - cz) - (x - cx)) / sqrt2, cx/cz the main lap's mean), make
+  it wider than the road (`w`), and check with a scripted scene (`tools/scene.mjs`) that a heavy car goes through it.

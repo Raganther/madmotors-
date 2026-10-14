@@ -12,6 +12,7 @@ export const FORMATS = {
   banger: { name: 'Banger race', blurb: 'Contact pays: points for your place and for every rival you wreck or strip of a panel', weight: { race: 1, destruct: 0.8 } },
   demolition: { name: 'Demolition rally', blurb: 'The scenery counts: fences, gates and walls smashed are points, as well as your place', weight: { race: 1, destruct: 0.8 }, pts: { smash: 1.2 } },
   figure8: { name: 'Figure of eight', blurb: 'Round the crossover: your place, plus points for the cars you take out at the cross', weight: { race: 1, destruct: 0.5 } },
+  wrecking: { name: 'Demolition', blurb: 'Knock it down against the clock: points for every wall, more for every building (core/modes/demolition.js)', weight: { race: 1, destruct: 0.5 }, pts: { smash: 1, raze: 4 } },
   derby: { name: 'Derby', blurb: 'Last car running wins: wreck the rest (core/modes/derby.js)', weight: { race: 1, destruct: 0.5 } },
   trial: { name: 'Time trial', blurb: 'Alone against the clock', weight: { race: 1, destruct: 0 } },
   boss: { name: 'Boss duel', blurb: 'One on one with a star driver', weight: { race: 1, destruct: 0 } },

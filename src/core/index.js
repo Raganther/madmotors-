@@ -32,7 +32,7 @@ export { HAMMER, hammerLat } from './elements/hammer.js';
 export { ARENA, arenaOut, arenaWall, inArena, arenaPit } from './elements/arena.js';
 export { corners, inFootprint } from './elements/structures.js';
 export { blastStructures, rubbleAt } from './features/structures.js';
-export { ITEMS, ITEM_USES, SIG_ITEMS, WPN, doorSide, missilePos, missileTarget, wv } from './features/weapons.js';
+export { ITEMS, ITEM_USES, SIG_ITEMS, WPN, blastScenery, doorSide, missilePos, missileTarget, wv } from './features/weapons.js';
 export { STAGES } from '../data/stages/index.js';
 export { FEATURES } from './features/index.js';
 export * from './sim/view.js';

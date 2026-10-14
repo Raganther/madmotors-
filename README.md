@@ -21,7 +21,10 @@ drive *through* it scores (a leader on the wrong line can miss it). Win by two, 
 **Weapons** (menu: Weapons on/off, every mode; `src/core/features/weapons.js`): drive through a **?** crate with
 nothing in hand to get one of five weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
 tracers), an oil slick (two, dropped behind), a shockwave (blows the cars round you away and cuts their engines) and a
-harpoon (hooks the car ahead: you're reeled in, they're held back). F fires. Crates are offered up the road to every
+harpoon (hooks the car ahead: you're reeled in, they're held back), plus proximity mines (two, dropped behind: the
+car that sets one off is thrown up and slowed). Blasts reach the scenery: a missile that hits or runs out, a mine, a
+shockwave and the monster truck's crush break fences, crates and even concrete near them, crack or knock holes in
+buildings and shove rubble about, and a missile that flies into a wall goes off there (`blastScenery`). F fires. Crates are offered up the road to every
 racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets
 missiles and harpoons, the front oil and shockwaves). Q swings a door into the car beside you (the side is picked
 for you). The AI uses all of it. On touch there are Fire and Door buttons; a gamepad uses B and the bumpers.
@@ -105,6 +108,22 @@ dirt oval with two big kickers, whoops, a mud pit and crates on the back straigh
 street circuit of square corners between Armco and houses with a fast chicane; a speed course on a salt lake, two
 straights with boost pads and sweepers you can almost take flat. They're in the series too.
 
+**Demolition** (stage 38, Demolition Yard; `src/core/modes/demolition.js`, the mode `createRace(W, defs, { mode:
+'demolition' })`, any stage with `demolition: { time }`): the derby's rules (no laps, damage stays, wrecked is out, the
+clock) scored on what you knock down. Every wall panel you break is worth its material's points (timber 1, brick 2,
+stone 3, concrete 4) and every building you bring down 10 a floor more. Highest score when the two minutes are up (or
+everything is down) wins. Demolition Yard is a condemned estate walled in with concrete: a market square inside the
+ring road the cars line up on, a ring of cottages, houses, a terrace, a chapel, a barn, a warehouse and flats round
+it. The demolition AI (`demoControl`) goes for buildings it can break (heavy enough for the material, fast enough for
+the walls), near and part-down ones first, and backs off for a run-up when it's stopped against one. `npm run
+demolition` plays it at two skills; the Workshop's Demolition tab with any car.
+
+**Wrecking Row** (stage 39): a special where the scenery is in the race. Shops and terraces stand right at the kerb
+down the High Street (no barrier: clip one and you're in the front room, and its rubble is on the road next lap), a
+concrete chicane (weave it, or smash it in something heavy), a cottage across the short cut through an S-bend (the
+first heavy car opens it for everyone), a kicker onto an old timber bridge over the canal that wears through lap by
+lap, whoops along the towpath, the lock's lifting bridge, a ford and a jump by the gasworks.
+
 **Special tracks** (stages 36-37): **Building Site**, a dirt lap round a half-built estate (a fenced cut through the
 foundations that heavy cars smash open, a spoil-heap kicker, two wrecking balls on the demolition block, a mud wallow,
 pallets of crates at the roadside), and **Seafront**, a tarmac lap with boost pads along the promenade by the sea, a cut
@@ -169,6 +188,8 @@ npm run check      # lint + tests: run before every commit
 | `npm run terrain -- gorge` | Shaded relief map of a stage's terrain |
 | `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
 | `npm run dashboard` | The career pacing dashboard (`tools/out/pacing.html`) from `npm run career -- --upg tier --json` |
+| `npm run demolition -- [stage] [--car id]` | Demolitions with the AI at two skills: scores, walls and buildings down, who was wrecked |
+| `node tools/scene.mjs <stage> <script.js>` | A scripted scene on the build (the script drives `window.__dr` and calls `shot(name)`): for things a race rarely shows on cue, like a car through a house |
 | `npm run derby -- [arena,...]` | A derby in each arena with the AI at a casual and a good skill: how long, who went out when, who won |
 | `npm run ratings` | Measure every vehicle's pace (tarmac, loose) and toughness and how much each stat moves a lap → `src/data/ratings-data.js` (commit it; a test fails when it's stale) |
 | `npm run destruct [-- kmh]` | What each vehicle can smash: the speed it breaks each breakable from, and a real run into each at a set speed |
@@ -245,6 +266,9 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | yump | `yump: <m>` | a natural dirt crest jump (no painted ramp); `kick` is the painted one |
 | dirt | `dirt: true` | a loose dirt track (gravel grip, no kerbs) on any stage; on a branch it's an off-road shortcut |
 | breakables | `breach: '<kind>'` on a branch; stage `props: [{ kind, at, lat }]` | a fence, gate, hay, crates or concrete blocks across a shortcut's mouth (only cars heavy and fast enough smash through; the AI knows), or placed on the road |
+| structures | stage `buildings: [{ type, at, lat } \| { type, a, b, face }]`, `demolition` | destructible buildings (see "Destructible buildings" below): beside the road (the barrier in front comes out), anywhere in screen axes, or across a branch (`road: true`) as a breach |
+| crumble | `crumble: true \| <strength>` | an old timber bridge that wears through plank by plank as the race crosses it (heavy cars fastest); fall through a hole and you're back past the far end. The AI takes the soundest lane. Put a `kick` before it |
+| chicane | `chicane: '<kind>'`, `chicaneSide` | barrier blocks staggered across a straight: weave through, or smash through in something heavy (concrete leaves its blocks on the road); the AI weaves and slows for it |
 | hammer | `hammers: <n>` | wrecking balls swinging across the road from gantries (hits in `features/hammers.js`); the AI times its run |
 | ice | `ice: true` | an ice patch across the road: hardly any grip; the AI slows for it. Best on a snow stage |
 | open | `open: 'field' \| 'forest' \| 'rocks' \| 'stream'`, `gate` | off-piste: a leg with no road (rolling ground, no barriers, no resets for leaving the line) through a meadow, a forest with gaps, a rock garden or a stream; `gate: true` puts a gate at the section's start. See "Off-piste" below |
@@ -319,8 +343,8 @@ side road closed at the end by something breakable; lamps, bins, benches and pos
 would hit a road, a railway, a tunnel or too steep a slope are left out. `src/data/styles.js` holds the styles
 (village, alpine, seaside, farm, desert, industrial): colours, roof shapes, plot sizes, what bounds a garden, what
 closes a side road, what stands on the pavement. A new style is a new entry; the rules are shared. Everything you can
-hit is a breakable (kit kinds in `data/breakables.js`: houses and barns never give way, picket fences snap, stone walls
-need a heavy car), so towns join in F3's destruction. Trees and rocks keep out of the plots. `render/elements/kit.js`
+hit is a breakable (kit kinds in `data/breakables.js`: picket fences snap, stone walls need a heavy car) or, for the
+houses and barns, a destructible building ("Destructible buildings" below), so towns join in the destruction. Trees and rocks keep out of the plots. `render/elements/kit.js`
 draws a town as a handful of instanced batches. Village Green, Harbour Sprint, Hay Bale Farm and Village Descent use it;
 the Workshop's Scenery kit tab shows every style.
 
@@ -346,6 +370,30 @@ it was), and leaves concrete's blocks on the road as chunks that get shoved abou
 `breakables` element: `breach` across a branch where it has pulled clear of the main road (the AI only takes a breached
 shortcut once it's down or it can smash it), or stage `props`. `npm run destruct` tables every vehicle against every
 kind; Workshop → Destruction yard drives any car into any of them.
+
+### Destructible buildings
+
+`src/data/structures.js` (types and materials), `src/core/elements/structures.js` (placing them),
+`src/core/features/structures.js` (breaking them), `src/render/elements/structures.js` (drawing them). A building is a
+ring of wall panels (~2.6 m each) round an empty floor. One rule, the impact rule: a car's mass x its speed into a
+panel against what the panel has left (its material's hp, more for a taller building, less its cracks).
+- **Enough:** the panel goes and the car ploughs on with what it had over (`KEEP`), so a heavy, fast car bursts in
+  the front and out the back (two panels side by side are one hole: the second costs `SAME`). A light car ends up in
+  the front room.
+- **Not enough, but at least `CHIP` x hp:** the wall cracks (darker as it weakens) and the cracks add up, so a kart can
+  batter its way in a hit at a time; it bounces off and the hit costs it. Below `minMass` (stone, concrete) a light car
+  can only crack it.
+- **Collapse:** once `COLLAPSE` of the panels are down the whole building comes down: the roof drops, dust, and a
+  rubble heap over the footprint that drags at your wheels (`HEAP_DRAG`).
+- **Rubble:** every broken panel throws lumps the way the car was going (`R.st.lumps`: they land on the road, get
+  shoved about and slow whoever hits them) and leaves a strip of rubble (`STRIP_DRAG`). Rubble stays for the race.
+- **Blasts** (`blastStructures`): weapons break or crack the walls in reach.
+- **Scoring:** a wall is a smash (`break`/`wallbreak` events), a collapse is `razed` in the career's destruction tally.
+- **The towns' houses and barns** (the world kit) are buildings too (`buildingsOf`: brick, timber, stone or concrete by
+  the style), so every town in every stage can be knocked down.
+- **A building across a branch** (`road: true`) blocks the short cut until it's down or holed front and back; the AI
+  takes it only then, or if it can smash through (`canRaze` in `sim/ai.js`).
+Workshop → Demolition (and the `structures` sandbox) to try it; `tests/structures.test.js` locks the rules.
 
 ### Car anatomy (panels)
 

@@ -101,7 +101,8 @@ export function updateHUD(dt) {
     el.hidden = false; el.className = lock ? 'lock' : it || firing ? '' : 'reload';
     setTxt('wpn-state', (lock ? 'Missile incoming!' : firing ? ITEM_NAME[act[0]] + '!' : it ? ITEM_NAME[it] + (levelOf(W.load, it) > 1 ? ' L' + levelOf(W.load, it) : '') + (W.uses > 1 ? ` ×${W.uses}` : '') + (isTouch ? '' : ' · F') : 'Grab a ? crate') + gear);
     const fw = (firing ? 100 * act[1] / act[2] : it ? 100 : 0).toFixed(0) + '%', ff = $('wpn-fill'); if (ff._w !== fw) { ff._w = fw; ff.style.width = fw; }
-    $('wpn-fire').classList.toggle('ready', !!it); $('wpn-fire').classList.toggle('lock', lock);   // on touch the Fire button is the weapon panel setTxt('wpn-fire', it ? { missile: 'Missile', gun: 'Guns', oil: 'Oil', pulse: 'Pulse', harpoon: 'Hook', water: 'Water', cement: 'Cement', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle' }[it] : 'Fire');
+    $('wpn-fire').classList.toggle('ready', !!it); $('wpn-fire').classList.toggle('lock', lock);
+    setTxt('wpn-fire', it ? { missile: 'Missile', gun: 'Guns', oil: 'Oil', pulse: 'Pulse', harpoon: 'Hook', water: 'Water', cement: 'Cement', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle', mine: 'Mines' }[it] : 'Fire');   // on touch the Fire button is the weapon panel: it says what you hold
   } else $('wpn').hidden = true;
   $('touch').classList.toggle('nowpn', !race.weapons);
   const wrong = P.wrongT > 1 && !race.derby, missed = P.gateMiss && !P.finished;

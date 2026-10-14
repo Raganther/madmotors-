@@ -2,6 +2,9 @@ import { HALF } from '../constants.js';
 import { clamp, mulberry32, wrapAngle } from '../math.js';
 import { damageCar } from '../sim/damage.js';
 import { SIGNATURES, WEAPONS, levelOf } from '../../data/weapons.js';
+import { BREAKABLES } from '../../data/breakables.js';
+import { blastStructures } from './structures.js';
+import { inFootprint } from '../elements/structures.js';
 
 // ---------- weapons (menu: Weapons on/off; R.weapons) ----------
 // Weapon crates lie on the road; drive through one with nothing in hand and you get a weapon, which one depending on
@@ -14,6 +17,11 @@ import { SIGNATURES, WEAPONS, levelOf } from '../../data/weapons.js';
 //   pulse    a shockwave: everyone within WPN.PULSE_R m is blown away from you and their engine cuts out briefly
 //   harpoon  hooks the car ahead (within WPN.HARP_R m); for WPN.TOW_T s the line reels you in and holds them back
 //            (their engine can't drive against it)
+//   mine     two proximity mines dropped behind, one at a time: armed after MINE_ARM s, the first car within MINE_TRIG
+//            m sets one off, and everything within MINE_BLAST m is thrown up and slowed
+// Blasts reach the scenery too (blastScenery): a missile that hits or runs out, a mine, a shockwave and a crush landing
+// break fences, crates and walls near them and crack or bring down buildings (core/features/structures.js), and shove
+// rubble about. A missile that flies into a building or a breakable goes off there.
 // Crates are placed for everyone, not just the leader: each racer gets one offered 60-100 m up the road on its own
 // timer (quicker the further back it is), and a crate nobody can reach any more is cleared away.
 // Door bash (Road Rash with doors), always there: one button, the door on the side with a car beside you swings open;
@@ -40,14 +48,16 @@ export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_
   STINGER_HITS: 2, STINGER_LIFE: 20, STINGER_SCRUB: 0.6, STINGER_DMG: 4,
   CRUSH_V: 7.5, CRUSH_R: 7, CRUSH_DMG: 6.5, CRUSH_SCRUB: 0.6,
   JINGLE_T: 2.5, JINGLE_R: 22, JINGLE_DUTY: 0.33,
-  FLARE_COOL: 20, SHIELD_COOL: 18, SHIELD_ON: 1, MAGNET: 2.4, SIG_ODDS: 1.3 };
-export const ITEMS = ['missile', 'gun', 'oil', 'pulse', 'harpoon', 'water', 'cement', 'stinger', 'crush', 'jingle'];
-export const ITEM_USES = { missile: 1, gun: 1, oil: 2, pulse: 1, harpoon: 1, water: 1, cement: 1, stinger: 2, crush: 1, jingle: 1 };
+  FLARE_COOL: 20, SHIELD_COOL: 18, SHIELD_ON: 1, MAGNET: 2.4, SIG_ODDS: 1.5,
+  MINE_ARM: 0.8, MINE_TRIG: 3, MINE_BLAST: 5, MINE_DMG: 6.5, MINE_POP: 6.5, MINE_SLOW: 0.42, MINE_LIFE: 40,
+  BLAST_MISSILE: [5, 48], BLAST_MINE: [5, 40], BLAST_PULSE: 26, BLAST_CRUSH: 36 };   // scenery blasts: [radius m, power (as a car's impact)]
+export const ITEMS = ['missile', 'gun', 'oil', 'pulse', 'harpoon', 'water', 'cement', 'stinger', 'crush', 'jingle', 'mine'];
+export const ITEM_USES = { missile: 1, gun: 1, oil: 2, pulse: 1, harpoon: 1, water: 1, cement: 1, stinger: 2, crush: 1, jingle: 1, mine: 2 };
 export const SIG_ITEMS = ITEMS.filter(it => WEAPONS[it].sig);
 /** Weapon number k for car c's item it: its level's (data/weapons.js) or WPN's. */
 export const wv = (c, it, k) => { const f = WEAPONS[it].fx[levelOf(c.wpn && c.wpn.load, it) - 1]; return f[k] !== undefined ? f[k] : WPN[k]; };
 // pick-up odds by race position r (0 = leading, 1 = last): the back gets missiles and harpoons, the front oil and pulses
-const ODDS = { missile: r => 0.5 + 1.5 * r, gun: () => 1, oil: r => 1.5 - r, pulse: r => 1.1 - 0.4 * r, harpoon: r => 0.15 + 1.6 * r };
+const ODDS = { missile: r => 0.5 + 1.5 * r, gun: () => 1, oil: r => 1.5 - r, pulse: r => 1.1 - 0.4 * r, harpoon: r => 0.15 + 1.6 * r, mine: r => 1.1 - 0.6 * r };
 
 const along = (c, o) => (o.x - c.x) * Math.sin(c.yaw) + (o.z - c.z) * Math.cos(c.yaw);
 const across = (c, o) => -(o.x - c.x) * Math.cos(c.yaw) + (o.z - c.z) * Math.sin(c.yaw);   // + = the car's right (core rx, rz)
@@ -59,6 +69,34 @@ function shielded(c) {
   if (w.shieldOn > 0) return true;
   if (w.shieldT > 0) return false;
   w.shieldT = WPN.SHIELD_COOL; w.shieldOn = WPN.SHIELD_ON; c.events.push({ t: 'shield', x: c.x, y: c.y, z: c.z }); return true;
+}
+/** A blast at (x, z): breakables (data/breakables.js) within r m break if `power` (falling off with distance) beats
+ *  their hp, whatever their minimum mass; buildings' walls break or crack (blastStructures); loose rubble and blocks
+ *  are thrown outwards. `by` (a car index, or -1) gets the credit. Returns what broke. */
+export function blastScenery(R, x, z, r, power, by) {
+  let n = blastStructures(R, x, z, r, power, by);
+  for (const o of R.brk || []) {
+    if (o.broken) continue; const K = BREAKABLES[o.kind]; if (!(K.hp < Infinity)) continue;
+    const d = Math.max(0, Math.hypot(o.x - x, o.z - z) - Math.max(o.hl, o.hw) * 0.5); if (d > r) continue;
+    if (power * (1 - d / r) < K.hp) continue;
+    o.broken = true; o.by = by; n++;
+    const dx = (o.x - x) / (Math.hypot(o.x - x, o.z - z) || 1), dz = (o.z - z) / (Math.hypot(o.x - x, o.z - z) || 1);
+    for (let k = 0; k < (K.chunks || 0); k++) R.chunks.push({ x: o.x + Math.sin(o.yaw) * (k - 1) * K.w / 3, z: o.z + Math.cos(o.yaw) * (k - 1) * K.w / 3, y: o.y + 0.4, vx: dx * 7, vz: dz * 7, vy: 3, age: 0, hint: R.player.pr.i, spin: 1, a: 0 });
+    if (by >= 0) R.cars[by].events.push({ t: 'break', id: o.id, kind: o.kind, x: o.x, y: o.y, z: o.z, nx: -dx, nz: -dz, v: 12, blast: true });
+  }
+  const shove = q => { const dx = q.x - x, dz = q.z - z, d = Math.hypot(dx, dz); if (d > r * 1.4) return; const f = 9 * (1 - d / (r * 1.4)); q.vx += dx / (d || 1) * f; q.vz += dz / (d || 1) * f; q.vy = Math.max(q.vy || 0, 2 + f * 0.4); };
+  for (const q of R.chunks || []) shove(q);
+  if (R.st) for (const q of R.st.lumps) shove(q);
+  return n;
+}
+/** Does a point at (x, y, z) stand in an unbroken wall or breakable (a missile flying into it)? */
+function solidAt(R, x, y, z) {
+  if (R.st) for (const o of R.st.blds) if (!o.collapsed && y < o.y + o.floors * 3 + 0.4 && inFootprint(o, x, z, 0.3) && !inFootprint(o, x, z, -0.6)) { const p = R.st.panels.find(q => q.bld === o.id && !q.broken && Math.hypot(q.x - x, q.z - z) < q.hl + 0.8); if (p) return true; }
+  for (const o of R.brk || []) {
+    if (o.broken || y > o.y + 2.5) continue; const dx = x - o.x, dz = z - o.z, a = dx * Math.sin(o.yaw) + dz * Math.cos(o.yaw), b = dx * Math.cos(o.yaw) - dz * Math.sin(o.yaw);
+    if (Math.abs(a) < o.hl + 0.3 && Math.abs(b) < o.hw + 0.3) return true;
+  }
+  return false;
 }
 /** Where something travelling on the road is: at race progress s, lat metres across (y a little above the road). */
 export function roadPos(tr, s, lat, up = 1.1) {
@@ -133,6 +171,7 @@ function use(R, W, c) {
       const f = WPN.PULSE_V * (1 - d / PR * 0.6); o.vx += dx / (d || 1) * f; o.vz += dz / (d || 1) * f; o.stallT = WPN.STALL; o.spin += (R.wpn.rng() - 0.5) * 2;
       o.events.push({ t: 'pulse-hit', from: k });
     }
+    blastScenery(R, c.x, c.z, PR * 0.7, WPN.BLAST_PULSE, k);
   } else if (it === 'harpoon') {
     const t = missileTarget(R, c, WPN.HARP_R);
     R.wpn.hooks.push({ id: R.wpn.next++, from: k, to: t, s: c.progress + 2, lat: onRoad(tr, c), t: 0, tow: 0, towT: wv(c, it, 'TOW_T') });
@@ -142,6 +181,7 @@ function use(R, W, c) {
   else if (it === 'stinger') R.wpn.strips.push({ id: R.wpn.next++, s: c.progress - c.hl - 3, t: 0, from: k, left: wv(c, it, 'STINGER_HITS'), hit: [] });
   else if (it === 'crush') { c.vy = WPN.CRUSH_V; c.onGround = false; c.airT = 0; w.crushT = 2; w.crushR = wv(c, it, 'CRUSH_R'); w.crushUp = 0.15; }
   else if (it === 'jingle') { w.jingleT = WPN.JINGLE_T; w.jingleR = wv(c, it, 'JINGLE_R'); w.jingled = []; }
+  else if (it === 'mine') { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); R.wpn.mines.push({ id: R.wpn.next++, x: c.x - fx * (c.hl + 1.6), y: c.y, z: c.z - fz * (c.hl + 1.6), t: 0, from: k, blast: wv(c, it, 'MINE_BLAST'), dmg: wv(c, it, 'MINE_DMG') }); }
   c.events.push({ t: 'use', item: it, lv: levelOf(w.load, it) });
   if (--w.uses <= 0) { w.item = null; w.uses = 0; }
 }
@@ -164,6 +204,7 @@ function hitByMissile(R, W, m, c) {
   c.spin += (R.wpn.rng() < 0.5 ? -1 : 1) * WPN.SPIN; c.boost = 0; c.driftT = 0;
   damageCar(c, p.x, p.z, WPN.MISSILE_DMG, 1, 0, 0);
   c.events.push({ t: 'missile-hit', x: p.x, y: p.y, z: p.z, from: m.from });
+  blastScenery(R, p.x, p.z, WPN.BLAST_MISSILE[0], WPN.BLAST_MISSILE[1], m.from);
 }
 function flyMissiles(R, W, dt) {
   const tr = W.tr;
@@ -177,7 +218,10 @@ function flyMissiles(R, W, dt) {
       if (idx(R, c) === m.from || !live(c)) continue;
       if (Math.abs(c.progress - m.s) < WPN.HIT_S && Math.abs(onRoad(tr, c) - m.lat) < WPN.HIT_LAT + c.hw * 0.5) { hitByMissile(R, W, m, c); m.dead = true; break; }
     }
-    if (!m.dead && (m.t > WPN.LIFE || m.s > tr.xs.length - 3)) { m.dead = true; R.cars[m.from].events.push({ t: 'missile-fizzle', ...missilePos(tr, m) }); }
+    if (!m.dead && (m.t > WPN.LIFE || m.s > tr.xs.length - 3 || solidAt(R, ...Object.values(missilePos(tr, m)).slice(0, 3)))) {   // ran out, or flew into something: it goes off there
+      m.dead = true; const p = missilePos(tr, m); R.cars[m.from].events.push({ t: 'missile-fizzle', ...p, boom: true });
+      blastScenery(R, p.x, p.z, WPN.BLAST_MISSILE[0], WPN.BLAST_MISSILE[1], m.from);
+    }
   }
   R.missiles = R.missiles.filter(m => !m.dead);
 }
@@ -282,6 +326,7 @@ function signatures(R, W, dt) {
       w.crushT -= dt; if (!c.onGround) w.crushAir = 1;
       if (w.crushAir && c.onGround) {
         w.crushT = 0; w.crushAir = 0; c.events.push({ t: 'crush', x: c.x, y: c.y, z: c.z, r: w.crushR });
+        blastScenery(R, c.x, c.z, w.crushR * 0.6, WPN.BLAST_CRUSH, k);
         for (const o of R.cars) {
           if (o === c || !live(o) || Math.abs(o.y - c.y) > 3 || Math.hypot(o.x - c.x, o.z - c.z) > w.crushR || shielded(o)) continue;
           o.vx *= WPN.CRUSH_SCRUB; o.vz *= WPN.CRUSH_SCRUB; o.vy = 3; o.onGround = false; o.stallT = WPN.STALL;
@@ -320,6 +365,25 @@ function signatures(R, W, dt) {
       damageCar(c, c.x, c.z, WPN.STINGER_DMG, 1, 0, 0); c.events.push({ t: 'stinger-hit', from: o.from, x: c.x, y: c.y, z: c.z });
     });
     return o.left > 0 && o.t < WPN.STINGER_LIFE && R.cars.some(c => live(c) && c.progress < o.s + 2);
+  });
+}
+// proximity mines: armed after MINE_ARM s (their layer is safe from its own for twice that); the first car near one
+// sets it off, and the blast throws up and slows everyone in reach, falling off with distance
+function mines(R, W, dt) {
+  const S = R.wpn;
+  S.mines = S.mines.filter(m => {
+    m.t += dt; if (m.t < WPN.MINE_ARM) return true;
+    const trig = R.cars.find((c, j) => live(c) && (j !== m.from || m.t > WPN.MINE_ARM * 2) && Math.abs(c.y - m.y) < 2 && Math.hypot(c.x - m.x, c.z - m.z) < WPN.MINE_TRIG + c.hw);
+    if (!trig) return m.t < WPN.MINE_LIFE;
+    R.cars[m.from].events.push({ t: 'mine-boom', x: m.x, y: m.y, z: m.z, r: m.blast });
+    for (const c of R.cars) {
+      const d = Math.hypot(c.x - m.x, c.z - m.z); if (!live(c) || d > m.blast || Math.abs(c.y - m.y) > 3 || shielded(c)) continue;
+      const f = c === trig ? 1 : 1 - d / m.blast * 0.6; c.vx *= 1 - (1 - WPN.MINE_SLOW) * f; c.vz *= 1 - (1 - WPN.MINE_SLOW) * f; c.vy = WPN.MINE_POP * f; c.onGround = false; c.airT = 0;
+      c.spin += (S.rng() < 0.5 ? -1 : 1) * 3 * f; c.boost = 0; damageCar(c, m.x, m.z, m.dmg * f, 1, 0, 0);
+      c.events.push({ t: 'mine-hit', from: m.from, x: c.x, y: c.y, z: c.z });
+    }
+    blastScenery(R, m.x, m.z, WPN.BLAST_MINE[0], WPN.BLAST_MINE[1], m.from);
+    return false;
   });
 }
 // ----- door bash: one button; the door on the side with a car next to you -----
@@ -367,7 +431,7 @@ function aiWeapons(R, W, dt) {
       const inJet = R.cars.some(o => o !== c && live(o) && (a => a.d < WPN.WATER_R * 0.85 && a.ang < WPN.WATER_CONE * 0.8)(aim(c, o)));
       const heard = R.cars.filter(o => o !== c && live(o) && Math.hypot(o.x - c.x, o.z - c.z) < WPN.JINGLE_R * 0.8).length;
       const want = { missile: gap > (bold ? 8 : 20), gun: gap < (bold ? 70 : 45), harpoon: gap > 12 && gap < WPN.HARP_R, oil: behind, pulse: near >= 1,
-        water: inJet, cement: behind, stinger: behind, crush: close >= 1 && c.onGround, jingle: heard >= 2 }[w.item];
+        water: inJet, cement: behind, stinger: behind, crush: close >= 1 && c.onGround, jingle: heard >= 2, mine: behind }[w.item];
       if (want) use(R, W, c);
     }
     if (!(w.doorCool > 0) && !(w.doorT > 0) && rng() < dt * 0.45 * keen) {
@@ -383,7 +447,7 @@ export const feature = {
   name: 'weapons',
   init(R) {
     R.missiles = []; if (!R.weapons) return;
-    R.wpn = { rng: mulberry32(R.cars.length * 104729 + 3), next: 0, crates: [], bullets: [], slicks: [], hooks: [], cement: [], strips: [] };
+    R.wpn = { rng: mulberry32(R.cars.length * 104729 + 3), next: 0, crates: [], bullets: [], slicks: [], hooks: [], cement: [], strips: [], mines: [] };
     R.cars.forEach((c, k) => {
       const load = c.def.wpn || null;   // levels and gear (data/weapons.js); the signature weapon comes with the vehicle
       c.wpn = { item: null, uses: 0, gunT: 0, gunAcc: 0, doorT: 0, doorSide: 0, doorCool: 0, crateT: 1.5 + k * 0.4,
@@ -399,6 +463,6 @@ export const feature = {
       if (inp.door) { if (racing && !(w.doorCool > 0) && live(c)) swingDoor(R, c, doorSide(R, c)); inp.door = 0; }
     }
     if (racing) { crates(R, W, dt); aiWeapons(R, W, dt); }
-    flyMissiles(R, W, dt); guns(R, W, dt); slicks(R, W, dt); hooks(R, W, dt); signatures(R, W, dt); doors(R, dt);
+    flyMissiles(R, W, dt); guns(R, W, dt); slicks(R, W, dt); hooks(R, W, dt); signatures(R, W, dt); mines(R, W, dt); doors(R, dt);
   }
 };

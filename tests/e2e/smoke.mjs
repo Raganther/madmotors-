@@ -11,7 +11,7 @@ fs.mkdirSync(outDir, { recursive: true });
 const opts = { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] };
 if (fs.existsSync('/opt/pw-browsers/chromium')) opts.executablePath = undefined;
 const browser = await chromium.launch(opts);
-const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
+const page = await browser.newPage({ viewport: { width: 960, height: 540 } }); page.setDefaultTimeout(120000);   // (screenshots under SwiftShader on a busy machine)
 const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push(m.text()); });
@@ -31,7 +31,7 @@ for (let i = 0; i < n; i++) {
     const cov = d.G.world.cover, N = cov.length, open = cov.findIndex(v => !v), tun = cov.findIndex(v => v);
     return { stage: d.G.world.stage.name, t: d.race.time.toFixed(1), progress: Math.round(d.race.player.progress), cov: cov[d.race.player.pr.i % N], open, tun, N, dirt, dirtStage };
   });
-  await page.screenshot({ path: path.join(outDir, `stage${i + 1}.png`) });
+  await page.screenshot({ path: path.join(outDir, `stage${i + 1}.png`), timeout: 120000 });   // (SwiftShader: a heavy stage can take a while to draw)
   console.log(`stage ${i + 1} ${info.stage}: raced ${info.t}s, player progress ${info.progress}, covered stretch ${info.tun < 0 ? 'none' : 'from ' + info.tun}`);
   if (info.open < 0) errors.push('see-through is on along the whole of ' + info.stage);
   if (info.dirtStage && !(info.dirt > 0)) errors.push('cars did not get dusty on the dirt stage ' + info.stage);
@@ -326,7 +326,7 @@ for (const sb of ['tunnel', 'town']) {
 await page.goto('about:blank');   // park the desktop page so its render loop doesn't starve this one (software GL)
 {
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
-  const tp = await ctx.newPage(); tp.on('pageerror', e => errors.push(e.message));
+  const tp = await ctx.newPage(); tp.setDefaultTimeout(120000); tp.on('pageerror', e => errors.push(e.message));
   await tp.goto('file://' + file); await tp.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
   await tp.evaluate(() => window.__dr.flow.startRace(0));
   await tp.waitForFunction(() => window.__dr.race && !document.getElementById('touch').hidden, null, { timeout: 30000 });
@@ -384,7 +384,7 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
 }
 // the Asset Lab: every asset with each provider it has, near and far, dented and repaired, without errors
 {
-  const lp = await browser.newPage({ viewport: { width: 960, height: 540 } });
+  const lp = await browser.newPage({ viewport: { width: 960, height: 540 } }); lp.setDefaultTimeout(120000);
   lp.on('pageerror', e => errors.push('lab: ' + e.message)); lp.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push('lab: ' + m.text()); });
   await lp.goto('file://' + file + '?lab'); await lp.waitForSelector('#lab-list [data-id]', { timeout: 30000 });
   const ids = await lp.evaluate(() => [...document.querySelectorAll('#lab-list [data-id]')].map(b => b.dataset.id));
@@ -402,7 +402,7 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
 }
 // the Workshop: the hub, a crash test side-on and into the Armco, a missile at the dummies, a sandbox from the hub
 {
-  const wp = await browser.newPage({ viewport: { width: 1100, height: 620 } });
+  const wp = await browser.newPage({ viewport: { width: 1100, height: 620 } }); wp.setDefaultTimeout(120000);
   wp.on('pageerror', e => errors.push('workshop: ' + e.message)); wp.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push('workshop: ' + m.text()); });
   const fail = msg => { errors.push('workshop: ' + msg); console.log('workshop: ' + msg); };
   await wp.goto('file://' + file + '?workshop'); await wp.waitForSelector('#ws-hub .ws-card', { timeout: 30000 });
@@ -459,6 +459,14 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   await wp.waitForTimeout(400); await wp.screenshot({ path: path.join(outDir, 'workshop-derby.png') });
   if (dby.phase !== 'over' || dby.left > 1 || dby.cars !== 6 || dby.ring < 40) fail('derby: ' + JSON.stringify(dby));
   console.log(`workshop derby: The Stadium, ${dby.cars} cars, over at ${dby.t}s, ${dby.left} left, ${dby.ring} ring pieces and props`);
+  // D1: a demolition in the yard with the monster truck, the AI driving every car, played to the end: buildings down, scores up
+  await wp.click('#ws-hub-btn'); await wp.waitForSelector('#ws-hub:not([hidden])'); await wp.click('[data-tab=demolition]'); await live('demolition');
+  await wp.selectOption('#ws-car', 'monster'); await wp.waitForFunction(() => window.__dr.G.state === 'racing' && window.__dr.race.demo && window.__dr.race.player.def.vehicle === 'monster', null, { timeout: 60000 });
+  const dmo = await wp.evaluate(() => { const d = window.__dr; d.race.autoPlayer = true; for (let k = 0; k < 400 && d.race.derby.phase === 'run'; k++) d.step(0.5);
+    return { phase: d.race.derby.phase, t: Math.round(d.race.derby.t), down: d.race.st.blds.filter(o => o.collapsed).length, n: d.race.st.blds.length, pts: d.race.demo.pts.reduce((a, b) => a + b, 0) }; });
+  await wp.waitForTimeout(400); await wp.screenshot({ path: path.join(outDir, 'workshop-demolition.png') });
+  if (dmo.phase !== 'over' || dmo.down < 3 || !(dmo.pts > 20)) fail('demolition: ' + JSON.stringify(dmo));
+  console.log(`workshop demolition: over at ${dmo.t}s, ${dmo.down} of ${dmo.n} buildings down, ${dmo.pts} points in all`);
   await wp.click('#ws-hub-btn'); await wp.click('[data-tab=elements]'); await wp.click('[data-sb=jump]');
   await wp.waitForFunction(() => window.__dr.G.world.stage.name === 'Sandbox: jump' && window.__dr.G.state !== 'menu', null, { timeout: 60000 });
   console.log('workshop elements: sandbox jump opened'); await wp.close();

@@ -43,3 +43,11 @@ new element. Scenery that doesn't touch the road or race may only need a render 
 - An element with no road under its samples (`gap`, `ferry`, `open`) must be skipped by everything that draws or tests
   the road: `render/world/road.js`, `render/elements/wear.js`, and the "no ground above the road" check in
   `tests/scenery.test.js`. Check a shot of it from a low camera.
+- A per-sample array built over the main road (`N0` long) and read through `tr.bi(i)` gets a branch's base index
+  (>= N0) when the car is on a branch: `undefined`, which slips past an `x === x` NaN check and turns into NaN
+  steering (the chicane's AI lane made a car's position NaN on Wrecking Row). Guard reads with `Number.isFinite`, or
+  size the array `NB`.
+- Something that wears or breaks during a race (a crumbling bridge, a building) keeps its state on the race (`R.*`,
+  plus a `W.*` pointer when the ground query or the AI must see it, as drawbridges and `W.st` do), never on `tr`,
+  which every race on the stage shares. The render diffs that state each frame; it doesn't rely on events, which a
+  blast with no car behind it (`by: -1`) never sends.

@@ -11,7 +11,7 @@ export const WORKSHOP_TABS = [
   { id: 'destruct', name: 'Destruction yard', blurb: 'Any car into crates, hay, a fence, a farm gate or concrete blocks at a set speed: what breaks, what bounces, what it costs', live: true },
   { id: 'derby', name: 'Derby arena', blurb: 'A derby in any arena (scrapyard, mud pit, stadium) with any car against five rivals: drive it or watch the AI fight', live: true },
   { id: 'demolition', name: 'Demolition', blurb: 'Two minutes to knock down a condemned estate with any car against five rivals: heavy cars drive through houses, light ones crack the walls', live: true },
-  { id: 'kit', name: 'Scenery kit', blurb: 'A town in each style (village, alpine, seaside, farm, desert, industrial) along the loop: drive or fly round it, smash its fences and gates', live: true },
+  { id: 'kit', name: 'Scenery kit', blurb: 'A town in each style (village, alpine, seaside, farm, desert, industrial) along the loop: drive or fly round it, smash its fences, gates and houses', live: true },
 ];
 
 /** The Destruction yard: one of each breakable (data/breakables.js) across the far straight, 50 m apart. */

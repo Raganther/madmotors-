@@ -22,7 +22,7 @@ import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
 import { camera, renderer, scene } from '../render/renderer.js';
 import { resetDirt } from '../render/effects/dirt.js';
-import { bulletHitFx, crushFx, flaresFx, shieldFx, stingerFx, flash, missileBlast, missilePuff, mountKick, oilDropFx, pickupFx, pulseFx, smoke, muzzleFx } from '../render/weapons.js';
+import { bulletHitFx, crushFx, mineBlast, flaresFx, shieldFx, stingerFx, flash, missileBlast, missilePuff, mountKick, oilDropFx, pickupFx, pulseFx, smoke, muzzleFx } from '../render/weapons.js';
 import { landDust } from '../render/effects/carfx.js';
 import { carVis, setRoster, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
@@ -134,7 +134,9 @@ export function handleEvents() {
         case 'shield-hit': flash(e.x, e.y + 1, e.z, 2.5, 0x9ADCFF, 0.15); break;
         case 'flares': flaresFx(c); if (near) AudioSys.burst(0.3, 'bandpass', 3000, 0.3); if (c.isPlayer) callout('Flares! Missile decoyed'); else if (race.cars[e.from] === race.player) callout(`${c.name} fired flares`); break;
         case 'missile-hit': missileBlast(e); if (near) { AudioSys.crash('car', 1); AudioSys.burst(0.7, 'lowpass', 140, 0.7); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1.1); callout('Hit by a missile!'); } else if (race.cars[e.from] === race.player) callout(`Direct hit on ${c.name}!`); break;
-        case 'missile-fizzle': missilePuff(e); break;
+        case 'missile-fizzle': if (e.boom) { missileBlast(e); if (near) AudioSys.crash('car', 0.8); } else missilePuff(e); break;
+        case 'mine-boom': mineBlast(e); if (Math.hypot(e.x - race.player.x, e.z - race.player.z) < 50) { AudioSys.crash('car', 0.9); AudioSys.burst(0.6, 'lowpass', 120, 0.6); } break;
+        case 'mine-hit': if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1); callout('Mine!'); } else if (race.cars[e.from] === race.player) callout(`${c.name} hit your mine!`); break;
         case 'door': if (near) AudioSys.burst(0.12, 'bandpass', 1500, 0.12); break;
         case 'door-hit': sparks(e.x, e.y, e.z, 8); if (near) AudioSys.crash('metal', 0.55); { const by = race.cars[e.by]; if (c.isPlayer) { G.shake = Math.min(1.2, G.shake + 0.5); callout(`Door slam from ${by.name}!`); } else if (by === race.player) callout(`Slammed ${c.name}!`); } break;
         case 'cp-miss': callout('Nobody through the gate'); break;
@@ -179,7 +181,7 @@ function cpPoint(e) {
   if (e.state !== 'win') callout(call ? (me ? `Checkpoint! ${call}` : call) : me ? `Checkpoint! ${pts}` : `${who} takes the gate`);
   AudioSys.tone(me ? 988 : 587, 0.16, 0.08, 'triangle', me ? 1.5 : 0.8);
 }
-export const ITEM_NAME = { missile: 'Homing missile', gun: 'Machine gun', oil: 'Oil slick', pulse: 'Shockwave', harpoon: 'Harpoon', water: 'Water cannon', cement: 'Cement trail', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle' };
+export const ITEM_NAME = { missile: 'Homing missile', gun: 'Machine gun', oil: 'Oil slick', pulse: 'Shockwave', harpoon: 'Harpoon', water: 'Water cannon', cement: 'Cement trail', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle', mine: 'Proximity mines' };
 // firing: the effect and sound for each weapon
 function useFx(c, item, near) {
   const v = near ? 1 : 0.4;
@@ -191,6 +193,7 @@ function useFx(c, item, near) {
   else if (item === 'cement') AudioSys.burst(0.3 * v, 'lowpass', 300, 1.5);
   else if (item === 'stinger') AudioSys.tone(300, 0.15, 0.06 * v, 'square', 0.8);
   else if (item === 'crush') { AudioSys.burst(0.4 * v, 'lowpass', 200, 0.4); if (c.isPlayer) AudioSys.tone(140, 0.4, 0.08, 'sawtooth', 2); }
+  else if (item === 'mine') AudioSys.tone(220, 0.12, 0.06 * v, 'square', 0.5);
   else if (item === 'jingle') [784, 659, 698, 784, 880, 784, 659, 523].forEach((f, k) => setTimeout(() => AudioSys.tone(f, 0.22, 0.06 * v, 'triangle'), k * 240));   // the van's chimes
 }
 function sdCrown(e) {

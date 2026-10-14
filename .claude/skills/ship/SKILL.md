@@ -37,3 +37,6 @@ Run from the repo root. Stop and fix at the first failure; never commit red.
   stack then "Node.js vXX" last. Read for "smoke test passed" (or check `$?` without the pipe) before calling it green.
 - Starting new work "from main": `git fetch origin main` first. `git checkout -B <branch> origin/main` on a stale
   origin/main silently rewinds the working tree to old code (the merged work looks gone until you fetch).
+- The e2e renders every stage with SwiftShader on 4 CPUs (about a minute a stage): run it alone (`run_in_background`
+  with a long timeout) and don't run vitest, builds or shots beside it, or a screenshot times out and it looks like a
+  failure. `DIST=dist-dev` (a `vite build --outDir dist-dev`) lets shot.mjs / scene.mjs run without touching `dist`.

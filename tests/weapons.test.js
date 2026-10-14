@@ -2,6 +2,8 @@
 import { describe, it, expect } from 'vitest';
 import M from './core-under-test.js';
 import { seedRandom } from './scenarios.js';
+import { WORKSHOP_STAGE } from '../src/data/workshop.js';
+const ytr = M.buildTrack(WORKSHOP_STAGE);
 
 const DEFS = [
   { name: 'a', skill: 0.95, flick: 0.38, driftK: 1 / 62 }, { name: 'b', skill: 0.99, flick: 0.22, driftK: 1 / 38 },
@@ -81,6 +83,19 @@ describe('weapon modules', () => {
     const after = lv => { const { R, Wd } = setup('oil', [0, 5, -5], [-14, -60, -60], lv); let v = 99; run(R, Wd, 2, (e, c) => { if (e.t === 'oil-hit') v = Math.hypot(c.vx, c.vz); }); return v; };
     expect(after(L3('oil'))).toBeLessThan(after({}) - 3);
   });
+  it('mines: dropped behind, armed, the car that runs over one is thrown up and slowed; its layer gets through', () => {
+    const { R, Wd, P } = setup('mine', [0, 6, -6], [-16, -70, -80]); let hit = null, boom = 0;
+    run(R, Wd, 2.5, (e, c) => { if (e.t === 'mine-hit' && c !== P && !hit) hit = { vy: c.vy, v: Math.hypot(c.vx, c.vz) }; if (e.t === 'mine-boom') boom++; });
+    expect(boom).toBe(1); expect(hit).not.toBe(null); expect(hit.vy).toBeGreaterThan(2); expect(hit.v).toBeLessThan(18);
+    expect(P.wpn.uses).toBe(1); expect(R.wpn.mines.length).toBe(0);
+  });
+  it('blasts reach the scenery: a mine breaks the crates near it, a missile even concrete, and nothing far off', () => {
+    const Wy = { tr: ytr, terr: M.buildTerrain(ytr, WORKSHOP_STAGE), surf: WORKSHOP_STAGE.surface, armco: true }, R = M.createRace(Wy, DEFS, { weapons: true });
+    const crates = R.brk.find(o => o.kind === 'crates'), conc = R.brk.find(o => o.kind === 'concrete');
+    M.blastScenery(R, crates.x + 2, crates.z, M.WPN.BLAST_MINE[0], M.WPN.BLAST_MINE[1], 0); expect(crates.broken).toBe(true);
+    M.blastScenery(R, conc.x, conc.z, M.WPN.BLAST_MISSILE[0], M.WPN.BLAST_MISSILE[1], 0); expect(conc.broken).toBe(true); expect(R.chunks.length).toBe(3);
+    expect(R.brk.filter(o => o.broken).length).toBe(2);
+  });
   it('gear: flares draw a missile off, a shield soaks up a hit, then both recharge', () => {
     for (const gear of ['flares', 'shield']) {
       const { R, Wd } = setup('missile', [3, 5, -5], [40, -60, -70], {}, { wpn: { gear } }), T = R.cars[0]; const seen = [];
@@ -90,9 +105,12 @@ describe('weapon modules', () => {
     }
   });
   it('signature weapons come with their vehicle, and only with it', () => {
-    const { R, Wd } = raceW({ vehicle: 'firetruck' }); R.autoPlayer = true; const got = [];
-    run(R, Wd, 150, (e, c) => { if (e.t === 'pickup') got.push([c.isPlayer, e.item]); });
-    expect(R.player.wpn.sig).toBe('water');
+    const got = [];   // a few races' crates (each with its own crate dice), the player's hand emptied at once so it sees every crate
+    for (const seed of [1, 2, 3, 4]) {
+      const { R, Wd } = raceW({ vehicle: 'firetruck' }); R.autoPlayer = true; R.wpn.rng = M.mulberry32(seed * 7919);
+      run(R, Wd, 150, (e, c) => { if (e.t === 'pickup') { got.push([c.isPlayer, e.item]); if (c.isPlayer) c.wpn.item = null; } });
+      expect(R.player.wpn.sig).toBe('water');
+    }
     expect(got.some(([p, it]) => p && it === 'water')).toBe(true);
     expect(got.some(([p, it]) => !p && M.SIG_ITEMS.includes(it))).toBe(false);
   });

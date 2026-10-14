@@ -95,9 +95,9 @@ export const PAINTS = [
 // objectives: the third star of a race. n is a count over the whole race
 const OBJ = {
   drift: n => ({ k: 'drift', n }), air: n => ({ k: 'air', n }), hits: n => ({ k: 'hits', n }), clean: () => ({ k: 'clean' }),
-  wrecked: n => ({ k: 'wrecked', n }), smashed: n => ({ k: 'smashed', n }),
+  wrecked: n => ({ k: 'wrecked', n }), smashed: n => ({ k: 'smashed', n }), razed: n => ({ k: 'razed', n }),
 };
-const { drift, air, hits, clean, wrecked, smashed } = OBJ;
+const { drift, air, hits, clean, wrecked, smashed, razed } = OBJ;
 const R = (stage, obj) => ({ stage, obj });
 // the specials and the boss of a tier: single races
 const trial = (id, name, stage, par) => ({ id, kind: 'trial', name, blurb: 'Alone against the clock: bronze, silver and gold times', stage, par });
@@ -105,6 +105,8 @@ const mode = (id, m, name, stage, obj, blurb) => ({ id, kind: 'mode', mode: m, n
 const onemake = (id, make, name, stage, obj, blurb) => ({ id, kind: 'onemake', make, name, blurb, stage, obj });
 // a derby (core/modes/derby.js) in an arena: derby cars only (toughness B or better: data/disciplines.js)
 const derby = (id, name, stage, obj, blurb) => ({ ...mode(id, 'derby', name, stage, obj, blurb), disc: 'derby', format: 'derby' });
+// a demolition (core/modes/demolition.js) in a yard of buildings: any car, but the heavy ones hit harder
+const demolish = (id, name, stage, obj, blurb) => ({ ...mode(id, 'demolition', name, stage, obj, blurb), format: 'wrecking' });
 const boss = (id, driver, vehicle, stage, need, obj, blurb) => ({ id, kind: 'boss', driver, vehicle, name: `Boss: ${driver}`, blurb, stage, need, obj });
 // a series (G5): a cup for one discipline (data/disciplines.js), maybe capped at a pace band; a derby series is a cup of derbies
 const series = (id, disc, name, blurb, rounds, cap = {}) => ({ id, kind: 'cup', disc, series: disc, name, blurb, rounds, ...cap });
@@ -138,6 +140,8 @@ export const TIERS = [
     mode('falls-deuce', 'deuce', 'Deuce at the Falls', 'Thunder Falls', hits(4), 'Checkpoints, first to 4, win by two'),
     onemake('kart-chaos', 'kart', 'Kart Chaos', 'Corkscrew Spire', drift(4), 'Eight Go-Karts round the spire'),
     derby('scrapyard-derby', 'Scrapyard Derby', 'Scrapyard Bowl', wrecked(2), 'Six cars in the tyre-walled bowl: wreck the rest, be the last one running'),
+    demolish('club-demolition', 'Condemned Estate', 'Demolition Yard', razed(2), 'Two minutes to knock the estate down: points for every wall and more for every building. Heavy cars go through houses, light ones crack them'),
+    { id: 'wrecking-rally', kind: 'cup', format: 'demolition', name: 'Wrecking Row Rally', blurb: 'Demolition rally through the towns: your place, plus every fence, wall and house you smash', rounds: [R('Wrecking Row', smashed(4)), R('Village Green', smashed(3)), R('Building Site', smashed(3))] },
     boss('club-boss', 'Lindqvist', 'wedge', 'Ravenrock Gorge', 26, clean(), 'The Group B ace on the viaducts. Beat Lindqvist and the Wedge is yours'),
     { id: 'downhill-classic', kind: 'cup', name: 'Downhill Classic', blurb: 'The four original downhill runs, top to bottom: fast, steep and unforgiving', rounds: [R('Summit Meadow', drift(2)), R('Pine Forest', clean()), R('Quarry Run', air(2)), R('Village Descent', hits(4))] },
     { id: 'oval-bangers', kind: 'cup', format: 'banger', name: 'Oval Bangers', blurb: 'Banger racing on the oval, round the village green and through the building site: wrecks score', rounds: [R('Banger Oval', wrecked(1)), R('Village Green', hits(4)), R('Building Site', smashed(1)), R('Banger Oval', wrecked(2))] },
@@ -153,6 +157,7 @@ export const TIERS = [
     { id: 'long-haul', kind: 'cup', name: 'Long Haul', blurb: 'The big circuits', rounds: [R('Ravenrock Gorge', hits(12)), R('Flyover Tangle', drift(8)), R('Thunder Falls', clean())] },
     trial('mesa-attack', 'Mesa Time Attack', 'Mesa Leap', 114.3),
     derby('mud-pit-derby', 'Mud Pit Derby', 'Mud Pit', wrecked(2), 'A derby in the mud at the farm: heavy, slow and sideways'),
+    demolish('pro-demolition', 'Estate Clearance', 'Demolition Yard', razed(4), 'The whole estate in two minutes against harder hitters: bring the flats down for the big points'),
     mode('mesa-showdown', 'showdown', 'Mesa Showdown', 'Red Mesa Canyon', air(6), 'King of the Hill over the mesa jumps'),
     { ...onemake('monster-mash', 'monster', 'Monster Mash', 'Scrapyard Smash', wrecked(2), 'Eight Monster Trucks in the scrapyard: a banger race, wrecks score'), format: 'banger' },
     boss('pro-boss', 'Moreau', 'formula', 'Old Town GP', 28, drift(6), 'The Formula Racer on its street circuit, between the houses. Win and it\'s yours'),
@@ -257,7 +262,7 @@ export function careerField(ev, ti = tierOf(ev), s = null) {
     return [...bosses, ...rest.map(d => bossDef(d.name, d.vehicle, PART_MAX, k))];
   }
   const field = T.elite ? eliteField(ev, T, ti, s, k) : cupField(ev, ti, k, L);
-  if (modeOf(ev) === 'derby') return field.slice(0, T.elite ? 7 : 5);   // a derby: six cars in the arena (Elite: eight)
+  if (modeOf(ev) === 'derby' || modeOf(ev) === 'demolition') return field.slice(0, T.elite ? 7 : 5);   // a derby or demolition: six cars in the arena (Elite: eight)
   if (ev.kind === 'mode') return field.slice(0, 3);
   if (ev.kind === 'onemake') { const v = vehicleById(ev.make); return field.map(d => ({ ...d, model: v.model, hw: v.hw, hl: v.hl, veh: v.veh, im: v.veh ? v.veh.im : undefined, vehicle: v.id, build: null })); }   // stock cars
   return field;
@@ -342,7 +347,7 @@ export const objDone = (o, t) => o.k === 'clean' ? t.wrecks === 0 && t.respawns 
 export function objText(o) {
   const pl = (n, a, b = a + 's') => `${n} ${n === 1 ? a : b}`;
   return o.k === 'clean' ? 'A clean race: no wrecks, no resets' : o.k === 'drift' ? `${pl(o.n, 'drift boost')}` : o.k === 'air' ? `${pl(o.n, 'big air')}` : o.k === 'hits' ? `Hit rivals ${pl(o.n, 'time')} with weapons`
-    : o.k === 'wrecked' ? `Wreck ${pl(o.n, 'rival')}` : o.k === 'smashed' ? `Smash ${pl(o.n, 'fence, gate or wall', 'fences, gates or walls')}` : '';
+    : o.k === 'wrecked' ? `Wreck ${pl(o.n, 'rival')}` : o.k === 'smashed' ? `Smash ${pl(o.n, 'fence, gate or wall', 'fences, gates or walls')}` : o.k === 'razed' ? `Bring down ${pl(o.n, 'building')}` : '';
 }
 /** The top places that count as a podium in a field of n (top 3 of 8, top 2 of 4, only a win in a duel). */
 export const podiumOf = n => Math.max(1, Math.min(3, Math.floor(n / 2)));

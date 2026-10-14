@@ -46,6 +46,20 @@ function place(ctx) {
     return o;
   });
 }
+// The world kit's houses and barns (core/kit/layout.js) are buildings too: the material by town style
+const KIT_MAT = { house: { village: 'brick', alpine: 'timber', seaside: 'brick', farm: 'brick', desert: 'stone', industrial: 'concrete' }, barn: { farm: 'timber', industrial: 'concrete' } };
+/** Every building on a track: the stage's own (tr.structures) then the world kit's houses and barns (terr.kit), in a
+ *  fixed order, each with a `kit` index back into terr.kit.solid. Read by core/features/structures.js and the render. */
+export function buildingsOf(tr, terr) {
+  const out = (tr.structures || []).slice(), K = terr && terr.kit;
+  if (K) K.solid.forEach((p, n) => {
+    if (p.kind !== 'house' && p.kind !== 'barn') return;
+    const sd = p.sd || 1, f = Math.atan2(sd * Math.cos(p.yaw), -sd * Math.sin(p.yaw));   // the front faces the road
+    out.push({ id: out.length, type: p.kind, mat: (KIT_MAT[p.kind] && KIT_MAT[p.kind][p.style]) || (p.kind === 'barn' ? 'timber' : 'brick'), x: p.x, z: p.z, f, w: p.w, d: p.d,
+      floors: p.floors || (p.h > 5 ? 2 : 1), open: false, shop: false, road: false, wall: p.wall, roofC: p.roofC, roof: p.roof === 'hip' ? 'gable' : p.kind === 'barn' && p.style !== 'industrial' ? 'gable' : p.roof || 'flat', kit: n });
+  });
+  return out.length ? out : null;
+}
 export const element = {
   name: 'structures', onBranch: false,
   about: 'destructible buildings: walls of panels that heavy cars burst through and light ones crack, collapsing into rubble',

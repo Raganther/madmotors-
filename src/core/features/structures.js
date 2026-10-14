@@ -1,5 +1,5 @@
 import { MATERIALS, STRUCT, panelHp } from '../../data/structures.js';
-import { inFootprint } from '../elements/structures.js';
+import { buildingsOf, inFootprint } from '../elements/structures.js';
 import { carSAT } from '../sim/collide.js';
 import { damageCar } from '../sim/damage.js';
 import { impactOf, massOf } from '../sim/impact.js';
@@ -29,7 +29,7 @@ function panelsOf(o, y, out) {
   run(1, ...P(hd, hw), ...P(-hd, hw)); run(2, ...P(-hd, hw), ...P(-hd, -hw)); run(3, ...P(-hd, -hw), ...P(hd, -hw));
 }
 export function initStructures(R, W) {
-  const S = W.tr.structures; if (!S) { R.st = null; return; }
+  const S = buildingsOf(W.tr, W.terr); if (!S) { R.st = null; return; }   // the stage's buildings and the towns' houses and barns
   const terr = W.terr, at = (x, z) => terr ? terr.at(x, z) : W.tr.H[W.tr.nearest(x, z).i];
   const blds = S.map(o => { const ys = [[0, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]].map(([a, b]) => at(o.x + Math.sin(o.f) * a * o.d / 2 + Math.cos(o.f) * b * o.w / 2, o.z + Math.cos(o.f) * a * o.d / 2 - Math.sin(o.f) * b * o.w / 2)); return { ...o, y: Math.min(...ys), panels: [], down: 0, collapsed: false, by: -1, t: -1 }; });
   const panels = []; for (const o of blds) { const a = panels.length; panelsOf(o, o.y, panels); for (let k = a; k < panels.length; k++) { panels[k].id = k; o.panels.push(k); } }

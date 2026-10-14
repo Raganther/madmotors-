@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { G } from '../../game.js';
 import { MATERIALS, STRUCT } from '../../data/structures.js';
-import { inFootprint } from '../../core/elements/structures.js';
+import { buildingsOf, inFootprint } from '../../core/elements/structures.js';
 import { flat } from '../geometry.js';
 import { spawnProp } from '../effects/props.js';
 import { emit } from '../effects/particles.js';
@@ -12,12 +12,13 @@ import { race } from '../../ui/flow.js';
 // Destructible buildings, drawn (core/elements/structures.js places them, core/features/structures.js breaks them).
 // Every wall panel is one instance of a box (coloured per building, a shade darker as it cracks), with its windows
 // and the door as instances too, so a whole street is a handful of draw calls; a broken panel's instances shrink to
-// nothing and it bursts into bricks and dust. The roof is a mesh per building: it goes see-through while you're
-// inside (the camera looks down) and drops onto the heap when the building falls in. Rubble: a strip of bits where a
+// nothing and it bursts into bricks and dust. Roofs, chimneys and the floors inside are instances too: a roof lifts
+// away while you're inside (the camera looks down) and drops onto the heap when the building falls in. The towns'
+// houses and barns (the world kit) are drawn here as well (buildingsOf), not by render/elements/kit.js. Rubble: a strip of bits where a
 // panel stood, a mound and a spread of bits over a collapsed footprint, and the core's thrown lumps (R.st.lumps).
 const WIN = 0x2E3A46, SILL = 0xF1EEE6, DOORS = [0x5B3A29, 0x2E4A6B, 0x7A2E2E, 0x2F5D3A], FLOORC = 0x6E5640;
 const BITS = 1600;
-let blds = [], walls = null, wins = null, bits = null, lumps = null, bitN = 0, terrRef = null, groupRef = null, mounds = [];
+let blds = [], walls = null, wins = null, roofs = {}, bits = null, lumps = null, bitN = 0, terrRef = null, groupRef = null, mounds = [];
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color(), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const setI = (mesh, j, x, y, z, ry, sx, sy, sz, rx = 0, rz = 0) => { _e.set(rx, ry, rz); _q.setFromEuler(_e); _p.set(x, y, z); _s.set(sx, sy, sz); _m.compose(_p, _q, _s); mesh.setMatrixAt(j, _m); };
 function gableGeo(steep) {
@@ -35,11 +36,11 @@ function panelList(o, y) {
 }
 export function addStructures(group, tr, terr) {
   blds = []; mounds = []; bitN = 0; terrRef = terr; groupRef = group; walls = wins = bits = lumps = null;
-  const S = tr.structures; if (!S) return;
-  const W = [], N = [];   // wall and window instances
+  const S = buildingsOf(tr, terr); if (!S) return;
+  const W = [], N = [], RF = { gable: [], steep: [], flat: [], chimney: [], floor: [] };   // wall, window, roof and floor instances
   for (const o of S) {
     const y = Math.min(...[[0, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]].map(([a, b]) => terr.at(o.x + Math.sin(o.f) * a * o.d / 2 + Math.cos(o.f) * b * o.w / 2, o.z + Math.cos(o.f) * a * o.d / 2 - Math.sin(o.f) * b * o.w / 2)));
-    const B = { o, y, panels: [], roof: null, mat: null, fade: 1, fall: -1, cracks: [] }, ps = panelList(o, y), base = new THREE.Color(o.wall);
+    const B = { o, y, panels: [], fall: -1, lift: 0 }, ps = panelList(o, y), base = new THREE.Color(o.wall);
     ps.forEach((p, k) => {
       const shade = 0.94 + ((k * 7 + o.id * 3) % 5) * 0.025, col = base.clone().multiplyScalar(shade).getHex();
       const wj = W.length; W.push({ x: p.x, y: y - 1, z: p.z, ry: p.yaw, sx: STRUCT.THICK, sy: p.h + 1, sz: p.len + 0.04, color: col });
@@ -56,24 +57,30 @@ export function addStructures(group, tr, terr) {
         wl.push(N.length); N.push({ x: p.x + ox, y: y + wy, z: p.z + oz, ry: p.yaw, sx: 0.08, sy: wh, sz: ww, color: shopW ? 0x6F94A8 : WIN });
         wl.push(N.length); N.push({ x: p.x + ox * 1.6, y: y + wy - wh / 2 - 0.05, z: p.z + oz * 1.6, ry: p.yaw, sx: 0.12, sy: 0.1, sz: ww + 0.2, color: SILL });
       }
+      // the architecture: a darker plinth along the foot, a string course at each floor, quoins up the corners
+      const dark = base.clone().multiplyScalar(0.62).getHex(), light = base.clone().lerp(new THREE.Color(0xFFFFFF), 0.35).getHex(), stall = o.type === 'stall';
+      if (!stall) { wl.push(N.length); N.push({ x: p.x + ox * 0.9, y: y + 0.3, z: p.z + oz * 0.9, ry: p.yaw, sx: 0.12, sy: 0.6, sz: p.len + 0.05, color: o.mat === 'timber' ? 0x5E4A3A : dark }); }
+      for (let f = 1; f < o.floors && !stall; f++) { wl.push(N.length); N.push({ x: p.x + ox * 0.9, y: y + f * STRUCT.FLOOR + 0.1, z: p.z + oz * 0.9, ry: p.yaw, sx: 0.1, sy: 0.18, sz: p.len + 0.05, color: light }); }
+      if ((p.k === 0 || p.k === p.n - 1) && o.mat !== 'timber' && !stall) for (const e of p.k === 0 ? [-1] : [1]) if (p.n > 1 || e < 0) {
+        const ax = Math.sin(p.yaw) * e * p.len / 2, az = Math.cos(p.yaw) * e * p.len / 2;
+        wl.push(N.length); N.push({ x: p.x + ax + ox * 0.95, y: y + p.h / 2, z: p.z + az + oz * 0.95, ry: p.yaw, sx: 0.1, sy: p.h - 0.2, sz: 0.5, color: light });
+      }
       B.panels.push({ wj, wl, col, dmg0: 0 });
     });
-    // the roof: gable or steep (a ridge along the front), or flat with a parapet; a chimney on a house
-    const h = o.floors * STRUCT.FLOOR + 0.4, ry = Math.atan2(Math.cos(o.f), -Math.sin(o.f)), mat = new THREE.MeshLambertMaterial({ color: o.roofC, transparent: true, opacity: 1 });
-    const roof = new THREE.Group(); roof.position.set(o.x, y + h, o.z); roof.rotation.y = ry;
-    if (o.roof === 'flat') { const m = new THREE.Mesh(flat(new THREE.BoxGeometry(o.d + 0.3, 0.35, o.w + 0.3)), mat); m.position.y = 0.17; roof.add(m); }
-    else { const rh = o.roof === 'steep' ? o.d * 0.8 : o.d * 0.42, m = new THREE.Mesh(gableGeo(), mat); m.scale.set(o.d * 1.12, rh, o.w * 1.06); roof.add(m);
-      if (o.type !== 'barn' && o.type !== 'chapel') { const ch = new THREE.Mesh(flat(new THREE.BoxGeometry(0.7, rh * 0.9 + 0.8, 0.7)), new THREE.MeshLambertMaterial({ color: 0x8C5A48, transparent: true })); ch.position.set(-o.d * 0.18, rh * 0.45, o.w * 0.3); roof.add(ch); } }
-    if (o.type === 'stall') { mat.color.set(0xF4F1EA); const aw = new THREE.Mesh(flat(new THREE.BoxGeometry(1.4, 0.08, o.w + 0.2)), new THREE.MeshLambertMaterial({ color: o.wall, transparent: true })); aw.position.set(o.d / 2 + 0.6, -0.4, 0); aw.rotation.z = -0.3; roof.add(aw); }
-    roof.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
-    group.add(roof); B.roof = roof; B.roofY = y + h;
-    // the floor inside (you see it through a hole, or with the roof faded)
-    const fl = new THREE.Mesh(flat(new THREE.BoxGeometry(o.d - 0.6, 0.12, o.w - 0.6)), new THREE.MeshLambertMaterial({ color: FLOORC })); fl.position.set(o.x, y + 0.04, o.z); fl.rotation.y = ry; fl.receiveShadow = true; group.add(fl);
+    // the roof: gable or steep (a ridge along the front), or flat; a chimney on a house; the floor inside
+    const h = o.floors * STRUCT.FLOOR + 0.4, ry = Math.atan2(Math.cos(o.f), -Math.sin(o.f)), rk = o.roof === 'steep' ? 'steep' : o.roof === 'flat' ? 'flat' : 'gable';
+    B.roofY = y + h; B.ry = ry; B.roofs = [];
+    const add = (kind, it) => { B.roofs.push([kind, RF[kind].length, it]); RF[kind].push(it); };
+    if (rk === 'flat') add('flat', { x: o.x, y: y + h + 0.17, z: o.z, ry, sx: o.d + 0.3, sy: 0.35, sz: o.w + 0.3, color: o.type === 'stall' ? 0xF4F1EA : o.roofC });
+    else { const rh = rk === 'steep' ? o.d * 0.8 : o.d * 0.42; add(rk, { x: o.x, y: y + h, z: o.z, ry, sx: o.d * 1.12, sy: rh, sz: o.w * 1.06, color: o.roofC });
+      if (o.type !== 'barn' && o.type !== 'chapel') { const cx = -o.d * 0.18, cz = o.w * 0.3; add('chimney', { x: o.x + Math.cos(ry) * cx + Math.sin(ry) * cz, y: y + h + rh * 0.45, z: o.z - Math.sin(ry) * cx + Math.cos(ry) * cz, ry, sx: 0.7, sy: rh * 0.9 + 0.8, sz: 0.7, color: 0x8C5A48 }); } }
+    RF.floor.push({ x: o.x, y: y + 0.04, z: o.z, ry, sx: o.d - 0.6, sy: 0.12, sz: o.w - 0.6, color: FLOORC });
     blds.push(B);
   }
   const box = flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0));
   const mk = (geo, list, cast) => { const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: 0xffffff }), Math.max(1, list.length)); list.forEach((it, j) => { setI(m, j, it.x, it.y, it.z, it.ry, it.sx, it.sy, it.sz); _c.set(it.color); m.setColorAt(j, _c); }); m.userData.list = list; m.castShadow = cast; m.receiveShadow = true; m.frustumCulled = false; group.add(m); return m; };
   walls = mk(box, W, true); wins = mk(flat(new THREE.BoxGeometry(1, 1, 1)), N, false);
+  roofs = { gable: mk(gableGeo(), RF.gable, true), steep: mk(gableGeo(), RF.steep, true), flat: mk(flat(new THREE.BoxGeometry(1, 1, 1)), RF.flat, true), chimney: mk(flat(new THREE.BoxGeometry(1, 1, 1)), RF.chimney, true), floor: mk(flat(new THREE.BoxGeometry(1, 1, 1)), RF.floor, false) };
   bits = new THREE.InstancedMesh(flat(new THREE.DodecahedronGeometry(0.5, 0)), new THREE.MeshLambertMaterial({ color: 0xffffff }), BITS); bits.frustumCulled = false; bits.receiveShadow = true; bits.castShadow = true;
   for (let j = 0; j < BITS; j++) { bits.setMatrixAt(j, ZERO); bits.setColorAt(j, _c.set(0x888888)); } group.add(bits);
   lumps = new THREE.InstancedMesh(flat(new THREE.DodecahedronGeometry(1, 0)), new THREE.MeshLambertMaterial({ color: 0xffffff }), STRUCT.LUMP.MAX); lumps.frustumCulled = false; lumps.castShadow = true;
@@ -83,11 +90,15 @@ export function newStructuresRace() {
   if (!walls) return;
   for (const B of blds) {
     for (const P of B.panels) { showPanel(P, true); P.dmg0 = 0; P.broken = false; walls.setColorAt(P.wj, _c.set(P.col)); }
-    B.roof.visible = true; B.roof.position.y = B.roofY; B.roof.rotation.x = B.roof.rotation.z = 0; B.fall = -1; B.down = false;
+    B.fall = -1; B.lift = 0; roofAt(B, 0, 0, 0, 1);
   }
   for (const m of mounds) { groupRef.remove(m); m.geometry.dispose(); } mounds = [];
   for (let j = 0; j < BITS; j++) bits.setMatrixAt(j, ZERO); bitN = 0; bits.instanceMatrix.needsUpdate = true;
   walls.instanceMatrix.needsUpdate = wins.instanceMatrix.needsUpdate = true; walls.instanceColor.needsUpdate = true;
+}
+// a building's roof pieces moved down by `drop` m, tipped (tx, tz), at `sc` of their size (0: gone)
+function roofAt(B, drop, tx, tz, sc) {
+  for (const [kind, j, it] of B.roofs) { const m = roofs[kind]; if (sc <= 0.001) { m.setMatrixAt(j, ZERO); m.instanceMatrix.needsUpdate = true; continue; } setI(m, j, it.x, it.y - drop, it.z, it.ry, it.sx * sc, it.sy * sc, it.sz * sc, tx, tz); m.instanceMatrix.needsUpdate = true; }
 }
 function showPanel(P, on) {
   const it = walls.userData.list[P.wj]; if (on) setI(walls, P.wj, it.x, it.y, it.z, it.ry, it.sx, it.sy, it.sz); else walls.setMatrixAt(P.wj, ZERO);
@@ -150,11 +161,10 @@ export function updateStructures(dt) {
     }
     if (B.fall >= 0 && B.fall < 1) {                                                        // the roof falls in over half a second
       B.fall = Math.min(1, Math.max(0.01, (race.time - B.t0) / 0.45)); const e = B.fall * B.fall;   // on the race clock (slow motion, stepped shots)
-      B.roof.position.y = B.roofY + (B.y + 0.4 + o.floors * 0.3 - B.roofY) * e; B.roof.rotation.x = B.tiltZ * e; B.roof.rotation.z = B.tilt * e;
+      roofAt(B, (B.roofY - B.y - 0.4 - o.floors * 0.3) * e, B.tiltZ * e, B.tilt * e, 1);
     }
-    // the roof fades while the player (or whoever the camera follows) is inside or right beside it
-    const inside = !o.collapsed && inFootprint(o, P.x, P.z, 0.6), want = inside ? 0.18 : 1;
-    if (Math.abs(B.fade - want) > 0.01) { B.fade += (want - B.fade) * Math.min(1, dt * 8); B.roof.traverse(m => { if (m.isMesh) { m.material.opacity = B.fade; m.material.depthWrite = B.fade > 0.9; } }); }
+    // the roof lifts away while the player is inside (the camera looks down through it) and settles back after
+    if (!o.collapsed) { const want = inFootprint(o, P.x, P.z, 0.6) ? 1 : 0; if (Math.abs(B.lift - want) > 0.01) { B.lift += (want - B.lift) * Math.min(1, dt * 8); roofAt(B, -B.lift * 3, 0, 0, 1 - B.lift); } }
   });
   // the thrown lumps
   const L = S.lumps;

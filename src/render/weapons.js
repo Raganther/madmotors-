@@ -15,7 +15,7 @@ import { race } from '../ui/flow.js';
 const L = c => new THREE.MeshLambertMaterial({ color: c }), B = c => new THREE.MeshBasicMaterial({ color: c });
 const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); return b; };
 const cyl = (r, l, m, x = 0, y = 0, z = 0) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 10).rotateX(Math.PI / 2), m); c.position.set(x, y, z); return c; };
-let jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, fi = 0, si = 0, di = 0;
+let minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, fi = 0, si = 0, di = 0;
 const MAXB = 80, _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _y = new THREE.Vector3(0, 1, 0);
 export function initWeaponVis() {
   const white = L(0xF2F2EE), red = L(0xD8203A), flame = B(0xFFB03A);
@@ -77,6 +77,15 @@ export function initWeaponVis() {
   const jetG = new THREE.CylinderGeometry(0.9, 0.16, 1, 12, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
   jetPool = []; for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(jetG, new THREE.MeshBasicMaterial({ color: 0xCFEAFF, map: jetTex, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide })); m.visible = false; scene.add(m); jetPool.push(m); }
   stripPool = []; for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(stripG, L(0x22252B)); m.visible = false; scene.add(m); stripPool.push(m); }
+  // proximity mines: a squat olive disc with a hazard band, three prongs and a light that blinks faster once armed
+  minePool = [];
+  for (let k = 0; k < 16; k++) {
+    const g = new THREE.Group(), body = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.72, 0.28, 14), L(0x4B5A3A)); body.position.y = 0.14; body.castShadow = true; g.add(body);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.735, 0.735, 0.08, 14, 1, true), L(0xFFC72C)); band.position.y = 0.1; g.add(band);
+    for (let a = 0; a < 3; a++) { const pr = box(0.06, 0.22, 0.06, L(0x2A2E33), Math.cos(a * 2.09) * 0.3, 0.38, Math.sin(a * 2.09) * 0.3); g.add(pr); }
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), B(0xFF2A2A)); lamp.position.y = 0.34; g.add(lamp);
+    g.scale.setScalar(1.3); g.visible = false; scene.add(g); minePool.push({ g, lamp });
+  }
   // fireballs and flashes (additive glow sprites), smoke puffs (soft grey sprites), shockwave domes, and the red ring
   // under a car a missile is homing on
   const smokeTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
@@ -108,7 +117,7 @@ export function updateWeaponVis(dt, now) {
   if (G.state !== 'paused') updateFx(dt);
   const tr = G.world && G.world.tr, R = race, S = R && R.wpn, on = tr && G.state !== 'menu';
   if (targetRing) targetRing.visible = false;
-  for (const p of missiles) p.g.visible = false; for (const c of crates) c.g.visible = false; for (const m of slickPool) m.visible = false; for (const m of cementPool) m.visible = false; for (const m of jetPool) m.visible = false; for (const m of stripPool) m.visible = false; for (const h of hookPool) { h.g.visible = false; h.line.visible = false; }
+  for (const p of missiles) p.g.visible = false; for (const c of crates) c.g.visible = false; for (const m of slickPool) m.visible = false; for (const m of cementPool) m.visible = false; for (const m of jetPool) m.visible = false; for (const m of stripPool) m.visible = false; for (const m of minePool) m.g.visible = false; for (const h of hookPool) { h.g.visible = false; h.line.visible = false; }
   if (tracers) tracers.count = 0;
   if (!on || !R) return;
   (R.missiles || []).forEach((m, k) => {
@@ -142,6 +151,7 @@ export function updateWeaponVis(dt, now) {
   if (tracers.count) tracers.instanceMatrix.needsUpdate = true;
   S.slicks.forEach((o, j) => { const m = slickPool[j % slickPool.length], p = roadPos(tr, o.s, o.lat, 0.1); m.position.set(p.x, p.y, p.z); m.rotation.y = o.id; m.visible = true; const k = Math.min(1, o.t * 4) * (1 - (o.hits || 0) * 0.18); m.scale.setScalar(Math.max(0.3, k)); });
   (S.cement || []).forEach((o, j) => { const m = cementPool[j % cementPool.length], p = roadPos(tr, o.s, o.lat, 0.09); m.position.set(p.x, p.y, p.z); m.rotation.y = o.id * 1.7; m.visible = true; const k = Math.min(1, o.t * 5) * (o.t > WPN.CEMENT_LIFE - 2 ? (WPN.CEMENT_LIFE - o.t) / 2 : 1); m.scale.setScalar(Math.max(0.05, k)); });
+  (S.mines || []).forEach((o, j) => { const v = minePool[j % minePool.length]; v.g.position.set(o.x, o.y + 0.02, o.z); v.g.rotation.y = o.id; v.g.visible = true; v.lamp.visible = o.t < WPN.MINE_ARM ? Math.floor(now * 3) % 2 === 0 : Math.floor(now * 9) % 2 === 0; });
   (S.strips || []).forEach((o, j) => { const m = stripPool[j % stripPool.length], p = roadPos(tr, o.s, 0, 0.02); m.position.set(p.x, p.y, p.z); m.rotation.y = tr.th[p.i]; m.visible = true; });
   // the jets and tunes playing right now: the fire engine's water, the ice cream van's notes
   let nj = 0;
@@ -172,6 +182,12 @@ export function missileBlast(e) {
   for (let k = 0; k < 14; k++) { const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 7; emit(e.x, e.y, e.z, Math.cos(a) * s, 2 + Math.random() * 6, Math.sin(a) * s, 0.4 + Math.random() * 0.4, 1.2 + Math.random(), Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -2); }
   for (let k = 0; k < 8; k++) emit(e.x + (Math.random() - 0.5) * 2, e.y + Math.random(), e.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 3, 2 + Math.random() * 3, (Math.random() - 0.5) * 3, 1.2 + Math.random() * 0.8, 1.6 + Math.random(), Math.random() < 0.5 ? 0x4A4A4A : 0x6E6E6E, -1.2);
   for (let k = 0; k < 8; k++) debris(e.x, e.y, e.z, (Math.random() - 0.5) * 12, 4 + Math.random() * 6, (Math.random() - 0.5) * 12, 0x2A2A2A, 0.2, 0.08, 0.3, 1.4);
+}
+/** A mine going off: a ground-hugging fireball, dirt thrown up, a shock ring. */
+export function mineBlast(e) {
+  const r = e.r || WPN.MINE_BLAST; shockwave(e.x, e.y + 0.1, e.z, r * 1.6, 0xFF8A3A); flash(e.x, e.y + 0.8, e.z, r * 2.2, 0xFFFFFF, 0.45);
+  for (let k = 0; k < 5; k++) smoke(e.x + (Math.random() - 0.5) * 2, e.y + 0.6 + Math.random(), e.z + (Math.random() - 0.5) * 2, 3 + Math.random() * 2.5, k < 2 ? 0x6E5A44 : 0x4A4A4A, 1.4 + Math.random() * 0.6, 1.8);
+  for (let k = 0; k < 18; k++) { const a = Math.random() * Math.PI * 2, s = 4 + Math.random() * 8; emit(e.x, e.y + 0.3, e.z, Math.cos(a) * s, 4 + Math.random() * 7, Math.sin(a) * s, 0.7, 0.5, k % 3 ? 0x5E4A36 : 0xFF9A3A, -9, 'solid'); }
 }
 export function missilePuff(e) { flash(e.x, e.y, e.z, 4, 0xFFFFFF, 0.3); for (let k = 0; k < 10; k++) emit(e.x, e.y, e.z, (Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3, 0.8, 1.2, 0x9A9A9A, -0.8); }
 export function pickupFx(e) { shockwave(e.x, e.y, e.z, 3.5, 0xFFC72C); for (let k = 0; k < 14; k++) emit(e.x, e.y + 1.2, e.z, (Math.random() - 0.5) * 6, 3 + Math.random() * 4, (Math.random() - 0.5) * 6, 0.5, 0.5, k % 2 ? 0xFFC72C : 0x8A5A2B, -3, 'solid'); }
@@ -226,6 +242,7 @@ function module(item) {
   else if (item === 'cement') { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, 0.8, 10).rotateX(Math.PI / 2 - 0.5), L(0x8A8C90)); d.position.z = -0.5; g.add(d); g.add(box(0.3, 0.06, 0.7, L(0x6B6E73), 0, -0.2, -1.0)); }
   else if (item === 'stinger') { g.add(box(1.1, 0.16, 0.36, L(0x22252B))); for (let k = 0; k < 5; k++) g.add(box(0.2, 0.17, 0.37, yel, -0.44 + k * 0.22, 0.005, 0)); g.position.z = -0.5; }
   else if (item === 'crush') { for (let k = 0; k < 3; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 6, 14).rotateX(Math.PI / 2), red); t.position.y = k * 0.14; g.add(t); } }
+  else if (item === 'mine') { g.add(box(0.9, 0.12, 0.8, dark)); for (const s of [-1, 1]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.16, 12), L(0x4B5A3A)); d.position.set(s * 0.22, 0.14, 0); g.add(d); const lp = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), B(0xFF2A2A)); lp.position.set(s * 0.22, 0.26, 0); g.add(lp); } g.position.z = -0.45; }
   else if (item === 'jingle') { const horn = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.6, 12, 1, true).rotateX(-Math.PI / 2), L(0xF6B8D0)); horn.position.z = 0.3; g.add(horn); g.add(cyl(0.12, 0.4, steel, 0, 0, -0.1)); g.userData.core = horn; }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;

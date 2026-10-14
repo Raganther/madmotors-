@@ -135,6 +135,7 @@ function drawEvent() {
           : ev.kind === 'onemake' ? `Everyone drives a stock ${vehicleById(ev.make).name}: we lend you one. Stars: podium, win, objective.`
             : modeOf(ev) === 'derby' && cup ? `A derby every round, ${careerDefs(S, ev).length} cars: a wrecked car is out, the last one running wins (at the bell, the least damaged). Points 10-8-6-5-4-3-2-1 each round.`
             : ev.mode === 'derby' ? 'Six cars, no laps: a wrecked car is out, the last one running wins (at the bell, the least damaged). Stars: a podium, the win, the objective.'
+            : ev.mode === 'demolition' ? 'Six cars, two minutes, a yard of buildings: points for every wall you break, more for every building you bring down. Heavy cars go through, light ones crack. Stars: a podium, the win, the objective.'
               : 'Stars: a podium (top two of four), the win, the objective.';
   const F = FORMATS[formatOf(ev)], fmtRule = F.weight.destruct > 0 ? ` ${F.name}: placed on race points plus ${F.weight.destruct}× destruction points (${(P => `a rival wrecked ${P.wreck}, a panel torn off ${P.panel}, a fence or gate smashed ${P.smash}, a road car taken out ${P.takedown}`)({ ...DESTRUCT, ...F.pts })}), and paid for both.` : '';
   $('cr-sub').textContent = `${T.name} tier · ${kindText(ev)}. ${ev.blurb}. ${rules}${fmtRule}`;
