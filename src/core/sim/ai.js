@@ -2,12 +2,19 @@ import { HALF } from '../constants.js';
 import { closedCrossingAhead } from '../features/trains.js';
 import { ferryTarget } from '../features/ferry.js';
 import { drawTarget } from '../features/drawbridge.js';
+import { crumbleLane } from '../features/crumble.js';
 import { rutDepth, rutLane } from '../features/wear.js';
 import { clamp } from '../math.js';
 import { HAMMER, hammerLat } from '../elements/hammer.js';
 import { navControl } from './nav.js';
-import { breakSpeed } from './impact.js';
+import { breakSpeed, impactOf, massOf } from './impact.js';
+import { MATERIALS, panelHp } from '../../data/structures.js';
 const breachOpen = (W, k) => (W.brk || []).some(o => o.alt === k && o.broken);
+// a building across a branch (elements/structures.js): open once it's down or holed front and back; a car can smash it if
+// its mass is enough for the material and it'll hit the wall with STRUCT_RUN x what a panel takes
+const STRUCT_RUN = 1.7;
+const buildingOpen = (W, id) => { const o = W.st && W.st.blds[id]; return !!o && (o.collapsed || o.down >= 4); };
+function canRaze(c, W, id) { const o = W.st && W.st.blds[id]; if (!o) return true; const M = MATERIALS[o.mat]; return massOf(c) >= M.minMass && impactOf(c, Math.hypot(c.vx, c.vz) * 0.85) >= STRUCT_RUN * panelHp(o.mat, o.floors); }
 
 // personalities (G5: data/career.js gives them to Elite rivals). A blocker moves across to cover whoever is closing from
 // behind; the nemesis does it to the player only (and both are keener with weapons: features/weapons.js)
@@ -31,6 +38,7 @@ function chooseRoute(c, tr, W) {
     ai.forkKey = key + k; const r = Math.random(); ai.alt = ai.forceAlt ?? (r < (a.share ?? 0.5) ? k : -1);
     // a breach across it (elements/breakables.js): only if it's still down, or this car can smash it at a speed it'll have
     if (ai.alt === k && a.breach && ai.forceAlt === undefined && W && !breachOpen(W, k) && breakSpeed(c, a.breach) > 0.8 * Math.hypot(c.vx, c.vz)) ai.alt = -1;
+    if (ai.alt === k && a.breachSt !== undefined && ai.forceAlt === undefined && W && !buildingOpen(W, a.breachSt) && !canRaze(c, W, a.breachSt)) ai.alt = -1;
   });
 }
 /** Just past a fork, still on the road it didn't pick (the two run side by side there): look ahead from the same
@@ -56,6 +64,8 @@ export function aiControl(c, W, cars, dt, hazards, gate) {
   const ka = tr.ks[at(Math.round(8 + sp * 0.45))];
   let lane = ai.lane * 0.6 - clamp(ka * 95, -1, 1) * 3.3;
   { const rl = rutLane(W, c, 6); if (rl !== null) lane = lane * 0.3 + rl * 0.7; }   // in a bog, follow the ruts
+  { const cl = crumbleLane(W, c); if (cl !== null) lane = cl; }                     // a crumbling bridge ahead: the soundest planks
+  if (tr.chiLane) { const cl = tr.chiLane[tr.bi(at(Math.round(4 + sp * 0.3)))]; if (Number.isFinite(cl)) lane = cl; }   // a chicane's blocks: the open half (elements/chicane.js)
   // a checkpoint gate coming up: line up for it, as well as this driver can judge it (the error is fixed per gate)
   if (gate && gate.open) { const ahead = gate.s - c.progress; if (ahead > 0 && ahead < 80) { const h = Math.sin(gate.n * 12.9898 + (c.def.num || 1) * 78.233) * 43758.5453, err = ((h - Math.floor(h)) * 2 - 1) * (3.2 + (1 - ai.skill) * 26); lane = lane * 0.15 + (gate.lat + err) * 0.85; } }
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); let minLane = -HALF;

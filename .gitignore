@@ -6,3 +6,4 @@ tools/out/
 blender/out/
 __pycache__/
 dist-lab/
+dist-dev/

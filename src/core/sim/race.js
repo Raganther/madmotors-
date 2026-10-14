@@ -1,6 +1,7 @@
 import { FEATURES } from '../features/index.js';
 import { SD_KINDS, initShowdown, sdLeader, showdownStep } from '../modes/showdown.js';
 import { derbyControl, derbyStep, initDerby } from '../modes/derby.js';
+import { initDemolition } from '../modes/demolition.js';
 import { clamp, mulberry32 } from '../math.js';
 import { aiControl } from './ai.js';
 import { makeBarriers } from './barriers.js';
@@ -16,7 +17,7 @@ export function gridSlots(n) {
   const L = n > 15 ? [-4.3, -1.45, 1.45, 4.3] : [-3.5, 0, 3.5], rows = Math.ceil(n / L.length), gap = rows > 5 ? 24 / (rows - 1) : 6;   // a full field goes four abreast
   return Array.from({ length: n }, (_, k) => [30 - Math.floor(k / L.length) * gap, L[k % L.length]]);
 }
-/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'|'deuce'|'tiebreak', weapons?: boolean}} [opts] @returns {import('../types.js').Race} */
+/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'|'deuce'|'tiebreak'|'derby'|'demolition', weapons?: boolean}} [opts] @returns {import('../types.js').Race} */
 export function createRace(W, defs, opts = {}) {
   W.bar = makeBarriers(W.tr, W.armco);
   const grid = gridSlots(defs.length), cars = defs.map((d, k) => makeCar(W, grid[k][0], grid[k][1], d));
@@ -25,6 +26,7 @@ export function createRace(W, defs, opts = {}) {
   R.mode = opts.mode || 'race';
   if (SD_KINDS[R.mode]) initShowdown(R, SD_KINDS[R.mode]);
   if (R.mode === 'derby') initDerby(R);   // last car running (modes/derby.js)
+  if (R.mode === 'demolition') { initDerby(R); initDemolition(R, W.tr.demolition || {}); }   // the derby's rules, scored on what you knock down (modes/demolition.js)
   return R;
 }
 /** Advance the whole race by one fixed step (STEP = 1/120 s). @param {import('../types.js').Race} R @param {number} dt @param {import('../types.js').World} W */

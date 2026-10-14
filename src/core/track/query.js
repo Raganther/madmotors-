@@ -3,6 +3,7 @@ import { clamp, lerp } from '../math.js';
 import { wallAt, wallPos } from '../sim/barriers.js';
 import { ferryDeckAt } from '../features/ferry.js';
 import { drawDeckAt } from '../features/drawbridge.js';
+import { crumbleDeckAt } from '../features/crumble.js';
 
 export function project(tr, x, z, hint, back, fwd) {
   if (tr.nx) return projectG(tr, x, z, hint, back, fwd);
@@ -33,6 +34,7 @@ export function groundAt(W, s, lat, x, z) {
   if (tr.gap && tr.gap[tr.bi(bi)]) return W.terr.at(x, z);            // a gap: nothing but the drop
   if (tr.open && tr.open[tr.bi(bi)]) return W.terr.at(x, z);          // open country: the ground itself
   if (tr.drawbridge && tr.drawbridge[tr.bi(bi)]) { const d = drawDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // a leaf, or the mill race
+  if (tr.crumble && tr.crumble[tr.bi(bi)]) { const d = crumbleDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // a plank, or a hole into the water
   if (tr.ferry && tr.ferry[tr.bi(bi)]) { const d = ferryDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // the barge deck, or the water
   const side = lat >= 0 ? 1 : -1, hasWall = wallAt(W, bi, side) && al < wallPos(W, bi, side) + 1.2;
   if (al >= HALF + 2 && !hasWall) return W.terr.at(x, z);

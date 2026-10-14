@@ -2,12 +2,12 @@ import { FORMATS, RACE_PTS, destructPts } from './formats.js';
 
 // What happened in a race, counted from car.events (G2): the player's own style stats (big airs, drift boosts, weapon
 // hits, wrecks, resets: the career's bonuses) and, for every racer, its destruction (data/formats.js): rivals it
-// wrecked or stripped of a panel (within ATTRIB s of its last hit on them: a bump, a door, any weapon), breakables it
-// smashed and road cars it took out. The game (ui/flow.js) and the career sim (tools/career-sim.mjs) both feed it.
+// wrecked or stripped of a panel (within ATTRIB s of its last hit on them: a bump, a door, any weapon), breakables and building walls
+// it smashed, buildings it brought down and road cars it took out. The game (ui/flow.js) and the career sim (tools/career-sim.mjs) both feed it.
 export const ATTRIB = 3;
 const HITS = ['missile-hit', 'harpoon-hit', 'pulse-hit', 'oil-hit', 'water-hit', 'cement-hit', 'stinger-hit', 'crush-hit', 'jingle-hit'];
 /** A fresh tally for a race of n cars. */
-export const newTally = n => ({ air: 0, drift: 0, hits: 0, wrecks: 0, respawns: 0, d: Array.from({ length: n }, () => ({ wrecked: 0, panels: 0, smashed: 0, takedowns: 0 })), by: Array(n).fill(null) });
+export const newTally = n => ({ air: 0, drift: 0, hits: 0, wrecks: 0, respawns: 0, d: Array.from({ length: n }, () => ({ wrecked: 0, panels: 0, smashed: 0, takedowns: 0, razed: 0 })), by: Array(n).fill(null) });
 /** Count event e on car c (cars: the racers, pi: the player's index, now: race time). Returns what it scored for whom
  *  ({ k, what } when a racer's destruction went up), so the game can call it out. */
 export function tallyEvent(t, cars, c, e, now, pi) {
@@ -24,7 +24,8 @@ export function tallyEvent(t, cars, c, e, now, pi) {
   const by = t.by[k], blame = by && now - by.t <= ATTRIB ? by.from : -1;
   if (e.t === 'wreck' && blame >= 0) { t.d[blame].wrecked++; return { k: blame, what: 'wreck', victim: k }; }
   if (e.t === 'dent' && e.panels && blame >= 0) { const off = e.panels.filter(p => p[1] === 2).length; if (off) { t.d[blame].panels += off; return { k: blame, what: 'panel', victim: k }; } }
-  if (e.t === 'break') { t.d[k].smashed++; return { k, what: 'smash' }; }
+  if (e.t === 'break' || e.t === 'wallbreak') { t.d[k].smashed++; return { k, what: 'smash' }; }
+  if (e.t === 'collapse') { t.d[k].razed++; return { k, what: 'raze' }; }
   if (e.t === 'takedown') { t.d[k].takedowns++; return { k, what: 'takedown' }; }
   return null;
 }

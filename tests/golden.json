@@ -1405,6 +1405,82 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Demolition Yard": {
+   "samples": 635,
+   "loopN": 163,
+   "terrain": [
+    101,
+    74,
+    5853.338
+   ],
+   "times": [
+    null,
+    null,
+    null,
+    null
+   ],
+   "respawns": [
+    11,
+    12,
+    14,
+    14
+   ],
+   "wrecks": [
+    9,
+    11,
+    14,
+    11
+   ],
+   "progress": [
+    3.428,
+    10.134,
+    4.343,
+    7.113
+   ],
+   "broken": 6,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
+  },
+  "Wrecking Row": {
+   "samples": 5875,
+   "loopN": 1723,
+   "terrain": [
+    209,
+    209,
+    92836.32
+   ],
+   "times": [
+    196.292,
+    196.817,
+    196.133,
+    196.133
+   ],
+   "respawns": [
+    0,
+    1,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    5222.735,
+    5205.196,
+    5227.611,
+    5227.461
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

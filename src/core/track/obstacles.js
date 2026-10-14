@@ -2,6 +2,7 @@ import { HALF } from '../constants.js';
 import { TAU, mulberry32 } from '../math.js';
 import { GATE, OPEN, TRAIL, onTrail } from '../elements/open.js';
 import { arenaOut } from '../elements/arena.js';
+import { inFootprint } from '../elements/structures.js';
 
 // Scenery you can hit: trees, cacti and rocks are solid, bushes are soft (you plough through, they flatten). Placed
 // once per stage from its seed (render/world/scenery.js draws exactly these), and kept in a coarse grid so a car only
@@ -52,6 +53,7 @@ export function placeObstacles(tr, terr, stage) {
   }
   if (tr.open) placeOpen(tr, terr, stage, items, rnd, pick);
   if (ar) for (let k = items.length - 1; k >= 0; k--) if (arenaOut(ar, items[k].x, items[k].z) < 4) items.splice(k, 1);   // an arena's floor is clear
+  if (tr.structures) for (let k = items.length - 1; k >= 0; k--) if (tr.structures.some(o => inFootprint(o, items[k].x, items[k].z, 3))) items.splice(k, 1);   // nor round a building (elements/structures.js)
   const grid = new Map(), key = (cx, cz) => cx * 100003 + cz;
   items.forEach((o, k) => { if (!o.r) return; const g = key(Math.floor(o.x / CELL), Math.floor(o.z / CELL)); let a = grid.get(g); if (!a) grid.set(g, a = []); a.push(k); });
   return {

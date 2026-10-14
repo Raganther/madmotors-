@@ -81,7 +81,8 @@ export function updateHUD(dt) {
   }
   else if (race.derby) {   // a derby (core/modes/derby.js): how many are left, the clock, your health
     const D = race.derby, left = race.cars.filter(c => !c.out).length;
-    $('lap').hidden = false; setTxt('lap', P.out ? `Out · ${left} left` : `Derby · ${left} left · ${fmt(Math.max(0, D.time - D.t))} · you ${Math.round(100 * health(P))}%`);
+    if (race.demo) { const S = race.st, up = S ? S.blds.filter(o => !o.collapsed).length : 0, pts = race.demo.pts[race.cars.indexOf(P)]; $('lap').hidden = false; setTxt('lap', `${pts} pts · ${up} standing · ${fmt(Math.max(0, D.time - D.t)).replace(/\.\d+$/, '')}${P.out ? ' · out' : ''}`); }
+    else { $('lap').hidden = false; setTxt('lap', P.out ? `Out · ${left} left` : `Derby · ${left} left · ${fmt(Math.max(0, D.time - D.t))} · you ${Math.round(100 * health(P))}%`); }
   }
   else if (G.world.tr.loopN) {
     const L = G.world.tr.laps, GT = G.world.tr.gates, per = GT ? GT.length / L : 0, gate = GT && !P.finished ? ` · Gate ${(P.gateK || 0) % per + 1}/${per}` : '';   // off-piste: which gate is next this lap

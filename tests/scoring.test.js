@@ -14,7 +14,7 @@ describe('the race tally', () => {
       [3, { t: 'bump', a: cars[3], b: cars[0] }, 5], [0, { t: 'wreck' }, 5 + ATTRIB + 1],         // too long after: nobody's
       [PI, { t: 'break', kind: 'fence' }, 6], [PI, { t: 'takedown', kind: 'car' }, 7], [PI, { t: 'bigair' }, 7], [0, { t: 'oil-hit', from: PI }, 8],
     ]);
-    expect(t.d[PI]).toEqual({ wrecked: 1, panels: 0, smashed: 1, takedowns: 1 }); expect(t.d[3]).toEqual({ wrecked: 0, panels: 1, smashed: 0, takedowns: 0 });
+    expect(t.d[PI]).toEqual({ wrecked: 1, panels: 0, smashed: 1, takedowns: 1, razed: 0 }); expect(t.d[3]).toEqual({ wrecked: 0, panels: 1, smashed: 0, takedowns: 0, razed: 0 });
     expect(t.d[0].wrecked + t.d[1].wrecked).toBe(0); expect(t.air).toBe(1); expect(t.hits).toBe(2);
   });
   it('a race is the finishing order; a destruction format re-sorts it by race points and destruction', () => {

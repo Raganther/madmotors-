@@ -28,7 +28,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width: W, height: H } }), errs = [];
 page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errs.push(m.text()); });
 if (process.env.MODELS) await page.addInitScript(m => localStorage.setItem('downhill-rush-models', m), process.env.MODELS);   // MODELS=classic|blender: the Models setting
-await page.goto('file://' + path.resolve('dist/index.html') + '?' + q);
+await page.goto('file://' + path.resolve((process.env.DIST || 'dist') + '/index.html') + '?' + q);   // DIST=<dir>: a build elsewhere (while dist is busy)
 if (ws === 'cars') await page.waitForSelector('#lab-list [data-id]', { timeout: 30000 }); else await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 if (ws) {
   if (ws === 'hub' || ws === 'elements') await page.waitForSelector('#ws-hub .ws-card', { timeout: 30000 });

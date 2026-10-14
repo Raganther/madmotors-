@@ -368,7 +368,7 @@ export function scoreRace(s, ev, k, place, n, t, time = 0) {
   if (t.hits) lines.push([`Weapon hits ×${t.hits}`, pay(BONUS.hit * t.hits)]);
   // destruction (data/formats.js): paid in the formats that weigh it
   const wd = (FORMATS[formatOf(ev)] || FORMATS.race).weight.destruct;
-  if (wd > 0) for (const [k, label] of [['wrecked', 'Rivals wrecked'], ['panels', 'Panels torn off'], ['smashed', 'Scenery smashed'], ['takedowns', 'Road cars taken out']]) if (t[k]) lines.push([`${label} ×${t[k]}`, pay(DESTRUCT_CASH[k] * t[k] * wd)]);
+  if (wd > 0) for (const [k, label] of [['wrecked', 'Rivals wrecked'], ['panels', 'Panels torn off'], ['smashed', 'Scenery smashed'], ['takedowns', 'Road cars taken out'], ['razed', 'Buildings brought down']]) if (t[k]) lines.push([`${label} ×${t[k]}`, pay(DESTRUCT_CASH[k] * t[k] * wd)]);
   if (t.wrecks === 0 && t.respawns === 0) lines.push(['Clean race', pay(BONUS.clean)]);
   if (mask & 4 && ev.kind !== 'trial') lines.push(['Objective', pay(BONUS.obj)]);
   // a boss or the final won for the first time: the purse and the prize car

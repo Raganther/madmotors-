@@ -80,14 +80,14 @@ function openSandbox(name) {
 // ---------- the live tabs ----------
 const kitStages = {};
 function startLive(tab) {
-  const q = new URLSearchParams(location.search), st = tab === 'kit' ? (kitStages[S.style] = kitStages[S.style] || kitStage(S.style)) : tab === 'derby' ? arenaOf(S.arena) : WORKSHOP_STAGE;   // the kit tab: the loop with a town in the chosen style; the derby tab: an arena
+  const q = new URLSearchParams(location.search), st = tab === 'kit' ? (kitStages[S.style] = kitStages[S.style] || kitStage(S.style)) : tab === 'derby' ? arenaOf(S.arena) : tab === 'demolition' ? STAGES.find(s => s.demolition) : WORKSHOP_STAGE;   // the kit tab: the loop with a town in the chosen style; the derby tab: an arena; demolition: the yard
   let i = STAGES.indexOf(st); if (i < 0) { STAGES.push(st); i = STAGES.length - 1; }
   const car = q.get('car'); if (car && vehicleById(car) && !S.car) S.car = car;
   if (tab === 'derby' && q.get('arena') && !S.arenaQ) { S.arenaQ = true; const a = ARENAS().find(s => s.name.toLowerCase().includes(q.get('arena').toLowerCase())); if (a && a.name !== S.arena) { S.arena = a.name; return startLive(tab); } }
   if (tab === 'kit' && STYLES[q.get('style')] && !S.styled) { S.styled = true; if (S.style !== q.get('style')) { S.style = q.get('style'); return startLive(tab); } }
   if (S.car) G.stageCars[st.name] = S.car;   // the Workshop loop's own pick (selectStage applies it)
   S.tab = tab; S.log = []; S.watch = []; S.snap = new Map();
-  G.workshop = { tab, rivals: tab === 'weapons' ? 3 : tab === 'derby' ? 5 : 1, weapons: tab === 'weapons' || tab === 'derby', onEvent };
+  G.workshop = { tab, rivals: tab === 'weapons' ? 3 : tab === 'derby' || tab === 'demolition' ? 5 : 1, weapons: tab === 'weapons' || tab === 'derby', onEvent };
   flow.startRace(i);
   const ready = () => { if (flow.race && G.world.idx === i && G.state === 'countdown') { G.countdown = 0.25; G.hintTimer = 0; setup(); } else setTimeout(ready, 50); };
   ready(); drawPanel();
@@ -95,8 +95,8 @@ function startLive(tab) {
 }
 function endLive() { clearInterval(tick); if (panel) panel.hidden = true; if (G.workshop) toggleOverlay(false); G.workshop = null; }
 // the arenas (stages with `arena`: core/elements/arena.js); ?workshop=derby&arena=<part of a name>
-const ARENAS = () => STAGES.filter(s => s.arena), arenaOf = n => ARENAS().find(s => s.name === n) || ARENAS()[0];
-function setup() { if (S.tab === 'derby') R().autoPlayer = S.auto; else if (S.tab === 'crash') runCrash(); else if (S.tab === 'destruct') runYard(); else if (S.tab === 'kit') { R().autoPlayer = S.auto = true; rivals()[0].hold = true; } else lineUp(); }
+const ARENAS = () => STAGES.filter(s => s.arena && !s.demolition), arenaOf = n => ARENAS().find(s => s.name === n) || ARENAS()[0];
+function setup() { if (S.tab === 'derby' || S.tab === 'demolition') R().autoPlayer = S.auto; else if (S.tab === 'crash') runCrash(); else if (S.tab === 'destruct') runYard(); else if (S.tab === 'kit') { R().autoPlayer = S.auto = true; rivals()[0].hold = true; } else lineUp(); }
 const R = () => flow.race, P = () => flow.race.player, kmh = c => Math.round(Math.hypot(c.vx, c.vz) * 3.6);
 const rivals = () => R().cars.filter(c => !c.isPlayer);
 /** Put car `c` on the road at sample `idx`, `lat` m across, turned `dyaw`, moving at `v` m/s; `fresh` repairs it. */
@@ -170,6 +170,9 @@ function update() {
     const T = rivals()[0]; if (S.scenario === 'headon' && T.hold && S.impact) T.hold = true;
     const imp = S.impact ? `impact at ${S.impact.at} km/h, ${S.impact.after} km/h after` : 'no impact yet';
     $('ws-read').textContent = S.tab === 'destruct' ? [dmg(Pc), (S.outcome ? S.outcome.toUpperCase() + ': ' : '') + imp, `mass ${massOf(Pc).toFixed(2)}, toughness ${toughOf(Pc)}`].join('\n') : [dmg(Pc), dmg(rivals()[0]), imp].join('\n');
+  } else if (S.tab === 'demolition' && r.demo) {   // demolition: everyone's score, what's still standing
+    const st = r.st, up = st.blds.filter(o => !o.collapsed).length;
+    $('ws-read').textContent = `${r.derby.phase === 'over' ? 'OVER: ' + r.cars[r.derby.winner].name + ' wins' : fmt(r.derby.t) + ' of ' + fmt(r.derby.time)} · ${up} of ${st.blds.length} standing\n` + derbyOrder(r).map(c => { const k = r.cars.indexOf(c); return `${c.isPlayer ? 'You' : c.name}  ${r.demo.pts[k]} pts, ${r.demo.walls[k]} walls, ${r.demo.razed[k]} down${c.out ? ', wrecked' : ''}`; }).join('\n');
   } else if (S.tab === 'derby') {   // the derby: who's still running, their health; who's out and when
     if (r.derby) $('ws-read').textContent = `${r.derby.phase === 'over' ? 'OVER: ' + r.cars[r.derby.winner].name + ' wins' : fmt(r.derby.t) + ' of ' + fmt(r.derby.time)}\n` + derbyOrder(r).map(c => `${c.isPlayer ? 'You' : c.name}${c.out ? '  out at ' + fmt(r.derby.outT[r.cars.indexOf(c)]) : '  ' + Math.round(100 * health(c)) + '%'}`).join('\n');
   } else if (S.tab === 'kit') {
@@ -197,6 +200,8 @@ function drawPanel() {
   else if (S.tab === 'derby') panel.innerHTML = `<h2>Derby arena</h2><label>Arena</label><div class="row">${ARENAS().map(a => `<button class="ws-btn alt ${a.name === arenaOf(S.arena).name ? 'on' : ''}" data-ar="${esc(a.name)}" type="button">${esc(a.name)}</button>`).join('')}</div>
     ${carSel}<div class="row"><button class="ws-btn alt ${S.auto ? 'on' : ''}" id="ws-auto" type="button">Autopilot</button><button class="ws-btn" id="ws-again" type="button">Start again</button></div>
     <p style="margin:6px 0 0;color:#9AA6C4">Wrecked cars are out; the last car running wins. Derby cars (toughness B or better) last longest.</p>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
+  else if (S.tab === 'demolition') panel.innerHTML = `<h2>Demolition</h2>${carSel}<div class="row"><button class="ws-btn alt ${S.auto ? 'on' : ''}" id="ws-auto" type="button">Autopilot</button><button class="ws-btn" id="ws-again" type="button">Start again</button></div>
+    <p style="margin:6px 0 0;color:#9AA6C4">Two minutes to knock the yard down. A wall gives way when your weight times your speed beats it: heavy cars go in one side and out the other, light ones crack it a hit at a time. Bring a building down for a bonus.</p>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
   else if (S.tab === 'kit') panel.innerHTML = `<h2>Scenery kit</h2><label>Style</label><div class="row">${STYLE_IDS.map(k => `<button class="ws-btn alt ${k === S.style ? 'on' : ''}" data-st="${k}" type="button">${STYLES[k].name}</button>`).join('')}</div>
     ${carSel}<div class="row"><button class="ws-btn alt ${S.auto ? 'on' : ''}" id="ws-auto" type="button">Autopilot</button><button class="ws-btn alt ${G.camMode === 'heli' ? 'on' : ''}" id="ws-heli" type="button">Heli view</button></div>
     <p style="margin:6px 0 0;color:#9AA6C4">Turn the autopilot off and drive into the town: fences, gates, hedges and bins give way, walls need a heavy car, houses don't.</p>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
@@ -216,6 +221,9 @@ function drawPanel() {
     for (const b of panel.querySelectorAll('[data-ar]')) b.onclick = () => { S.arena = b.dataset.ar; startLive('derby'); };
     $('ws-auto').onclick = () => { S.auto = !S.auto; R().autoPlayer = S.auto; drawPanel(); };
     $('ws-again').onclick = () => startLive('derby');
+  } else if (S.tab === 'demolition') {
+    $('ws-auto').onclick = () => { S.auto = !S.auto; R().autoPlayer = S.auto; drawPanel(); };
+    $('ws-again').onclick = () => startLive('demolition');
   } else if (S.tab === 'kit') {
     for (const b of panel.querySelectorAll('[data-st]')) b.onclick = () => { S.style = b.dataset.st; startLive('kit'); };
     $('ws-auto').onclick = () => { S.auto = !S.auto; R().autoPlayer = S.auto; drawPanel(); };
