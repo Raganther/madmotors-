@@ -352,7 +352,8 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   await touch('touchStart', [[w.x, w.y], [p.x, p.y]]);
   await touch('touchMove', [[w.x + 50, w.y], [p.x, p.y]]);
   await expect('gas', () => { const r = window.__dr.race.player.inp; return r.throttle === 1 && !r.handbrake && !r.brake; });
-  await expect('point right: car turns to face right', facing, [1, 0], 10000);
+  // slow under SwiftShader: the first frames of a race stall while shaders compile (brick walls add to them)
+  await expect('point right: car turns to face right', facing, [1, 0], 25000);
   await touch('touchMove', [[w.x - 35, w.y - 35], [p.x, p.y]]);
   await expect('point up-left: car steers toward up-left', steersToward, [-1, 1], 3000);
   await touch('touchMove', [[w.x - 35, w.y - 35], [p.x, p.y + 45]]);
