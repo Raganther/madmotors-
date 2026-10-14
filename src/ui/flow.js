@@ -104,6 +104,8 @@ export function handleEvents() {
           break;
         case 'crack': if (c.isPlayer || near) AudioSys.crash(e.mat === 'timber' ? 'wood' : 'metal', clamp(e.v / 25, 0.2, 0.7) * (c.isPlayer ? 1 : 0.4)); break;
         case 'plank': if (c.isPlayer || near) AudioSys.crash('wood', c.isPlayer ? 0.5 : 0.25); if (c.isPlayer && G.calloutTimer <= 0) callout('The bridge is giving way!'); break;   // a crumbling bridge's plank went (core/features/crumble.js)
+        case 'bayfall': if (c.isPlayer && G.calloutTimer <= 0) callout('The roof\'s coming in!'); if (c.isPlayer || near) AudioSys.crash('wood', c.isPlayer ? 0.8 : 0.4); break;   // a bay of roof and floors fell in (core/features/structures.js)
+        case 'furniture': if ((c.isPlayer || near) && !(race.time - (G.furnSndT || -9) < 0.15)) { G.furnSndT = race.time; AudioSys.crash('wood', Math.min(0.6, e.v / 30) * (c.isPlayer ? 1 : 0.4)); } break;
         case 'collapse': if (c.isPlayer) callout(e.floors > 2 ? 'Brought the block down!' : `${e.type[0].toUpperCase() + e.type.slice(1)} down!`); if (c.isPlayer || near) { AudioSys.crash('metal', 1); AudioSys.burst(0.8, 'lowpass', 110, 1.2); } break;
         case 'takedown': if (c.isPlayer) { callout(e.kind === 'truck' ? 'Truck takedown!' : 'Takedown!'); AudioSys.whoosh(); } break;
         case 'rockhit': sparks(e.x, e.y, e.z, 14); if (c.isPlayer || near) AudioSys.crash('metal', clamp(e.v / 20, 0.2, 0.9) * (c.isPlayer ? 1 : 0.5)); if (c.isPlayer) G.shake = Math.min(1.4, G.shake + 0.8); break;

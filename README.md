@@ -373,26 +373,32 @@ kind; Workshop → Destruction yard drives any car into any of them.
 
 ### Destructible buildings
 
-`src/data/structures.js` (types and materials), `src/core/elements/structures.js` (placing them),
-`src/core/features/structures.js` (breaking them), `src/render/elements/structures.js` (drawing them). A building is a
-ring of wall panels (~2.6 m each) round an empty floor. One rule, the impact rule: a car's mass x its speed into a
-panel against what the panel has left (its material's hp, more for a taller building, less its cracks).
-- **Enough:** the panel goes and the car ploughs on with what it had over (`KEEP`), so a heavy, fast car bursts in
-  the front and out the back (two panels side by side are one hole: the second costs `SAME`). A light car ends up in
-  the front room.
-- **Not enough, but at least `CHIP` x hp:** the wall cracks (darker as it weakens) and the cracks add up, so a kart can
-  batter its way in a hit at a time; it bounces off and the hit costs it. Below `minMass` (stone, concrete) a light car
-  can only crack it.
-- **Collapse:** once `COLLAPSE` of the panels are down the whole building comes down: the roof drops, dust, and a
-  rubble heap over the footprint that drags at your wheels (`HEAP_DRAG`).
-- **Rubble:** every broken panel throws lumps the way the car was going (`R.st.lumps`: they land on the road, get
-  shoved about and slow whoever hits them) and leaves a strip of rubble (`STRIP_DRAG`). Rubble stays for the race.
-- **Blasts** (`blastStructures`): weapons break or crack the walls in reach.
-- **Scoring:** a wall is a smash (`break`/`wallbreak` events), a collapse is `razed` in the career's destruction tally.
-- **The towns' houses and barns** (the world kit) are buildings too (`buildingsOf`: brick, timber, stone or concrete by
-  the style), so every town in every stage can be knocked down.
-- **A building across a branch** (`road: true`) blocks the short cut until it's down or holed front and back; the AI
-  takes it only then, or if it can smash through (`canRaze` in `sim/ai.js`).
+`src/data/structures.js` (types, materials, furniture and every number), `src/core/kit/building.js` (one building's
+layout), `src/core/elements/structures.js` (placing them), `src/core/features/structures.js` (breaking them),
+`src/render/elements/structures.js` (drawing them).
+- **Brick walls.** Every wall is a grid of cells (0.5 m, a few bricks each) with windows, a door and, inside, partition
+  walls with doorways between the rooms. A car hitting a wall spends its impact (mass x speed into it) knocking cells
+  out, the middle of its nose first, low first, so the hole is the car's shape: as wide as it, as tall as it (`rowsHit`:
+  taller for heavier vehicles). If it clears everything in front of it, it carries on through with what it had over and
+  the hole's edges go ragged (`RAG`); if not, it's stopped and what's left of the hit cracks the cells it hit, so the
+  next hit gets further (a hit below `BREAK` x the wall's strength only cracks it). Brickwork that has lost what's under
+  it and to both sides below falls in after the hole, so holes come out as stepped arches.
+- **Bricks fly.** Every cell knocked out throws a brick (a plank, a lump of stone) out of the hole the way the car went,
+  as a loose prop that lands and gets batted about; windows shatter; core lumps of brickwork land on the road and slow
+  whoever hits them; a hole leaves a strip of rubble.
+- **Inside.** Rooms by type (living room, kitchen, bedroom, shop, barn, warehouse, chapel...) with their furniture
+  (`FURNITURE`): sofas, beds, kitchen units, shelves, pews, bales, pallets. It's loose: a car shoves it about (and
+  loses a little speed, `FURN_SLOW`), and it stays inside unless it goes out through a hole.
+- **Roofs and floors in bays.** The roof and the upper floors are slices across the building; a bay falls in when fewer
+  than `BAY_FALL` of the wall cells holding it up are left, its roof breaking into slabs on a heap. All the bays down and
+  the building is gone (`collapse`).
+- **See-through.** Inside a building, or behind one from the camera, its roof, upper floors and the walls above the
+  ground floor turn see-through round the car (the cutaway shader tunnels use: `structureCover` in the render).
+- **Blasts** (`blastStructures`): weapons knock out or crack the cells in reach and throw the furniture about.
+- **Scoring:** a hole is a smash, a collapse is `razed`; Demolition scores cells and fallen bays.
+- **The towns' houses and barns** (the world kit) are buildings too (`buildingsOf`), so every town can be knocked down.
+- **A building across a branch** (`road: true`) blocks the short cut until a car has been through it or part of it is
+  down; the AI takes it only then, or if it can smash through (`canRaze` in `sim/ai.js`).
 Workshop → Demolition (and the `structures` sandbox) to try it; `tests/structures.test.js` locks the rules.
 
 ### Car anatomy (panels)

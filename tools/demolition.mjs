@@ -14,8 +14,8 @@ for (const S of stages) {
     const defs = raceDefs(vehicleById(car) || VEHICLES[0], 5).map(d => ({ ...d, skill }));
     const R = M.createRace(W, defs, { mode: 'demolition' }); R.phase = 'racing'; R.autoPlayer = true;
     let n = 0; while (R.derby.phase === 'run' && n++ < 120 * 400) { M.raceStep(R, M.STEP, W); for (const c of R.cars) c.events.length = 0; }
-    const D = R.demo, down = R.st.blds.filter(o => o.collapsed).length, walls = R.st.panels.filter(p => p.broken).length;
-    console.log(`  skill ${skill}: ${R.derby.t.toFixed(1)} s, ${down}/${R.st.blds.length} buildings down, ${walls}/${R.st.panels.length} walls`);
-    for (const c of M.derbyOrder(R)) { const k = R.cars.indexOf(c); console.log(`    ${(c.name + (c.isPlayer ? ' (you)' : '')).padEnd(18)} ${(c.def.vehicle || c.def.model || '').toString().padEnd(10)} ${String(D.pts[k]).padStart(4)} pts  ${String(D.walls[k]).padStart(3)} walls ${D.razed[k]} down  ${c.out ? 'wrecked' : Math.round(100 * M.health(c)) + '%'}`); }
+    const D = R.demo, down = R.st.blds.filter(o => o.collapsed).length, bays = R.st.blds.reduce((a, o) => a + o.bays.filter(b => b.fallen).length, 0), nb = R.st.blds.reduce((a, o) => a + o.bays.length, 0), cells = R.st.blds.reduce((a, o) => a + o.down, 0), all = R.st.blds.reduce((a, o) => a + o.cells, 0);
+    console.log(`  skill ${skill}: ${R.derby.t.toFixed(1)} s, ${down}/${R.st.blds.length} buildings down, ${bays}/${nb} bays, ${Math.round(100 * cells / all)}% of the walls`);
+    for (const c of M.derbyOrder(R)) { const k = R.cars.indexOf(c); console.log(`    ${(c.name + (c.isPlayer ? ' (you)' : '')).padEnd(18)} ${(c.def.vehicle || c.def.model || '').toString().padEnd(10)} ${String(D.pts[k]).padStart(4)} pts  ${String(D.walls[k]).padStart(3)} wall bits ${D.razed[k]} down  ${c.out ? 'wrecked' : Math.round(100 * M.health(c)) + '%'}`); }
   }
 }

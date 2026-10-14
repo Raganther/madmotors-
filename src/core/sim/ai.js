@@ -8,13 +8,13 @@ import { clamp } from '../math.js';
 import { HAMMER, hammerLat } from '../elements/hammer.js';
 import { navControl } from './nav.js';
 import { breakSpeed, impactOf, massOf } from './impact.js';
-import { MATERIALS, panelHp } from '../../data/structures.js';
+import { MATERIALS, holeHp } from '../../data/structures.js';
 const breachOpen = (W, k) => (W.brk || []).some(o => o.alt === k && o.broken);
-// a building across a branch (elements/structures.js): open once it's down or holed front and back; a car can smash it if
+// a building across a branch (elements/structures.js): open once a car has been through it or part of it is down; a car can smash it if
 // its mass is enough for the material and it'll hit the wall with STRUCT_RUN x what a panel takes
 const STRUCT_RUN = 1.7;
-const buildingOpen = (W, id) => { const o = W.st && W.st.blds[id]; return !!o && (o.collapsed || o.down >= 4); };
-function canRaze(c, W, id) { const o = W.st && W.st.blds[id]; if (!o) return true; const M = MATERIALS[o.mat]; return massOf(c) >= M.minMass && impactOf(c, Math.hypot(c.vx, c.vz) * 0.85) >= STRUCT_RUN * panelHp(o.mat, o.floors); }
+const buildingOpen = (W, id) => { const o = W.st && W.st.blds[id]; return !!o && (o.collapsed || o.through >= 1 || o.bays.some(b => b.fallen)); };
+function canRaze(c, W, id) { const o = W.st && W.st.blds[id]; if (!o) return true; const M = MATERIALS[o.mat]; return massOf(c) >= M.minMass && impactOf(c, Math.hypot(c.vx, c.vz) * 0.85) >= STRUCT_RUN * holeHp(o.mat, o.floors); }
 
 // personalities (G5: data/career.js gives them to Elite rivals). A blocker moves across to cover whoever is closing from
 // behind; the nemesis does it to the player only (and both are keener with weapons: features/weapons.js)

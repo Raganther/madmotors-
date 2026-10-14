@@ -3,8 +3,7 @@ import { clamp, mulberry32, wrapAngle } from '../math.js';
 import { damageCar } from '../sim/damage.js';
 import { SIGNATURES, WEAPONS, levelOf } from '../../data/weapons.js';
 import { BREAKABLES } from '../../data/breakables.js';
-import { blastStructures } from './structures.js';
-import { inFootprint } from '../elements/structures.js';
+import { blastStructures, solidAt as wallAt } from './structures.js';
 
 // ---------- weapons (menu: Weapons on/off; R.weapons) ----------
 // Weapon crates lie on the road; drive through one with nothing in hand and you get a weapon, which one depending on
@@ -86,12 +85,12 @@ export function blastScenery(R, x, z, r, power, by) {
   }
   const shove = q => { const dx = q.x - x, dz = q.z - z, d = Math.hypot(dx, dz); if (d > r * 1.4) return; const f = 9 * (1 - d / (r * 1.4)); q.vx += dx / (d || 1) * f; q.vz += dz / (d || 1) * f; q.vy = Math.max(q.vy || 0, 2 + f * 0.4); };
   for (const q of R.chunks || []) shove(q);
-  if (R.st) for (const q of R.st.lumps) shove(q);
+  if (R.st) for (const q of R.st.lumps) shove(q);   // (furniture: blastStructures)
   return n;
 }
 /** Does a point at (x, y, z) stand in an unbroken wall or breakable (a missile flying into it)? */
 function solidAt(R, x, y, z) {
-  if (R.st) for (const o of R.st.blds) if (!o.collapsed && y < o.y + o.floors * 3 + 0.4 && inFootprint(o, x, z, 0.3) && !inFootprint(o, x, z, -0.6)) { const p = R.st.panels.find(q => q.bld === o.id && !q.broken && Math.hypot(q.x - x, q.z - z) < q.hl + 0.8); if (p) return true; }
+  if (wallAt(R, x, y, z)) return true;
   for (const o of R.brk || []) {
     if (o.broken || y > o.y + 2.5) continue; const dx = x - o.x, dz = z - o.z, a = dx * Math.sin(o.yaw) + dz * Math.cos(o.yaw), b = dx * Math.cos(o.yaw) - dz * Math.sin(o.yaw);
     if (Math.abs(a) < o.hl + 0.3 && Math.abs(b) < o.hw + 0.3) return true;

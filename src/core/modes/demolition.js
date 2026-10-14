@@ -1,6 +1,6 @@
 import { clamp, wrapAngle } from '../math.js';
 import { arenaWall } from '../elements/arena.js';
-import { MATERIALS, panelHp } from '../../data/structures.js';
+import { MATERIALS, holeHp } from '../../data/structures.js';
 import { impactOf, massOf } from '../sim/impact.js';
 
 // Demolition: createRace(W, defs, { mode: 'demolition' }) on a stage with buildings (core/elements/structures.js),
@@ -12,7 +12,7 @@ import { impactOf, massOf } from '../sim/impact.js';
 // The demolition AI (demoControl) picks a building it can break (heavy enough for its material, and fast enough for
 // its walls), preferring near ones and ones already falling, drives straight at it, and backs off for a run-up when
 // it's stopped against a wall it can't get through. Deterministic: no random numbers.
-export const DEMO = { TIME: 120, DMG: 0.6, PTS: { timber: 1, brick: 2, stone: 3, concrete: 4 }, COLLAPSE: 10, RUN: 22, CLOSE: 7, SLOW: 4, STUCK_T: 0.6, BACK_T: 1.1, EDGE: 9 };
+export const DEMO = { TIME: 120, DMG: 0.6, CELLS: 8, PTS: { timber: 1, brick: 2, stone: 3, concrete: 4 }, COLLAPSE: 10, RUN: 22, CLOSE: 7, SLOW: 4, STUCK_T: 0.6, BACK_T: 1.1, EDGE: 9 };
 export function initDemolition(R, opts = {}) {
   R.demo = { pts: R.cars.map(() => 0), razed: R.cars.map(() => 0), walls: R.cars.map(() => 0) };
   R.derby.time = opts.time || DEMO.TIME;
@@ -22,8 +22,10 @@ export function initDemolition(R, opts = {}) {
 export function demoScore(R) {
   const S = R.st, D = R.demo; if (!S) return;
   D.pts.fill(0); D.razed.fill(0); D.walls.fill(0);
-  for (const p of S.panels) if (p.broken && p.by >= 0) { D.pts[p.by] += DEMO.PTS[S.blds[p.bld].mat] || 1; D.walls[p.by]++; }
-  for (const o of S.blds) if (o.collapsed && o.by >= 0) { D.pts[o.by] += DEMO.COLLAPSE * o.floors; D.razed[o.by]++; }
+  const pts = R.cars.map(() => 0), n = R.cars.map(() => 0);   // every cell of outer wall knocked out: its material's points / CELLS
+  for (const w of S.walls) if (w.kind === 'outer') for (let i = 0; i < w.by.length; i++) if (w.by[i] >= 0) { pts[w.by[i]] += DEMO.PTS[S.blds[w.bld].mat] || 1; n[w.by[i]]++; }
+  pts.forEach((v, k) => { D.walls[k] = Math.round(n[k] / DEMO.CELLS); D.pts[k] += Math.round(v / DEMO.CELLS); });
+  for (const o of S.blds) { for (const b of o.bays) if (b.fallen && b.by >= 0) D.pts[b.by] += Math.round(DEMO.COLLAPSE * o.floors / o.bays.length); if (o.collapsed && o.by >= 0) D.razed[o.by]++; }
 }
 /** The order: highest score first (then the healthier, then grid order). */
 export function demoOrder(R, health) {
@@ -32,7 +34,7 @@ export function demoOrder(R, health) {
 /** Over? The clock, every building down, or nobody left running. */
 export const demoOver = R => R.derby.t >= R.derby.time || (R.st && R.st.blds.every(o => o.collapsed)) || R.cars.every(c => c.out);
 // can car c break building o's walls, coming in at speed v?
-const canBreak = (c, o, v) => massOf(c) >= MATERIALS[o.mat].minMass && impactOf(c, v) >= panelHp(o.mat, o.floors);
+const canBreak = (c, o, v) => massOf(c) >= MATERIALS[o.mat].minMass && impactOf(c, v) >= holeHp(o.mat, o.floors);
 /** The demolition AI's controls for car c. */
 export function demoControl(R, c, W) {
   const inp = c.inp, A = c.dmo, S = R.st, ar = W.tr.arena, sp = Math.hypot(c.vx, c.vz), top = 30 * ((c.veh && c.veh.top) || 1);
@@ -42,7 +44,7 @@ export function demoControl(R, c, W) {
   let best = -1, bs = -1e9;
   S.blds.forEach((o, k) => {
     if (o.collapsed || !canBreak(c, o, top * 0.85)) return;
-    const d = Math.hypot(o.x - c.x, o.z - c.z), sc = -d + 40 * o.down / o.panels.length + (k === A.tgt ? 12 : 0) + DEMO.PTS[o.mat] * 3;
+    const d = Math.hypot(o.x - c.x, o.z - c.z), sc = -d + 40 * o.down / Math.max(1, o.cells) + (k === A.tgt ? 12 : 0) + DEMO.PTS[o.mat] * 3;
     if (sc > bs) { bs = sc; best = k; }
   });
   A.tgt = best;
