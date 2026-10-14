@@ -15,28 +15,46 @@ import { race } from '../ui/flow.js';
 const L = c => new THREE.MeshLambertMaterial({ color: c }), B = c => new THREE.MeshBasicMaterial({ color: c });
 const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); return b; };
 const cyl = (r, l, m, x = 0, y = 0, z = 0) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 10).rotateX(Math.PI / 2), m); c.position.set(x, y, z); return c; };
-let minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, fi = 0, si = 0, di = 0;
+let minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, reticle = null, shellPool = [], markPool = [], craterPool = [], scorches = [], later = [], sci = 0, fi = 0, si = 0, di = 0;
 const MAXB = 80, _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _y = new THREE.Vector3(0, 1, 0);
 export function initWeaponVis() {
-  const white = L(0xF2F2EE), red = L(0xD8203A), flame = B(0xFFB03A);
+  const white = L(0xF2F2EE), red = L(0xD8203A);
   missiles = [];
+  // a missile: white body with a black band, a red ogive nose and red tail fins, small canards behind the nose, a dark
+  // nozzle; behind it a flickering flame cone, a white-hot core and an orange glow
+  const ogive = new THREE.LatheGeometry([0, 0.3, 0.42, 0.52, 0.6].map(y => new THREE.Vector2(0.16 * Math.sqrt(1 - (y / 0.6) ** 1.6) + 0.001, y)), 12).rotateX(Math.PI / 2), black = L(0x22252B), steel = L(0x8E969E);
   for (let k = 0; k < 16; k++) {
     const g = new THREE.Group();
-    g.add(cyl(0.16, 1.3, white)); const nose = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.4, 8).rotateX(Math.PI / 2), red); nose.position.z = 0.85; g.add(nose);
-    for (let f = 0; f < 4; f++) { const fin = box(0.03, 0.34, 0.3, red, 0, 0, -0.55); fin.rotation.z = f * Math.PI / 2; fin.translateY(0.2); g.add(fin); }
-    const fl = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.7, 8).rotateX(-Math.PI / 2), flame); fl.position.z = -1.0; g.add(fl);
+    g.add(cyl(0.16, 1.3, white)); g.add(cyl(0.165, 0.12, black, 0, 0, 0.32)); g.add(cyl(0.165, 0.06, red, 0, 0, -0.2));
+    const nose = new THREE.Mesh(ogive, red); nose.position.z = 0.65; g.add(nose);
+    for (let f = 0; f < 4; f++) { const fin = box(0.03, 0.36, 0.34, red, 0, 0, -0.5); fin.rotation.z = f * Math.PI / 2 + Math.PI / 4; fin.translateY(0.22); g.add(fin); const can = box(0.02, 0.14, 0.12, black, 0, 0, 0.42); can.rotation.z = f * Math.PI / 2 + Math.PI / 4; can.translateY(0.2); g.add(can); }
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.14, 10).rotateX(Math.PI / 2).translate(0, 0, -0.71), steel));
+    const fl = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.9, 8).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xFFB03A, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); fl.position.z = -1.2; g.add(fl);
+    const core = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.45, 6).rotateX(-Math.PI / 2), B(0xFFF6D8)); core.position.z = -0.98; g.add(core);
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xFFB45A, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); glow.scale.set(1.6, 1.6, 1); glow.position.z = -1.0; g.add(glow);
     g.scale.setScalar(2.3); g.visible = false; scene.add(g); missiles.push({ g, fl, glow, id: -1, last: null });
   }
-  // crates: a wooden box with a yellow "?" on every side, floating and turning over a glowing ring
-  const q = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#8A5A2B'; g.fillRect(0, 0, w, h); g.strokeStyle = '#5E3C1C'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6); g.fillStyle = '#FFC72C'; g.font = 'bold 44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', w / 2, h / 2 + 2); });
-  const cm = new THREE.MeshLambertMaterial({ map: q, emissive: 0x5A3E14 }), ring = new THREE.MeshBasicMaterial({ color: 0xFFC72C, transparent: true, opacity: 0.45, depthWrite: false });
+  // crates: a plank crate bound in steel at every edge, a glowing yellow "?" on each face, floating and turning over a
+  // pulsing ring, with a soft glow round it so it shows from far up the road
+  const q = canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = '#8F5E2E'; g.fillRect(0, 0, w, h);
+    for (let k = 0; k < 4; k++) { g.fillStyle = k % 2 ? '#80522A' : '#9A6534'; g.fillRect(0, k * h / 4, w, h / 4 - 2); g.fillStyle = 'rgba(40,24,10,0.5)'; g.fillRect(0, (k + 1) * h / 4 - 3, w, 3); }
+    g.strokeStyle = 'rgba(60,38,16,0.35)'; g.lineWidth = 1; for (let k = 0; k < 14; k++) { const y = Math.random() * h; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + 3, w * 0.6, y - 3, w, y + 1); g.stroke(); }
+    g.fillStyle = '#FFC72C'; g.shadowColor = '#FFE27A'; g.shadowBlur = 12; g.font = 'bold 84px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', w / 2, h / 2 + 4); g.shadowBlur = 0; g.lineWidth = 4; g.strokeStyle = '#7A4A10'; g.strokeText('?', w / 2, h / 2 + 4);
+  });
+  const cm = new THREE.MeshLambertMaterial({ map: q, emissive: 0x4A3010 }), ring = new THREE.MeshBasicMaterial({ color: 0xFFC72C, transparent: true, opacity: 0.45, depthWrite: false });
+  const edges = []; for (const [ax, ay] of [[0, 1], [0, 2], [1, 2]]) for (const a of [-1, 1]) for (const b2 of [-1, 1]) { const p = [0, 0, 0]; p[ax] = a * 0.9; p[ay] = b2 * 0.9; const sz = [0.16, 0.16, 0.16]; sz[3 - ax - ay] = 1.92; edges.push(new THREE.BoxGeometry(...sz).translate(...p)); }
+  const edgeG = mergeAll(edges), edgeM = L(0x5E6670);
   crates = [];
   for (let k = 0; k < 40; k++) {
-    const g = new THREE.Group(), b = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.8, 1.8), cm); b.castShadow = true; g.add(b);
+    const g = new THREE.Group(), b = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.8, 1.8), cm); body.castShadow = true; b.add(body, new THREE.Mesh(edgeG, edgeM)); g.add(b);
     const r = new THREE.Mesh(new THREE.RingGeometry(1.4, 2.0, 24).rotateX(-Math.PI / 2), ring); r.position.y = -1.3; g.add(r);
+    const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xFFC72C, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.35 })); gl.scale.set(4.2, 4.2, 1); g.add(gl);
     g.visible = false; scene.add(g); crates.push({ g, b, r });
   }
+  // scorch marks: where a missile or a blast hit, a black smudge on the road that fades over half a minute
+  const scTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 1, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(10,8,6,0.85)'); gr.addColorStop(0.5, 'rgba(25,20,16,0.55)'); gr.addColorStop(1, 'rgba(30,26,22,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); for (let k = 0; k < 9; k++) { const a = k / 9 * 6.28; g.strokeStyle = 'rgba(12,10,8,0.5)'; g.lineWidth = 2; g.beginPath(); g.moveTo(w / 2, h / 2); g.lineTo(w / 2 + Math.cos(a) * w * 0.48, h / 2 + Math.sin(a) * h * 0.48); g.stroke(); } });
+  scorches = []; for (let k = 0; k < 20; k++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: scTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 })); m.renderOrder = 2; m.visible = false; scene.add(m); scorches.push({ m, t: 99 }); }
   // tracer rounds: stretched glowing bars, all in one instanced mesh
   // thin hot streaks (a round's travel in a frame or so), glowing yellow-orange so they aren't road paint; over kerbs and walls
   tracerMat = new THREE.MeshBasicMaterial({ color: 0xFFD27A, depthTest: false, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -97,6 +115,42 @@ export function initWeaponVis() {
   for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x6EC8FF, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.visible = false; scene.add(m); domes.push({ m, t: 1, size: 1 }); }
   targetRing = new THREE.Mesh(new THREE.RingGeometry(2.1, 2.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xFF2A2A, transparent: true, opacity: 0.8, depthWrite: false, depthTest: false }));
   targetRing.renderOrder = 9; targetRing.visible = false; scene.add(targetRing);
+  // the missile's lock (core lockedOn): four corner brackets on the car in your sights, closing in and turning as the
+  // lock builds, then red and still when it's locked
+  reticle = new THREE.Group(); reticle.mat = new THREE.MeshBasicMaterial({ color: 0xFFD23A, transparent: true, opacity: 0.95, depthWrite: false, depthTest: false });
+  for (let q = 0; q < 4; q++) { const k = new THREE.Group(); k.add(box(0.7, 0.06, 0.16, reticle.mat, 0.65, 0, 1), box(0.16, 0.06, 0.7, reticle.mat, 1, 0, 0.65)); k.children.forEach(m => { m.renderOrder = 9; }); k.rotation.y = q * Math.PI / 2; reticle.add(k); }   // an L at each corner
+  reticle.dot = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.42, 16).rotateX(-Math.PI / 2), reticle.mat); reticle.dot.renderOrder = 9; reticle.add(reticle.dot);
+  reticle.visible = false; scene.add(reticle);
+  // mortar shells: an olive shell with a red band and tail fins, lobbed along an arc; where each will land, a ring on
+  // the road filling in as it falls
+  const olive = L(0x56603F), band = L(0xC23A2A);
+  shellPool = [];
+  for (let k = 0; k < 9; k++) {
+    const g = new THREE.Group(); g.add(cyl(0.22, 0.9, olive)); const nose = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2), olive); nose.position.z = 0.45; g.add(nose);
+    g.add(cyl(0.225, 0.12, band, 0, 0, 0.2)); for (let f = 0; f < 4; f++) { const fin = box(0.03, 0.3, 0.26, L(0x3C4430), 0, 0, -0.5); fin.rotation.z = f * Math.PI / 2 + Math.PI / 4; fin.translateY(0.2); g.add(fin); }
+    g.scale.setScalar(2.2); g.visible = false; scene.add(g);
+    const mark = new THREE.Group(), mm = new THREE.MeshBasicMaterial({ color: 0xFF3A2A, transparent: true, opacity: 0.85, depthWrite: false, depthTest: false });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), mm), fill = new THREE.Mesh(new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xFF3A2A, transparent: true, opacity: 0.28, depthWrite: false, depthTest: false }));
+    const cross = mergeAll([new THREE.PlaneGeometry(0.08, 0.7).rotateX(-Math.PI / 2), new THREE.PlaneGeometry(0.7, 0.08).rotateX(-Math.PI / 2)]); mark.add(ring, fill, new THREE.Mesh(cross, mm));
+    mark.children.forEach(m => { m.renderOrder = 9; }); mark.fill = fill; mark.visible = false; scene.add(mark);
+    shellPool.push({ g, id: -1 }); markPool.push(mark);
+  }
+  // craters: a scorched bowl in the road (a dark decal, cracks running out) inside a rim of broken road and dirt
+  const crTex = canvasTex(128, 128, (g, w, h) => {
+    const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(18,15,12,0.98)'); gr.addColorStop(0.45, 'rgba(42,34,27,0.95)'); gr.addColorStop(0.72, 'rgba(70,58,44,0.8)'); gr.addColorStop(1, 'rgba(40,34,28,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(15,12,10,0.8)'; g.lineWidth = 2; for (let k = 0; k < 11; k++) { const a = k / 11 * Math.PI * 2 + Math.sin(k * 7) * 0.3; g.beginPath(); g.moveTo(w / 2 + Math.cos(a) * w * 0.3, h / 2 + Math.sin(a) * h * 0.3); g.lineTo(w / 2 + Math.cos(a + 0.12) * w * 0.42, h / 2 + Math.sin(a + 0.12) * h * 0.42); g.lineTo(w / 2 + Math.cos(a - 0.05) * w * 0.49, h / 2 + Math.sin(a - 0.05) * h * 0.49); g.stroke(); }
+    for (let k = 0; k < 40; k++) { const a = Math.random() * Math.PI * 2, r = w * (0.2 + Math.random() * 0.28); g.fillStyle = Math.random() < 0.5 ? 'rgba(90,84,76,0.9)' : 'rgba(30,26,22,0.9)'; g.fillRect(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, 2 + Math.random() * 3, 2 + Math.random() * 3); }
+  });
+  const rimG = new THREE.TorusGeometry(1, 0.2, 5, 18).rotateX(Math.PI / 2).scale(1, 0.55, 1), lumps = [];
+  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2 + 0.3; lumps.push(new THREE.DodecahedronGeometry(0.16 + (k % 3) * 0.05, 0).translate(Math.cos(a) * 1.15, 0.06, Math.sin(a) * 1.15)); }
+  const lumpG = mergeAll(lumps);
+  craterPool = [];
+  for (let k = 0; k < 16; k++) {
+    const g = new THREE.Group(), dec = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: crTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
+    dec.renderOrder = 2; g.add(dec); const rim = new THREE.Mesh(rimG, L(0x4E4438)); rim.receiveShadow = true; g.add(rim); const lu = new THREE.Mesh(lumpG, L(0x6A625A)); lu.castShadow = true; g.add(lu);
+    g.visible = false; scene.add(g); craterPool.push(g);
+  }
 }
 const glowTex = () => G.glowTex || (G.glowTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }));
 /** A glowing flash that swells and fades: fireballs, muzzle flashes, hits. */
@@ -105,6 +159,8 @@ export function flash(x, y, z, size, color, life = 0.35) { const f = flashes[fi]
 export function smoke(x, y, z, size, color, life = 1.6, vy = 1.5) { const f = smokes[si]; si = (si + 1) % smokes.length; if (!f) return; f.sp.position.set(x, y, z); f.sp.material.color.set(color); f.t = 0; f.life = life; f.size = size; f.vy = vy; f.sp.visible = true; }
 function dome(x, y, z, size, color) { const d = domes[di]; di = (di + 1) % domes.length; if (!d) return; d.m.position.set(x, y, z); d.m.material.color.set(color); d.t = 0; d.size = size; d.m.visible = true; }
 function updateFx(dt) {
+  if (later.length) { for (const l of later) l.t -= dt; const due = later.filter(l => l.t <= 0); later = later.filter(l => l.t > 0); due.forEach(l => l.fn()); }   // billowing blasts: their later puffs
+  for (const k of scorches) { if (k.t > 30) continue; k.t += dt; k.m.material.opacity = Math.min(1, (30 - k.t) / 8); if (k.t > 30) k.m.visible = false; }
   for (const f of flashes) { if (f.t >= f.life) continue; f.t += dt; const k = Math.min(1, f.t / f.life), sc = f.size * (0.5 + 0.8 * Math.sqrt(k)); f.sp.scale.set(sc, sc, 1); f.sp.material.opacity = k < 0.4 ? 1 : 1 - (k - 0.4) / 0.6; if (k >= 1) f.sp.visible = false; }
   for (const f of smokes) { if (f.t >= f.life) continue; f.t += dt; const k = Math.min(1, f.t / f.life), sc = f.size * (0.6 + 0.9 * k); f.sp.position.y += f.vy * dt * (1 - k); f.sp.scale.set(sc, sc, 1); f.sp.material.opacity = 0.85 * (1 - k) * Math.min(1, f.t * 8); if (k >= 1) f.sp.visible = false; }
   for (const d of domes) { if (d.t >= 1) continue; d.t += dt / 0.45; const k = Math.min(1, d.t), e = 1 - Math.pow(1 - k, 3); d.m.scale.set(d.size * (0.15 + e), d.size * (0.15 + e) * 0.45, d.size * (0.15 + e)); d.m.material.opacity = 0.45 * (1 - k); if (k >= 1) d.m.visible = false; }
@@ -117,9 +173,20 @@ export function updateWeaponVis(dt, now) {
   if (G.state !== 'paused') updateFx(dt);
   const tr = G.world && G.world.tr, R = race, S = R && R.wpn, on = tr && G.state !== 'menu';
   if (targetRing) targetRing.visible = false;
+  if (reticle) reticle.visible = false;
+  for (const p of shellPool) p.g.visible = false; for (const m of markPool) m.visible = false; for (const g of craterPool) g.visible = false;
   for (const p of missiles) p.g.visible = false; for (const c of crates) c.g.visible = false; for (const m of slickPool) m.visible = false; for (const m of cementPool) m.visible = false; for (const m of jetPool) m.visible = false; for (const m of stripPool) m.visible = false; for (const m of minePool) m.g.visible = false; for (const h of hookPool) { h.g.visible = false; h.line.visible = false; }
   if (tracers) tracers.count = 0;
   if (!on || !R) return;
+  const P = R.player, pw = P && P.wpn;
+  if (reticle && pw && pw.item === 'missile' && pw.lockTgt >= 0 && R.cars[pw.lockTgt]) {
+    const T = R.cars[pw.lockTgt], k = pw.lockK || 0, locked = k >= 1, sz = Math.max(T.hl || 2.2, 2.2) * 1.3;   // corners just outside the car
+    reticle.visible = true; reticle.position.set(T.dx ?? T.x, (T.dy ?? T.y) + 0.4, T.dz ?? T.z);
+    reticle.rotation.y = locked ? T.yaw : T.yaw + (1 - k) * 2.4 + now * 3 * (1 - k);
+    reticle.scale.setScalar(sz * (locked ? 1 + 0.08 * Math.sin(now * 20) : 2.2 - 1.2 * k));
+    reticle.mat.color.setHex(locked ? (Math.sin(now * 20) > 0 ? 0xFF2A2A : 0xFFFFFF) : 0xFFD23A);   // locked: flashing red and white, so it shows on any car
+    reticle.dot.visible = locked;
+  }
   (R.missiles || []).forEach((m, k) => {
     const p = missiles[k % missiles.length], pos = missilePos(tr, m);
     const dx = p.id === m.id && p.last ? pos.x - p.last.x : tr.tx[pos.i], dz = p.id === m.id && p.last ? pos.z - p.last.z : tr.tz[pos.i];
@@ -128,12 +195,27 @@ export function updateWeaponVis(dt, now) {
     const T = R.cars[m.tgt]; if (T && k === 0 && targetRing) { targetRing.visible = true; targetRing.position.set(T.dx ?? T.x, (T.dy ?? T.y) + 0.15, T.dz ?? T.z); const pul = 1 + 0.15 * Math.sin(now * 18); targetRing.scale.set(pul, 1, pul); }   // who it's after
     if (G.state === 'racing' && p.id === m.id && p.last) {                                   // exhaust: a smoke trail (a puff every 50 ms) and sparks
       const bx = pos.x - Math.sin(p.g.rotation.y) * 2.6, bz = pos.z - Math.cos(p.g.rotation.y) * 2.6;
-      if ((p.puffT = (p.puffT || 0) - dt) <= 0) { p.puffT = 0.05; smoke(bx, pos.y, bz, 1.5, 0xE8E8E8, 0.9, 0.4); }
+      if ((p.puffT = (p.puffT || 0) - dt) <= 0) { p.puffT = 0.03; smoke(bx, pos.y, bz, 1.3 + Math.random() * 0.6, 0xEDEDE8, 1.2, 0.3); }
       emit(bx, pos.y, bz, (Math.random() - 0.5) * 1.5, 0.8 + Math.random(), (Math.random() - 0.5) * 1.5, 0.35, 0.4, 0xFFB03A, -0.5);
     }
     p.id = m.id; p.last = pos;
   });
   if (!S) return;
+  // mortar shells on their arcs, the rings where they'll come down, and the craters they've left
+  (S.shells || []).forEach((sh, j) => {
+    if (j >= shellPool.length) return;
+    const land = roadPos(tr, sh.s, sh.lat, 0), mk = markPool[j], u = sh.wait > 0 ? 0 : Math.min(1, sh.t / WPN.MORTAR_FLIGHT);
+    mk.visible = true; mk.position.set(land.x, land.y + 0.12, land.z); mk.scale.setScalar(sh.r); mk.fill.scale.setScalar(Math.max(0.02, u)); mk.rotation.y = now * 0.8;
+    if (sh.wait > 0) return;
+    const H = Math.max(16, Math.hypot(land.x - sh.x0, land.z - sh.z0) * 0.3), at = v => [sh.x0 + (land.x - sh.x0) * v, sh.y0 + (land.y - sh.y0) * v + H * 4 * v * (1 - v), sh.z0 + (land.z - sh.z0) * v];
+    const [x, y, z] = at(u), [x2, y2, z2] = at(Math.min(1, u + 0.02)), p = shellPool[j];
+    p.g.visible = true; p.g.position.set(x, y, z); p.g.lookAt(x2 + (x2 - x) * 10, y2 + (y2 - y) * 10, z2 + (z2 - z) * 10);
+    if (G.state === 'racing' && (p.puffT = (p.puffT || 0) - dt) <= 0) { p.puffT = 0.04; smoke(x, y, z, 1.1, 0xD8D8D0, 0.7, 0.2); }
+  });
+  (S.craters || []).forEach((k, j) => {
+    const g = craterPool[j % craterPool.length], f = Math.min(1, k.t * 12); g.visible = true;
+    g.position.set(k.x, k.y + 0.05, k.z); g.rotation.y = k.id * 2.3; g.scale.set(k.r * f, k.r * (0.7 + 0.3 * f), k.r * f);
+  });
   S.crates.forEach((k, j) => { const c = crates[j % crates.length]; place(c.g, tr, k.s, k.lat, 1.3 + Math.sin(now * 2.5 + k.id) * 0.2); c.g.visible = true; c.b.rotation.set(now * 0.9 + k.id, now * 1.3, 0); c.r.material.opacity = 0.3 + 0.2 * Math.sin(now * 4 + k.id); });
   let nb = 0;
   for (const b of S.bullets) {
@@ -176,7 +258,12 @@ export function updateWeaponVis(dt, now) {
   });
 }
 /** A missile hitting a car: fireball, smoke, sparks and bits, a shock ring. */
+/** A scorch mark on the ground at (x, y, z), r metres across, fading over half a minute. */
+export function scorch(x, y, z, r) { const k = scorches[sci]; sci = (sci + 1) % scorches.length; if (!k) return; k.m.position.set(x, y + 0.06, z); k.m.scale.set(r, 1, r); k.m.rotation.y = Math.random() * 6.28; k.m.visible = true; k.t = 0; }
+/** A fireball that keeps billowing: a few more flashes and puffs over the next quarter second, rising. */
+function billow(x, y, z, size) { for (let q = 1; q <= 4; q++) later.push({ t: q * 0.06, fn: () => { flash(x + (Math.random() - 0.5) * size * 0.4, y + q * size * 0.12, z + (Math.random() - 0.5) * size * 0.4, size * (0.9 - q * 0.12), q < 3 ? 0xFFFFFF : 0xFFC080, 0.5); smoke(x, y + q * size * 0.15, z, size * 0.5, 0x3A3632, 2.2, 2.5); } }); }
 export function missileBlast(e) {
+  billow(e.x, e.y + 1, e.z, 9); scorch(e.x, (G.world && G.world.terr ? G.world.terr.at(e.x, e.z) : e.y - 1.1), e.z, 5);
   shockwave(e.x, e.y - 1, e.z, 9, 0xFF7A2E); flash(e.x, e.y + 1.5, e.z, 13, 0xFFFFFF, 0.5); flash(e.x, e.y + 2.2, e.z, 8, 0xFFFFFF, 0.8);
   for (let k = 0; k < 6; k++) smoke(e.x + (Math.random() - 0.5) * 3, e.y + 1 + Math.random() * 1.5, e.z + (Math.random() - 0.5) * 3, 4 + Math.random() * 3, k < 2 ? 0x7A5A48 : 0x4A4A4A, 1.6 + Math.random() * 0.8, 2 + Math.random() * 1.5);
   for (let k = 0; k < 14; k++) { const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 7; emit(e.x, e.y, e.z, Math.cos(a) * s, 2 + Math.random() * 6, Math.sin(a) * s, 0.4 + Math.random() * 0.4, 1.2 + Math.random(), Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -2); }
@@ -189,6 +276,20 @@ export function mineBlast(e) {
   for (let k = 0; k < 5; k++) smoke(e.x + (Math.random() - 0.5) * 2, e.y + 0.6 + Math.random(), e.z + (Math.random() - 0.5) * 2, 3 + Math.random() * 2.5, k < 2 ? 0x6E5A44 : 0x4A4A4A, 1.4 + Math.random() * 0.6, 1.8);
   for (let k = 0; k < 18; k++) { const a = Math.random() * Math.PI * 2, s = 4 + Math.random() * 8; emit(e.x, e.y + 0.3, e.z, Math.cos(a) * s, 4 + Math.random() * 7, Math.sin(a) * s, 0.7, 0.5, k % 3 ? 0x5E4A36 : 0xFF9A3A, -9, 'solid'); }
 }
+/** A mortar shell landing: a fireball, a column of dirt and broken road thrown up, a ring of dust rolling out. */
+export function mortarBlast(e) {
+  const r = e.r || WPN.MORTAR_R;
+  billow(e.x, e.y + 1.5, e.z, r * 1.8); scorch(e.x, e.y, e.z, r * 2.2);
+  shockwave(e.x, e.y + 0.2, e.z, r * 1.7, 0xFF8A3A); shockwave(e.x, e.y + 0.4, e.z, r * 1.1, 0xC9A26A); flash(e.x, e.y + 2, e.z, r * 2.6, 0xFFFFFF, 0.55); flash(e.x, e.y + 4, e.z, r * 1.5, 0xFFE0A0, 0.9);
+  for (let k = 0; k < 9; k++) smoke(e.x + (Math.random() - 0.5) * r, e.y + 1 + Math.random() * 3, e.z + (Math.random() - 0.5) * r, 4 + Math.random() * 4, k < 4 ? 0x5E4E40 : 0x3E3A36, 2 + Math.random(), 2.5 + Math.random() * 2);
+  for (let k = 0; k < 26; k++) { const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 6; emit(e.x, e.y + 0.3, e.z, Math.cos(a) * s, 8 + Math.random() * 10, Math.sin(a) * s, 0.8 + Math.random() * 0.6, 0.35 + Math.random() * 0.3, Math.random() < 0.6 ? 0x6E5A44 : 0x3A342E, -9, 'solid'); }
+  for (let k = 0; k < 16; k++) { const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 8; emit(e.x, e.y + 1, e.z, Math.cos(a) * s, 3 + Math.random() * 6, Math.sin(a) * s, 0.4 + Math.random() * 0.4, 1.4 + Math.random(), Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -2); }
+  for (let k = 0; k < 12; k++) debris(e.x, e.y + 0.3, e.z, (Math.random() - 0.5) * 14, 6 + Math.random() * 8, (Math.random() - 0.5) * 14, k % 2 ? 0x55514C : 0x6E5A44, 0.3 + Math.random() * 0.3, 0.12, 0.3 + Math.random() * 0.2, 1.8);
+}
+/** The mortar firing: a flash and a puff of smoke out of the tube on the roof. */
+export function mortarLaunchFx(c) { flash(c.x, c.y + 2.6, c.z, 3, 0xFFE0A0, 0.2); for (let k = 0; k < 5; k++) smoke(c.x + (Math.random() - 0.5), c.y + 2.6, c.z + (Math.random() - 0.5), 1.6, 0xE0DED8, 1, 3); }
+/** A car bouncing through a crater: grit and dust kicked up. */
+export function craterHitFx(e) { for (let k = 0; k < 10; k++) emit(e.x, e.y + 0.3, e.z, (Math.random() - 0.5) * 5, 2 + Math.random() * 3, (Math.random() - 0.5) * 5, 0.6, 0.3, 0x5E544A, -9, 'solid'); smoke(e.x, e.y + 0.6, e.z, 2.5, 0x9C8E7C, 1, 1); }
 export function missilePuff(e) { flash(e.x, e.y, e.z, 4, 0xFFFFFF, 0.3); for (let k = 0; k < 10; k++) emit(e.x, e.y, e.z, (Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3, 0.8, 1.2, 0x9A9A9A, -0.8); }
 export function pickupFx(e) { shockwave(e.x, e.y, e.z, 3.5, 0xFFC72C); for (let k = 0; k < 14; k++) emit(e.x, e.y + 1.2, e.z, (Math.random() - 0.5) * 6, 3 + Math.random() * 4, (Math.random() - 0.5) * 6, 0.5, 0.5, k % 2 ? 0xFFC72C : 0x8A5A2B, -3, 'solid'); }
 export function pulseFx(c) { const PR = (c.wpn && c.wpn.pulseR) || WPN.PULSE_R; dome(c.x, c.y, c.z, PR, 0x6EC8FF); flash(c.x, c.y + 1, c.z, 7, 0x9ADCFF, 0.3); shockwave(c.x, c.y, c.z, PR, 0x6EC8FF); shockwave(c.x, c.y + 0.5, c.z, PR * 0.6, 0xCFEFFF); for (let k = 0; k < 30; k++) { const a = k / 30 * Math.PI * 2; emit(c.x, c.y + 0.8, c.z, Math.cos(a) * 16, 0.5, Math.sin(a) * 16, 0.4, 0.6, 0x9ADCFF, 0); } }
@@ -226,7 +327,11 @@ export function stingerFx(e) { flash(e.x, e.y + 0.4, e.z, 2, 0xFFFFFF, 0.12); fo
 // mount sinks away again. Built the first time a car picks something up.
 function module(item) {
   const g = new THREE.Group(), dark = L(0x2E333B), steel = L(0x9AA3AD), yel = L(0xFFC72C), red = L(0xD8203A);
-  if (item === 'missile') { g.add(box(0.9, 0.34, 1.1, dark)); for (const s of [-1, 1]) { g.add(cyl(0.13, 1.2, steel, s * 0.22, 0.02, 0.1)); const tip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 8).rotateX(Math.PI / 2), red); tip.position.set(s * 0.22, 0.02, 0.8); g.add(tip); } g.rotation.x = -0.18; }
+  if (item === 'missile') {   // a launcher: a base and a frame with two rails, a missile on each (white, red nose and fins)
+    const wht = L(0xF2F2EE); g.add(box(0.9, 0.16, 1.0, dark)); g.add(box(0.12, 0.3, 0.5, dark, 0, 0.18, -0.1));
+    for (const s of [-1, 1]) { g.add(box(0.08, 0.05, 1.2, steel, s * 0.24, 0.3, 0.1)); g.add(cyl(0.11, 1.0, wht, s * 0.24, 0.42, 0.15)); const tip = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.3, 8).rotateX(Math.PI / 2), red); tip.position.set(s * 0.24, 0.42, 0.8); g.add(tip); for (const f of [-1, 1]) g.add(box(0.02, 0.2, 0.18, red, s * 0.24 + f * 0.12, 0.42, -0.28)); }
+    g.rotation.x = -0.15;
+  }
   else if (item === 'gun') {   // a rotary gun: six barrels round a spinning rotor, a shroud and front ring, an ammo box on the side
     g.add(box(0.5, 0.34, 0.62, dark)); g.add(box(0.26, 0.26, 0.4, L(0x4B5A3A), 0.36, -0.02, -0.05));
     const rotor = new THREE.Group(); rotor.position.set(0, 0.04, 0.3); g.add(rotor);
@@ -238,6 +343,7 @@ function module(item) {
   else if (item === 'oil') { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.8, 12).rotateZ(Math.PI / 2), L(0x1C1C22)); g.add(d); g.add(box(0.82, 0.1, 0.72, yel)); g.add(cyl(0.07, 0.5, steel, 0, -0.1, -0.5)); g.position.z = -0.4; }
   else if (item === 'pulse') { const t = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.09, 8, 20).rotateX(Math.PI / 2), steel); g.add(t); const core = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 8), new THREE.MeshBasicMaterial({ color: 0x6EC8FF })); core.position.y = 0.2; g.add(core); g.add(cyl(0.05, 0.5, steel, 0, 0.05, 0).rotateX(Math.PI / 2)); g.userData.core = core; }
   else if (item === 'harpoon') { g.add(box(0.36, 0.32, 0.5, dark)); g.add(cyl(0.12, 1.2, steel, 0, 0.06, 0.4)); const head = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.38, 6).rotateX(Math.PI / 2), L(0x3A3F46)); head.position.set(0, 0.06, 1.12); g.add(head); g.userData.head = head; }
+  else if (item === 'mortar') { g.add(box(0.8, 0.12, 0.8, dark)); const tube = new THREE.Group(); tube.add(cyl(0.2, 1.1, L(0x56603F), 0, 0, 0.3)); tube.add(cyl(0.23, 0.14, steel, 0, 0, 0.85)); tube.add(box(0.1, 0.5, 0.1, steel, 0, -0.18, 0.05)); tube.rotation.x = -0.9; tube.position.y = 0.25; g.add(tube); }   // a tube cocked up at the sky
   else if (item === 'water') { g.add(cyl(0.3, 0.3, red, 0, 0, -0.1)); g.add(cyl(0.11, 1.3, steel, 0, 0.05, 0.6)); const tip = cyl(0.16, 0.18, L(0xC9A23A), 0, 0.05, 1.28); g.add(tip); g.rotation.x = -0.12; }
   else if (item === 'cement') { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, 0.8, 10).rotateX(Math.PI / 2 - 0.5), L(0x8A8C90)); d.position.z = -0.5; g.add(d); g.add(box(0.3, 0.06, 0.7, L(0x6B6E73), 0, -0.2, -1.0)); }
   else if (item === 'stinger') { g.add(box(1.1, 0.16, 0.36, L(0x22252B))); for (let k = 0; k < 5; k++) g.add(box(0.2, 0.17, 0.37, yel, -0.44 + k * 0.22, 0.005, 0)); g.position.z = -0.5; }

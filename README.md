@@ -19,18 +19,24 @@ drive *through* it scores (a leader on the wrong line can miss it). Win by two, 
 (3-3 is deuce, then advantage), Tiebreak first to 7. The rules are in the same file (`R.sd.kind`, `CP`).
 
 **Weapons** (menu: Weapons on/off, every mode; `src/core/features/weapons.js`): drive through a **?** crate with
-nothing in hand to get one of five weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
-tracers), an oil slick (two, dropped behind), a shockwave (blows the cars round you away and cuts their engines) and a
-harpoon (hooks the car ahead: you're reeled in, they're held back), plus proximity mines (two, dropped behind: the
-car that sets one off is thrown up and slowed). Blasts reach the scenery: a missile that hits or runs out, a mine, a
-shockwave and the monster truck's crush break fences, crates and even concrete near them, crack or knock holes in
-buildings and shove rubble about, and a missile that flies into a wall goes off there (`blastScenery`). F fires. Crates are offered up the road to every
+nothing in hand to get one of seven weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
+tracers), an oil slick (two, dropped behind), a shockwave (blows the cars round you away and cuts their engines), a
+harpoon (hooks the car ahead: you're reeled in, they're held back), a mortar and proximity mines (two, dropped behind:
+the car that sets one off is thrown up and slowed). F fires. The missile has to **lock**
+first: holding one, keep the car ahead in your sights and corner brackets close in on it (`WPN.LOCK_T`, quicker at
+level 2) until they flash red: fired locked it homes in on that car, fired early it flies straight down the road
+(`lockedOn`; the target hears the lock and gets a warning). The **mortar** lobs a shell high onto where the car ahead
+will be (a red ring on the road shows where it's coming down, so it can be dodged); the blast throws everyone near
+and leaves a **crater** in the road (missiles that miss and mines leave small ones) that jolts, scrubs and knocks aside any car
+driving into it for the rest of the race, and the AI steers round craters and rings (`W.craters`, `sim/ai.js`). Blasts reach the scenery: a missile that hits or runs out, a mine, a mortar
+shell, a shockwave and the monster truck's crush break fences, crates and even concrete near them, crack or knock holes
+in buildings and shove rubble about, and a missile that flies into a wall goes off there (`blastScenery`). Crates are offered up the road to every
 racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets
 missiles and harpoons, the front oil and shockwaves). Q swings a door into the car beside you (the side is picked
 for you). The AI uses all of it. On touch there are Fire and Door buttons; a gamepad uses B and the bumpers.
 Weapons have levels and cars carry gear (`src/data/weapons.js`; a race def's `wpn: { lv, gear }`): each level swaps
 some of the core's `WPN` numbers (a longer gun burst, wider slicks, glue at level 3, a bigger shockwave, a longer tow,
-twin missiles). Gear works by itself: flares draw off a missile locked on to you, a shield soaks up the next hit, a
+twin missiles, a bigger mortar blast, then a three-shell barrage). Gear works by itself: flares draw off a missile locked on to you, a shield soaks up the next hit, a
 magnet pulls crates in from across the road. Five vehicles find a **signature weapon** in crates too (`SIGNATURES`):
 the fire engine's water cannon, the mixer's cement trail, the police car's stinger, the monster truck's crush (a leap
 that slams whoever is near when it lands) and the ice cream van's jingle (everyone in earshot stutters). In the career
@@ -73,6 +79,9 @@ every car and its parts, against rivals `PRESTIGE.SKILL` sharper and a parts lev
 `PRESTIGE_PAY` more prize money. The garage's paint shop resprays a car
 (`PAINTS`) for a fee; the player's career car wears it in the race. A cup's top three win a trophy (paid once per step up). Career races always have weapons on;
 Quick Race and Leagues are untouched. The state is one localStorage entry (`downhill-rush-career`).
+An event can carry `arms: { weapon: bias }` (the Artillery Cup, Barrage): every car's crate odds lean to those weapons
+(`careerDefs` puts it on each def's `wpn.bias`, read by `pickupOdds`). The new dirt stages and family cars have their
+own events: Hill & Dale (Rookie), the Artillery Cup and Van Wars (Club), Rally Raid (Pro), Dead Fast and Barrage (Legend).
 `npm run career` races every career round with the AI at a casual and a good player's skill and prints places,
 stars and cash: tune `TIERS`, prices and payouts against it.
 
@@ -128,6 +137,14 @@ lap, whoops along the towpath, the lock's lifting bridge, a ford and a jump by t
 foundations that heavy cars smash open, a spoil-heap kicker, two wrecking balls on the demolition block, a mud wallow,
 pallets of crates at the roadside), and **Seafront**, a tarmac lap with boost pads along the promenade by the sea, a cut
 along the sand round the pier, the harbour's lifting bridge and the old town. Both are in the career's oddball cups.
+**Village Hill** (stage 38) came from the user's Sketch pad: an off-piste climb (gates across a meadow, up through an
+alpine village, over a stream and a boulder field with rockfall), then a ridge road and switchbacks down to the start.
+A town on an open leg is plots only (no pavement, lamps or side roads), its plots keep off the open-country trail, and
+the AI's way across open country (`sim/nav.js`) goes round houses and walls and through fences.
+**Dune Rally** and **Highland Rally** (stages 39-40) follow Bogwood's recipe (the new-stage skill's design rules):
+~37 s dirt laps with a beat every few seconds. Dune: a dune crest jump, washboard whoops, a hairpin through a red rock
+arch, an oasis splash, a double jump, a mud wallow. Highland: a crest, burns to splash through on a hillside edge, a
+hairpin, cattle-grid whoops, a stone bridge over a gully, a peat bog, a double jump, under purple heather.
 The stage list (`src/data/stages/index.js` LIST) is append only, versions included, so a stage's number never moves.
 
 **Track versions** (stages 30-35, `src/data/versions.js`): a stage at night or in the rain, made from the stage itself
@@ -425,7 +442,8 @@ bar (nudge bar, bull bar, plough: `veh.ram`, what breaks scenery) and roll cage 
 box, the panels), so every car of either provider takes every part, and a part on the bonnet, boot or a door rides on
 that panel (it opens and flies off with it). Rivals show the tier's parts (engine, tyres, suspension). In the career
 garage a car's upgrades screen is a turntable (`src/render/showcar.js`): a part goes on with the car up on jacks. Try
-any part on any car in the Workshop's Cars tab.
+any part on any car in the Workshop's Cars tab, or drive a car with any build on the Upgrades tab (`G.workshop.build`
+replaces the player's def's `build` and `veh` in `newRace`).
 
 ### The economy and pacing
 
@@ -480,6 +498,8 @@ or `?workshop` (the hub) / `?workshop=<tab>`. Tabs live in `src/data/workshop.js
   other input for them. Nothing else sets it, so races and golden runs are untouched.
 - **Destruction yard**: any car into crates, hay, a fence, a gate or concrete blocks (a row of `props` on the loop's far
   straight) at a set speed: what breaks, the speed after, mass and toughness.
+- **Upgrades**: any car with any level of each part (and road or gravel tyres), rebuilt and driven round the loop (or by
+  the autopilot), with what the build does to its handling.
 - **Scenery kit**: the loop with a town in any style along both straights (`?workshop=kit&style=seaside`): drive or fly
   round it, smash its fences and gates.
 - Each roadmap phase adds its tab: a new system gets a Workshop tab, a
@@ -532,6 +552,13 @@ cols, rows, h } in plan metres from the start line: `circuit.js` uses it as the 
 generated hills, no far/near profiles), and the road cuts and fills across it with guard rails along the drops.
 "Send to Claude" stores it in `tracks` with base "terrain". To make a real stage of one, keep `ground` and `segs`
 and add the look and set pieces on top.
+
+The menu's **Sketch pad** (`src/ui/sketch.js`) is for ideas that aren't a track yet: a 1600 x 1200 sheet (grid or
+plain) with a pen that follows Apple Pencil pressure, a marker, an eraser, line, arrow, box, circle and words, ten
+colours, three sizes, undo / redo and pinch zoom (with a Pencil, fingers only move the paper). Strokes are kept as
+data (`{ k, c, w, p: [x, y, pressure, ...] }`), so a sketch is redrawn from them and can be reopened. "Send to Claude"
+uploads the picture (PNG) and the strokes (JSON) as assets and writes a `sketches` doc; My sketches lists them with
+Claude's replies. Without the database they're kept in this browser.
 
 ## Adding a vehicle
 

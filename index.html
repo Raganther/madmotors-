@@ -159,6 +159,27 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .gs i{height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden} .gs b{display:block;height:100%;background:var(--yellow);border-radius:3px}
 @media (max-width:520px){ .garage-grid{grid-template-columns:1fr 1fr;gap:8px} .g-blurb{display:none} .gs{grid-template-columns:62px 1fr;font-size:11px} .g-name{font-size:14px} }
 .btn-row button{flex:1;min-width:120px}
+#sketch{position:fixed;inset:0;background:#141A30;display:flex;flex-direction:column;z-index:4;color:#fff}
+.sk-bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top,0px));background:var(--panel);font-size:14px}
+.sk-bar input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:6px 8px;font:inherit;font-size:15px;width:min(240px,40vw)}
+.sk-bar .btn,.sk-bar .cta{padding:8px 12px;font-size:15px;min-width:0} .sk-btns{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.sk-main{flex:1;display:flex;min-height:0}
+.sk-side{width:132px;flex:none;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:10px;background:rgba(28,35,64,.7);border-right:1px solid rgba(255,255,255,.1);touch-action:pan-y}
+#sk-tools{display:grid;grid-template-columns:1fr 1fr;gap:4px} #sk-tools button{display:flex;flex-direction:column;align-items:center;gap:1px;border:0;background:rgba(255,255,255,.07);border-radius:9px;padding:6px 2px;color:#fff}
+#sk-tools span{font-size:20px;line-height:1.1} #sk-tools small{font-size:11px;color:var(--mist)} #sk-tools button.on{background:var(--yellow);color:var(--ink)} #sk-tools button.on small{color:var(--ink)}
+#sk-cols{display:grid;grid-template-columns:repeat(5,1fr);gap:5px} #sk-cols button{aspect-ratio:1;border-radius:50%;border:2px solid rgba(255,255,255,.3);padding:0} #sk-cols button.on{border:3px solid var(--yellow);box-shadow:0 0 0 2px #141A30 inset}
+#sk-sizes{display:flex;gap:4px} #sk-sizes button{flex:1;height:34px;border:0;border-radius:8px;background:rgba(255,255,255,.07);display:grid;place-items:center} #sk-sizes i{display:block;border-radius:50%;background:#fff} #sk-sizes button.on{background:var(--yellow)} #sk-sizes button.on i{background:var(--ink)}
+.sk-acts{display:grid;grid-template-columns:1fr 1fr;gap:4px} .sk-acts button{border:0;background:rgba(255,255,255,.1);border-radius:8px;padding:7px 4px;font-weight:600;font-size:13px;color:#fff} .sk-acts button:disabled{opacity:.35} .sk-acts .wide{grid-column:span 2}
+.sk-wrap{position:relative;flex:1;min-width:0} #sk-paper{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair} #sk-paper.sk-hand{cursor:grab} #sk-paper.sk-text{cursor:text}
+#sk-textform{position:absolute;z-index:2;background:var(--panel);border-radius:10px;padding:8px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,.4)} #sk-textform input{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:16px;padding:6px}
+.sk-formbtns{display:flex;gap:6px;margin-top:6px} .sk-formbtns button{padding:6px 12px;font-size:14px;min-width:0}
+#sk-sendform textarea{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:16px;padding:8px}
+#sk-toast{pointer-events:none;position:fixed;left:50%;top:18%;transform:translateX(-50%);background:var(--yellow);color:var(--ink);font-weight:700;border-radius:999px;padding:8px 16px;z-index:6}
+.sk-listcard{width:min(640px,100%);max-height:calc(100vh - 32px);box-sizing:border-box} #sk-listbody{overflow-y:auto;display:flex;flex-direction:column;gap:8px;touch-action:pan-y}
+.sk-item{display:flex;gap:10px;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:12px;padding:8px} .sk-item.done{border-color:#7BD88F}
+.sk-item img,.sk-noimg{width:150px;height:112px;flex:none;object-fit:contain;background:#fff;border-radius:6px} .sk-item p{margin:4px 0;font-size:14px;color:var(--mist)} .sk-item em{display:block;font-size:14px;color:#7BD88F;margin:4px 0} .sk-item small{color:var(--mist)}
+.sk-itembtns{display:flex;gap:6px;margin-top:6px} .sk-itembtns .btn{padding:5px 10px;font-size:13px;min-width:0}
+@media (max-width:700px){ .sk-main{flex-direction:column-reverse} .sk-side{width:auto;flex-direction:row;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;border-right:0;border-top:1px solid rgba(255,255,255,.1)} #sk-tools{grid-template-columns:repeat(9,44px)} #sk-cols{grid-template-columns:repeat(10,26px)} #sk-sizes{width:110px;flex:none} .sk-acts{grid-template-columns:repeat(3,64px)} .sk-acts .wide{grid-column:auto} .sk-side>*{flex:none} .sk-item img,.sk-noimg{width:96px;height:72px} }
 #editor,#tb{position:fixed;inset:0;background:#141A30;display:flex;flex-direction:column;z-index:4;color:#fff}
 .ed-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 12px;background:var(--panel);font-size:14px} .ed-title{font-family:var(--display);font-weight:400;color:var(--yellow);font-size:18px}
 .ed-bar label{display:flex;align-items:center;gap:6px} .ed-bar input,.ed-bar select,.ed-f input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:4px 6px;font:inherit} #ed-laps{width:48px} #ed-name{width:150px}
@@ -319,7 +340,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
       <dt>Q</dt><dd>Swing a door into the car beside you</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
-    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="models-btn" class="ghost-btn" type="button">Models: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button><button id="terrain-btn" class="ghost-btn" type="button">Terrain builder</button><button id="lab-btn" class="ghost-btn" type="button">Workshop</button></div>
+    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="models-btn" class="ghost-btn" type="button">Models: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button><button id="terrain-btn" class="ghost-btn" type="button">Terrain builder</button><button id="sketch-btn" class="ghost-btn" type="button">Sketch pad</button><button id="lab-btn" class="ghost-btn" type="button">Workshop</button></div>
   </div>
 </div>
 
@@ -385,6 +406,25 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
     <div class="ed-zoom"><button id="tb-left" type="button" aria-label="Turn left">&#10226;</button><button id="tb-right" type="button" aria-label="Turn right">&#10227;</button><button id="tb-top" type="button">Top</button><button id="tb-zoomin" type="button" aria-label="Zoom in">+</button><button id="tb-zoomout" type="button" aria-label="Zoom out">&minus;</button><button id="tb-fit" type="button">Fit</button></div>
     <small id="tb-legend"></small></div>
   <div class="tb-foot"><button id="tb-clearroad" class="btn" type="button">Clear road</button><button id="tb-clearground" class="btn" type="button">Flatten all</button><textarea id="tb-msg" rows="1" maxlength="2000" placeholder="A message for Claude about this track (optional)"></textarea><button id="tb-send" class="cta" type="button">Send to Claude</button></div>
+<div id="sketch" hidden>
+  <div class="sk-bar">
+    <b class="ed-title">Sketch pad</b>
+    <input id="sk-title" maxlength="60" placeholder="Name this idea">
+    <span class="sk-btns"><button id="sk-new" class="btn" type="button">New</button><button id="sk-mine" class="btn" type="button">My sketches</button><button id="sk-send" class="cta" type="button">Send to Claude</button><button id="sk-exit" class="btn" type="button">Exit</button></span>
+  </div>
+  <div class="sk-main">
+    <div class="sk-side">
+      <div id="sk-tools" role="toolbar" aria-label="Drawing tools"></div>
+      <div id="sk-cols" role="toolbar" aria-label="Colours"></div>
+      <div id="sk-sizes" role="toolbar" aria-label="Sizes"></div>
+      <div class="sk-acts"><button id="sk-undo" type="button" disabled>Undo</button><button id="sk-redo" type="button" disabled>Redo</button><button id="sk-clear" type="button">Clear</button><button id="sk-fit" type="button">Fit</button><button id="sk-bg" class="wide" type="button">Paper: grid</button></div>
+    </div>
+    <div class="sk-wrap"><canvas id="sk-paper"></canvas></div>
+  </div>
+  <div id="sk-textform" hidden><input id="sk-text" maxlength="120" placeholder="Words to put here"><div class="sk-formbtns"><button id="sk-textok" class="cta" type="button">Add</button><button id="sk-textcancel" class="btn" type="button">Cancel</button></div></div>
+  <div id="sk-sendform" class="overlay" hidden><div class="card" role="dialog" aria-labelledby="sk-sendtitle"><h2 id="sk-sendtitle">Send to Claude</h2><textarea id="sk-msg" rows="4" maxlength="2000" placeholder="What is this idea? (optional: what the drawing shows, where it goes, what should happen there)"></textarea><div class="btn-row"><button id="sk-sendgo" class="cta" type="button">Send</button><button id="sk-sendcancel" class="btn" type="button">Cancel</button></div></div></div>
+  <div id="sk-list" class="overlay" hidden><div class="card sk-listcard" role="dialog" aria-labelledby="sk-listtitle"><h2 id="sk-listtitle">My sketches</h2><p id="sk-listsub"></p><div id="sk-listbody"></div><div class="btn-row"><button id="sk-listclose" class="cta" type="button">Close</button></div></div></div>
+  <div id="sk-toast" hidden></div>
 </div>
 <div id="editor" hidden>
   <div class="ed-bar">

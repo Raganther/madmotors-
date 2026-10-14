@@ -116,6 +116,14 @@ export function aiControl(c, W, cars, dt, hazards, gate) {
     for (const x of [-4.3, -2.2, 0, 2.2, 4.3]) { const m = clear(x); if (m > bm) { bm = m; best = x; } }
     lane = best; if (bm < gap && d > 5) rockSlow = Math.min(rockSlow, sp * 0.65);
   }
+  // craters in the road and the rings where mortar shells will land (features/weapons.js): steer for the lane that
+  // misses them, the better drivers seeing them sooner
+  if (W.craters) for (const k of W.craters) {
+    const L0 = tr.loopN, ki = Math.round(k.s), d = L0 ? ((ki - i) % L0 + L0) % L0 : ki - i; if (d < 2 || d > 14 + ai.skill * 30) continue;
+    const gap = k.r + c.hw + 0.6; if (Math.abs(lane - k.lat) >= gap) continue;
+    let best = lane, bm = Math.abs(lane - k.lat); for (const x of [-4.3, -2.2, 0, 2.2, 4.3]) { const m = Math.abs(x - k.lat); if (m > bm) { bm = m; best = x; } }
+    lane = best;
+  }
   lane = clamp(Math.max(lane, minLane), -HALF + 1.7, HALF - 1.2);
   ai.cur += (lane - ai.cur) * Math.min(1, dt * (minLane > -HALF ? 3 : 1.8));
   const L = at(Math.round(7 + sp * 0.38));

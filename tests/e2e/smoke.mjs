@@ -207,11 +207,11 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   if (hub.heads.length < 6 || !hub.prestige || !hub.nem || el.n !== 12 || !el.nem || el.personas < 2 || !/nemesis Delgado/.test(el.news) || !el.season || !Object.keys(el.season.pts).length) errors.push('career elite: ' + JSON.stringify({ hub, ...el, news: el.news.slice(0, 200) }));
   console.log(`career elite: ${hub.heads.join(' | ')}; a round of ${el.n} cars, ${el.personas} with a personality, season points for ${el.season ? Object.keys(el.season.pts).length : 0}`);
 }
-// the Rivals setting: a full field of 25 (one of every vehicle), then down to a single rival; the meshes follow
+// the Rivals setting: a full field of 29 (one of every vehicle), then down to a single rival; the meshes follow
 {
   await page.evaluate(() => window.__dr.flow.toMenu()); await page.evaluate(() => { document.getElementById('garage').hidden = true; });
-  for (const [btn, want] of [['#rivals-more', 25], ['#rivals-less', 2]]) {
-    while (await page.$eval(btn, b => !b.disabled)) await page.click(btn);
+  for (const [btn, want] of [['#rivals-more', 29], ['#rivals-less', 2]]) {
+    while (await page.$eval(btn, b => !b.disabled)) await page.$eval(btn, b => b.click());   // pressed directly: behind a full field's menu the frames are too slow for click()'s stability wait
     await page.evaluate(() => window.__dr.flow.startRace(0)); await page.waitForFunction(() => window.__dr.race && window.__dr.G.world.idx === 0, null, { timeout: 30000 });
     const got = await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; for (let k = 0; k < 30; k++) d.step(1 / 30);
       return { n: d.race.cars.length, vis: d.carVis.length, same: d.race.cars.every((c, k) => d.carVis[k].def.model === c.def.model), rows: document.querySelectorAll('#standings li:not(.gap)').length }; });
@@ -281,8 +281,9 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   const box = await page.locator('#tb-view').boundingBox(), cx = box.x + box.width / 2, cy = box.y + box.height / 2;
   await page.click('#tb [data-tool="raise"]'); await page.mouse.move(cx, cy - 40); await page.mouse.down(); await page.mouse.move(cx + 20, cy - 30, { steps: 4 }); await page.waitForTimeout(2500); await page.mouse.up();
   const raised = await page.textContent('#tb-status');
-  await page.click('#tb [data-tool="road"]'); await page.mouse.move(cx + 300, cy); await page.mouse.down();
-  for (let i = 1; i <= 60; i++) { const t = i / 60 * Math.PI * 2; await page.mouse.move(cx + Math.cos(t) * 300, cy + Math.sin(t) * 150); }
+  const rx = box.width * 0.28, ry = box.height * 0.22;   // a lap round the middle of the view, whatever its size
+  await page.click('#tb [data-tool="road"]'); await page.mouse.move(cx + rx, cy); await page.mouse.down();
+  for (let i = 1; i <= 60; i++) { const t = i / 60 * Math.PI * 2; await page.mouse.move(cx + Math.cos(t) * rx, cy + Math.sin(t) * ry); }
   await page.mouse.up();
   const laid = await page.textContent('#tb-status');
   await page.click('#tb-drive'); const drove = await page.waitForFunction(() => window.__dr.G.editDrive && window.__dr.race && window.__dr.G.world.stage.ground, null, { timeout: 30000 }).then(() => true, () => false);
@@ -291,6 +292,26 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   if (/to 0 m/.test(raised) || !/closes: a lap/.test(laid) || !drove || !back) errors.push('terrain builder: ' + JSON.stringify({ raised, laid, drove, back }));
   console.log(`terrain builder: ${raised.split(' ·')[0]}; ${laid}; test drive ${drove ? 'ran' : 'FAILED'}; back in the builder ${back}`);
   await page.click('#tb-exit'); await page.evaluate(() => localStorage.removeItem('downhill-rush-terrain'));
+}
+// sketch pad: a pen stroke and a box, undo and redo, send it (no database here: kept on this device), reopen it
+{
+  await page.evaluate(() => { localStorage.removeItem('downhill-rush-sketch'); localStorage.removeItem('downhill-rush-sketches'); });
+  await page.click('#sketch-btn'); await page.waitForTimeout(100);
+  const box = await page.locator('#sk-paper').boundingBox(), cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  await page.mouse.move(cx - 150, cy); await page.mouse.down();
+  for (let i = 1; i <= 30; i++) await page.mouse.move(cx - 150 + i * 10, cy + Math.sin(i / 4) * 60);
+  await page.mouse.up();
+  await page.click('#sk-tools [data-tool="rect"]'); await page.mouse.move(cx - 80, cy - 80); await page.mouse.down(); await page.mouse.move(cx + 80, cy + 80, { steps: 5 }); await page.mouse.up();
+  await page.click('#sk-undo'); await page.click('#sk-redo');
+  const strokes = await page.evaluate(() => JSON.parse(localStorage.getItem('downhill-rush-sketch')).strokes.map(s => s.k).join(','));
+  await page.fill('#sk-title', 'e2e: a sketch'); await page.click('#sk-send'); await page.fill('#sk-msg', 'e2e: a message'); await page.click('#sk-sendgo');
+  const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('downhill-rush-sketches') || '[]'));
+  await page.click('#sk-mine'); const items = await page.locator('#sk-listbody .sk-item').count();
+  await page.click('#sk-listclose'); await page.click('#sk-new'); await page.click('#sk-mine'); await page.click('#sk-listbody [data-open]');
+  const back = await page.evaluate(() => JSON.parse(localStorage.getItem('downhill-rush-sketch')).strokes.length);
+  if (strokes !== 'pen,rect' || kept.length !== 1 || kept[0].title !== 'e2e: a sketch' || !/^data:image/.test(kept[0].thumb) || items !== 1 || back !== 2) errors.push('sketch pad: ' + JSON.stringify({ strokes, kept: kept.length, items, back }));
+  console.log(`sketch pad: strokes ${strokes}; sent ${kept.length} (kept on this device), listed ${items}, reopened with ${back} strokes`);
+  await page.click('#sk-exit'); await page.evaluate(() => { localStorage.removeItem('downhill-rush-sketch'); localStorage.removeItem('downhill-rush-sketches'); });
 }
 // every camera: a Race draws from each (the perspective ones really are perspective), Showdown modes stay top-down
 {
@@ -438,7 +459,7 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   const wall = await crash('wall'); if (!(await wp.evaluate(() => Math.max(window.__dr.race.player.dmg.l, window.__dr.race.player.dmg.r)) > 0)) fail('the Armco crash did no damage');
   console.log(`workshop crash: side-on damage ${side.map(d => d.toFixed(2))}, Armco ${wall.map(d => d.toFixed(2))}`); await wp.screenshot({ path: path.join(outDir, 'workshop-crash.png') });
   await wp.click('#ws-hub-btn'); await wp.waitForSelector('#ws-hub:not([hidden])'); await wp.click('[data-tab=weapons]'); await live('weapons');
-  await wp.click('[data-it=missile]'); await wp.click('#ws-fire');
+  await wp.click('[data-it=missile]'); await wp.evaluate(() => window.__dr.step(1.5)); await wp.click('#ws-fire');   // hold it on the dummies for the lock first
   await wp.evaluate(() => window.__dr.step(2.5)); await wp.waitForTimeout(400);
   const wlog = await wp.textContent('#ws-log'); if (!wlog.includes('Missile →')) fail('no missile hit on the dummies: ' + wlog);
   console.log('workshop weapons: ' + wlog.split('km/h')[0] + 'km/h...'); await wp.screenshot({ path: path.join(outDir, 'workshop-weapons.png') });
@@ -486,6 +507,14 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   await wp.waitForTimeout(400); await wp.screenshot({ path: path.join(outDir, 'workshop-demolition.png') });
   if (dmo.phase !== 'over' || dmo.down < 3 || !(dmo.pts > 20)) fail('demolition: ' + JSON.stringify(dmo));
   console.log(`workshop demolition: over at ${dmo.t}s, ${dmo.down} of ${dmo.n} buildings down, ${dmo.pts} points in all`);
+  // upgrades: everything at level 3 rebuilds the car with its parts on and heavier
+  await wp.click('#ws-hub-btn'); await wp.waitForSelector('#ws-hub:not([hidden])'); await wp.click('[data-tab=upgrades]'); await live('upgrades');
+  const im0 = await wp.evaluate(() => window.__dr.race.player.im ?? window.__dr.race.player.def.im ?? 1);
+  await wp.click('#ws-max'); await wp.waitForFunction(() => window.__dr.G.state === 'racing' && window.__dr.race.player.def.build && window.__dr.race.player.def.build.cage === 3, null, { timeout: 60000 });
+  const upg = await wp.evaluate(() => ({ im: window.__dr.race.player.def.im, read: document.getElementById('ws-read').textContent }));
+  await wp.waitForTimeout(400); await wp.screenshot({ path: path.join(outDir, 'workshop-upgrades.png') });
+  if (!(upg.im < (im0 || 1)) || !/toughness \+/.test(upg.read)) fail('upgrades: ' + JSON.stringify({ im0, upg }));
+  console.log(`workshop upgrades: all at 3, im ${im0} -> ${upg.im.toFixed(2)}`);
   await wp.click('#ws-hub-btn'); await wp.click('[data-tab=elements]'); await wp.click('[data-sb=jump]');
   await wp.waitForFunction(() => window.__dr.G.world.stage.name === 'Sandbox: jump' && window.__dr.G.state !== 'menu', null, { timeout: 60000 });
   console.log('workshop elements: sandbox jump opened'); await wp.close();

@@ -9,6 +9,18 @@ argument-hint: <theme and what should happen on it>
 A stage is **data**: one file in `src/data/stages/` that picks a road shape, a look and a list of track elements.
 New behaviour belongs in elements (`/new-element`), never special cases for this stage.
 
+## 0. What makes a stage fun (the user's favourite is Bogwood Rally; learn from it)
+Bogwood is a 37 s lap with eight beats: a crest jump, whoops, a kink into a hairpin, a mud bog, a big jump, a water
+splash, a double jump, a muddy S-bend. The rules it follows:
+- **Something every 4-8 seconds.** A straight longer than ~6 s with nothing on it is a dead spot: put a crest, a
+  splash, a kink or scenery that changes the view on it.
+- **Short laps, more of them**: 35-60 s a lap, 3 laps. Close racing and learnable lines beat one long lap.
+- **Mix the kinds of beat**: air (yump, kick, double), surface (mud, water, ice, dirt), rhythm (whoops), braking
+  (hairpin), flow (fast kinks and S-bends). Never two of the same kind back to back.
+- **The ground moves**: heights change through the lap (5-15 m), and corners sit on crests, dips and banks.
+- **A look of its own at a glance**: one strong palette (Bogwood's autumn orange) and dense scenery close to the road.
+- Rookie rounds can be gentle, but still need a beat or two per lap (a hump, a splash, a bridge).
+
 ## 1. Design (in chat, briefly, before code)
 - One sentence: what makes it different from the stages we have (`npm run layout` lists them; README table).
 - The run as beats: start, 4-8 set pieces, finish. For each beat name the **existing element** that does it

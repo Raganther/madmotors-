@@ -3,6 +3,7 @@ import { BREAKABLES } from '../../data/breakables.js';
 import { WALL } from '../constants.js';
 import { mulberry32 } from '../math.js';
 import { railProject } from '../track/rails.js';
+import { onTrail, TRAIL } from '../elements/open.js';
 
 // ---------- the world kit: towns from rules + a style ----------
 // stage.towns = [{ style, at, len, side, steep }]: a town along the road from `at` metres (from the start line) for
@@ -10,7 +11,7 @@ import { railProject } from '../track/rails.js';
 // what each looks like): a pavement, then plot after plot along the frontage, each with a house at the back, a drive
 // in from the road with a gate in the front boundary (fence, wall, hedge...), a side boundary, maybe a barn or a
 // garden tree; every few plots a side road runs off, closed at the end by something breakable; lamps, bins, benches
-// and postboxes on the pavement. A plot that would hit a road, a railway or a cliff is left out.
+// and postboxes on the pavement. A plot that would hit a road, a railway, a cliff or open country's trail is left out.
 // Everything a car can hit is a breakable piece (data/breakables.js, kit kinds): houses and barns never give way, a
 // picket fence snaps, a stone wall needs a heavy car (core/features/breakables.js). Deterministic: its own random
 // numbers from the stage seed, so the race's draws (R.rnd) are untouched; trees and rocks keep out of its zones.
@@ -38,6 +39,7 @@ function layoutTown(tr, terr, stage, T, n, out) {
     const hs = [];
     for (const u of [u0, (u0 + u1) / 2, u1]) for (const v of [v0, 0, v1]) {
       const [x, z] = P(u, v), q = tr.nearest(x, z); if (!q) return false;
+      if (onTrail(tr, tr.bi(q.i), (x - tr.xs[q.i]) * tr.rx[q.i] + (z - tr.zs[q.i]) * tr.rz[q.i], TRAIL.CLEAR)) return false;   // open country's trail stays clear, as it does of trees
       if (q.d < L0 + u - 1.2 || (lapGap(tr.bi(q.i), i) > 40 && q.d < L0 + 8)) return false;
       if (tr.rails && tr.rails.lines.some(Ln => { const pj = railProject(Ln, x, z); return pj.d < 6 && pj.s > Ln.visA && pj.s < Ln.visB; })) return false;
       const qt = tr.nearestTun && tr.nearestTun(x, z); if (qt && qt.d < 14) return false;
@@ -60,11 +62,13 @@ function layoutTown(tr, terr, stage, T, n, out) {
     while (m < T.at + T.len) {
       const pw = span(S.plot.w), pd = span(S.plot.d), i = I(m + pw / 2), P = frame(i, sd), yaw = tr.th[i], across = yaw + Math.PI / 2;
       plotNo++;
-      // the pavement in front, and its lamps (every street.lamp metres, set back against the plots)
-      out.pave.push({ i, sd, a: I(m), b: I(m + pw), style: T.style });
-      if (S.street.lamp && m - lastLamp >= S.street.lamp) { lastLamp = m; piece(P, 'post', -KIT.PAVE + 0.6, 0, 0.3, 0.3, 4.6, yaw, { lamp: true }); }
+      // the pavement in front, and its lamps (every street.lamp metres, set back against the plots); a village in open
+      // country (elements/open.js) has no street: no pavement, lamps or side roads, just its plots on the hillside
+      const open = !!(tr.open && tr.open[tr.bi(i)]);
+      if (!open) out.pave.push({ i, sd, a: I(m), b: I(m + pw), style: T.style });
+      if (!open && S.street.lamp && m - lastLamp >= S.street.lamp) { lastLamp = m; piece(P, 'post', -KIT.PAVE + 0.6, 0, 0.3, 0.3, 4.6, yaw, { lamp: true }); }
       // a side road every few plots: a lane off the road, closed at the end by something breakable
-      if (S.side.every && plotNo % S.side.every === 0 && clear(P, i, 0, S.side.len, -3.5, 3.5, 4) && free(...P(S.side.len / 2, 0), 4)) {
+      if (!open && S.side.every && plotNo % S.side.every === 0 && clear(P, i, 0, S.side.len, -3.5, 3.5, 4) && free(...P(S.side.len / 2, 0), 4)) {
         const E = BREAKABLES[S.side.end], [x, z] = P(S.side.len / 2, 0);
         out.ground.push({ kind: 'lane', x, z, yaw: across, w: S.side.len + KIT.PAVE + 0.6, d: 6.4, u0: -KIT.PAVE - 0.6, i, sd, len: S.side.len });
         piece(P, S.side.end, S.side.len - 1, 0, E.w || 6, E.d || 0.3, E.h || 1.2, yaw);

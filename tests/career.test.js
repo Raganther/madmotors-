@@ -112,7 +112,7 @@ describe('career disciplines and upgrades', () => {
     expect(fitTyres(g, 'coupe', 'gravel')).toBe(null); expect(fitTyres(g, 'coupe', 'road').cars.coupe.tyrKind).toBe(undefined);
   });
   it('the armoury: weapon levels per car (the signature weapon only on its own vehicle), gear bought once and swapped free; rivals and bosses are armed by tier', () => {
-    expect(armoury('coupe')).toEqual(['missile', 'gun', 'oil', 'pulse', 'harpoon', 'mine']); expect(armoury('firetruck')).toContain('water'); expect(armoury('coupe')).not.toContain('water');
+    expect(armoury('coupe')).toEqual(['missile', 'gun', 'oil', 'pulse', 'harpoon', 'mortar', 'mine']); expect(armoury('firetruck')).toContain('water'); expect(armoury('coupe')).not.toContain('water');
     let s = { ...newCareer('coupe'), cash: 20000 };
     s = buyWeapon(s, 'coupe', 'gun'); expect(s.cars.coupe.wl.gun).toBe(2); expect(s.cash).toBe(17500);
     s = buyWeapon(s, 'coupe', 'gun'); expect(buyWeapon(s, 'coupe', 'gun')).toBe(null); expect(buyWeapon(s, 'coupe', 'water')).toBe(null);
@@ -143,6 +143,15 @@ describe('career races run', () => {
       for (const c of R.cars) expect(Number.isFinite(c.x) && Number.isFinite(c.z), c.name).toBe(true);
     } finally { Math.random = rnd; }
   }, 120000);
+  it('an artillery event loads the crates with its weapons: every car is biased, and a race hands out more of them', async () => {
+    const M = await import('../src/core/index.js');
+    const ev = eventById('artillery-cup'), s = newCareer('hatch'), defs = careerDefs(s, ev);
+    for (const d of defs) expect(d.wpn.bias).toEqual(ev.arms);
+    const st = STAGES.find(x => x.name === ev.rounds[0].stage), tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: !!st.armco };
+    const R = M.createRace(W, defs, { weapons: true }), q = M.ITEMS.indexOf('mortar'), share = c => { const o = M.pickupOdds(R, c); return o[q] / o.reduce((a, b) => a + b, 0); };
+    const plain = M.createRace(W, careerDefs(s, eventById('circuit-series')), { weapons: true });
+    expect(share(R.cars[0])).toBeGreaterThan(share(plain.cars[0]) * 2);
+  });
 });
 describe('career specials, bosses, paint', () => {
   it('every tier has a trial, a mode special, a one-make race and a boss; the final waits for the Legend boss', () => {

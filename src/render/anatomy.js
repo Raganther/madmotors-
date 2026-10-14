@@ -52,8 +52,9 @@ const bboxOf = (m, g) => { g.computeBoundingBox(); return g.boundingBox.clone().
  *  shell big enough to cut, e.g. a kart: its damage shows the old way). Each panel mesh sits at its hinge with
  *  userData.hinge = { axis: 'x'|'y', open: the angle it swings open to }, and joins the dentable list. */
 // the colours of the insides an open bonnet or boot shows: a mid-grey lining (was black: it read as a hole), the engine
-// in metal with a red rocker cover, a chrome air filter, a dark radiator, the boot's carpet, the spare and a toolbox
-const BAY = { lining: 0x4A4F58, block: 0x8D939C, cover: 0xC8352A, chrome: 0xD3D7DD, radiator: 0x23262D, battery: 0x1E1E22, hose: 0x2B2F3A, carpet: 0x5C5650, tyre: 0x1E1E22, toolbox: 0xD7261E };
+// in metal with red rocker covers, a chrome air filter, a dark radiator, yellow caps, rusty headers, the boot's carpet,
+// the spare and a toolbox
+const BAY = { lining: 0x4A4F58, block: 0x8D939C, cover: 0xC8352A, chrome: 0xD3D7DD, radiator: 0x23262D, battery: 0x1E1E22, hose: 0x2B2F3A, carpet: 0x5C5650, tyre: 0x1E1E22, toolbox: 0xD7261E, cap: 0xE8B020, header: 0x8A4E2E };
 export function carvePanels(K, out, def, body, tubColor) {
   const vol = b => (b.max.x - b.min.x) * (b.max.y - b.min.y) * (b.max.z - b.min.z);
   const cand = K.dentable.filter(m => m !== out.cabin && m.parent === body && m.userData.home && m.userData.home.color === def.color && !m.rotation.x && !m.rotation.y && !m.rotation.z);
@@ -114,15 +115,45 @@ export function carvePanels(K, out, def, body, tubColor) {
   // what an open bonnet or boot shows: an engine and a boot, sized from the shell (below the panel's lowest cut, so
   // they stay hidden while it's shut)
   const top = yb + 0.5 * (B.max.y - yb), cx = (B.min.x + B.max.x) / 2;
+  // a V engine: the block low in the middle, a cylinder head and a red rocker cover on each bank (leaning out), the
+  // intake plenum between them under a big chrome air filter, the belt drive on the front, rusty exhaust headers down
+  // each side, the radiator and its fan, strut towers, the bulkhead with the brake servo and reservoirs, the battery
+  const tilt = (m, a) => { m.rotation.z = a; m.userData.home.r.copy(m.rotation); return m; };
+  const cylZ = (r, l, c, x, y, z) => K.part(d => new THREE.CylinderGeometry(r, r, l, d ? 18 : 8).rotateX(Math.PI / 2), c, x, y, z, [r * 2, r * 2, l]);
+  const cylY = (r, l, c, x, y, z) => K.part(d => new THREE.CylinderGeometry(r, r, l, d ? 18 : 8), c, x, y, z, [r * 2, l, r * 2]);
   if (panels.bonnet) {
-    const z0 = zf + 0.08, z1 = B.max.z - 0.32, zl = z1 - z0, zm = (z0 + z1) / 2, w = Wd * 0.5, bh = Math.max(0.14, top - yb);
+    const z0 = zf + 0.08, z1 = B.max.z - 0.32, zl = z1 - z0, zm = (z0 + z1) / 2, w = Wd * 0.5, bh = Math.max(0.14, top - yb), ez = zm - zl * 0.08, el = zl * 0.72;
     if (zl > 0.25) {
-      K.box(w, bh, zl * 0.72, BAY.block, cx, yb + bh / 2, zm - zl * 0.08);                                   // the block
-      K.box(w * 0.86, 0.06, zl * 0.6, BAY.cover, cx, yb + bh + 0.03, zm - zl * 0.08);                         // the rocker cover
-      K.part(d => new THREE.CylinderGeometry(0.17, 0.17, 0.07, d ? 24 : 10), BAY.chrome, cx + w * 0.18, yb + bh + 0.08, zm - zl * 0.05, [0.34, 0.07, 0.34]);   // the air filter
-      K.box(Wd * 0.62, bh * 0.9, 0.06, BAY.radiator, cx, yb + bh * 0.45, z1 + 0.18);                              // the radiator
-      K.box(0.22, 0.16, 0.18, BAY.battery, cx - Wd * 0.33, yb + 0.08, zm + zl * 0.2);                          // the battery
-      for (const s of [-1, 1]) K.box(0.05, 0.05, zl * 0.5, BAY.hose, cx + s * w * 0.62, yb + bh * 0.7, zm);      // hoses
+      K.box(w * 0.62, bh * 0.55, el, BAY.block, cx, yb + bh * 0.28, ez);                                     // the block
+      for (const sd of [-1, 1]) {
+        tilt(K.box(w * 0.34, bh * 0.36, el * 0.92, BAY.block, cx + sd * w * 0.3, yb + bh * 0.7, ez), -sd * 0.45);     // a cylinder head
+        tilt(K.box(w * 0.3, 0.07, el * 0.86, BAY.cover, cx + sd * w * 0.36, yb + bh * 0.92, ez), -sd * 0.45);          // its rocker cover
+        K.box(0.07, bh * 0.5, el * 0.7, BAY.header, cx + sd * w * 0.56, yb + bh * 0.35, ez);                  // exhaust headers
+        cylY(Math.min(0.13, Wd * 0.06), bh * 0.8, BAY.block, cx + sd * Wd * 0.4, yb + bh * 0.45, z0 + zl * 0.08);   // strut tower
+        cylY(Math.min(0.09, Wd * 0.045), 0.04, BAY.chrome, cx + sd * Wd * 0.4, yb + bh * 0.87, z0 + zl * 0.08);
+        for (let r = 0; r < 3; r++) K.box(0.05, 0.05, 0.12, BAY.hose, cx + sd * w * 0.15, yb + bh * 0.95, ez - el * 0.3 + r * el * 0.3);   // intake runners
+      }
+      K.box(w * 0.26, bh * 0.22, el * 0.7, BAY.block, cx, yb + bh * 0.98, ez);                               // the plenum
+      cylY(Math.min(0.24, w * 0.4), 0.09, BAY.chrome, cx, yb + bh * 1.12, ez - el * 0.05);                   // the air filter
+      cylY(Math.min(0.08, w * 0.12), 0.04, BAY.radiator, cx, yb + bh * 1.18, ez - el * 0.05);                 // its wing nut
+      K.box(0.05, 0.05, 0.05, BAY.cap, cx + w * 0.36, yb + bh * 1.0, ez + el * 0.25);                        // the oil filler cap
+      K.box(0.04, 0.08, 0.04, BAY.cap, cx - w * 0.5, yb + bh * 0.95, ez - el * 0.15);                        // the dipstick
+      const fz = ez + el / 2 + 0.05;                                                                          // the belt drive, on the front
+      cylZ(Math.min(0.11, w * 0.18), 0.05, BAY.radiator, cx, yb + bh * 0.32, fz);                            // crank pulley
+      cylZ(Math.min(0.07, w * 0.12), 0.05, BAY.chrome, cx + w * 0.32, yb + bh * 0.62, fz);                   // alternator
+      cylZ(Math.min(0.07, w * 0.12), 0.05, BAY.radiator, cx - w * 0.3, yb + bh * 0.6, fz);                   // water pump
+      tilt(K.box(0.03, bh * 0.38, 0.03, BAY.hose, cx + w * 0.16, yb + bh * 0.47, fz + 0.01), -0.7); tilt(K.box(0.03, bh * 0.36, 0.03, BAY.hose, cx - w * 0.15, yb + bh * 0.46, fz + 0.01), 0.75);   // the belt
+      K.box(Wd * 0.62, bh * 0.9, 0.06, BAY.radiator, cx, yb + bh * 0.45, z1 + 0.18);                         // the radiator
+      cylZ(Math.min(bh * 0.4, Wd * 0.22), 0.04, BAY.hose, cx, yb + bh * 0.45, z1 + 0.1);                     // its fan
+      for (const sd of [-1, 1]) K.box(0.06, 0.06, Math.max(0.1, z1 + 0.1 - fz), BAY.hose, cx + sd * w * 0.2, yb + bh * (sd > 0 ? 0.8 : 0.2), (fz + z1 + 0.1) / 2);   // top and bottom hoses
+      K.box(Wd * 0.8, bh * 0.85, 0.05, BAY.lining, cx, yb + bh * 0.42, z0 + 0.03);                           // the bulkhead
+      cylZ(Math.min(0.12, Wd * 0.07), 0.12, BAY.block, cx - Wd * 0.22, yb + bh * 0.6, z0 + 0.1);             // brake servo
+      K.box(0.08, 0.08, 0.06, BAY.cap, cx - Wd * 0.22, yb + bh * 0.85, z0 + 0.12);                           // and its reservoir
+      K.box(0.22, 0.16, 0.18, BAY.battery, cx - Wd * 0.33, yb + 0.08, zm + zl * 0.2);                        // the battery
+      K.box(0.04, 0.04, 0.04, BAY.cover, cx - Wd * 0.33 + 0.07, yb + 0.18, zm + zl * 0.2);                   // + terminal
+      K.box(0.04, 0.04, 0.04, BAY.radiator, cx - Wd * 0.33 - 0.07, yb + 0.18, zm + zl * 0.2);                // - terminal
+      K.box(0.12, 0.14, 0.1, BAY.chrome, cx + Wd * 0.33, yb + 0.1, zm + zl * 0.25);                          // the coolant bottle
+      K.box(0.04, 0.03, 0.04, BAY.cap, cx + Wd * 0.33, yb + 0.18, zm + zl * 0.25);
     }
   }
   if (panels.boot) {
@@ -130,7 +161,11 @@ export function carvePanels(K, out, def, body, tubColor) {
     if (zl > 0.25) {
       K.box(Wd * 0.78, 0.04, zl, BAY.carpet, cx, yb + 0.02, zm);                                              // the boot floor
       K.part(d => new THREE.CylinderGeometry(Math.min(0.3, zl * 0.4), Math.min(0.3, zl * 0.4), 0.16, d ? 24 : 10), BAY.tyre, cx - Wd * 0.16, yb + 0.12, zm, [0.6, 0.16, 0.6]);   // the spare, lying flat
+      cylY(Math.min(0.1, zl * 0.15), 0.17, BAY.chrome, cx - Wd * 0.16, yb + 0.13, zm);                        // its hub
       K.box(0.32, 0.16, 0.2, BAY.toolbox, cx + Wd * 0.22, yb + 0.12, zm);                                     // a toolbox
+      K.box(0.3, 0.04, 0.05, BAY.chrome, cx + Wd * 0.22, yb + 0.22, zm);                                      // its handle
+      K.box(0.1, 0.06, Math.min(0.4, zl * 0.6), BAY.block, cx + Wd * 0.3, yb + 0.06, zm - zl * 0.05);        // the jack
+      tilt(K.box(0.36, 0.02, 0.06, BAY.cover, cx, yb + 0.06, z0 + 0.06), 0);                                  // a warning triangle, folded
     }
   }
   // what's left of the shell, both levels (its undented copy too)
