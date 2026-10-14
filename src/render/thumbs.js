@@ -7,10 +7,14 @@ import { buildKey } from '../data/parts.js';
 
 // Garage pictures: each vehicle rendered once, three-quarter view on a plain floor, into a small offscreen renderer
 // of its own (so the game's renderer and canvas are untouched). Cached as data URLs.
-const cache = new Map(); let R = null, env = null;
+const cache = new Map(); let R = null, env = null, idle = 0;
+// the offscreen renderer is let go a few seconds after the last picture (a browser allows only a few 3D canvases, and
+// each holds GPU memory): the next picture makes a new one
+function release() { if (!R) return; R.dispose(); R.forceContextLoss(); R = null; env = null; }
 export function vehicleThumb(v, w = 240, h = 150) {
   const key = v.id + buildKey(v.build) + w + (blenderOn() ? 'b' : 'c') + v.color + '/' + v.accent; if (cache.has(key)) return cache.get(key);   // one picture per model set
   if (!R) { R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); }
+  clearTimeout(idle); idle = setTimeout(release, 4000);
   R.setSize(w, h);
   const scene = new THREE.Scene(), root = new THREE.Group(), body = new THREE.Group(); root.add(body); scene.add(root);
   scene.add(new THREE.HemisphereLight(0xEAF2FF, 0x3A3F52, 0.9));

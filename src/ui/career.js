@@ -197,7 +197,7 @@ function drawCar(fitted = false) {
   const paints = sw(-1, v.color, v.accent, 'Stock livery') + PAINTS.map((p, i) => sw(i, p.color, p.accent, p.name)).join('');
   $('cr-body').innerHTML = `<div class="cr-tune">${carCard(v, '', v.id === S.car ? 'on' : '').replace(/<img [^>]*>/, '<div class="cr-show"></div>')}<div><ul class="cr-urows">${rows}</ul><h3 class="cr-h">Armoury <small>weapon levels, and one piece of gear that works by itself</small></h3><ul class="cr-urows">${arms}</ul><div class="cr-kinds cr-gear">${gears}</div><small class="cr-gearnote">${esc(own.gear ? GEAR[own.gear].blurb : 'No gear fitted')}</small><h3 class="cr-h">Paint shop <small>${money(PAINT_PRICE)} a respray</small></h3><div class="cr-paints">${paints}</div></div></div>`;
   $('cr-actions').innerHTML = `<div class="btn-row">${v.id === S.car ? '' : `<button type="button" class="btn" data-act="drive" data-id="${v.id}">Drive this</button>`}<button type="button" class="cta" data-act="garage2">Back to the garage</button></div>`;
-  if (!showCv) { showCv = document.createElement('canvas'); showCv.width = 360; showCv.height = 225; }
+  if (!showCv || showCv.lost) { showCv = document.createElement('canvas'); showCv.width = 360; showCv.height = 225; }
   $('cr-body').querySelector('.cr-show').appendChild(showCv);
   try { showCar(showCv, careerPlayer(S, v.id), fitted && shownId === v.id); shownId = v.id; } catch (e) { /* no WebGL: the stats are enough */ }
 }

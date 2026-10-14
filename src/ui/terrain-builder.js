@@ -43,10 +43,6 @@ export function initTerrainBuilder() {
   $('tb-send').addEventListener('click', send);
   for (const [id, f] of [['tb-left', () => { view.yaw -= Math.PI / 8; }], ['tb-right', () => { view.yaw += Math.PI / 8; }], ['tb-top', () => { view.pitch = view.pitch > 1.4 ? 0.75 : 1.5; }],
     ['tb-zoomin', () => { view.dist = Math.max(80, view.dist / 1.3); }], ['tb-zoomout', () => { view.dist = Math.min(1600, view.dist * 1.3); }], ['tb-fit', fitView]]) $(id).addEventListener('click', f);
-  const cv = $('tb-view');
-  cv.addEventListener('pointerdown', down); cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-  cv.addEventListener('contextmenu', e => e.preventDefault());
-  cv.addEventListener('wheel', e => { e.preventDefault(); view.dist = Math.max(80, Math.min(1600, view.dist * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
   addEventListener('resize', () => { if (!$('tb').hidden) resize(); });
   if (window.claude && window.claude.use) window.claude.use('db').then(d => { db = d; });
 }
@@ -58,7 +54,21 @@ export function openTerrain(back = false) {
   setTool(B.tool || 'raise', true); groundChanged(true); roadChanged(); resize(); if (!back) fitView(); status();
   cancelAnimationFrame(raf); lastT = performance.now(); raf = requestAnimationFrame(frame);
 }
-function closeTerrain() { $('tb').hidden = true; $('menu').hidden = false; cancelAnimationFrame(raf); save(); }
+function closeTerrain() { $('tb').hidden = true; $('menu').hidden = false; cancelAnimationFrame(raf); save(); release3D(); }
+// the view's canvas: a new one each time the builder opens (its 3D context is let go on the way out: a browser allows
+// only a few, and each holds GPU memory the race needs)
+function newCanvas() {
+  const old = $('tb-view'), cv = document.createElement('canvas'); cv.id = 'tb-view'; old.replaceWith(cv);
+  cv.addEventListener('pointerdown', down); cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  cv.addEventListener('wheel', e => { e.preventDefault(); view.dist = Math.max(80, Math.min(1600, view.dist * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
+  return cv;
+}
+function release3D() {
+  if (!built) return; built = false;
+  scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  R.dispose(); R.forceContextLoss(); R = null; roadMesh = roadGhost = null;
+}
 function fresh() { return { name: 'My landscape', laps: 3, surface: 'tarmac', size: 60, power: 5, tool: 'raise', ground: blankGround(), road: null }; }
 function save() { try { localStorage.setItem(DRAFT, JSON.stringify({ ...B, ground: { ...B.ground, h: Array.from(B.ground.h, v => Math.round(v * 10) / 10) } })); } catch (e) { /* full: fine, it's a draft */ } }
 function remember() { undo.push({ h: B.ground.h.slice(), road: B.road ? clone(B.road) : null }); if (undo.length > 25) undo.shift(); $('tb-undo').disabled = false; }
@@ -84,7 +94,7 @@ const FS = `varying vec3 vP; varying vec3 vN; uniform float lo; uniform float hi
     gl_FragColor = vec4(c * (0.92 + 0.08 * t), 1.0);
   }`;
 function build3D() {
-  built = true; const cv = $('tb-view');
+  built = true; const cv = newCanvas();
   R = new THREE.WebGLRenderer({ canvas: cv, antialias: true }); R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.setClearColor(0x9ec8e8);
   scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x9ec8e8, 1400, 2600);
   cam = new THREE.PerspectiveCamera(45, 1, 2, 5000);
@@ -255,7 +265,7 @@ function drive() {
   try { buildTrack(st); } catch (err) { status(err.message, true); return; }
   if (EDIT_IDX < 0) { EDIT_IDX = STAGES.length; STAGES.push(st); } else STAGES[EDIT_IDX] = st;
   forgetTrack(EDIT_IDX); G.forceBuild = true; G.editDrive = true; G.onEditorBack = () => openTerrain(true);
-  cancelAnimationFrame(raf); $('tb').hidden = true; startRace(EDIT_IDX);
+  cancelAnimationFrame(raf); $('tb').hidden = true; release3D(); startRace(EDIT_IDX);
 }
 async function send() {
   if (!B.road) { status('Paint a road first: pick Road and drag it out on the land.', true); return; }

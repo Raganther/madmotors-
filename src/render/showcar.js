@@ -8,6 +8,8 @@ import { disposeGroup } from './geometry.js';
 // new part is on when it's at the top (render/parts.js), and it drops back down onto its springs.
 let R = null, scene, cam, holder, jacks, car = null, want = null, t0 = -1, a = -0.6, raf = 0, last = 0;
 const UP = 0.32, SWAP = 0.4, DONE = 1.1;
+/** Let go of the renderer and its canvas's 3D context (a browser allows only a few, and each holds GPU memory). */
+function release() { if (!R) return; if (car) disposeGroup(car.root); car = null; const cv = R.domElement; R.dispose(); R.forceContextLoss(); cv.lost = true; R = null; }
 function setup(canvas) {
   R = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.shadowMap.enabled = true;
   scene = new THREE.Scene(); cam = new THREE.PerspectiveCamera(30, canvas.width / canvas.height, 0.1, 100);
@@ -34,7 +36,7 @@ function place(def) {
   for (const j of jacks.children) j.position.x = Math.sign(j.position.x) * (size.x / 2 - 0.15);
 }
 function frame(t) {
-  raf = 0; if (!R || !R.domElement.isConnected) { car = null; return; }   // the screen moved on: stop until shown again
+  raf = 0; if (!R || !R.domElement.isConnected) { release(); return; }   // the screen moved on: let the canvas go (ui/career.js makes a new one)
   const dt = Math.min(0.1, (t - (last || t)) / 1000); last = t; a += dt * 0.35; holder.rotation.y = a;
   let up = 0;
   if (t0 >= 0) {
@@ -49,7 +51,7 @@ function frame(t) {
 }
 /** Show career car def on `canvas` (sizes it to its box); fit: play the fitting animation into the new def. */
 export function showCar(canvas, def, fit = false) {
-  if (!R || R.domElement !== canvas) { if (R) { R.dispose(); car = null; } setup(canvas); }
+  if (!R || R.domElement !== canvas) { release(); setup(canvas); }
   const w = canvas.clientWidth || canvas.width, h = canvas.clientHeight || canvas.height; R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
   if (fit && car) { want = def; t0 = performance.now(); } else place(def);
   if (!raf) { last = 0; raf = requestAnimationFrame(frame); }

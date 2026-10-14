@@ -21,7 +21,7 @@ import { carCrashFx, dustRing, impactFx, sparks } from '../render/effects/impact
 import { clearProps } from '../render/effects/props.js';
 import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
-import { camera, renderer, scene } from '../render/renderer.js';
+import { camera, contextLost, recoverGraphics, renderer, scene } from '../render/renderer.js';
 import { resetDirt } from '../render/effects/dirt.js';
 import { bulletHitFx, crushFx, mineBlast, flaresFx, shieldFx, stingerFx, flash, missileBlast, mortarBlast, mortarLaunchFx, craterHitFx, missilePuff, mountKick, oilDropFx, pickupFx, pulseFx, smoke, muzzleFx } from '../render/weapons.js';
 import { landDust } from '../render/effects/carfx.js';
@@ -279,7 +279,8 @@ export function selectStage(i, cb) {
   $('loading-text').textContent = 'Building ' + STAGES[i].name; $('loading').hidden = false;
   clearTimeout(pendingBuild);
   pendingBuild = setTimeout(() => {
-    try { buildWorld(i); renderer.compile(scene, camera); } catch (e) { console.error(e); window.__bootError(e.message + ' (while building ' + STAGES[i].name + ')'); return; } race = newRace(); G.attractS = 0; updateCamera(0, true);
+    if (contextLost || renderer.getContext().isContextLost()) { recoverGraphics(); return; }   // no graphics to build with: the reload brings them back
+    try { buildWorld(i); renderer.compile(scene, camera); } catch (e) { console.error(e); if (renderer.getContext().isContextLost()) { recoverGraphics(); return; } window.__bootError(e.message + ' (while building ' + STAGES[i].name + ')'); return; } race = newRace(); G.attractS = 0; updateCamera(0, true);
     $('loading').hidden = true; cb && cb();
   }, 40);
 }
