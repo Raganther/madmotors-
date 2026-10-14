@@ -45,5 +45,5 @@ G.camDir = null;        // where the camera looks from, [x, y, z] (set each fram
 G.editDrive = false; G.forceBuild = false; G.onEditorBack = null;   // the track editor's test drive (ui/editor.js)
 G.noteMode = false;     // placing notes on the track for Claude (ui/notes.js); the race is frozen meanwhile
 G.persp = false; G.perspWas = false;   // a perspective view (Behind, Follow, Heli, Bonnet, TV) is drawing this frame
-G.sdOverAt = 0;
+G.sdOverAt = 0; G.smashT = -9;   // when the player last broke a building's wall (the Dynamic Low camera pulls in)
 G.sdTick = 0;        // next Showdown danger tick (race time)

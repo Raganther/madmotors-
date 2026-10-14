@@ -99,6 +99,7 @@ export function handleEvents() {
           if (c.isPlayer || near) AudioSys.crash(e.kind === 'hay' || e.kind === 'hedge' ? 'hay' : ['crates', 'fence', 'picket', 'yardgate', 'bench'].includes(e.kind) ? 'wood' : 'metal', c.isPlayer ? 0.8 : 0.4);
           break;
         case 'wallbreak':   // burst through a building's wall (core/features/structures.js; the bricks and dust are render/elements/structures.js)
+          if (c.isPlayer) G.smashT = race.time;   // (Dynamic Low pulls in: render/camera.js)
           if (c.isPlayer) { if (G.calloutTimer <= 0 && !e.blast) callout(e.v > 22 ? 'Straight through the house!' : 'Through the wall!'); G.shake = Math.min(1.4, G.shake + 0.4 + e.v / 50); }
           if (c.isPlayer || near) AudioSys.crash(e.mat === 'timber' ? 'wood' : 'metal', c.isPlayer ? 0.9 : 0.4);
           break;
