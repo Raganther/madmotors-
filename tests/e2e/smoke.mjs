@@ -486,14 +486,6 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
   await wp.waitForTimeout(400); await wp.screenshot({ path: path.join(outDir, 'workshop-demolition.png') });
   if (dmo.phase !== 'over' || dmo.down < 3 || !(dmo.pts > 20)) fail('demolition: ' + JSON.stringify(dmo));
   console.log(`workshop demolition: over at ${dmo.t}s, ${dmo.down} of ${dmo.n} buildings down, ${dmo.pts} points in all`);
-  // upgrades: everything at level 3 rebuilds the car with its parts on and heavier
-  await wp.click('#ws-hub-btn'); await wp.waitForSelector('#ws-hub:not([hidden])'); await wp.click('[data-tab=upgrades]'); await live('upgrades');
-  const im0 = await wp.evaluate(() => window.__dr.race.player.im ?? window.__dr.race.player.def.im ?? 1);
-  await wp.click('#ws-max'); await wp.waitForFunction(() => window.__dr.G.state === 'racing' && window.__dr.race.player.def.build && window.__dr.race.player.def.build.cage === 3, null, { timeout: 60000 });
-  const upg = await wp.evaluate(() => ({ im: window.__dr.race.player.def.im, read: document.getElementById('ws-read').textContent }));
-  await wp.waitForTimeout(400); await wp.screenshot({ path: path.join(outDir, 'workshop-upgrades.png') });
-  if (!(upg.im < (im0 || 1)) || !/toughness \+/.test(upg.read)) fail('upgrades: ' + JSON.stringify({ im0, upg }));
-  console.log(`workshop upgrades: all at 3, im ${im0} -> ${upg.im.toFixed(2)}`);
   await wp.click('#ws-hub-btn'); await wp.click('[data-tab=elements]'); await wp.click('[data-sb=jump]');
   await wp.waitForFunction(() => window.__dr.G.world.stage.name === 'Sandbox: jump' && window.__dr.G.state !== 'menu', null, { timeout: 60000 });
   console.log('workshop elements: sandbox jump opened'); await wp.close();

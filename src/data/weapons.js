@@ -13,7 +13,6 @@ export const WEAPONS = {
   pulse: { name: 'Pulse', blurb: 'A shockwave that blows everyone near away', looks: ['13 m wave', '16 m wave', '19 m wave'], fx: [{}, { PULSE_R: 16 }, { PULSE_R: 19 }] },
   harpoon: { name: 'Harpoon', blurb: 'Hooks the car ahead and reels you in', looks: ['2.2 s tow', '3 s tow', '3.8 s tow'], fx: [{}, { TOW_T: 3 }, { TOW_T: 3.8 }] },
   mine: { name: 'Mines', blurb: 'Two proximity mines dropped behind you: they throw up whoever sets them off, and blow fences and walls apart', looks: ['5 m blast', '6.5 m blast', 'Heavy charge'], fx: [{}, { MINE_BLAST: 6.5 }, { MINE_BLAST: 6.5, MINE_DMG: 9 }] },
-  mortar: { name: 'Mortar', blurb: 'Lobs a shell over the cars ahead: it lands where they will be, throws them up and leaves a crater in the road', looks: ['One shell a shot', 'Bigger blast', 'A barrage of three'], fx: [{}, { MORTAR_BLAST: 8.5 }, { MORTAR_BLAST: 8.5, SHELLS: 3 }] },
   // signature weapons: only their own vehicle finds them (SIGNATURES)
   water: { name: 'Water cannon', sig: true, blurb: 'A jet ahead that shoves cars aside and soaks their grip', looks: ['2.5 s jet', '3.2 s jet', '4 s jet'], fx: [{}, { WATER_T: 3.2 }, { WATER_T: 4 }] },
   cement: { name: 'Cement trail', sig: true, blurb: 'Wet cement behind you: anyone in it bogs down', looks: ['1.6 s trail', '2.2 s trail', '2.8 s trail'], fx: [{}, { CEMENT_T: 2.2 }, { CEMENT_T: 2.8 }] },

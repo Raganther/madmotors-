@@ -53,7 +53,7 @@ function forkStart(c, tr) {
   if (k > a.g * 0.35) { c.ai.alt = mine; return i; }                                // too late to cross
   return tr.lapU(t, tr.lapOf(i));
 }
-export function aiControl(c, W, cars, dt, hazards, gate, craters) {
+export function aiControl(c, W, cars, dt, hazards, gate) {
   if (W.tr.open && navControl(c, W)) return;                                        // open country: find the way to the next gate
   const tr = W.tr, pr = c.pr, i = pr.i, N = tr.N, ai = c.ai;
   // d samples further along the road (along the route this car has picked on stages with branches)
@@ -93,11 +93,6 @@ export function aiControl(c, W, cars, dt, hazards, gate, craters) {
       const cl = (cow.x - tr.xs[cow.i]) * tr.rx[cow.i] + (cow.z - tr.zs[cow.i]) * tr.rz[cow.i] + cow.dir * 1.2;   // where it will be
       if (Math.abs(cl - lane) < 2.3) lane += (lane >= cl ? 1 : -1) * (2.4 - Math.abs(cl - lane));
     }
-  }
-  // craters in the road (features/craters.js): steer for the clear side of each one coming up; better drivers see them sooner
-  if (craters) for (const o of craters) {
-    const L = tr.loopN, ahead = L ? (((o.i - i) % L) + L) % L : o.i - i; if (ahead < 2 || ahead > 24 + ai.skill * 36 + sp * 0.4 || Math.abs(o.y - c.y) > 3) continue;   // round a lap: the same hole every time by
-    const need = o.r + c.hw + 0.5; if (Math.abs(o.lat - lane) < need) lane = o.lat > 0 ? o.lat - need - 0.3 : o.lat + need + 0.3;
   }
   // wrecking balls: of a few lanes, take the one the ball stays furthest from while we pass under it (the whole window,
   // not just the moment we arrive); if even that's tight, ease off and arrive later

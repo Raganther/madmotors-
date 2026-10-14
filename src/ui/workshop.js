@@ -13,8 +13,6 @@ import { damageCar } from '../core/sim/damage.js';
 import { ITEMS, ITEM_USES } from '../core/features/weapons.js';
 import { GEAR, GEAR_IDS, WEAPONS } from '../data/weapons.js';
 import { PANELS, PANEL_STEPS } from '../data/anatomy.js';
-import { PART_MAX, SLOTS, TYRE_KINDS } from '../data/parts.js';
-import { upgradedVeh } from '../data/career.js';
 import { toggleOverlay } from '../render/overlay.js';
 import * as flow from './flow.js';
 import { derbyOrder, health } from '../core/modes/derby.js';
@@ -44,7 +42,7 @@ const CSS = `
 #ws-read{white-space:pre;font:12px/1.4 ui-monospace,Menlo,monospace;margin-top:8px} #ws-log{font:12px/1.35 ui-monospace,Menlo,monospace;margin-top:6px;color:#C9D2EA}
 @media (max-width:700px){#ws-panel{top:auto;bottom:8px;right:8px;left:8px;width:auto;max-height:42%}}`;
 let hub = null, panel = null, tick = 0;
-const S = { tab: null, style: 'village', kind: 'concrete', outcome: null, scenario: 'tbone', kmh: 80, slow: false, item: 'missile', lv: 1, gear: '', refill: true, targets: 'dummies', auto: false, build: {}, log: [], watch: [], snap: new Map() };
+const S = { tab: null, style: 'village', kind: 'concrete', outcome: null, scenario: 'tbone', kmh: 80, slow: false, item: 'missile', lv: 1, gear: '', refill: true, targets: 'dummies', auto: false, log: [], watch: [], snap: new Map() };
 
 /** ?workshop or ?workshop=<tab>: which tab the page was opened on ('hub' for the bare link), or null. */
 export function workshopParam() { const q = new URLSearchParams(location.search); return q.has('workshop') ? q.get('workshop') || 'hub' : null; }
@@ -89,7 +87,7 @@ function startLive(tab) {
   if (tab === 'kit' && STYLES[q.get('style')] && !S.styled) { S.styled = true; if (S.style !== q.get('style')) { S.style = q.get('style'); return startLive(tab); } }
   if (S.car) G.stageCars[st.name] = S.car;   // the Workshop loop's own pick (selectStage applies it)
   S.tab = tab; S.log = []; S.watch = []; S.snap = new Map();
-  G.workshop = { tab, build: tab === 'upgrades' && Object.keys(S.build).length ? { ...S.build } : null, rivals: tab === 'weapons' ? 3 : tab === 'derby' || tab === 'demolition' ? 5 : 1, weapons: tab === 'weapons' || tab === 'derby', onEvent };
+  G.workshop = { tab, rivals: tab === 'weapons' ? 3 : tab === 'derby' || tab === 'demolition' ? 5 : 1, weapons: tab === 'weapons' || tab === 'derby', onEvent };
   flow.startRace(i);
   const ready = () => { if (flow.race && G.world.idx === i && G.state === 'countdown') { G.countdown = 0.25; G.hintTimer = 0; setup(); } else setTimeout(ready, 50); };
   ready(); drawPanel();
@@ -98,7 +96,7 @@ function startLive(tab) {
 function endLive() { clearInterval(tick); if (panel) panel.hidden = true; if (G.workshop) toggleOverlay(false); G.workshop = null; }
 // the arenas (stages with `arena`: core/elements/arena.js); ?workshop=derby&arena=<part of a name>
 const ARENAS = () => STAGES.filter(s => s.arena && !s.demolition), arenaOf = n => ARENAS().find(s => s.name === n) || ARENAS()[0];
-function setup() { if (S.tab === 'derby' || S.tab === 'demolition') R().autoPlayer = S.auto; else if (S.tab === 'crash') runCrash(); else if (S.tab === 'destruct') runYard(); else if (S.tab === 'kit' || S.tab === 'upgrades') { R().autoPlayer = S.auto = S.tab === 'kit' ? true : S.auto; rivals()[0].hold = true; place(rivals()[0], G.world.tr.startIdx + 200, 4, 0); } else lineUp(); }
+function setup() { if (S.tab === 'derby' || S.tab === 'demolition') R().autoPlayer = S.auto; else if (S.tab === 'crash') runCrash(); else if (S.tab === 'destruct') runYard(); else if (S.tab === 'kit') { R().autoPlayer = S.auto = true; rivals()[0].hold = true; } else lineUp(); }
 const R = () => flow.race, P = () => flow.race.player, kmh = c => Math.round(Math.hypot(c.vx, c.vz) * 3.6);
 const rivals = () => R().cars.filter(c => !c.isPlayer);
 /** Put car `c` on the road at sample `idx`, `lat` m across, turned `dyaw`, moving at `v` m/s; `fresh` repairs it. */
@@ -177,9 +175,6 @@ function update() {
     $('ws-read').textContent = `${r.derby.phase === 'over' ? 'OVER: ' + r.cars[r.derby.winner].name + ' wins' : fmt(r.derby.t) + ' of ' + fmt(r.derby.time)} · ${up} of ${st.blds.length} standing\n` + derbyOrder(r).map(c => { const k = r.cars.indexOf(c); return `${c.isPlayer ? 'You' : c.name}  ${r.demo.pts[k]} pts, ${r.demo.walls[k]} walls, ${r.demo.razed[k]} down${c.out ? ', wrecked' : ''}`; }).join('\n');
   } else if (S.tab === 'derby') {   // the derby: who's still running, their health; who's out and when
     if (r.derby) $('ws-read').textContent = `${r.derby.phase === 'over' ? 'OVER: ' + r.cars[r.derby.winner].name + ' wins' : fmt(r.derby.t) + ' of ' + fmt(r.derby.time)}\n` + derbyOrder(r).map(c => `${c.isPlayer ? 'You' : c.name}${c.out ? '  out at ' + fmt(r.derby.outT[r.cars.indexOf(c)]) : '  ' + Math.round(100 * health(c)) + '%'}`).join('\n');
-  } else if (S.tab === 'upgrades') {   // what the parts do to the handling (data/parts.js fx), next to the car as it drives
-    const v = vehicleById(G.vehicle), b = G.workshop.build, st = upgradedVeh(v.id, null), up = upgradedVeh(v.id, b), pc = k => { const r = (up[k] ?? 1) / (st[k] ?? 1); return Math.abs(r - 1) < 0.001 ? '  stock' : `${r > 1 ? '+' : ''}${Math.round((r - 1) * 100)}%`; };
-    $('ws-read').textContent = `${v.name} ${kmh(Pc)} km/h\nacceleration ${pc('accel')}  top speed ${pc('top')}\ngrip ${pc('grip')}  off-road ${pc('off')}\nweight ${b && b.arm ? '+' + Math.round((1 / (1 - 0.08 * b.arm) - 1) * 100) + '%' : '  stock'}  ram ${pc('ram')}\ntoughness ${pc('tough')}`;
   } else if (S.tab === 'kit') {
     const kit = r.brk.filter(o => BREAKABLES[o.kind].kit), by = {}; for (const o of kit) if (o.broken) by[o.kind] = (by[o.kind] || 0) + 1;
     $('ws-read').textContent = `${STYLES[S.style].name} town: ${kit.filter(o => o.kind === 'house').length} houses, ${kit.length} pieces\nyou ${kmh(Pc)} km/h\nbroken: ${Object.entries(by).map(([k, n]) => `${n} ${k}`).join(', ') || 'nothing yet'}`;
@@ -210,9 +205,6 @@ function drawPanel() {
   else if (S.tab === 'kit') panel.innerHTML = `<h2>Scenery kit</h2><label>Style</label><div class="row">${STYLE_IDS.map(k => `<button class="ws-btn alt ${k === S.style ? 'on' : ''}" data-st="${k}" type="button">${STYLES[k].name}</button>`).join('')}</div>
     ${carSel}<div class="row"><button class="ws-btn alt ${S.auto ? 'on' : ''}" id="ws-auto" type="button">Autopilot</button><button class="ws-btn alt ${G.camMode === 'heli' ? 'on' : ''}" id="ws-heli" type="button">Heli view</button></div>
     <p style="margin:6px 0 0;color:#9AA6C4">Turn the autopilot off and drive into the town: fences, gates, hedges and bins give way, walls need a heavy car, and houses and barns crack, give way to something heavy and come down.</p>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
-  else if (S.tab === 'upgrades') panel.innerHTML = `<h2>Upgrades</h2>${carSel}${SLOTS.map(sl => `<label title="${esc(sl.blurb)}">${esc(sl.name)}: <b style="color:#E8ECF4">${S.build[sl.id] ? esc(sl.looks[S.build[sl.id] - 1]) : 'stock'}</b></label><div class="row">${[0, ...Array.from({ length: PART_MAX }, (_, k) => k + 1)].map(L => `<button class="ws-btn alt ${(S.build[sl.id] || 0) === L ? 'on' : ''}" data-slot="${sl.id}" data-L="${L}" type="button" title="${L ? esc(sl.looks[L - 1]) : 'Stock'}">${L ? 'Level ' + L : 'Stock'}</button>`).join('')}</div>${sl.kinds ? `<div class="row">${Object.entries(TYRE_KINDS).map(([k, t]) => `<button class="ws-btn alt ${(S.build.tyrKind || 'road') === k ? 'on' : ''}" data-tk="${k}" type="button" title="${esc(t.blurb)}">${esc(t.name)} tyres</button>`).join('')}</div>` : ''}`).join('')}
-    <div class="row"><button class="ws-btn" id="ws-max" type="button">Everything at ${PART_MAX}</button><button class="ws-btn alt" id="ws-stock" type="button">All stock</button><button class="ws-btn alt ${S.auto ? 'on' : ''}" id="ws-auto" type="button">Autopilot</button></div>
-    <p style="margin:6px 0 0;color:#9AA6C4">Each part shows on the car and changes how it drives. Drive it round the loop, or let the autopilot drive and watch.</p>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
   else if (S.tab === 'destruct') panel.innerHTML = `<h2>Destruction yard</h2>${carSel}<label>Into</label><select id="ws-kind">${YARD.map(k => `<option value="${k}" ${k === S.kind ? 'selected' : ''}>${BREAKABLES[k].name}</option>`).join('')}</select>
     <label>Speed: <b id="ws-kmh">${S.kmh}</b> km/h</label><input id="ws-speed" type="range" min="20" max="200" step="5" value="${S.kmh}">
     <div class="row"><button class="ws-btn" id="ws-run" type="button">Run</button><button class="ws-btn alt" id="ws-fix" type="button">Repair</button></div>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
@@ -236,13 +228,6 @@ function drawPanel() {
     for (const b of panel.querySelectorAll('[data-st]')) b.onclick = () => { S.style = b.dataset.st; startLive('kit'); };
     $('ws-auto').onclick = () => { S.auto = !S.auto; R().autoPlayer = S.auto; drawPanel(); };
     $('ws-heli').onclick = () => { G.camMode = G.camMode === 'heli' ? 'classic' : 'heli'; drawPanel(); };
-  } else if (S.tab === 'upgrades') {
-    const set = b => { S.build = b; startLive('upgrades'); };
-    for (const b of panel.querySelectorAll('[data-slot]')) b.onclick = () => { const nb = { ...S.build }; if (+b.dataset.L) nb[b.dataset.slot] = +b.dataset.L; else delete nb[b.dataset.slot]; set(nb); };
-    for (const b of panel.querySelectorAll('[data-tk]')) b.onclick = () => { const nb = { ...S.build }; if (b.dataset.tk === 'road') delete nb.tyrKind; else nb.tyrKind = b.dataset.tk; set(nb); };
-    $('ws-max').onclick = () => set({ ...Object.fromEntries(SLOTS.map(sl => [sl.id, PART_MAX])), ...(S.build.tyrKind ? { tyrKind: S.build.tyrKind } : {}) });
-    $('ws-stock').onclick = () => set({});
-    $('ws-auto').onclick = () => { S.auto = !S.auto; R().autoPlayer = S.auto; drawPanel(); };
   } else if (S.tab === 'destruct') {
     $('ws-kind').onchange = e => { S.kind = e.target.value; runYard(); };
     $('ws-speed').oninput = e => { S.kmh = +e.target.value; $('ws-kmh').textContent = S.kmh; };
@@ -264,5 +249,5 @@ function drawPanel() {
     $('ws-auto').onclick = () => { S.auto = !S.auto; R().autoPlayer = S.auto; drawPanel(); };
     $('ws-line').onclick = lineUp;
   }
-  log(S.log.shift() || (S.tab === 'upgrades' ? 'Pick a level for each part: the car is rebuilt with it' : S.tab === 'crash' ? 'Pick a car, a crash and a speed, then Run' : S.tab === 'destruct' ? 'Pick a car, a thing to hit and a speed, then Run' : 'Pick a weapon and fire: hits show here'));
+  log(S.log.shift() || (S.tab === 'crash' ? 'Pick a car, a crash and a speed, then Run' : S.tab === 'destruct' ? 'Pick a car, a thing to hit and a speed, then Run' : 'Pick a weapon and fire: hits show here'));
 }

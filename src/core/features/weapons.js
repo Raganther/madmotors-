@@ -4,7 +4,6 @@ import { damageCar } from '../sim/damage.js';
 import { SIGNATURES, WEAPONS, levelOf } from '../../data/weapons.js';
 import { BREAKABLES } from '../../data/breakables.js';
 import { blastStructures, solidAt as wallAt } from './structures.js';
-import { addCrater, craterStep } from './craters.js';
 
 // ---------- weapons (menu: Weapons on/off; R.weapons) ----------
 // Weapon crates lie on the road; drive through one with nothing in hand and you get a weapon, which one depending on
@@ -19,11 +18,6 @@ import { addCrater, craterStep } from './craters.js';
 //            (their engine can't drive against it)
 //   mine     two proximity mines dropped behind, one at a time: armed after MINE_ARM s, the first car within MINE_TRIG
 //            m sets one off, and everything within MINE_BLAST m is thrown up and slowed
-//   mortar   two shells, one at a time, lobbed high over the cars ahead: each lands MORTAR_T s later where the car it was
-//            aimed at will be (or MORTAR_AHEAD m up the road), marked by a ring on the road while it falls, and blows
-//            up everything within MORTAR_BLAST m; level 3 drops a barrage of three along the road
-// Mortar shells, missiles and mines dig craters in the road where they go off (core/features/craters.js): they stay
-// for the race, and a car that drops into one is jolted, slowed and kicked up.
 // Blasts reach the scenery too (blastScenery): a missile that hits or runs out, a mine, a shockwave and a crush landing
 // break fences, crates and walls near them and crack or bring down buildings (core/features/structures.js), and shove
 // rubble about. A missile that flies into a building or a breakable goes off there.
@@ -54,16 +48,15 @@ export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_
   CRUSH_V: 7.5, CRUSH_R: 7, CRUSH_DMG: 6.5, CRUSH_SCRUB: 0.6,
   JINGLE_T: 2.5, JINGLE_R: 22, JINGLE_DUTY: 0.33,
   FLARE_COOL: 20, SHIELD_COOL: 18, SHIELD_ON: 1, MAGNET: 2.4, SIG_ODDS: 1.5,
-  MORTAR_T: 1.5, MORTAR_AHEAD: 45, MORTAR_LEAD: 1, MORTAR_H: 24, MORTAR_BLAST: 7, MORTAR_DMG: 7, MORTAR_POP: 7, MORTAR_SLOW: 0.38, SHELLS: 1, MORTAR_SPREAD: 9,
   MINE_ARM: 0.8, MINE_TRIG: 3, MINE_BLAST: 5, MINE_DMG: 6.5, MINE_POP: 6.5, MINE_SLOW: 0.42, MINE_LIFE: 40,
-  BLAST_MISSILE: [5, 48], BLAST_MINE: [5, 40], BLAST_MORTAR: [6, 52], BLAST_PULSE: 26, BLAST_CRUSH: 36 };   // scenery blasts: [radius m, power (as a car's impact)]
-export const ITEMS = ['missile', 'gun', 'oil', 'pulse', 'harpoon', 'water', 'cement', 'stinger', 'crush', 'jingle', 'mine', 'mortar'];
-export const ITEM_USES = { missile: 1, gun: 1, oil: 2, pulse: 1, harpoon: 1, water: 1, cement: 1, stinger: 2, crush: 1, jingle: 1, mine: 2, mortar: 2 };
+  BLAST_MISSILE: [5, 48], BLAST_MINE: [5, 40], BLAST_PULSE: 26, BLAST_CRUSH: 36 };   // scenery blasts: [radius m, power (as a car's impact)]
+export const ITEMS = ['missile', 'gun', 'oil', 'pulse', 'harpoon', 'water', 'cement', 'stinger', 'crush', 'jingle', 'mine'];
+export const ITEM_USES = { missile: 1, gun: 1, oil: 2, pulse: 1, harpoon: 1, water: 1, cement: 1, stinger: 2, crush: 1, jingle: 1, mine: 2 };
 export const SIG_ITEMS = ITEMS.filter(it => WEAPONS[it].sig);
 /** Weapon number k for car c's item it: its level's (data/weapons.js) or WPN's. */
 export const wv = (c, it, k) => { const f = WEAPONS[it].fx[levelOf(c.wpn && c.wpn.load, it) - 1]; return f[k] !== undefined ? f[k] : WPN[k]; };
 // pick-up odds by race position r (0 = leading, 1 = last): the back gets missiles and harpoons, the front oil and pulses
-const ODDS = { missile: r => 0.5 + 1.5 * r, gun: () => 1, oil: r => 1.5 - r, pulse: r => 1.1 - 0.4 * r, harpoon: r => 0.15 + 1.6 * r, mine: r => 1.1 - 0.6 * r, mortar: r => 0.35 + 1.1 * r };
+const ODDS = { missile: r => 0.5 + 1.5 * r, gun: () => 1, oil: r => 1.5 - r, pulse: r => 1.1 - 0.4 * r, harpoon: r => 0.15 + 1.6 * r, mine: r => 1.1 - 0.6 * r };
 
 const along = (c, o) => (o.x - c.x) * Math.sin(c.yaw) + (o.z - c.z) * Math.cos(c.yaw);
 const across = (c, o) => -(o.x - c.x) * Math.cos(c.yaw) + (o.z - c.z) * Math.sin(c.yaw);   // + = the car's right (core rx, rz)
@@ -188,7 +181,6 @@ function use(R, W, c) {
   else if (it === 'crush') { c.vy = WPN.CRUSH_V; c.onGround = false; c.airT = 0; w.crushT = 2; w.crushR = wv(c, it, 'CRUSH_R'); w.crushUp = 0.15; }
   else if (it === 'jingle') { w.jingleT = WPN.JINGLE_T; w.jingleR = wv(c, it, 'JINGLE_R'); w.jingled = []; }
   else if (it === 'mine') { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); R.wpn.mines.push({ id: R.wpn.next++, x: c.x - fx * (c.hl + 1.6), y: c.y, z: c.z - fz * (c.hl + 1.6), t: 0, from: k, blast: wv(c, it, 'MINE_BLAST'), dmg: wv(c, it, 'MINE_DMG') }); }
-  else if (it === 'mortar') lob(R, W, c, k);
   c.events.push({ t: 'use', item: it, lv: levelOf(w.load, it) });
   if (--w.uses <= 0) { w.item = null; w.uses = 0; }
 }
@@ -211,7 +203,7 @@ function hitByMissile(R, W, m, c) {
   c.spin += (R.wpn.rng() < 0.5 ? -1 : 1) * WPN.SPIN; c.boost = 0; c.driftT = 0;
   damageCar(c, p.x, p.z, WPN.MISSILE_DMG, 1, 0, 0);
   c.events.push({ t: 'missile-hit', x: p.x, y: p.y, z: p.z, from: m.from });
-  blastScenery(R, p.x, p.z, WPN.BLAST_MISSILE[0], WPN.BLAST_MISSILE[1], m.from); addCrater(R, W, p.x, p.z, 'missile', m.from);
+  blastScenery(R, p.x, p.z, WPN.BLAST_MISSILE[0], WPN.BLAST_MISSILE[1], m.from);
 }
 function flyMissiles(R, W, dt) {
   const tr = W.tr;
@@ -227,7 +219,7 @@ function flyMissiles(R, W, dt) {
     }
     if (!m.dead && (m.t > WPN.LIFE || m.s > tr.xs.length - 3 || solidAt(R, ...Object.values(missilePos(tr, m)).slice(0, 3)))) {   // ran out, or flew into something: it goes off there
       m.dead = true; const p = missilePos(tr, m); R.cars[m.from].events.push({ t: 'missile-fizzle', ...p, boom: true });
-      blastScenery(R, p.x, p.z, WPN.BLAST_MISSILE[0], WPN.BLAST_MISSILE[1], m.from); addCrater(R, W, p.x, p.z, 'missile', m.from);
+      blastScenery(R, p.x, p.z, WPN.BLAST_MISSILE[0], WPN.BLAST_MISSILE[1], m.from);
     }
   }
   R.missiles = R.missiles.filter(m => !m.dead);
@@ -389,37 +381,7 @@ function mines(R, W, dt) {
       c.spin += (S.rng() < 0.5 ? -1 : 1) * 3 * f; c.boost = 0; damageCar(c, m.x, m.z, m.dmg * f, 1, 0, 0);
       c.events.push({ t: 'mine-hit', from: m.from, x: c.x, y: c.y, z: c.z });
     }
-    blastScenery(R, m.x, m.z, WPN.BLAST_MINE[0], WPN.BLAST_MINE[1], m.from); addCrater(R, W, m.x, m.z, 'mine', m.from);
-    return false;
-  });
-}
-// mortar: shells lobbed in a high arc, each landing where its target will be when it comes down
-function lob(R, W, c, k) {
-  const tr = W.tr, T = wv(c, 'mortar', 'MORTAR_T'), tg = missileTarget(R, c, 150), o = tg >= 0 ? R.cars[tg] : null, n = wv(c, 'mortar', 'SHELLS');
-  let x, z, hx, hz;
-  if (o) { const p = roadPos(tr, o.progress + Math.hypot(o.vx, o.vz) * T * WPN.MORTAR_LEAD, onRoad(tr, o), 0); x = p.x; z = p.z; hx = tr.tx[p.i]; hz = tr.tz[p.i]; }   // where it'll be along the road
-  else { const p = roadPos(tr, c.progress + WPN.MORTAR_AHEAD, onRoad(tr, c), 0); x = p.x; z = p.z; hx = tr.tx[p.i]; hz = tr.tz[p.i]; }
-  for (let s = 0; s < n; s++) {
-    const off = (s - (n - 1) / 2) * WPN.MORTAR_SPREAD, lx = x + hx * off, lz = z + hz * off, q = tr.nearestT(lx, lz);
-    R.wpn.shells.push({ id: R.wpn.next++, from: k, x0: c.x, y0: c.y + 1.6, z0: c.z, x1: lx, z1: lz, y1: q && q.d < HALF + 6 ? tr.H[q.i] : c.y, t: -s * 0.22, T, blast: wv(c, 'mortar', 'MORTAR_BLAST'), dmg: wv(c, 'mortar', 'MORTAR_DMG') });
-  }
-  if (o) o.events.push({ t: 'mortar-incoming', from: k });
-}
-/** Where a mortar shell is now (x, y, z), on its arc. */
-export function shellPos(m) { const f = Math.max(0, Math.min(1, m.t / m.T)); return { x: m.x0 + (m.x1 - m.x0) * f, y: m.y0 + (m.y1 - m.y0) * f + 4 * WPN.MORTAR_H * f * (1 - f), z: m.z0 + (m.z1 - m.z0) * f, f }; }
-function shells(R, W, dt) {
-  const S = R.wpn;
-  S.shells = S.shells.filter(m => {
-    m.t += dt; if (m.t < m.T) return true;
-    R.cars[m.from].events.push({ t: 'mortar-boom', x: m.x1, y: m.y1, z: m.z1, r: m.blast });
-    for (const c of R.cars) {
-      const d = Math.hypot(c.x - m.x1, c.z - m.z1); if (!live(c) || d > m.blast || Math.abs(c.y - m.y1) > 3.5 || shielded(c)) continue;
-      const f = 1 - d / m.blast * 0.65; c.vx *= 1 - (1 - WPN.MORTAR_SLOW) * f; c.vz *= 1 - (1 - WPN.MORTAR_SLOW) * f; c.vy = WPN.MORTAR_POP * f; c.onGround = false; c.airT = 0;
-      c.spin += (S.rng() < 0.5 ? -1 : 1) * 3.5 * f; c.boost = 0; damageCar(c, m.x1, m.z1, m.dmg * f + 3, 1, 0, 0);
-      c.events.push({ t: 'mortar-hit', from: m.from, x: c.x, y: c.y, z: c.z });
-    }
-    blastScenery(R, m.x1, m.z1, WPN.BLAST_MORTAR[0], WPN.BLAST_MORTAR[1], m.from);
-    addCrater(R, W, m.x1, m.z1, 'mortar', m.from);
+    blastScenery(R, m.x, m.z, WPN.BLAST_MINE[0], WPN.BLAST_MINE[1], m.from);
     return false;
   });
 }
@@ -461,14 +423,14 @@ function aiWeapons(R, W, dt) {
     if ((c.isPlayer && !R.autoPlayer) || c.hold || !live(c)) continue;
     const P = c.ai.persona, bold = P === 'bomber' || P === 'nemesis', keen = (0.6 + (c.ai.flick || 0.3)) * (P === 'bomber' ? 2 : P === 'nemesis' ? 1.6 : 1), w = c.wpn;   // personalities (G5): fire sooner, at more
     if (w.item && !(w.gunT > 0) && rng() < dt * 0.8 * keen) {
-      const ahead = missileTarget(R, c, w.item === 'mortar' ? 150 : WPN.RANGE), gap = ahead >= 0 ? R.cars[ahead].progress - c.progress : 999;
+      const ahead = missileTarget(R, c), gap = ahead >= 0 ? R.cars[ahead].progress - c.progress : 999;
       const behind = R.cars.some(o => o !== c && live(o) && c.progress - o.progress > (bold ? 2 : 3) && c.progress - o.progress < (bold ? 45 : 30));
       const near = R.cars.filter(o => o !== c && live(o) && Math.hypot(o.x - c.x, o.z - c.z) < WPN.PULSE_R * 0.7).length;
       const close = R.cars.filter(o => o !== c && live(o) && Math.hypot(o.x - c.x, o.z - c.z) < 7).length;
       const inJet = R.cars.some(o => o !== c && live(o) && (a => a.d < WPN.WATER_R * 0.85 && a.ang < WPN.WATER_CONE * 0.8)(aim(c, o)));
       const heard = R.cars.filter(o => o !== c && live(o) && Math.hypot(o.x - c.x, o.z - c.z) < WPN.JINGLE_R * 0.8).length;
       const want = { missile: gap > (bold ? 8 : 20), gun: gap < (bold ? 70 : 45), harpoon: gap > 12 && gap < WPN.HARP_R, oil: behind, pulse: near >= 1,
-        water: inJet, cement: behind, stinger: behind, crush: close >= 1 && c.onGround, jingle: heard >= 2, mine: behind, mortar: bold || (gap > 18 && gap < 150) }[w.item];   // a bomber lobs shells up the road whether or not anyone's there
+        water: inJet, cement: behind, stinger: behind, crush: close >= 1 && c.onGround, jingle: heard >= 2, mine: behind }[w.item];
       if (want) use(R, W, c);
     }
     if (!(w.doorCool > 0) && !(w.doorT > 0) && rng() < dt * 0.45 * keen) {
@@ -484,7 +446,7 @@ export const feature = {
   name: 'weapons',
   init(R) {
     R.missiles = []; if (!R.weapons) return;
-    R.wpn = { rng: mulberry32(R.cars.length * 104729 + 3), next: 0, crates: [], bullets: [], slicks: [], hooks: [], cement: [], strips: [], mines: [], shells: [] };
+    R.wpn = { rng: mulberry32(R.cars.length * 104729 + 3), next: 0, crates: [], bullets: [], slicks: [], hooks: [], cement: [], strips: [], mines: [] };
     R.cars.forEach((c, k) => {
       const load = c.def.wpn || null;   // levels and gear (data/weapons.js); the signature weapon comes with the vehicle
       c.wpn = { item: null, uses: 0, gunT: 0, gunAcc: 0, doorT: 0, doorSide: 0, doorCool: 0, crateT: 1.5 + k * 0.4,
@@ -500,6 +462,6 @@ export const feature = {
       if (inp.door) { if (racing && !(w.doorCool > 0) && live(c)) swingDoor(R, c, doorSide(R, c)); inp.door = 0; }
     }
     if (racing) { crates(R, W, dt); aiWeapons(R, W, dt); }
-    flyMissiles(R, W, dt); guns(R, W, dt); slicks(R, W, dt); hooks(R, W, dt); signatures(R, W, dt); mines(R, W, dt); shells(R, W, dt); doors(R, dt); craterStep(R, dt);
+    flyMissiles(R, W, dt); guns(R, W, dt); slicks(R, W, dt); hooks(R, W, dt); signatures(R, W, dt); mines(R, W, dt); doors(R, dt);
   }
 };
