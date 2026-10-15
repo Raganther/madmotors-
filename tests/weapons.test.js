@@ -101,6 +101,14 @@ describe('weapon modules', () => {
     { const { R, Wd, P } = setup('oil', [0, 6, -6], [-9, -100, -110]), T = R.cars.find(c => c !== P && c.progress > P.progress - 12 && c.progress < P.progress); let hit = null;
       run(R, Wd, 1.5, (e, c) => { if (e.t === 'drum-hit' && c === T) hit = { oil: c.oilT }; }); expect(hit).not.toBe(null); expect(hit.oil).toBeGreaterThan(M.WPN.OIL_T); }
   });
+  it('a blast by an oil slick sets it alight: the car through it is scorched, not sent sliding, and it burns away', () => {
+    const { R, Wd, P } = setup('mine', [0, 6, -6], [-30, -100, -110]), T = R.cars.find(c => c !== P && c.progress > P.progress - 32 && c.progress < P.progress);
+    R.wpn.slicks.push({ id: 900, s: P.progress - 10, lat: 0, t: 0, from: R.cars.indexOf(P), r: M.WPN.OIL_R });
+    P.inp.fire = false; R.wpn.mines.push({ id: 901, x: P.x, y: P.y, z: P.z, t: 5, from: R.cars.indexOf(T), blast: 6, dmg: 1 });   // set off under the player, 10 m from the slick
+    const ev = []; run(R, Wd, 3, (e, c) => ev.push([e.t, c === T]));
+    expect(ev.some(([t]) => t === 'oil-fire')).toBe(true); expect(ev.some(([t, isT]) => t === 'fire-hit' && isT)).toBe(true); expect(ev.some(([t, isT]) => t === 'oil-hit' && isT)).toBe(false);
+    run(R, Wd, 3); expect(R.wpn.slicks.some(o => o.id === 900)).toBe(false);
+  });
   it('the mortar: a shell lands where the car ahead will be, throws and dents it, and leaves a crater that jolts the next car through', () => {
     const { R, Wd, P } = setup('mortar', [0, 6, -6], [55, -60, -70]), T = R.cars[0]; const seen = [];
     M.raceStep(R, 1 / 120, Wd); expect(R.wpn.shells.length).toBe(1); expect(R.wpn.shells[0].tgt).toBe(0);

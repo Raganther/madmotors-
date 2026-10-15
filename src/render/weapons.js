@@ -240,7 +240,11 @@ export function updateWeaponVis(dt, now) {
   }
   tracers.count = nb;
   if (tracers.count) tracers.instanceMatrix.needsUpdate = true;
-  S.slicks.forEach((o, j) => { const m = slickPool[j % slickPool.length], p = roadPos(tr, o.s, o.lat, 0.1); m.position.set(p.x, p.y, p.z); m.rotation.y = o.id; m.visible = true; const k = Math.min(1, o.t * 4) * (1 - (o.hits || 0) * 0.18); m.scale.setScalar(Math.max(0.3, k)); });
+  // a slick on fire: flames licking up off it and black smoke, the oil burning off (darker as it goes)
+  if (G.state === 'racing') for (const o of S.slicks) { if (!(o.fire > 0) || Math.random() > dt * 40) continue; const r = (o.r || WPN.OIL_R) * 0.8, a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * r, p = roadPos(tr, o.s, o.lat, 0.2);
+    emit(p.x + Math.cos(a) * d, p.y, p.z + Math.sin(a) * d, (Math.random() - 0.5) * 0.8, 2.5 + Math.random() * 3, (Math.random() - 0.5) * 0.8, 0.5 + Math.random() * 0.4, 0.8 + Math.random() * 0.8, Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, 0.6);
+    if (Math.random() < 0.2) smoke(p.x + Math.cos(a) * d, p.y + 1.5, p.z + Math.sin(a) * d, 2.5, 0x1E1C1C, 1.6, 2); }
+  S.slicks.forEach((o, j) => { const m = slickPool[j % slickPool.length], p = roadPos(tr, o.s, o.lat, 0.1); m.position.set(p.x, p.y, p.z); m.rotation.y = o.id; m.visible = true; m.material.color.setScalar(o.fire > 0 ? 0.35 + 0.15 * o.fire / WPN.FIRE_T : 1); const k = Math.min(1, o.t * 4) * (1 - (o.hits || 0) * 0.18); m.scale.setScalar(Math.max(0.3, k)); });
   (S.cement || []).forEach((o, j) => { const m = cementPool[j % cementPool.length], p = roadPos(tr, o.s, o.lat, 0.09); m.position.set(p.x, p.y, p.z); m.rotation.y = o.id * 1.7; m.visible = true; const k = Math.min(1, o.t * 5) * (o.t > WPN.CEMENT_LIFE - 2 ? (WPN.CEMENT_LIFE - o.t) / 2 : 1); m.scale.setScalar(Math.max(0.05, k)); });
   (S.drums || []).forEach((o, j) => { const v = drumPool[j % drumPool.length], p = drumPos(tr, o); v.g.visible = true; v.g.position.set(p.x, p.y, p.z); v.g.rotation.set(Math.PI / 2 + o.t * (6 + o.vs * 0.25), tr.th[p.i] + (o.id % 2 ? 0.4 : -0.4), 0); });   // tumbling end over end
   // mines dropped off the back fall and settle (drop); the light blinks faster once armed

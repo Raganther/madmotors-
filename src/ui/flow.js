@@ -147,6 +147,8 @@ export function handleEvents() {
         case 'missile-fizzle': if (e.boom) { missileBlast(e); if (near) AudioSys.crash('car', 0.8); } else missilePuff(e); break;
         case 'mine-boom': mineBlast(e); if (Math.hypot(e.x - race.player.x, e.z - race.player.z) < 50) { AudioSys.crash('car', 0.9); AudioSys.burst(0.6, 'lowpass', 120, 0.6); } break;
         case 'mine-hit': { const v = visOf(c); if (v) v.burnT = 2; } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1); callout('Mine!'); } else if (race.cars[e.from] === race.player) callout(`${c.name} hit your mine!`); break;
+        case 'oil-fire': flash(e.x, e.y + 1, e.z, (e.r || 3) * 2.4, 0xFFFFFF, 0.4); if (Math.hypot(e.x - race.player.x, e.z - race.player.z) < 50) AudioSys.burst(0.5, 'lowpass', 300, 0.9); break;
+        case 'fire-hit': { const v = visOf(c); if (v) v.burnT = 2.5; coat(v, 0x1A1614, 0.5); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.4); callout('Through the fire!'); } else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} drove through the fire!`); break;
         case 'drum-bounce': drumBounceFx(e); if (Math.hypot(e.x - race.player.x, e.z - race.player.z) < 40) AudioSys.tone(170 + Math.random() * 60, 0.12, 0.05, 'square', 0.6); break;
         case 'drum-burst': drumBurstFx(e); if (Math.hypot(e.x - race.player.x, e.z - race.player.z) < 50) AudioSys.burst(e.onCar ? 0.6 : 0.35, 'lowpass', e.onCar ? 260 : 600, 0.5); break;
         case 'drum-hit': { const v = visOf(c); coat(v, 0x08080B, 0.95); if (v) { v.dripT = 4; v.dripCol = 0x0C0C10; } } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.8); callout('Oil drum! Covered in it'); } else if (race.cars[e.from] === race.player) callout(`Oiled ${c.name}!`); break;

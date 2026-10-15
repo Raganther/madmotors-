@@ -15,7 +15,8 @@ import { blastStructures, solidAt as wallAt } from './structures.js';
 //   gun      a WPN.GUN_T s burst of tracer rounds straight ahead (swung a little at whoever's ahead); each hit costs a little speed
 //   oil      two drums dropped off the back, one at a time: each tumbles down the road, bounces and bursts into a slick
 //            (anyone driving over one loses grip for a moment; it wears away after WPN.OIL_HITS cars); a drum that lands
-//            on a car bursts all over it: a long slide, and the car comes out black (render: dirt.js)
+//            on a car bursts all over it: a long slide, and the car comes out black (render: dirt.js); a blast near
+//            a slick (a missile, a shell, a mine) sets it alight: FIRE_T s of flames that scorch whoever drives through
 //   pulse    a shockwave: everyone within WPN.PULSE_R m is blown away from you and their engine cuts out briefly
 //   harpoon  hooks the car ahead (within WPN.HARP_R m); for WPN.TOW_T s the line reels you in and holds them back
 //            (their engine can't drive against it)
@@ -47,7 +48,7 @@ export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_
   DOOR_T: 0.45, DOOR_COOL: 2.5, SHOVE: 6, KICK: 1.2, REACH: 4.2, DOOR_SCRUB: 0.92,
   CRATE_EVERY: 7, CRATE_AHEAD: [60, 100], CRATE_R: 1.9, CRATE_LIFE: 40,
   GUN_T: 3, GUN_RATE: 7, GUN_SWING: 0.26, GUN_SCATTER: 0.05, BULLET_V: 95, BULLET_LIFE: 0.9, BULLET_SLOW: 0.93, OIL_R: 2.8, OIL_T: 1.4, OIL_SPIN: 2.6, OIL_SCRUB: 0.85, OIL_LIFE: 16, OIL_HITS: 3,
-  DRUM_G: 22, DRUM_UP: 2.6, DRUM_FWD: 0.55, DRUM_BOUNCE: 0.42, DRUM_FUSE: 1.4, DRUM_HIT: 0.75, DRUM_OIL: 1.6,
+  FIRE_T: 4, FIRE_DMG: 5, FIRE_REACH: 4, DRUM_G: 22, DRUM_UP: 2.6, DRUM_FWD: 0.55, DRUM_BOUNCE: 0.42, DRUM_FUSE: 1.4, DRUM_HIT: 0.75, DRUM_OIL: 1.6,
   PULSE_R: 13, PULSE_V: 8, STALL: 1.1, HARP_R: 70, HARP_V: 70, TOW_T: 2.2, TOW_PULL: 16, TOW_DRAG: 3.5,
   MISSILE_DMG: 7.5, LOCK_T: 1.1, LOCK_KEEP: 1.25, BULLET_DMG: 4.6, DOOR_DMG: 5.5, TURN2: 1.6, TWIN: 0, GLUE: 0,
   WATER_T: 2.5, WATER_R: 22, WATER_CONE: 0.45, WATER_PUSH: 22, WATER_SCRUB: 1.2, WATER_SLIP: 0.35,
@@ -240,7 +241,7 @@ function hitByMissile(R, W, m, c) {
   c.spin += (R.wpn.rng() < 0.5 ? -1 : 1) * WPN.SPIN; c.boost = 0; c.driftT = 0;
   damageCar(c, p.x, p.z, WPN.MISSILE_DMG, 1, 0, 0);
   c.events.push({ t: 'missile-hit', x: p.x, y: p.y, z: p.z, from: m.from });
-  blastScenery(R, p.x, p.z, WPN.BLAST_MISSILE[0], WPN.BLAST_MISSILE[1], m.from);
+  blastScenery(R, p.x, p.z, WPN.BLAST_MISSILE[0], WPN.BLAST_MISSILE[1], m.from); ignite(R, W, p.x, p.z, WPN.BLAST_MISSILE[0]);
 }
 function flyMissiles(R, W, dt) {
   const tr = W.tr;
@@ -256,7 +257,7 @@ function flyMissiles(R, W, dt) {
     }
     if (!m.dead && (m.t > WPN.LIFE || m.s > tr.xs.length - 3 || solidAt(R, ...Object.values(missilePos(tr, m)).slice(0, 3)))) {   // ran out, or flew into something: it goes off there
       m.dead = true; const p = missilePos(tr, m); R.cars[m.from].events.push({ t: 'missile-fizzle', ...p, boom: true });
-      blastScenery(R, p.x, p.z, WPN.BLAST_MISSILE[0], WPN.BLAST_MISSILE[1], m.from); if (Math.abs(m.lat) < HALF) addCrater(R, W, m.s, m.lat, WPN.FIZZLE_CRATER);   // into the road: a small crater
+      blastScenery(R, p.x, p.z, WPN.BLAST_MISSILE[0], WPN.BLAST_MISSILE[1], m.from); if (Math.abs(m.lat) < HALF) addCrater(R, W, m.s, m.lat, WPN.FIZZLE_CRATER); ignite(R, W, p.x, p.z, WPN.BLAST_MISSILE[0]);   // into the road: a small crater
     }
   }
   R.missiles = R.missiles.filter(m => !m.dead);
@@ -300,6 +301,11 @@ function slicks(R, W, dt) {
   const S = R.wpn, tr = W.tr;
   S.slicks = S.slicks.filter(o => {
     o.t += dt;
+    if (o.fire > 0) {   // on fire: a scorch for whoever drives through, then it's burnt away
+      o.fire -= dt; const r = o.r || WPN.OIL_R;
+      R.cars.forEach((c, j) => { if (!live(c) || o.burnt.includes(j) || Math.abs(c.progress - o.s) > r || Math.abs(onRoad(tr, c) - o.lat) > r) return; o.burnt.push(j); if (shielded(c)) return; damageCar(c, c.x, c.z, WPN.FIRE_DMG, 1, 0, 0); c.events.push({ t: 'fire-hit', from: o.from, x: c.x, y: c.y, z: c.z }); });
+      return o.fire > 0;
+    }
     for (const c of R.cars) {
       if (!live(c) || !c.onGround || (idx(R, c) === o.from && o.t < 1.5)) continue;
       const r = o.r || WPN.OIL_R;
@@ -347,6 +353,11 @@ function drums(R, W, dt) {
 }
 /** Where an oil drum is (x, y, z), for drawing it. */
 export const drumPos = (tr, o) => { const p = roadPos(tr, o.s, o.lat, 0); return { x: p.x, y: o.y + 0.5, z: p.z, i: p.i }; };
+/** A blast at (x, z) with reach r: any oil slick in it catches fire (burning off: no more slide, a scorch instead). */
+function ignite(R, W, x, z, r) {
+  if (!R.wpn) return;
+  for (const o of R.wpn.slicks) { if (o.fire > 0) continue; const p = roadPos(W.tr, o.s, o.lat, 0); if (Math.hypot(p.x - x, p.z - z) < r + (o.r || WPN.OIL_R) + WPN.FIRE_REACH) { o.fire = WPN.FIRE_T; o.burnt = []; R.cars[o.from].events.push({ t: 'oil-fire', ...p, r: o.r || WPN.OIL_R }); } }
+}
 // harpoon: the hook flies up the road; if it catches its car, the line tows the shooter in and drags the target back
 function hooks(R, W, dt) {
   const S = R.wpn, tr = W.tr;
@@ -399,7 +410,7 @@ function shells(R, W, dt) {
       o.spin += (S.rng() - 0.5) * 2 * WPN.SPIN * f; o.stallT = Math.max(o.stallT || 0, WPN.STALL * f); o.boost = 0;
       damageCar(o, p.x, p.z, 4 + WPN.MORTAR_DMG * f, 1, 0, 0); o.events.push({ t: 'mortar-hit', from: sh.from, x: o.x, y: o.y, z: o.z, me: j === sh.from });
     });
-    R.cars[sh.from].events.push({ t: 'mortar-blast', x: p.x, y: p.y, z: p.z, r: sh.r });
+    R.cars[sh.from].events.push({ t: 'mortar-blast', x: p.x, y: p.y, z: p.z, r: sh.r }); ignite(R, W, p.x, p.z, sh.r);
     blastScenery(R, p.x, p.z, WPN.BLAST_MORTAR[0] * sh.r / WPN.MORTAR_R, WPN.BLAST_MORTAR[1], sh.from);
     addCrater(R, W, sh.s, sh.lat, WPN.CRATER_R * sh.r / WPN.MORTAR_R);
     return false;
@@ -498,7 +509,7 @@ function mines(R, W, dt) {
     m.t += dt; if (m.t < WPN.MINE_ARM) return true;
     const trig = R.cars.find((c, j) => live(c) && (j !== m.from || m.t > WPN.MINE_ARM * 2) && Math.abs(c.y - m.y) < 2 && Math.hypot(c.x - m.x, c.z - m.z) < WPN.MINE_TRIG + c.hw);
     if (!trig) return m.t < WPN.MINE_LIFE;
-    R.cars[m.from].events.push({ t: 'mine-boom', x: m.x, y: m.y, z: m.z, r: m.blast });
+    R.cars[m.from].events.push({ t: 'mine-boom', x: m.x, y: m.y, z: m.z, r: m.blast }); ignite(R, W, m.x, m.z, m.blast);
     for (const c of R.cars) {
       const d = Math.hypot(c.x - m.x, c.z - m.z); if (!live(c) || d > m.blast || Math.abs(c.y - m.y) > 3 || shielded(c)) continue;
       const f = c === trig ? 1 : 1 - d / m.blast * 0.6; c.vx *= 1 - (1 - WPN.MINE_SLOW) * f; c.vz *= 1 - (1 - WPN.MINE_SLOW) * f; c.vy = WPN.MINE_POP * f; c.onGround = false; c.airT = 0;
