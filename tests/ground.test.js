@@ -46,4 +46,27 @@ describe('painted ground', () => {
     expect(T.h[row * T.cols + c]).toBeGreaterThan(55);                       // the mountain top, well off the road
     expect(Math.max(...tr.H)).toBeGreaterThan(20); expect(Math.min(...tr.H)).toBeLessThan(-5);
   });
+  it('the road lifted over a valley is a bridge, sunk under a hill a tunnel, and set pieces land where they were put', () => {
+    const g = blankGround(), seg = [['s', 400, 0, {}]];   // a straight run east across a 40 m deep valley at 200 m
+    for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) { const a = g.a0 + c * g.cell; g.h[r * g.cols + c] = -40 * Math.exp(-((a - 200) ** 2) / (2 * 40 * 40)); }
+    const tags = segs => segs.map(sg => sg[3]);
+    const lift = Array.from({ length: 41 }, (_, j) => Math.max(0, 40 * Math.exp(-((j * 10 - 200) ** 2) / (2 * 45 * 45))));
+    const bridges = l => tags(roadOnGround(seg, 0, g, { a: 0, b: 0 }, { lift: l })).filter(t => t.bridge).length;
+    expect(bridges(lift)).toBeGreaterThan(Math.max(1, bridges(null)));                            // too steep to follow is already a short bridge; held up, a long one
+    for (let k = 0; k < g.h.length; k++) g.h[k] = -g.h[k];                                    // now a 40 m hill: sunk, the road tunnels through
+    const sunk = roadOnGround(seg, 0, g, { a: 0, b: 0 }, { lift: lift.map(v => -v) }); expect(tags(sunk).filter(t => t.tunnel).length).toBeGreaterThan(1);
+    const withPieces = roadOnGround(seg, 0, g, { a: 0, b: 0 }, { pieces: [{ s: 60, tag: 'kick', v: 2.4 }, { s: 330, tag: 'mud', v: 'water' }] }), k = sketch(withPieces, 0, 2);
+    const at = tag => { const s = withPieces.findIndex(sg => sg[3][tag] !== undefined); return k.starts[s].a; };
+    expect(Math.abs(at('kick') - 60)).toBeLessThan(26); expect(Math.abs(at('mud') - 330)).toBeLessThan(26);
+  });
+  it('every set piece the Terrain builder offers builds on a painted stage', () => {
+    const g = land(), { r } = lap(g), base = M.STAGES[0];
+    const offered = [['kick', 2.4], ['yump', 2.6], ['whoops', 0.7], ['mud', 'water'], ['mud', true], ['boost', true], ['chicane', 'concrete'], ['crumble', true], ['hammers', 3], ['rockfall', true], ['ice', true], ['dirt', true], ['town', true], ['falls', true]];
+    const c = closeLoop(fromStroke(Array.from({ length: 200 }, (_, k) => ({ a: 170 * Math.cos(k / 200 * Math.PI * 2), b: 110 * Math.sin(k / 200 * Math.PI * 2) })), { tol: 4, closeDist: 40 }).segs, r.heading);
+    const pieces = offered.map(([tag, v], n) => ({ s: 30 + n * 60, tag, v }));
+    const segs = roadOnGround(c.segs, r.heading, g, r.start, { pieces });
+    const st = { name: 'Painted pieces', blurb: '', type: 'gorge', laps: 2, seed: 7, surface: 'tarmac', hillAmp: 0, armco: true, startHeading: r.heading, segs, ground: groundFor(g, r.start), light: base.light, colors: base.colors, trees: base.trees };
+    const tr = M.buildTrack(st); buildTerrain(tr, st);
+    for (const [tag] of offered) expect(segs.some(sg => (sg[0] === 's' ? sg[3] : sg[4])[tag] !== undefined), tag).toBe(true);
+  });
 });

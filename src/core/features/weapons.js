@@ -45,12 +45,12 @@ import { blastStructures, solidAt as wallAt } from './structures.js';
 export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_S: 2.4, HIT_LAT: 1.9, ARM: 0.12, SLOW: 0.35, POP: 6, SPIN: 5,
   DOOR_T: 0.45, DOOR_COOL: 2.5, SHOVE: 6, KICK: 1.2, REACH: 4.2, DOOR_SCRUB: 0.92,
   CRATE_EVERY: 7, CRATE_AHEAD: [60, 100], CRATE_R: 1.9, CRATE_LIFE: 40,
-  GUN_T: 3, GUN_RATE: 7, GUN_SWING: 0.26, GUN_SCATTER: 0.05, BULLET_V: 95, BULLET_LIFE: 0.9, BULLET_SLOW: 0.95, OIL_R: 2.8, OIL_T: 1.4, OIL_SPIN: 2.6, OIL_SCRUB: 0.85, OIL_LIFE: 16, OIL_HITS: 3,
-  PULSE_R: 13, PULSE_V: 8, STALL: 0.8, HARP_R: 70, HARP_V: 70, TOW_T: 2.2, TOW_PULL: 16, TOW_DRAG: 3.5,
+  GUN_T: 3, GUN_RATE: 7, GUN_SWING: 0.26, GUN_SCATTER: 0.05, BULLET_V: 95, BULLET_LIFE: 0.9, BULLET_SLOW: 0.93, OIL_R: 2.8, OIL_T: 1.4, OIL_SPIN: 2.6, OIL_SCRUB: 0.85, OIL_LIFE: 16, OIL_HITS: 3,
+  PULSE_R: 13, PULSE_V: 8, STALL: 1.1, HARP_R: 70, HARP_V: 70, TOW_T: 2.2, TOW_PULL: 16, TOW_DRAG: 3.5,
   MISSILE_DMG: 7.5, LOCK_T: 1.1, LOCK_KEEP: 1.25, BULLET_DMG: 4.6, DOOR_DMG: 5.5, TURN2: 1.6, TWIN: 0, GLUE: 0,
   WATER_T: 2.5, WATER_R: 22, WATER_CONE: 0.45, WATER_PUSH: 22, WATER_SCRUB: 1.2, WATER_SLIP: 0.35,
   CEMENT_T: 1.6, CEMENT_EVERY: 0.22, CEMENT_R: 2.4, CEMENT_LIFE: 14, CEMENT_DRAG: 0.45,
-  STINGER_HITS: 2, STINGER_LIFE: 20, STINGER_SCRUB: 0.6, STINGER_DMG: 4,
+  STINGER_HITS: 2, STINGER_LIFE: 20, STINGER_SCRUB: 0.5, STINGER_DMG: 4, STINGER_SLIP: 1.4,
   CRUSH_V: 7.5, CRUSH_R: 7, CRUSH_DMG: 6.5, CRUSH_SCRUB: 0.6,
   JINGLE_T: 2.5, JINGLE_R: 22, JINGLE_DUTY: 0.33,
   MORTAR_R: 5.5, MORTAR_FLIGHT: 1.7, MORTAR_RANGE: 130, MORTAR_AHEAD: 60, MORTAR_DMG: 4, MORTAR_POP: 5, MORTAR_PUSH: 7, MORTAR_SCRUB: 0.55, SHELLS: 1, SHELL_GAP: 0.3,
@@ -448,7 +448,7 @@ function signatures(R, W, dt) {
     R.cars.forEach((c, j) => {
       if (!live(c) || j === o.from || o.left <= 0 || o.hit.includes(j) || !c.onGround || Math.abs(c.progress - o.s) > c.hl + 0.8) return;
       o.hit.push(j); if (shielded(c)) return; o.left--;
-      c.vx *= WPN.STINGER_SCRUB; c.vz *= WPN.STINGER_SCRUB; c.spin += (S.rng() < 0.5 ? -1 : 1) * 1.6; c.oilT = Math.max(c.oilT || 0, 0.8);
+      c.vx *= WPN.STINGER_SCRUB; c.vz *= WPN.STINGER_SCRUB; c.spin += (S.rng() < 0.5 ? -1 : 1) * 1.6; c.oilT = Math.max(c.oilT || 0, WPN.STINGER_SLIP);   // the tyres torn up: a slide
       damageCar(c, c.x, c.z, WPN.STINGER_DMG, 1, 0, 0); c.events.push({ t: 'stinger-hit', from: o.from, x: c.x, y: c.y, z: c.z });
     });
     return o.left > 0 && o.t < WPN.STINGER_LIFE && R.cars.some(c => live(c) && c.progress < o.s + 2);

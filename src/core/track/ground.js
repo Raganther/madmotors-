@@ -5,7 +5,8 @@ import { sketch, endH } from './editing.js';
 // the plan (a = right, b = up-screen, the sections' axes; a0/b0 the corner of the grid, `cell` metres apart, h row by
 // row along b). With it the ground away from the road is that landscape instead of the generated hills, and the
 // road cuts and fills its way across it (core/track/terrain.js). roadOnGround lays a drawn road's heights along it.
-export const GROUND = { CELL: 8, SIZE: 800, MIN: -60, MAX: 220, PIECE: 25, GRADE: 0.14, SMOOTH: 30 };
+export const GROUND = { CELL: 8, SIZE: 800, MIN: -60, MAX: 220, PIECE: 25, GRADE: 0.14, SMOOTH: 30,
+  LIFT_STEP: 10, LIFT_MAX: 40, BRIDGE: 6, TUNNEL: 9 };   // the road's own lift, every LIFT_STEP m (m); held this far over the ground it's a bridge, this far under, a tunnel
 
 /** A blank landscape, SIZE metres square around (a, b), flat at height h. */
 export function blankGround(a = 0, b = 0, h = 0, size = GROUND.SIZE, cell = GROUND.CELL) {
@@ -28,7 +29,7 @@ function chop(segs, piece) {
   for (const sg of segs) {
     const len = sg[0] === 's' ? sg[1] : sg[1] * Math.abs(sg[2]) * Math.PI / 180, n = Math.max(1, Math.ceil(len / piece));
     for (let k = 0; k < n; k++) {
-      const tg = k ? {} : (sg[0] === 's' ? sg[3] : sg[4]) || {};
+      const tg = k ? {} : { ...((sg[0] === 's' ? sg[3] : sg[4]) || {}) };
       out.push(sg[0] === 's' ? ['s', Math.round(sg[1] / n * 100) / 100, endH(sg), tg] : ['a', sg[1], Math.round(sg[2] / n * 1000) / 1000, endH(sg), tg]);
     }
   }
@@ -37,15 +38,23 @@ function chop(segs, piece) {
   for (let k = out.length - 1; k >= 0; k--) if (out[k][0] === 'a') { out[k][2] = Math.round((out[k][2] + want - got) * 1000) / 1000; break; }
   return out;
 }
+const STRAIGHT = new Set(['chicane', 'crumble', 'drawbridge']);   // pieces that only go on a straight
+/** The road's own lift at `s` metres along it (the builder's road-height brush): `lift` holds one every LIFT_STEP m. */
+export const liftAt = (lift, s) => { if (!lift || !lift.length) return 0; const f = Math.max(0, s / GROUND.LIFT_STEP), i = Math.floor(f), u = f - i; return (lift[Math.min(i, lift.length - 1)] || 0) * (1 - u) + (lift[Math.min(i + 1, lift.length - 1)] || 0) * u; };
+/** Metres along the road at each of sketch k's points. */
+export const runOf = k => { const out = [0]; for (let i = 1; i < k.pts.length; i++) out.push(out[i - 1] + Math.hypot(k.pts[i].a - k.pts[i - 1].a, k.pts[i].b - k.pts[i - 1].b)); return out; };
 /**
  * The road on the landscape: sections (starting at plan point `start`, heading `heading`) cut into short pieces whose
  * heights follow the ground under them, smoothed over SMOOTH metres and kept under GRADE (a climb a car can take);
  * where the ground does more than that the road cuts through or rides over it. A lap wraps round. Returns new sections.
+ * `lift` raises or sinks the road off the ground (the builder's road-height brush); where it ends up BRIDGE m over the
+ * ground the piece is a bridge, TUNNEL m under it a tunnel. `pieces` ({ s: metres along, tag, v }) put an element's tag
+ * on the piece at that spot (a jump, a water splash, a chicane...).
  */
-export function roadOnGround(segs, heading, ground, start = { a: 0, b: 0 }, { piece = GROUND.PIECE, grade = GROUND.GRADE, smooth = GROUND.SMOOTH } = {}) {
+export function roadOnGround(segs, heading, ground, start = { a: 0, b: 0 }, { piece = GROUND.PIECE, grade = GROUND.GRADE, smooth = GROUND.SMOOTH, lift = null, pieces = null } = {}) {
   if (!segs.length) return [];
-  const out = chop(segs, piece), step = 2, k = sketch(out, heading, step), closed = k.gap < 1, P = k.pts, n = P.length;
-  const raw = P.map(p => groundAt(ground, start.a + p.a, start.b + p.b));
+  const out = chop(segs, piece), step = 2, k = sketch(out, heading, step), closed = k.gap < 1, P = k.pts, n = P.length, run = runOf(k);
+  const bare = P.map(p => groundAt(ground, start.a + p.a, start.b + p.b)), raw = bare.map((v, i) => v + liftAt(lift, run[i]));
   const at = i => closed ? raw[((i % (n - 1)) + (n - 1)) % (n - 1)] : raw[Math.max(0, Math.min(n - 1, i))];
   const w = Math.max(1, Math.round(smooth / step / 2)), h = raw.map((_, i) => { let s = 0; for (let j = -w; j <= w; j++) s += at(i + j); return s / (2 * w + 1); });
   // no steeper than `grade`: pull peaks down and fill dips, round and round a lap until it settles
@@ -57,6 +66,14 @@ export function roadOnGround(segs, heading, ground, start = { a: 0, b: 0 }, { pi
   }
   out.forEach((sg, s) => { const i = s + 1 < out.length ? k.starts[s + 1].i : n - 1, v = Math.round(h[i] * 10) / 10; if (sg[0] === 's') sg[2] = v; else sg[3] = v; });
   if (closed) { const last = out[out.length - 1], v = Math.round(h[0] * 10) / 10; if (last[0] === 's') last[2] = v; else last[3] = v; }
+  // held well above the ground: a bridge; well below it: a tunnel (judged at the middle of each piece)
+  const tagOf = s => out[s][0] === 's' ? out[s][3] : out[s][4], i0 = s => k.starts[s].i, i1 = s => s + 1 < out.length ? k.starts[s + 1].i : n - 1;
+  out.forEach((sg, s) => { const m = Math.round((i0(s) + i1(s)) / 2), d = h[m] - bare[m], tg = tagOf(s); if (d > GROUND.BRIDGE) tg.bridge = true; else if (d < -GROUND.TUNNEL) tg.tunnel = true; });
+  for (const pc of pieces || []) {
+    let s = out.findIndex((_, q) => run[i1(q)] > pc.s); if (s < 0) s = out.length - 1;
+    if (STRAIGHT.has(pc.tag) && out[s][0] !== 's') { let best = -1; out.forEach((sg, q) => { if (sg[0] === 's' && (best < 0 || Math.abs(q - s) < Math.abs(best - s))) best = q; }); if (best < 0) continue; s = best; }   // a chicane or a timber bridge: the nearest straight
+    tagOf(s)[pc.tag] = pc.v;
+  }
   return out;
 }
 /** A copy of the landscape moved so plan point `start` becomes (0, 0) (a stage's road starts at the origin), heights to 0.1 m. */

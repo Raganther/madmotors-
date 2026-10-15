@@ -550,6 +550,10 @@ The road's heights come from the ground under it (`roadOnGround`: short sections
 14%), so the climbs and drops are the land's. The stage it makes is a gorge stage with `ground` = { a0, b0, cell,
 cols, rows, h } in plan metres from the start line: `circuit.js` uses it as the ground away from the road (no
 generated hills, no far/near profiles), and the road cuts and fills across it with guard rails along the drops.
+Road up / Road down brush the road's own height along it (`road.lift`, every 10 m): held 6 m over the ground a piece
+becomes a bridge, 9 m under it a tunnel (`roadOnGround` tags them). Pieces drops set pieces on the road (`road.pieces`
+= { s: metres along, tag, v }: kickers, crests, whoops, water, mud, boost pads, chicanes, a crumbling bridge,
+wrecking balls, rockfall, ice, dirt, a town, a waterfall); chicanes and timber bridges go on the nearest straight.
 "Send to Claude" stores it in `tracks` with base "terrain". To make a real stage of one, keep `ground` and `segs`
 and add the look and set pieces on top.
 

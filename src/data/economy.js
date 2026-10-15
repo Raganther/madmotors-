@@ -15,7 +15,7 @@ export const CAR_BASE = [3200, 9000, 19000, 38000], PACE_K = 0.06, TOUGH_K = 0.5
 export const TIER_PAY = [1, 1.7, 2.6, 3.8, 5];   // Rookie, Club, Pro, Legend, Elite
 export const FORMAT_PAY = { race: 1, banger: 1.1, demolition: 1.1, figure8: 1, derby: 1.2, trial: 1, boss: 1, showdown: 1, deuce: 1, tiebreak: 1 };
 export const PLACE_CASH = [1000, 750, 550, 400, 300, 220, 160, 120];
-export const BONUS = { air: 30, drift: 20, hit: 15, clean: 150, obj: 250 };
+export const BONUS = { air: 30, drift: 20, hit: 25, clean: 150, obj: 250 };
 export const DESTRUCT_CASH = { wrecked: 150, panels: 40, smashed: 20, takedowns: 60, razed: 100 };   // per item, times the format's destruct weight
 export const TROPHY_CASH = [2500, 1500, 800];
 export const MEDAL_CASH = [450, 700, 1000];   // time trial: bronze, silver, gold

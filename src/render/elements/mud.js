@@ -127,7 +127,8 @@ export function addMud(group, tr, terr, stage) {
   // water splashes: a sheet of water per run that follows the road 0.4 m above it (wheels in the water, the road bed
   // showing through), running wide over the low ground either side. Its edges aren't drawn: the sheet slips under the
   // ground and the road wherever they rise, so the banks make the shoreline, and past the ends of the splash it sinks
-  // below the road along a wavy line rather than stopping square.
+  // below the road along a wavy line rather than stopping square. Where the ground falls away below the water level the
+// sheet drops under it too, so the water stays in the stream bed instead of hanging over a drop.
   const water = withCutaway(new THREE.MeshLambertMaterial({ color: 0x4F8DBA, map: rippleTex(), transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }), false, { cut: false, cloud: true, water: true });
   const wob = (u, v) => Math.sin(u * 0.37 + v * 0.21) * 0.6 + Math.sin(u * 0.13 - v * 0.47 + 1.7) * 0.4;
   for (let k = 0; k < fords.length;) {
@@ -139,7 +140,9 @@ export function addMud(group, tr, terr, stage) {
       const i = tr.nb0(a, t - EXT), out = t < EXT ? EXT - t : t >= EXT + n ? t - EXT - n + 1 : 0;   // samples past the splash's ends
       OFF.forEach((o, c) => {
         const along = out ? Math.max(0, (out + 2.5 * wob(o, t)) / 5) : 0, side = Math.max(0, (Math.abs(o) - HALF - 5 - 5 * (wob(t, o) + 1)) / 4);
-        const [x, , z] = P(i, o, 0); pos.push(x, tr.H[i] + 0.4 - 1.4 * Math.min(1, along + side), z); uv.push(o / 8, t / 8);
+        const [x, , z] = P(i, o, 0); let y = tr.H[i] + 0.4 - 1.4 * Math.min(1, along + side);
+        if (Math.abs(o) > HALF + 1 && terr.at(x, z) < y - 1.2) y = terr.at(x, z) - 0.3;   // where the ground falls away below the water, it'd hang in the air: tuck it under
+        pos.push(x, y, z); uv.push(o / 8, t / 8);
         if (t && c) { const q = t * OFF.length + c, p = q - OFF.length; idx.push(p - 1, q - 1, p, p, q - 1, q); }
       });
     }
