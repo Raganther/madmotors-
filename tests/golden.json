@@ -1595,6 +1595,44 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Alpine Viaduct": {
+   "samples": 5123,
+   "loopN": 1659,
+   "terrain": [
+    251,
+    211,
+    216627.329
+   ],
+   "times": [
+    154.575,
+    152.958,
+    156.4,
+    153.025
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    5049.883,
+    5050.423,
+    5013.122,
+    5051.112
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

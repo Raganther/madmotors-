@@ -36,7 +36,7 @@ export const CAM_MODES = {
 export const CAM_ZOOMS = { close: { name: 'Close', k: 0.6 }, near: { name: 'Near', k: 0.78 }, normal: { name: 'Normal', k: 1 }, far: { name: 'Far', k: 1.3 } };
 const PORTRAIT = 1.25;
 export const DYN = { SPAN: 60 * Math.PI / 180, VIEW: 40 * Math.PI / 180, BLD: 45 * Math.PI / 180, FRONT: 0.6, KEEP: 0.3, RATE: 0.55, EASE: 0.9, EL: 30 * Math.PI / 180, EL_SLOPE: 6 * Math.PI / 180,
-  SIGHT: 140, HIDE: 0.35, EL_MAX: 62 * Math.PI / 180, EL_RATE: 0.6 };   // hills between the camera and the car: look-out (m), cost per m of hill in the way, how far up it may tilt (rad, rad/s)
+  SIGHT: 140, HIDE: 0.35, SIDE: 0.8, EL_MAX: 62 * Math.PI / 180, EL_RATE: 0.6 };   // hills between the camera and the car: look-out (m), cost per m of hill in the way, how far up it may tilt (rad, rad/s)
 const dyn = { az: null, target: null, el: null };
 // Dynamic Low's bearing (radians, the camera's side of the car) and its height angle
 function dynamicDir(dt, snap, out) {
@@ -61,7 +61,8 @@ function dynamicDir(dt, snap, out) {
   const hidden = (a, el) => { const sx = Math.sin(a), sz = Math.cos(a), tn = Math.tan(el); let m = 0; for (let h = 6; h <= DYN.SIGHT; h += h < 40 ? 4 : 8) m = Math.max(m, terr.at(cx + sx * h, cz + sz * h) - (cy + h * tn)); return m; };
   for (let k = -3; k <= 3; k++) cands.push([base + k * DYN.SPAN / 3, 0.15]);           // more sides to see from, when the road's ones are behind a hill
   const el0 = DYN.EL - clamp(grade * 1.5, 0, 1) * DYN.EL_SLOPE;
-  const cost = ([a, pen]) => { const off = Math.abs(wrapAngle(a - base)); return (off > DYN.SPAN ? 9 + off : off * 0.5 + pen) + Math.min(6, hidden(a, el0) * DYN.HIDE); };
+  const bridge = [0, 15, 30].some(d => tr.bridge[at(d)]);   // on a bridge: the more side on the better, to see the drop under it
+  const cost = ([a, pen]) => { const off = Math.abs(wrapAngle(a - base)); return (off > DYN.SPAN ? 9 + off : off * 0.5 + pen) + Math.min(6, hidden(a, el0) * DYN.HIDE) - (bridge ? DYN.SIDE * Math.abs(Math.sin(a - road)) : 0); };
   let best = cands[0]; for (const c of cands) if (cost(c) < cost(best)) best = c;
   if (dyn.target === null || snap) dyn.target = best[0];
   else if (cost(best) < cost([dyn.target, 0]) - DYN.KEEP || Math.abs(wrapAngle(dyn.target - base)) > DYN.SPAN) dyn.target = best[0];   // only for a clearly better angle: no dithering

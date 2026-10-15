@@ -80,3 +80,42 @@ export function roadOnGround(segs, heading, ground, start = { a: 0, b: 0 }, { pi
 export function groundFor(g, start) {
   return { a0: Math.round((g.a0 - start.a) * 100) / 100, b0: Math.round((g.b0 - start.b) * 100) / 100, cell: g.cell, cols: g.cols, rows: g.rows, h: Array.from(g.h, v => Math.round(v * 10) / 10) };
 }
+
+// ---------- a landscape described, not painted (a stage file: data, no grids) ----------
+// `ground: { size, cell, base, hills: [[a, b, height, radius], ...], ridges: [[a1, b1, a2, b2, height, radius], ...] }`:
+// round hills (negative: hollows) and ridges along a line (negative: valleys), each a smooth bump `radius` wide, added to
+// `base`, over a square `size` m across round the circuit's middle. `drape: { lift: [[from, to, metres], ...], pieces }`
+// lays the road over it the way the Terrain builder does (lift: the road held up or sunk between those metres along the
+// lap, eased in and out over 30 m). prepareGround turns both into the grid and sections a stage builds from.
+const bump = (d, r) => Math.exp(-(d * d) / (2 * r * r));
+const toSeg = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)); return Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t); };
+export function groundFromSpec(spec, mid = { a: 0, b: 0 }) {
+  const g = blankGround(mid.a, mid.b, spec.base || 0, spec.size || GROUND.SIZE, spec.cell || GROUND.CELL);
+  for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) {
+    const p = [g.a0 + c * g.cell, g.b0 + r * g.cell]; let v = g.h[r * g.cols + c];
+    for (const [a, b, h, rad] of spec.hills || []) v += h * bump(Math.hypot(p[0] - a, p[1] - b), rad);
+    for (const [a1, b1, a2, b2, h, rad] of spec.ridges || []) v += h * bump(toSeg(p, [a1, b1], [a2, b2]), rad);
+    g.h[r * g.cols + c] = Math.round(v * 10) / 10;
+  }
+  return g;
+}
+/** The road's lift every LIFT_STEP m from spans [from, to, metres] (eased in and out over 30 m). */
+export function liftFromSpans(spans, len) {
+  const out = [];
+  for (let s = 0; s <= len + GROUND.LIFT_STEP; s += GROUND.LIFT_STEP) {
+    let v = 0; for (const [a, b, h] of spans || []) { const e = Math.min(1, Math.max(0, (s - a + 30) / 30), Math.max(0, (b + 30 - s) / 30)); v += h * (0.5 - 0.5 * Math.cos(Math.PI * e)); }
+    out.push(Math.round(v * 10) / 10);
+  }
+  return out;
+}
+/** A stage with a described landscape: its ground grid, and its sections laid over it (once; the stage keeps them). */
+export function prepareGround(stage) {
+  if (!stage.ground || stage.ground.h) return stage;
+  const flat = stage.segs, k = sketch(flat, stage.startHeading || 0, 4), len = k.lens.reduce((a, b) => a + b, 0);
+  let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity; for (const p of k.pts) { a0 = Math.min(a0, p.a); a1 = Math.max(a1, p.a); b0 = Math.min(b0, p.b); b1 = Math.max(b1, p.b); }
+  const ground = groundFromSpec(stage.ground, { a: (a0 + a1) / 2, b: (b0 + b1) / 2 }), d = stage.drape || {};
+  stage.segs = roadOnGround(flat, stage.startHeading || 0, ground, { a: 0, b: 0 }, { lift: liftFromSpans(d.lift, len), pieces: d.pieces });
+  stage.ground = ground;
+  return stage;
+}
+

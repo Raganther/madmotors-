@@ -127,11 +127,18 @@ it. The demolition AI (`demoControl`) goes for buildings it can break (heavy eno
 the walls), near and part-down ones first, and backs off for a run-up when it's stopped against one. `npm run
 demolition` plays it at two skills; the Workshop's Demolition tab with any car.
 
-**Wrecking Row** (stage 39): a special where the scenery is in the race. Shops and terraces stand right at the kerb
+**Wrecking Row** (stage 44): a special where the scenery is in the race. Shops and terraces stand right at the kerb
 down the High Street (no barrier: clip one and you're in the front room, and its rubble is on the road next lap), a
 concrete chicane (weave it, or smash it in something heavy), a cottage across the short cut through an S-bend (the
 first heavy car opens it for everyone), a kicker onto an old timber bridge over the canal that wears through lap by
 lap, whoops along the towpath, the lock's lifting bridge, a ford and a jump by the gasworks.
+
+**Alpine Viaduct** (stage 45): the first stage on a described landscape. Its file lists hills and ridges
+(`ground: { hills, ridges }`) and how the road is held up or sunk along the lap (`drape: { lift, pieces }`);
+`prepareGround` (core/track/ground.js) turns them into the height grid and the draped road when it's first built, as
+the Terrain builder does for a painted one. A crest off the start shelf, a downhill S, a 190 m viaduct 30 m over the
+valley, whoops, two lefts and a boost, a tunnel under the ridge, a mountain stream, a second crest, the chicane straight
+and a kicker: about 52 s a lap. Dynamic Low turns side on over a bridge, to show the drop.
 
 **Special tracks** (stages 36-37): **Building Site**, a dirt lap round a half-built estate (a fenced cut through the
 foundations that heavy cars smash open, a spoil-heap kicker, two wrecking balls on the demolition block, a mud wallow,
