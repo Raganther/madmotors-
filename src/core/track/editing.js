@@ -76,8 +76,10 @@ export { TAU };
 // `from` = { a, b, phi, h } continues an existing track from its end (the first corner turns off its heading).
 const rdp = (P, tol) => {
   if (P.length < 3) return P.slice();
-  const [A, B] = [P[0], P[P.length - 1]], dx = B.a - A.a, dy = B.b - A.b, L = Math.hypot(dx, dy) || 1;
-  let k = -1, dm = 0; for (let i = 1; i < P.length - 1; i++) { const d = Math.abs((P[i].a - A.a) * dy - (P[i].b - A.b) * dx) / L; if (d > dm) { dm = d; k = i; } }
+  const [A, B] = [P[0], P[P.length - 1]], dx = B.a - A.a, dy = B.b - A.b, L = Math.hypot(dx, dy);
+  // distance from the chord A-B; a loop that ends where it began has no chord: distance from A
+  const dist = L > 1e-6 ? q => Math.abs((q.a - A.a) * dy - (q.b - A.b) * dx) / L : q => Math.hypot(q.a - A.a, q.b - A.b);
+  let k = -1, dm = 0; for (let i = 1; i < P.length - 1; i++) { const d = dist(P[i]); if (d > dm) { dm = d; k = i; } }
   return dm < tol ? [A, B] : rdp(P.slice(0, k + 1), tol).slice(0, -1).concat(rdp(P.slice(k), tol));
 };
 function cleanStroke(pts, step) {

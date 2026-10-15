@@ -281,7 +281,7 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   const box = await page.locator('#tb-view').boundingBox(), cx = box.x + box.width / 2, cy = box.y + box.height / 2;
   await page.click('#tb [data-tool="raise"]'); await page.mouse.move(cx, cy - 40); await page.mouse.down(); await page.mouse.move(cx + 20, cy - 30, { steps: 4 }); await page.waitForTimeout(2500); await page.mouse.up();
   const raised = await page.textContent('#tb-status');
-  const rx = box.width * 0.28, ry = box.height * 0.22;   // a lap round the middle of the view, whatever its size
+  const rx = Math.min(box.width * 0.22, 260), ry = box.height * 0.2;   // a lap round the middle of the view, whatever its size
   await page.click('#tb [data-tool="road"]'); await page.mouse.move(cx + rx, cy); await page.mouse.down();
   for (let i = 1; i <= 60; i++) { const t = i / 60 * Math.PI * 2; await page.mouse.move(cx + Math.cos(t) * rx, cy + Math.sin(t) * ry); }
   await page.mouse.up();

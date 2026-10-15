@@ -157,10 +157,13 @@ function frame(t) {
 }
 
 // ---------- pointer: paint, draw the road, move the view ----------
-const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), _flat = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _hp = new THREE.Vector3();
 function hit(e) {
   const r = $('tb-view').getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
-  placeCam(); ray.setFromCamera(ndc, cam); const h = ray.intersectObject(terr)[0]; return h ? { a: h.point.x, b: -h.point.z } : null;
+  placeCam(); ray.setFromCamera(ndc, cam); const h = ray.intersectObject(terr)[0]; if (h) return { a: h.point.x, b: -h.point.z };
+  // past the edge of the ground (a stroke started on the sky beside it): where the ray meets the ground's level, if that's near
+  const g = B.ground, p = ray.ray.intersectPlane(_flat, _hp), M = 60;
+  return p && p.x > g.a0 - M && p.x < g.a0 + (g.cols - 1) * g.cell + M && -p.z > g.b0 - M && -p.z < g.b0 + (g.rows - 1) * g.cell + M ? { a: p.x, b: -p.z } : null;
 }
 function down(e) {
   const cv = $('tb-view'); cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });

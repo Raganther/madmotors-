@@ -34,6 +34,10 @@ describe('drawing a track freehand', () => {
     const st = { name: 'Drawn', type: 'gorge', laps: 2, seed: 1, surface: 'tarmac', hillAmp: 2, jumps: 0, armco: true, startHeading: r.heading, segs: c.segs };
     expect(() => M.buildTrack(st)).not.toThrow();
   });
+  it('a stroke that ends exactly where it began is still a lap', () => {
+    const pts = Array.from({ length: 61 }, (_, k) => ({ a: 300 * Math.cos(k / 60 * Math.PI * 2), b: 200 * Math.sin(k / 60 * Math.PI * 2) }));   // last point = first
+    const r = fromStroke(pts, { tol: 4, closeDist: 40 }); expect(r).not.toBe(null); expect(r.closed).toBe(true); expect(r.segs.length).toBeGreaterThan(4);
+  });
   it('an open stroke is a run of straights and curves that follows it', () => {
     const L = [...Array.from({ length: 40 }, (_, i) => ({ a: i * 3, b: 0 })), ...Array.from({ length: 40 }, (_, i) => ({ a: 120, b: i * 3 }))];
     const r = fromStroke(L); expect(r.closed).toBe(false);
