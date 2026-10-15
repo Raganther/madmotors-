@@ -117,7 +117,7 @@ dirt oval with two big kickers, whoops, a mud pit and crates on the back straigh
 street circuit of square corners between Armco and houses with a fast chicane; a speed course on a salt lake, two
 straights with boost pads and sweepers you can almost take flat. They're in the series too.
 
-**Demolition** (stage 38, Demolition Yard; `src/core/modes/demolition.js`, the mode `createRace(W, defs, { mode:
+**Demolition** (stage 41, Demolition Yard; `src/core/modes/demolition.js`, the mode `createRace(W, defs, { mode:
 'demolition' })`, any stage with `demolition: { time }`): the derby's rules (no laps, damage stays, wrecked is out, the
 clock) scored on what you knock down. Every wall panel you break is worth its material's points (timber 1, brick 2,
 stone 3, concrete 4) and every building you bring down 10 a floor more. Highest score when the two minutes are up (or
@@ -127,13 +127,13 @@ it. The demolition AI (`demoControl`) goes for buildings it can break (heavy eno
 the walls), near and part-down ones first, and backs off for a run-up when it's stopped against one. `npm run
 demolition` plays it at two skills; the Workshop's Demolition tab with any car.
 
-**Wrecking Row** (stage 44): a special where the scenery is in the race. Shops and terraces stand right at the kerb
+**Wrecking Row** (stage 42): a special where the scenery is in the race. Shops and terraces stand right at the kerb
 down the High Street (no barrier: clip one and you're in the front room, and its rubble is on the road next lap), a
 concrete chicane (weave it, or smash it in something heavy), a cottage across the short cut through an S-bend (the
 first heavy car opens it for everyone), a kicker onto an old timber bridge over the canal that wears through lap by
 lap, whoops along the towpath, the lock's lifting bridge, a ford and a jump by the gasworks.
 
-**Alpine Viaduct** (stage 45): the first stage on a described landscape. Its file lists hills and ridges
+**Alpine Viaduct** (stage 43): the first stage on a described landscape. Its file lists hills and ridges
 (`ground: { hills, ridges }`) and how the road is held up or sunk along the lap (`drape: { lift, pieces }`);
 `prepareGround` (core/track/ground.js) turns them into the height grid and the draped road when it's first built, as
 the Terrain builder does for a painted one. A crest off the start shelf, a downhill S, a 190 m viaduct 30 m over the
