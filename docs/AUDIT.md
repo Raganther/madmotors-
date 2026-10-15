@@ -34,3 +34,30 @@ what was done about it.
 - Wrecking Row: about 57 s a lap; a mixer in the field opens the cottage short cut on lap 1.
 - `npm run balance`: the other weapons unchanged; mines 0.75 s per use.
 - Golden: every stage that existed before is unchanged; two new stages added.
+
+# Second pass (October 2026, after the lock-on / mortar branch was merged)
+
+## How it was checked
+- `npm run sandbox -- all`, `npm run balance`, `npm run derby`, `npm run demolition`, `npm run career`, `npm run destruct`.
+- Every stage's e2e screenshot on contact sheets; shots of the stages and set pieces that looked off.
+- A memory pass over every stage (geometry, textures and shader programs stay flat across stage changes).
+
+## Findings
+| What | Where | Status |
+|---|---|---|
+| The merge lost a closing tag: results, Sketch pad and Track editor sat inside the hidden Terrain builder | index.html | Fixed |
+| The other branch still had the touch Fire button's label swallowed by a comment | src/ui/hud.js | Fixed again |
+| A graphics reset (out of GPU memory, mostly tablets) crashed the next stage build ("reading 'trim'") and Safari never says the graphics are back | render/renderer.js, ui/flow.js | Nothing is built while they're lost; reload when back or after 3 s; that session runs on Medium |
+| Up to five WebGL contexts alive at once (race, garage turntable, thumbnails, Asset Lab, Terrain builder) | render/showcar.js, thumbs.js, ui/terrain-builder.js | Each lets its context go when done |
+| A drawn loop ending exactly on its start was refused ("try a smoother line") | core/track/editing.js | Fixed (test added) |
+| Stinger cost its victims nothing (-0.28 s a use); gun 0.54 s, shockwave 0.72 s against the ~1 s target | core/features/weapons.js | Stinger 0.70, gun 0.79, shockwave 0.98; hit bonus 15 -> 25 keeps Rookie pacing |
+| Mines also digging craters doubled the holes on the road (mortar's share 3.2 s a use) | core/features/weapons.js | Mines don't dig; mortar 1.25 s |
+| A water splash over falling ground hung in the air as a blue slab (Highland Rally's burn) | render/elements/mud.js | The sheet drops under ground that falls away |
+| Dynamic Low looked across mountains at the car and straight along viaducts | render/camera.js | Picks a clear side, tilts up over hills, turns side on over bridges |
+| The Terrain builder couldn't make bridges, tunnels or set pieces | ui/terrain-builder.js, core/track/ground.js | Road up / down and Pieces |
+
+## Numbers after
+- Vehicles within about +-6% of the coupe on tarmac and loose; derbies end 38-87 s with a winner; Demolition Yard 10/16 down.
+- Weapons per use: missile 1.20, mortar 1.23, oil 1.08, harpoon 1.01, shockwave 0.98, water 0.98, cement 0.89, gun 0.79,
+  mines 0.76, crush 0.72, stinger 0.70, jingle 1.48 s.
+- New: Alpine Viaduct (stage 43), 51-53 s AI laps, no wrecks or resets.
