@@ -92,8 +92,14 @@ describe('weapon modules', () => {
     { const { R, Wd, P } = setup('gun', [0, 6, -6], [25, -60, -70], L3('gun')); M.raceStep(R, 1 / 120, Wd); expect(P.wpn.gunT).toBeGreaterThan(4.9); }
     for (const [lv, hit] of [[{}, false], [L3('pulse'), true]]) { const { R, Wd } = setup('pulse', [17, 0, -5], [0, 60, -70], lv); M.raceStep(R, 1 / 120, Wd); expect((R.cars[0].stallT || 0) > 0, JSON.stringify(lv)).toBe(hit); }
     { const { R, Wd } = setup('missile', [-3, 3, 0], [30, 45, -70], L3('missile')); M.raceStep(R, 1 / 120, Wd); expect(R.missiles.length).toBe(2); expect(new Set(R.missiles.map(m => m.tgt)).size).toBe(2); }
-    const after = lv => { const { R, Wd } = setup('oil', [0, 5, -5], [-14, -60, -60], lv); let v = 99; run(R, Wd, 2, (e, c) => { if (e.t === 'oil-hit') v = Math.hypot(c.vx, c.vz); }); return v; };
+    const after = lv => { const { R, Wd } = setup('oil', [0, 5, -5], [-14, -60, -60], lv); let v = 99; run(R, Wd, 2, (e, c) => { if ((e.t === 'oil-hit' || e.t === 'drum-hit') && v === 99) v = Math.hypot(c.vx, c.vz); }); return v; };
     expect(after(L3('oil'))).toBeLessThan(after({}) - 3);
+  });
+  it('oil: a drum off the back bounces down the road and bursts into a slick; one that lands on the car behind oils it', () => {
+    { const { R, Wd } = setup('oil', [0, 6, -6], [-90, -100, -110]), ev = []; run(R, Wd, 0.05); expect(R.wpn.drums.length).toBe(1);
+      run(R, Wd, 2.5, e => ev.push(e.t)); expect(ev).toContain('drum-bounce'); expect(ev).toContain('drum-burst'); expect(R.wpn.slicks.length).toBe(1); expect(R.wpn.drums.length).toBe(0); }
+    { const { R, Wd, P } = setup('oil', [0, 6, -6], [-9, -100, -110]), T = R.cars.find(c => c !== P && c.progress > P.progress - 12 && c.progress < P.progress); let hit = null;
+      run(R, Wd, 1.5, (e, c) => { if (e.t === 'drum-hit' && c === T) hit = { oil: c.oilT }; }); expect(hit).not.toBe(null); expect(hit.oil).toBeGreaterThan(M.WPN.OIL_T); }
   });
   it('the mortar: a shell lands where the car ahead will be, throws and dents it, and leaves a crater that jolts the next car through', () => {
     const { R, Wd, P } = setup('mortar', [0, 6, -6], [55, -60, -70]), T = R.cars[0]; const seen = [];

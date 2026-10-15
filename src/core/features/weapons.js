@@ -13,8 +13,9 @@ import { blastStructures, solidAt as wallAt } from './structures.js';
 //            that car; fired before the lock, it flies straight down the road at whoever's in the way. A hit throws the
 //            car up spinning, kills most of its speed and dents it
 //   gun      a WPN.GUN_T s burst of tracer rounds straight ahead (swung a little at whoever's ahead); each hit costs a little speed
-//   oil      two slicks dropped behind you, one at a time: anyone driving over one loses grip for a moment (a slick
-//            wears away after WPN.OIL_HITS cars)
+//   oil      two drums dropped off the back, one at a time: each tumbles down the road, bounces and bursts into a slick
+//            (anyone driving over one loses grip for a moment; it wears away after WPN.OIL_HITS cars); a drum that lands
+//            on a car bursts all over it: a long slide, and the car comes out black (render: dirt.js)
 //   pulse    a shockwave: everyone within WPN.PULSE_R m is blown away from you and their engine cuts out briefly
 //   harpoon  hooks the car ahead (within WPN.HARP_R m); for WPN.TOW_T s the line reels you in and holds them back
 //            (their engine can't drive against it)
@@ -46,6 +47,7 @@ export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_
   DOOR_T: 0.45, DOOR_COOL: 2.5, SHOVE: 6, KICK: 1.2, REACH: 4.2, DOOR_SCRUB: 0.92,
   CRATE_EVERY: 7, CRATE_AHEAD: [60, 100], CRATE_R: 1.9, CRATE_LIFE: 40,
   GUN_T: 3, GUN_RATE: 7, GUN_SWING: 0.26, GUN_SCATTER: 0.05, BULLET_V: 95, BULLET_LIFE: 0.9, BULLET_SLOW: 0.93, OIL_R: 2.8, OIL_T: 1.4, OIL_SPIN: 2.6, OIL_SCRUB: 0.85, OIL_LIFE: 16, OIL_HITS: 3,
+  DRUM_G: 22, DRUM_UP: 2.6, DRUM_FWD: 0.55, DRUM_BOUNCE: 0.42, DRUM_FUSE: 1.4, DRUM_HIT: 0.75, DRUM_OIL: 1.6,
   PULSE_R: 13, PULSE_V: 8, STALL: 1.1, HARP_R: 70, HARP_V: 70, TOW_T: 2.2, TOW_PULL: 16, TOW_DRAG: 3.5,
   MISSILE_DMG: 7.5, LOCK_T: 1.1, LOCK_KEEP: 1.25, BULLET_DMG: 4.6, DOOR_DMG: 5.5, TURN2: 1.6, TWIN: 0, GLUE: 0,
   WATER_T: 2.5, WATER_R: 22, WATER_CONE: 0.45, WATER_PUSH: 22, WATER_SCRUB: 1.2, WATER_SLIP: 0.35,
@@ -192,7 +194,10 @@ function use(R, W, c) {
     else fire(t, onRoad(tr, c));
     w.lockK = 0;
   } else if (it === 'gun') { w.gunT = wv(c, it, 'GUN_T'); w.gunAcc = 0; }
-  else if (it === 'oil') R.wpn.slicks.push({ id: R.wpn.next++, s: c.progress - c.hl - 1.5, lat: onRoad(tr, c), t: 0, from: k, r: wv(c, it, 'OIL_R'), glue: wv(c, it, 'GLUE') });
+  else if (it === 'oil') {   // a drum off the back: rolling on down the road at about half the car's speed, tossed up a little
+    const fv = (c.vx * Math.sin(c.yaw) + c.vz * Math.cos(c.yaw)) * WPN.DRUM_FWD;
+    R.wpn.drums.push({ id: R.wpn.next++, s: c.progress - c.hl - 0.8, lat: onRoad(tr, c), y: c.y + 1.2, vs: fv, vl: (R.wpn.rng() - 0.5) * 2, vy: WPN.DRUM_UP, t: 0, n: 0, from: k, r: wv(c, it, 'OIL_R'), glue: wv(c, it, 'GLUE') });
+  }
   else if (it === 'pulse') {
     const PR = wv(c, it, 'PULSE_R'); w.pulseR = PR;
     for (const o of R.cars) {
@@ -305,12 +310,43 @@ function slicks(R, W, dt) {
           c.spin += (S.rng() < 0.5 ? -1 : 1) * WPN.OIL_SPIN; c.vx *= WPN.OIL_SCRUB; c.vz *= WPN.OIL_SCRUB;
           if (o.glue) { c.vx *= o.glue; c.vz *= o.glue; }                          // glue: it grabs as well as slides
         }
-        c.oilT = WPN.OIL_T;
+        c.oilT = Math.max(c.oilT || 0, WPN.OIL_T);   // (never cut short a drum's dousing)
       }
     }
     return o.t < WPN.OIL_LIFE && !(o.hits >= WPN.OIL_HITS);                       // tyres carry it away: gone after a few cars
   });
 }
+// oil drums: tumbling down the road in road terms (s along, lat across, y up), bouncing twice and bursting into a
+// slick where they stop, or when their fuse runs out, or all over a car they land on
+function drums(R, W, dt) {
+  const S = R.wpn, tr = W.tr;
+  S.drums = S.drums.filter(o => {
+    o.t += dt; o.s += o.vs * dt; o.lat += o.vl * dt; o.vy -= WPN.DRUM_G * dt; o.y += o.vy * dt;
+    if (Math.abs(o.lat) > HALF - 0.6) { o.lat = Math.sign(o.lat) * (HALF - 0.6); o.vl = -o.vl * 0.5; }   // off the barrier
+    const ground = roadPos(tr, o.s, o.lat, 0).y;
+    let burst = null;
+    for (const c of R.cars) {                                                     // landing on (or hit by) a car
+      if (!live(c) || (idx(R, c) === o.from && o.t < 0.6)) continue;
+      if (Math.abs(c.progress - o.s) < c.hl + 0.7 && Math.abs(onRoad(tr, c) - o.lat) < c.hw + 0.7 && Math.abs(c.y + 0.8 - o.y) < 1.8) { burst = c; break; }
+    }
+    if (burst) {
+      if (!shielded(burst)) {
+        burst.oilT = WPN.OIL_T * WPN.DRUM_OIL; burst.vx *= WPN.DRUM_HIT * (o.glue || 1); burst.vz *= WPN.DRUM_HIT * (o.glue || 1); burst.spin += (S.rng() < 0.5 ? -1 : 1) * WPN.OIL_SPIN * 1.3;
+        burst.events.push({ t: 'drum-hit', from: o.from, x: burst.x, y: burst.y, z: burst.z });
+      }
+    } else if (o.y <= ground) {
+      o.y = ground;
+      if (o.vy < -2.5 && o.n < 2) { o.vy = -o.vy * WPN.DRUM_BOUNCE; o.vs *= 0.7; o.vl *= 0.7; o.n++; const p = roadPos(tr, o.s, o.lat, 0); R.cars[o.from].events.push({ t: 'drum-bounce', ...p }); return true; }
+      o.vy = 0; o.vs *= Math.exp(-2 * dt); if (o.t < WPN.DRUM_FUSE && Math.abs(o.vs) > 1) return true;
+    } else if (o.t < WPN.DRUM_FUSE * 1.5) return true;
+    const p = roadPos(tr, o.s, o.lat, 0);                                         // it bursts: the slick spreads from here
+    R.cars[o.from].events.push({ t: 'drum-burst', ...p, onCar: !!burst, r: o.r });
+    S.slicks.push({ id: S.next++, s: o.s, lat: o.lat, t: 0, from: o.from, r: o.r, glue: o.glue });
+    return false;
+  });
+}
+/** Where an oil drum is (x, y, z), for drawing it. */
+export const drumPos = (tr, o) => { const p = roadPos(tr, o.s, o.lat, 0); return { x: p.x, y: o.y + 0.5, z: p.z, i: p.i }; };
 // harpoon: the hook flies up the road; if it catches its car, the line tows the shooter in and drags the target back
 function hooks(R, W, dt) {
   const S = R.wpn, tr = W.tr;
@@ -535,7 +571,7 @@ export const feature = {
   name: 'weapons',
   init(R, W) {
     R.missiles = []; if (W) W.craters = null; if (!R.weapons) return;
-    R.wpn = { rng: mulberry32(R.cars.length * 104729 + 3), next: 0, crates: [], bullets: [], slicks: [], hooks: [], cement: [], strips: [], shells: [], craters: [], mines: [] };
+    R.wpn = { rng: mulberry32(R.cars.length * 104729 + 3), next: 0, crates: [], bullets: [], slicks: [], hooks: [], cement: [], strips: [], shells: [], craters: [], mines: [], drums: [] };
     R.cars.forEach((c, k) => {
       const load = c.def.wpn || null;   // levels and gear (data/weapons.js); the signature weapon comes with the vehicle
       c.wpn = { item: null, uses: 0, gunT: 0, gunAcc: 0, doorT: 0, doorSide: 0, doorCool: 0, crateT: 1.5 + k * 0.4,
@@ -552,6 +588,6 @@ export const feature = {
     }
     if (racing) { locking(R, dt); crates(R, W, dt); aiWeapons(R, W, dt); }
     W.craters = R.wpn.craters.concat(R.wpn.shells.filter(sh => !(sh.wait > 0) && sh.t > WPN.MORTAR_FLIGHT * 0.3));   // what the AI steers round (sim/ai.js): craters, and where shells are coming down
-    flyMissiles(R, W, dt); shells(R, W, dt); guns(R, W, dt); slicks(R, W, dt); hooks(R, W, dt); signatures(R, W, dt); mines(R, W, dt); doors(R, dt);
+    flyMissiles(R, W, dt); shells(R, W, dt); guns(R, W, dt); drums(R, W, dt); slicks(R, W, dt); hooks(R, W, dt); signatures(R, W, dt); mines(R, W, dt); doors(R, dt);
   }
 };

@@ -3,6 +3,7 @@ import { debris } from './debris.js';
 import { wallFx } from './impacts.js';
 import { emit } from './particles.js';
 import { addSkid } from './skids.js';
+import { TRAIL, addTrail } from './trails.js';
 import { AudioSys } from '../../audio/audio.js';
 import { spark } from './sparks.js';
 import { G } from '../../game.js';
@@ -33,6 +34,26 @@ export function effectsForCar(c, v, dt) {
     if (skidding && c.surface === 'tarmac') { const pr = v.skPrev[w]; if (pr && Math.hypot(px - pr[0], pz - pr[2]) > 0.35) { addSkid(pr, cur); v.skPrev[w] = cur; } else if (!pr) v.skPrev[w] = cur; }
     else v.skPrev[w] = null;
   }
+  // oil running off a car a drum burst on; a tyre the stinger shredded: the rim on the road, sparks and rubber smoke
+  if (v.dripT > 0) { v.dripT -= dt; if (Math.random() < dt * 14) emit(c.x + (Math.random() - 0.5) * 1.6, c.y + 0.5, c.z + (Math.random() - 0.5) * 2.4, c.vx * 0.6, -0.5, c.vz * 0.6, 0.45, 0.22, v.dripCol || 0x0C0C10, -9, 'solid'); }   // oil, or water off a soaking
+  if (v.burnT > 0) { v.burnT -= dt; if (Math.random() < dt * 10) emit(c.x, c.y + 1.1, c.z, c.vx * 0.3 + (Math.random() - 0.5), 1.8 + Math.random(), c.vz * 0.3 + (Math.random() - 0.5), 1.1, 1 + Math.random() * 0.6, v.burnT > 1.5 ? 0x2A2624 : 0x5E5A56, 0.4); }   // smoking after a missile, a shell or a mine
+  if (v.flatT > 0) {
+    v.flatT -= dt; const s = v.flatSide || 1, rx = c.x - fx * 1.15 - fz * 0.95 * s, rz = c.z - fz * 1.15 + fx * 0.95 * s;
+    if (c.onGround && sp > 4 && Math.random() < dt * 30) spark(rx, c.y + 0.15, rz, -c.vx * 0.3 + (Math.random() - 0.5) * 4, 1 + Math.random() * 3, -c.vz * 0.3 + (Math.random() - 0.5) * 4);
+    if (Math.random() < dt * 8) emit(rx, c.y + 0.4, rz, -c.vx * 0.1, 1.2, -c.vz * 0.1, 0.8, 0.9, 0x5A5A5A, 0.3);
+  }
+  // tyre trails: out of an oil slick, wet cement or a water splash the tyres print the road for a while (trails.js);
+  // in the water itself there's nothing to see, so the wet marks start where the car comes out
+  const tk = c.oilT > 0 ? 'oil' : c.cementT > 0 ? 'cement' : c.surface === 'ford' || v.soakT > 0 ? 'wet' : null;
+  if (tk && (!v.trail || v.trail.kind !== 'oil' || tk === 'oil')) v.trail = { kind: tk, t: TRAIL[tk].t };
+  if (v.soakT > 0) v.soakT -= dt;
+  if (v.trail && v.trail.t > 0 && c.onGround && c.surface !== 'ford') {
+    v.trail.t -= dt; v.trPrev = v.trPrev || [null, null]; const k = Math.min(1, v.trail.t / TRAIL[v.trail.kind].t * 1.4);
+    for (let w = 0; w < 2; w++) {
+      const s = w ? 1 : -1, cur = [c.x - fx * 1.15 - fz * 0.95 * s, c.y + 0.075, c.z - fz * 1.15 + fx * 0.95 * s], pr = v.trPrev[w];
+      if (pr && Math.hypot(cur[0] - pr[0], cur[2] - pr[2]) > 0.4) { if (Math.hypot(cur[0] - pr[0], cur[2] - pr[2]) < 4) addTrail(pr, cur, v.trail.kind, k); v.trPrev[w] = cur; } else if (!pr) v.trPrev[w] = cur;
+    }
+  } else if (v.trPrev) v.trPrev = [null, null];
   if (c.onGround && sp > 6 && (loose || slide > 3.5)) {
     const F = SURF_FX[fxSurf(c)] || SURF_FX.tarmac, rate = loose ? sp * F.rate : slide * 2.4;
     v.emitAcc += rate * dt;

@@ -20,7 +20,8 @@ drive *through* it scores (a leader on the wrong line can miss it). Win by two, 
 
 **Weapons** (menu: Weapons on/off, every mode; `src/core/features/weapons.js`): drive through a **?** crate with
 nothing in hand to get one of seven weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
-tracers), an oil slick (two, dropped behind), a shockwave (blows the cars round you away and cuts their engines), a
+tracers), oil (two drums dropped off the back: each tumbles, bounces and bursts into a slick, and one that lands on a car
+bursts all over it: a long slide and a black car), a shockwave (blows the cars round you away and cuts their engines), a
 harpoon (hooks the car ahead: you're reeled in, they're held back), a mortar and proximity mines (two, dropped behind:
 the car that sets one off is thrown up and slowed). F fires. The missile has to **lock**
 first: holding one, keep the car ahead in your sights and corner brackets close in on it (`WPN.LOCK_T`, quicker at
@@ -28,7 +29,10 @@ level 2) until they flash red: fired locked it homes in on that car, fired early
 (`lockedOn`; the target hears the lock and gets a warning). The **mortar** lobs a shell high onto where the car ahead
 will be (a red ring on the road shows where it's coming down, so it can be dodged); the blast throws everyone near
 and leaves a **crater** in the road (missiles that miss leave small ones) that jolts, scrubs and knocks aside any car
-driving into it for the rest of the race, and the AI steers round craters and rings (`W.craters`, `sim/ai.js`). Blasts reach the scenery: a missile that hits or runs out, a mine, a mortar
+driving into it for the rest of the race, and the AI steers round craters and rings (`W.craters`, `sim/ai.js`). Nuances (render only): tyres print the road for a while out of oil (black), wet cement (grey) and
+water (dark), `render/effects/trails.js`; an oiled or cemented car is coated (`dirt.js` `coat`), oil and water drip off
+it, the water cannon rinses the muck off, a car hit by a missile, shell or mine trails smoke, a stinger leaves a rim
+sparking, and mines drop and settle. Blasts reach the scenery: a missile that hits or runs out, a mine, a mortar
 shell, a shockwave and the monster truck's crush break fences, crates and even concrete near them, crack or knock holes
 in buildings and shove rubble about, and a missile that flies into a wall goes off there (`blastScenery`). Crates are offered up the road to every
 racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets

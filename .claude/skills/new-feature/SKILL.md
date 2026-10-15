@@ -51,3 +51,6 @@ for a timed cycle, `wear.js` for a per-sample grid, `rockfall.js` for spawned ha
   re-queues equal-length paths forever and the heap grows until it crashes.
 - A rule that caps race progress (gates) needs the AI to know about it too: a car that has passed a gate without taking
   it must be steered back (`c.gateMiss` -> `navControl`), or it drives on and is stuck behind it for the rest of the race.
+- Dense one-line code is the house style, so never put a `//` comment in the middle of a line that carries on: it
+  swallows the rest (the touch Fire button's label and a test helper's `return` both vanished this way). Put the
+  comment at the very end of the statement's line, or on the line above, and run `npx eslint` after every edit.

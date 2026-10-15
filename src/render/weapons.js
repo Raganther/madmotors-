@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { G } from '../game.js';
-import { ITEMS, missilePos, roadPos, WPN } from '../core/features/weapons.js';
+import { ITEMS, missilePos, roadPos, WPN, drumPos } from '../core/features/weapons.js';
 import { emit } from './effects/particles.js';
 import { debris } from './effects/debris.js';
 import { shockwave } from './effects/rings.js';
@@ -15,7 +15,7 @@ import { race } from '../ui/flow.js';
 const L = c => new THREE.MeshLambertMaterial({ color: c }), B = c => new THREE.MeshBasicMaterial({ color: c });
 const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); return b; };
 const cyl = (r, l, m, x = 0, y = 0, z = 0) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 10).rotateX(Math.PI / 2), m); c.position.set(x, y, z); return c; };
-let minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, reticle = null, shellPool = [], markPool = [], craterPool = [], scorches = [], later = [], sci = 0, fi = 0, si = 0, di = 0;
+let drumPool = [], minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, reticle = null, shellPool = [], markPool = [], craterPool = [], scorches = [], later = [], sci = 0, fi = 0, si = 0, di = 0;
 const MAXB = 80, _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _y = new THREE.Vector3(0, 1, 0);
 export function initWeaponVis() {
   const white = L(0xF2F2EE), red = L(0xD8203A);
@@ -95,6 +95,15 @@ export function initWeaponVis() {
   const jetG = new THREE.CylinderGeometry(0.9, 0.16, 1, 12, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
   jetPool = []; for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(jetG, new THREE.MeshBasicMaterial({ color: 0xCFEAFF, map: jetTex, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide })); m.visible = false; scene.add(m); jetPool.push(m); }
   stripPool = []; for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(stripG, L(0x22252B)); m.visible = false; scene.add(m); stripPool.push(m); }
+  // oil drums: a steel drum, two rolling ribs, a yellow hazard band and a black top, tumbling end over end
+  drumPool = [];
+  const drumG = mergeAll([new THREE.CylinderGeometry(0.42, 0.42, 1.0, 14), new THREE.TorusGeometry(0.43, 0.035, 5, 14).rotateX(Math.PI / 2).translate(0, 0.22, 0), new THREE.TorusGeometry(0.43, 0.035, 5, 14).rotateX(Math.PI / 2).translate(0, -0.22, 0)]);
+  for (let k = 0; k < 12; k++) {
+    const g = new THREE.Group(), body = new THREE.Mesh(drumG, L(0x2A3A52)); body.castShadow = true; g.add(body);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.425, 0.425, 0.16, 14, 1, true), L(0xFFC72C)); g.add(band);
+    const lid = new THREE.Mesh(new THREE.CircleGeometry(0.4, 14).rotateX(-Math.PI / 2), L(0x111114)); lid.position.y = 0.505; g.add(lid);
+    g.scale.setScalar(1.35); g.visible = false; scene.add(g); drumPool.push({ g });
+  }
   // proximity mines: a squat olive disc with a hazard band, three prongs and a light that blinks faster once armed
   minePool = [];
   for (let k = 0; k < 16; k++) {
@@ -175,7 +184,7 @@ export function updateWeaponVis(dt, now) {
   if (targetRing) targetRing.visible = false;
   if (reticle) reticle.visible = false;
   for (const p of shellPool) p.g.visible = false; for (const m of markPool) m.visible = false; for (const g of craterPool) g.visible = false;
-  for (const p of missiles) p.g.visible = false; for (const c of crates) c.g.visible = false; for (const m of slickPool) m.visible = false; for (const m of cementPool) m.visible = false; for (const m of jetPool) m.visible = false; for (const m of stripPool) m.visible = false; for (const m of minePool) m.g.visible = false; for (const h of hookPool) { h.g.visible = false; h.line.visible = false; }
+  for (const p of missiles) p.g.visible = false; for (const c of crates) c.g.visible = false; for (const m of slickPool) m.visible = false; for (const m of cementPool) m.visible = false; for (const m of jetPool) m.visible = false; for (const m of stripPool) m.visible = false; for (const m of minePool) m.g.visible = false; for (const d of drumPool) d.g.visible = false; for (const h of hookPool) { h.g.visible = false; h.line.visible = false; }
   if (tracers) tracers.count = 0;
   if (!on || !R) return;
   const P = R.player, pw = P && P.wpn;
@@ -233,7 +242,9 @@ export function updateWeaponVis(dt, now) {
   if (tracers.count) tracers.instanceMatrix.needsUpdate = true;
   S.slicks.forEach((o, j) => { const m = slickPool[j % slickPool.length], p = roadPos(tr, o.s, o.lat, 0.1); m.position.set(p.x, p.y, p.z); m.rotation.y = o.id; m.visible = true; const k = Math.min(1, o.t * 4) * (1 - (o.hits || 0) * 0.18); m.scale.setScalar(Math.max(0.3, k)); });
   (S.cement || []).forEach((o, j) => { const m = cementPool[j % cementPool.length], p = roadPos(tr, o.s, o.lat, 0.09); m.position.set(p.x, p.y, p.z); m.rotation.y = o.id * 1.7; m.visible = true; const k = Math.min(1, o.t * 5) * (o.t > WPN.CEMENT_LIFE - 2 ? (WPN.CEMENT_LIFE - o.t) / 2 : 1); m.scale.setScalar(Math.max(0.05, k)); });
-  (S.mines || []).forEach((o, j) => { const v = minePool[j % minePool.length]; v.g.position.set(o.x, o.y + 0.02, o.z); v.g.rotation.y = o.id; v.g.visible = true; v.lamp.visible = o.t < WPN.MINE_ARM ? Math.floor(now * 3) % 2 === 0 : Math.floor(now * 9) % 2 === 0; });
+  (S.drums || []).forEach((o, j) => { const v = drumPool[j % drumPool.length], p = drumPos(tr, o); v.g.visible = true; v.g.position.set(p.x, p.y, p.z); v.g.rotation.set(Math.PI / 2 + o.t * (6 + o.vs * 0.25), tr.th[p.i] + (o.id % 2 ? 0.4 : -0.4), 0); });   // tumbling end over end
+  // mines dropped off the back fall and settle (drop); the light blinks faster once armed
+  (S.mines || []).forEach((o, j) => { const v = minePool[j % minePool.length], drop = Math.max(0, 1 - o.t / 0.3); v.g.position.set(o.x, o.y + 0.02 + 1.1 * drop * drop, o.z); v.g.rotation.y = o.id; v.g.visible = true; v.lamp.visible = o.t < WPN.MINE_ARM ? Math.floor(now * 3) % 2 === 0 : Math.floor(now * 9) % 2 === 0; });
   (S.strips || []).forEach((o, j) => { const m = stripPool[j % stripPool.length], p = roadPos(tr, o.s, 0, 0.02); m.position.set(p.x, p.y, p.z); m.rotation.y = tr.th[p.i]; m.visible = true; });
   // the jets and tunes playing right now: the fire engine's water, the ice cream van's notes
   let nj = 0;
@@ -269,6 +280,16 @@ export function missileBlast(e) {
   for (let k = 0; k < 14; k++) { const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 7; emit(e.x, e.y, e.z, Math.cos(a) * s, 2 + Math.random() * 6, Math.sin(a) * s, 0.4 + Math.random() * 0.4, 1.2 + Math.random(), Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -2); }
   for (let k = 0; k < 8; k++) emit(e.x + (Math.random() - 0.5) * 2, e.y + Math.random(), e.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 3, 2 + Math.random() * 3, (Math.random() - 0.5) * 3, 1.2 + Math.random() * 0.8, 1.6 + Math.random(), Math.random() < 0.5 ? 0x4A4A4A : 0x6E6E6E, -1.2);
   for (let k = 0; k < 8; k++) debris(e.x, e.y, e.z, (Math.random() - 0.5) * 12, 4 + Math.random() * 6, (Math.random() - 0.5) * 12, 0x2A2A2A, 0.2, 0.08, 0.3, 1.4);
+}
+/** An oil drum hitting the road: a clang, a scuff of dust and a spark or two. */
+export function drumBounceFx(e) { for (let k = 0; k < 6; k++) emit(e.x, e.y + 0.2, e.z, (Math.random() - 0.5) * 3, 0.6 + Math.random(), (Math.random() - 0.5) * 3, 0.5, 0.6, 0x9A9488, -2); }
+/** An oil drum bursting: black oil thrown out in a ring, bits of drum; on a car, a whoomph of flame too. */
+export function drumBurstFx(e) {
+  const r = (e.r || WPN.OIL_R) * 0.9;
+  for (let k = 0; k < 34; k++) { const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 6; emit(e.x, e.y + 0.4, e.z, Math.cos(a) * s, 1.5 + Math.random() * 4, Math.sin(a) * s, 0.6 + Math.random() * 0.3, 0.3 + Math.random() * 0.3, k % 4 ? 0x0C0C10 : 0x3A2E48, -9, 'solid'); }
+  for (let k = 0; k < 5; k++) debris(e.x, e.y + 0.4, e.z, (Math.random() - 0.5) * 9, 3 + Math.random() * 5, (Math.random() - 0.5) * 9, k % 2 ? 0x2A3A52 : 0xFFC72C, 0.35, 0.05, 0.3, 1.6);
+  shockwave(e.x, e.y + 0.05, e.z, r, 0x1A1820);
+  if (e.onCar) { flash(e.x, e.y + 1.2, e.z, 6, 0xFFFFFF, 0.35); for (let k = 0; k < 3; k++) smoke(e.x + (Math.random() - 0.5) * 2, e.y + 1, e.z + (Math.random() - 0.5) * 2, 3, 0x2A2A2E, 1.4, 1.6); }
 }
 /** A mine going off: a ground-hugging fireball, dirt thrown up, a shock ring. */
 export function mineBlast(e) {

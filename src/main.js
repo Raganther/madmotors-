@@ -27,6 +27,7 @@ import { initProps, updateProps } from './render/effects/props.js';
 import { initRings, updateRings } from './render/effects/rings.js';
 import { MODEL_LABEL, MODEL_MODES, modelMode, setModelMode } from './render/assets/index.js';
 import { initSkids } from './render/effects/skids.js';
+import { initTrails } from './render/effects/trails.js';
 import { FX } from './render/materials.js';
 import { contextLost, cycleQuality, initRenderer, perfSample, renderFrame, renderer } from './render/renderer.js';
 import { initCars, updateCarVisuals, rebuildCars } from './render/vehicles.js';
@@ -113,7 +114,7 @@ export async function boot() {
     setSteer(loadSteer()); for (const b of document.querySelectorAll('.steer-btn')) b.hidden = !isTouch;   // steering choice only matters with touch controls
     if (isTouch) { document.documentElement.classList.add('touch'); $('time-block').insertBefore($('speed-block'), $('time-block').querySelector('.hud-btns')); }   // keep the speedo clear of the thumb controls
     $('race-btn').textContent = 'Race ' + STAGES[0].name;
-    step = 'starting WebGL'; initRenderer(); initParticles(); initSparks(); initSkids(); initDebris(); initRings(); initProps();
+    step = 'starting WebGL'; initRenderer(); initParticles(); initSparks(); initSkids(); initTrails(); initDebris(); initRings(); initProps();
     step = 'loading fonts';
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
     step = 'building the cars'; initCars(); elementHook('init'); showVehicle(G.vehicle); refreshBest();
