@@ -20,10 +20,12 @@ drive *through* it scores (a leader on the wrong line can miss it). Win by two, 
 
 **Weapons** (menu: Weapons on/off, every mode; `src/core/features/weapons.js`): drive through a **?** crate with
 nothing in hand to get one of seven weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
-tracers), oil (two drums dropped off the back: each tumbles, bounces and bursts into a slick, and one that lands on a car
+tracers out of the roof gun's muzzle, aimed by pointing the car: no lock, a red laser sight shows where it's pointing,
+and each hit knocks the car sideways off its line), oil (two drums dropped off the back: each tumbles, bounces and bursts into a slick, and one that lands on a car
 bursts all over it: a long slide and a black car), a shockwave (blows the cars round you away and cuts their engines), a
-harpoon (hooks the car ahead: you're reeled in, they're held back), a mortar and proximity mines (two, dropped behind:
-the car that sets one off is thrown up and slowed). F fires. The missile has to **lock**
+harpoon (hooks the car ahead: you're reeled in, they're held back), a mortar and proximity mines (two, thrown off the back:
+each tumbles and bounces down the road, going off against any car it hits on the way, then settles and arms; the car
+that sets one off is thrown up and slowed). F fires. The missile has to **lock**
 first: holding one, keep the car ahead in your sights and corner brackets close in on it (`WPN.LOCK_T`, quicker at
 level 2) until they flash red: fired locked it homes in on that car, fired early it flies straight down the road
 (`lockedOn`; the target hears the lock and gets a warning). The **mortar** lobs a shell high onto where the car ahead
@@ -32,7 +34,7 @@ and leaves a **crater** in the road (missiles that miss leave small ones) that j
 driving into it for the rest of the race, and the AI steers round craters and rings (`W.craters`, `sim/ai.js`). Nuances (render only): tyres print the road for a while out of oil (black), wet cement (grey) and
 water (dark), `render/effects/trails.js`; an oiled or cemented car is coated (`dirt.js` `coat`), oil and water drip off
 it, the water cannon rinses the muck off, a car hit by a missile, shell or mine trails smoke, a stinger leaves a rim
-sparking, and mines drop and settle. Blasts reach the scenery: a missile that hits or runs out, a mine, a mortar
+sparking, and mines tumble end over end and wobble as they settle. Blasts reach the scenery: a missile that hits or runs out, a mine, a mortar
 shell, a shockwave and the monster truck's crush break fences, crates and even concrete near them, crack or knock holes
 in buildings and shove rubble about, and a missile that flies into a wall goes off there (`blastScenery`). Crates are offered up the road to every
 racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets
@@ -567,6 +569,14 @@ becomes a bridge, 9 m under it a tunnel (`roadOnGround` tags them). Pieces drops
 wrecking balls, rockfall, ice, dirt, a town, a waterfall); chicanes and timber bridges go on the nearest straight.
 "Send to Claude" stores it in `tracks` with base "terrain". To make a real stage of one, keep `ground` and `segs`
 and add the look and set pieces on top.
+**Generate land** fills the square with a landscape in a style (rolling hills, mountains, a river valley, canyon
+country, mesas: `generateGround`, seeded value noise, gentler in the middle than at the edges); **Generate road** lays
+a lap on it (`autoRoad`: a loop with a few bends, the best of 18 tries at sitting on the land, short / medium / long,
+with a crest jump on a straight and a water splash in the lowest dip if Set pieces is ticked). Both can be pressed
+again for another and are undoable. Getting about: drag turns, right-drag / Space + drag / two fingers move, wheel or
+pinch zooms; a trackpad's two-finger slide moves the view and its pinch zooms; double-click or double-tap flies
+there; WASD or the arrows move (Shift: faster), Q / E turn, R / F tilt, + / - zoom, 1-9 pick the tools, T top view,
+Home fits, Ctrl+Z undoes; the arrow pad does the moving on a touch screen.
 
 The menu's **Sketch pad** (`src/ui/sketch.js`) is for ideas that aren't a track yet: a 1600 x 1200 sheet (grid or
 plain) with a pen that follows Apple Pencil pressure, a marker, an eraser, line, arrow, box, circle and words, ten

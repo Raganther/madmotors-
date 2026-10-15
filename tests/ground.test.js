@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import M from './core-under-test.js';
 import { closeLoop, fromStroke, sketch } from '../src/core/track/editing.js';
-import { GROUND, blankGround, groundAt, groundFor, groundXZ, roadOnGround } from '../src/core/track/ground.js';
+import { GROUND, LAND_STYLES, autoRoad, blankGround, generateGround, groundAt, groundFor, groundXZ, roadOnGround } from '../src/core/track/ground.js';
 import { buildTerrain } from '../src/core/track/terrain.js';
 
 // a 70 m mountain north-east of the middle, a 25 m deep basin south-west
@@ -58,6 +58,20 @@ describe('painted ground', () => {
     const withPieces = roadOnGround(seg, 0, g, { a: 0, b: 0 }, { pieces: [{ s: 60, tag: 'kick', v: 2.4 }, { s: 330, tag: 'mud', v: 'water' }] }), k = sketch(withPieces, 0, 2);
     const at = tag => { const s = withPieces.findIndex(sg => sg[3][tag] !== undefined); return k.starts[s].a; };
     expect(Math.abs(at('kick') - 60)).toBeLessThan(26); expect(Math.abs(at('mud') - 330)).toBeLessThan(26);
+  });
+  it('Generate land: every style makes land with some lie to it (the same each time for a seed), and Generate road lays a lap on it that builds, with its pieces', () => {
+    const base = M.STAGES[0];
+    for (const style of Object.keys(LAND_STYLES)) {
+      const g = generateGround(style, 11), lo = Math.min(...g.h), hi = Math.max(...g.h);
+      expect(hi - lo, style).toBeGreaterThan(25); expect(generateGround(style, 11).h).toEqual(g.h); expect(generateGround(style, 12).h).not.toEqual(g.h);
+      const rd = autoRoad(g, { seed: 4 }); expect(rd, style).not.toBe(null);
+      const k = sketch(rd.segs, rd.heading, 2); expect(k.gap, style).toBeLessThan(0.6);
+      expect(rd.pieces.some(pc => pc.tag === 'yump'), style).toBe(true);
+      const segs = roadOnGround(rd.segs, rd.heading, g, rd.start, { pieces: rd.pieces });
+      const st = { name: style, blurb: '', type: 'gorge', laps: 2, seed: 7, surface: 'tarmac', hillAmp: 0, armco: true, startHeading: rd.heading, segs, ground: groundFor(g, rd.start), light: base.light, colors: base.colors, trees: base.trees };
+      const tr = M.buildTrack(st); buildTerrain(tr, st); expect(tr.xs.length, style).toBeGreaterThan(600);
+    }
+    for (const len of ['short', 'long']) expect(autoRoad(generateGround('hills', 3), { seed: 2, length: len, pieces: false }).pieces).toEqual([]);
   });
   it('every set piece the Terrain builder offers builds on a painted stage', () => {
     const g = land(), { r } = lap(g), base = M.STAGES[0];

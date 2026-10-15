@@ -127,6 +127,14 @@ describe('weapon modules', () => {
     expect(boom).toBe(1); expect(hit).not.toBe(null); expect(hit.vy).toBeGreaterThan(2); expect(hit.v).toBeLessThan(18);
     expect(P.wpn.uses).toBe(1); expect(R.wpn.mines.length).toBe(0);
   });
+  const WPN_ARM = () => R0time + M.WPN.MINE_ARM; let R0time = 0;
+  it('mines: thrown off the back they tumble and bounce, settle and only then arm; one tumbling into a car goes off on it', () => {
+    { const { R, Wd } = setup('mine', [0, 6, -6], [-90, -100, -110]), ev = []; run(R, Wd, 0.05); const m = R.wpn.mines[0]; expect(m.rest).toBeFalsy(); expect(m.y).toBeGreaterThan(R.player.y + 0.5);
+      run(R, Wd, 3, e => ev.push(e.t)); expect(ev).toContain('mine-bounce'); expect(ev).toContain('mine-settle'); expect(R.wpn.mines.length).toBe(1); expect(R.wpn.mines[0].rest).toBe(true); expect(ev).not.toContain('mine-boom'); }
+    { const { R, Wd, P } = setup('mine', [0, 6, -6], [-7, -100, -110]); let first = null; R0time = R.time;   // the car right behind runs into it while it's still in the air
+      run(R, Wd, 1.5, (e, c) => { if (e.t === 'mine-hit' && c !== P && !first) first = { at: R.time }; });
+      expect(first).not.toBe(null); expect(first.at).toBeLessThan(WPN_ARM()); expect(R.wpn.mines.length).toBe(0); }   // before any mine could have settled and armed
+  });
   it('blasts reach the scenery: a mine breaks the crates near it, a missile even concrete, and nothing far off', () => {
     const Wy = { tr: ytr, terr: M.buildTerrain(ytr, WORKSHOP_STAGE), surf: WORKSHOP_STAGE.surface, armco: true }, R = M.createRace(Wy, DEFS, { weapons: true });
     const crates = R.brk.find(o => o.kind === 'crates'), conc = R.brk.find(o => o.kind === 'concrete');

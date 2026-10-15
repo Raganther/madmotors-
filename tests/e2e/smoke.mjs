@@ -291,6 +291,11 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   const back = await page.evaluate(() => !document.getElementById('tb').hidden);
   if (/to 0 m/.test(raised) || !/closes: a lap/.test(laid) || !drove || !back) errors.push('terrain builder: ' + JSON.stringify({ raised, laid, drove, back }));
   console.log(`terrain builder: ${raised.split(' ·')[0]}; ${laid}; test drive ${drove ? 'ran' : 'FAILED'}; back in the builder ${back}`);
+  // Generate land and Generate road, then a few keys to move about (no errors, the view moves)
+  await page.selectOption('#tb-landstyle', 'valley'); await page.click('#tb-genland'); await page.click('#tb-genroad'); const gen = await page.textContent('#tb-status');
+  await page.mouse.click(cx, cy); await page.click('#tb [data-tool="view"]'); const shot0 = await page.screenshot(); await page.keyboard.down('KeyD'); await page.waitForTimeout(400); await page.keyboard.up('KeyD'); const moved = !shot0.equals(await page.screenshot());
+  if (!/Laid a \d+ m lap/.test(gen) || !moved) errors.push('terrain generate: ' + JSON.stringify({ gen, moved }));
+  console.log(`terrain generate: ${gen}; keys move the view ${moved}`);
   await page.click('#tb-exit'); await page.evaluate(() => localStorage.removeItem('downhill-rush-terrain'));
 }
 // sketch pad: a pen stroke and a box, undo and redo, send it (no database here: kept on this device), reopen it

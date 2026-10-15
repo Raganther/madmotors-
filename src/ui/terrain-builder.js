@@ -3,7 +3,7 @@ import { G } from '../game.js';
 import { STAGES } from '../data/stages/index.js';
 import { buildTrack } from '../core/track/build.js';
 import { closeLoop, fromStroke, sketch } from '../core/track/editing.js';
-import { GROUND, blankGround, groundAt, groundFor, roadOnGround, runOf } from '../core/track/ground.js';
+import { GROUND, LAND_STYLES, autoRoad, blankGround, generateGround, groundAt, groundFor, roadOnGround, runOf } from '../core/track/ground.js';
 import { forgetTrack } from '../render/world/index.js';
 import { $ } from './dom.js';
 import { startRace } from './flow.js';
@@ -15,10 +15,14 @@ import { startRace } from './flow.js';
 // (roadOnGround); where the land does more than that the road cuts through or rides over it. Test drive races it,
 // Send to Claude puts it in the artifact's database ("tracks", base "terrain": the stage carries `ground`) for Claude
 // to turn into a real stage. Drafts are kept in this browser as you go.
-// View: drag to turn round, right-drag (or two fingers) to move, wheel / pinch to zoom; with a brush, one finger paints
-// and two fingers move the view.
+// Generate land makes a landscape in a style (core/track/ground.js generateGround), Generate road lays a lap on it
+// that sits well on the land, with a jump and a splash if wanted (autoRoad); both go on the Undo list.
+// Getting about: drag to turn round, right-drag (or two fingers, or Space + drag) to move, wheel / pinch to zoom; on a
+// trackpad two fingers slide the view and pinch zooms; double-click / double-tap flies there. Keys: WASD or arrows
+// move, Q / E turn, R / F tilt, + / - zoom, 1-9 the tools, T top view, Home fit, Ctrl+Z undo. The arrow pad moves it
+// on a touch screen. With a brush, one finger paints and two fingers move the view.
 const DRAFT = 'downhill-rush-terrain';
-const HINT = { view: 'drag to turn the view, right-drag or two fingers to move it, wheel or pinch to zoom',
+const HINT = { view: 'drag to turn the view, right-drag, two fingers or WASD to move it, wheel or pinch to zoom, double-click to fly there',
   raise: 'drag to raise the ground: hold for a mountain', lower: 'drag to dig valleys and basins', smooth: 'drag to smooth out lumps and ridges',
   flatten: 'drag to level the ground at the height where you started',
   lift: 'drag along the road to hold it up: high over the ground it becomes a bridge', sink: 'drag along the road to sink it: deep under the ground it becomes a tunnel',
@@ -31,7 +35,8 @@ const PIECES = [['kick', 2.4, 'Kicker', '#FF8A3A'], ['yump', 2.6, 'Crest jump', 
 const pieceOf = pc => PIECES.find(q => q[0] === pc.tag && q[1] === pc.v) || PIECES.find(q => q[0] === pc.tag);
 let B = null, built = false, markers = null, roadPts = [], liftPts = [], R = null, scene, cam, terr, roadMesh, roadGhost, ring, strokeLine, startMark, EDIT_IDX = -1, db = null, undo = [], raf = 0;
 const view = { a: 0, b: 0, yaw: 0.5, pitch: 0.75, dist: 900 };
-const ptrs = new Map(); let paint = null, stroke = null, gesture = null, lastT = 0, roadDirty = 0;
+const ptrs = new Map(); let paint = null, stroke = null, gesture = null, lastT = 0, roadDirty = 0, goal = null, trackpad = false, space = false, lastTap = null, genSeed = 0;
+const keys = new Set(), padHeld = new Set(), TOOLS = ['view', 'raise', 'lower', 'smooth', 'flatten', 'road', 'lift', 'sink', 'pieces'];
 const clone = o => JSON.parse(JSON.stringify(o));
 
 export function initTerrainBuilder() {
@@ -52,6 +57,12 @@ export function initTerrainBuilder() {
   for (const [id, f] of [['tb-left', () => { view.yaw -= Math.PI / 8; }], ['tb-right', () => { view.yaw += Math.PI / 8; }], ['tb-top', () => { view.pitch = view.pitch > 1.4 ? 0.75 : 1.5; }],
     ['tb-zoomin', () => { view.dist = Math.max(80, view.dist / 1.3); }], ['tb-zoomout', () => { view.dist = Math.min(1600, view.dist * 1.3); }], ['tb-fit', fitView]]) $(id).addEventListener('click', f);
   addEventListener('resize', () => { if (!$('tb').hidden) resize(); });
+  $('tb-landstyle').innerHTML = Object.entries(LAND_STYLES).map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
+  $('tb-genland').addEventListener('click', genLand); $('tb-genroad').addEventListener('click', genRoad);
+  document.querySelectorAll('#tb [data-pan]').forEach(b => { const d = b.dataset.pan, off = () => padHeld.delete(d);
+    b.addEventListener('pointerdown', e => { e.preventDefault(); goal = null; padHeld.add(d); b.setPointerCapture(e.pointerId); }); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off); });
+  addEventListener('keydown', keyDown); addEventListener('keyup', e => { keys.delete(e.code); if (e.code === 'Space') space = false; });
+  addEventListener('blur', () => { keys.clear(); padHeld.clear(); space = false; });
   if (window.claude && window.claude.use) window.claude.use('db').then(d => { db = d; });
 }
 export function openTerrain(back = false) {
@@ -69,7 +80,17 @@ function newCanvas() {
   const old = $('tb-view'), cv = document.createElement('canvas'); cv.id = 'tb-view'; old.replaceWith(cv);
   cv.addEventListener('pointerdown', down); cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('contextmenu', e => e.preventDefault());
-  cv.addEventListener('wheel', e => { e.preventDefault(); view.dist = Math.max(80, Math.min(1600, view.dist * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
+  // the wheel: a mouse wheel zooms; on a trackpad (seen by its sideways or fine-grained scrolling) two fingers slide the
+  // view and a pinch (which browsers send as the wheel with Ctrl held) zooms; Shift / Alt + wheel turns and tilts
+  cv.addEventListener('wheel', e => {
+    e.preventDefault(); goal = null; const px = e.deltaMode === 1 ? 16 : 1, dx = e.deltaX * px, dy = e.deltaY * px;
+    if (!e.ctrlKey && (dx || (dy && Math.abs(dy) < 4 && !Number.isInteger(dy)))) trackpad = true;
+    if (e.ctrlKey) zoomBy(Math.exp(dy * 0.01));
+    else if (e.altKey || (e.shiftKey && !trackpad)) { view.yaw += (dx || dy) * 0.004; view.pitch = Math.max(0.25, Math.min(1.53, view.pitch + (e.shiftKey ? 0 : dy * 0.003))); }
+    else if (trackpad) panBy(-dx, -dy);
+    else zoomBy(Math.exp(dy * 0.0012));
+  }, { passive: false });
+  cv.addEventListener('dblclick', e => { const p = hit(e); if (p) flyTo(p); });
   return cv;
 }
 function release3D() {
@@ -181,6 +202,7 @@ function placeCam() {
 function frame(t) {
   raf = requestAnimationFrame(frame); const dt = Math.min(0.1, (t - lastT) / 1000); lastT = t;
   if (paint) brush(dt);
+  navigate(dt);
   if (roadDirty && t > roadDirty) { roadDirty = 0; roadChanged(); }
   if (markers) { const k = view.dist / 500; for (const o of markers.children) if (o.isSprite) o.scale.set(28 * k, 7 * k, 1); }   // flags readable at any zoom
   placeCam(); R.render(scene, cam);
@@ -198,8 +220,10 @@ function hit(e) {
 function down(e) {
   const cv = $('tb-view'); cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (ptrs.size >= 2) { endStroke(true); gesture = twoFinger(); return; }
-  const orbit = B.tool === 'view' || e.button === 2 || e.button === 1 || e.shiftKey;
-  if (orbit) { gesture = { kind: e.button === 2 || e.button === 1 || e.shiftKey ? 'pan' : 'orbit', x: e.clientX, y: e.clientY }; return; }
+  goal = null; hidePick();
+  if (e.pointerType === 'touch') { const now = performance.now(); if (lastTap && now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) { lastTap = null; const p = hit(e); if (p) flyTo(p); return; } lastTap = { t: now, x: e.clientX, y: e.clientY }; }   // a double tap flies there
+  const pan = e.button === 2 || e.button === 1 || e.shiftKey || space, orbit = B.tool === 'view' || pan;
+  if (orbit) { gesture = { kind: pan ? 'pan' : 'orbit', x: e.clientX, y: e.clientY }; return; }
   const p = hit(e); if (!p) return;
   if (B.tool === 'road') { stroke = [p]; drawStroke(); return; }
   if (B.tool === 'pieces') { pickAt(p, e); return; }
@@ -229,6 +253,42 @@ function endStroke(drop) { if (stroke && drop) { stroke = null; drawStroke(); } 
 function panBy(dx, dy) {
   const s = view.dist / ($('tb-view').getBoundingClientRect().height || 600) * 0.9, c = Math.cos(view.yaw), sn = Math.sin(view.yaw);
   view.a -= (dx * c - dy * sn / Math.max(0.35, Math.sin(view.pitch))) * s; view.b += (dx * sn + dy * c / Math.max(0.35, Math.sin(view.pitch))) * s;
+}
+const zoomBy = k => { view.dist = Math.max(60, Math.min(1600, view.dist * k)); };
+function flyTo(p) { goal = { a: p.a, b: p.b, dist: Math.max(140, Math.min(view.dist, view.dist * 0.6)) }; }
+// held keys and the arrow pad move the view; a fly-to eases there
+function navigate(dt) {
+  let mx = 0, my = 0; const K = c => keys.has(c);
+  if (K('KeyA') || K('ArrowLeft') || padHeld.has('l')) mx -= 1; if (K('KeyD') || K('ArrowRight') || padHeld.has('r')) mx += 1;
+  if (K('KeyW') || K('ArrowUp') || padHeld.has('u')) my -= 1; if (K('KeyS') || K('ArrowDown') || padHeld.has('d')) my += 1;
+  const fast = K('ShiftLeft') || K('ShiftRight') ? 2.5 : 1, h = $('tb-view').getBoundingClientRect().height || 600;
+  if (mx || my) { goal = null; panBy(-mx * h * 0.9 * dt * fast, -my * h * 0.9 * dt * fast); }
+  if (K('KeyQ')) view.yaw += 1.6 * dt; if (K('KeyE')) view.yaw -= 1.6 * dt;
+  if (K('KeyR') || K('PageUp')) view.pitch = Math.min(1.53, view.pitch + dt); if (K('KeyF') || K('PageDown')) view.pitch = Math.max(0.25, view.pitch - dt);
+  if (K('Equal') || K('NumpadAdd')) zoomBy(Math.exp(-dt * 1.6)); if (K('Minus') || K('NumpadSubtract')) zoomBy(Math.exp(dt * 1.6));
+  if (goal) { const k = Math.min(1, dt * 5); view.a += (goal.a - view.a) * k; view.b += (goal.b - view.b) * k; view.dist += (goal.dist - view.dist) * k; if (Math.hypot(goal.a - view.a, goal.b - view.b) < 1 && Math.abs(goal.dist - view.dist) < 2) goal = null; }
+}
+function keyDown(e) {
+  if ($('tb').hidden || e.target.closest('input, textarea, select')) return;
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); $('tb-undo').click(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const n = /^Digit([1-9])$/.exec(e.code); if (n) { setTool(TOOLS[+n[1] - 1]); return; }
+  if (e.code === 'KeyT') { view.pitch = view.pitch > 1.4 ? 0.75 : 1.5; return; }
+  if (e.code === 'Home' || e.code === 'Digit0') { fitView(); return; }
+  if (e.code === 'Space') { space = true; e.preventDefault(); return; }
+  if (/^(Key[WASDQERF]|Arrow|Page|Equal|Minus|Numpad(Add|Subtract)|Shift)/.test(e.code)) { keys.add(e.code); if (e.code.startsWith('Arrow') || e.code.startsWith('Page')) e.preventDefault(); }
+}
+// Generate land: a new landscape in the chosen style (a new one each press); the road, if there is one, is laid on it again
+function genLand() {
+  remember(); const st = $('tb-landstyle').value, g = generateGround(st, (Date.now() % 100000) + genSeed++);
+  B.ground.h = g.h.slice(); groundChanged(true); roadChanged(); save(); status(`${LAND_STYLES[st]}: a new landscape. Press again for another, or shape it with the brushes.`);
+}
+// Generate road: a lap round the middle that sits well on this land (a new one each press)
+function genRoad() {
+  const rd = autoRoad(B.ground, { seed: (Date.now() % 100000) + genSeed++, length: $('tb-roadlen').value, pieces: $('tb-genpieces').checked });
+  if (!rd) { status('Couldn\'t fit a road on this land: try again, or a shorter one.', true); return; }
+  remember(); B.road = rd; roadChanged(); fitView(); save();
+  status(`Laid a ${Math.round(B.road.len)} m lap${rd.pieces.length ? ` with ${rd.pieces.map(pc => pieceOf(pc)[2].toLowerCase()).join(' and ')}` : ''}. Test drive it, press again for another, or reshape it.`);
 }
 function showRing(p) {
   if (!p || B.tool === 'view' || B.tool === 'road' || B.tool === 'pieces') { ring.visible = false; return; }
@@ -308,7 +368,7 @@ function status(msg, bad) {
   const land = `Ground ${Math.round(lo)} m to ${Math.round(hi)} m`;
   el.textContent = msg || (rd ? `${land} · road ${Math.round(rd.len || 0)} m, ${Math.round(rd.lo)} m to ${Math.round(rd.hi)} m high${rd.bridges ? ` · ${rd.bridges} bridge piece${rd.bridges > 1 ? 's' : ''}` : ''}${rd.tunnels ? ` · ${rd.tunnels} in tunnel` : ''}${(rd.pieces || []).length ? ` · ${rd.pieces.length} set piece${rd.pieces.length > 1 ? 's' : ''}` : ''}${rd.gap > 0.6 ? ` · open: its end is ${Math.round(rd.gap)} m from the start` : ' · a lap'}` : `${land} · shape the land, then pick Road and paint the track on it`);
   el.className = 'ed-status' + (bad || (!msg && rd && rd.gap > 0.6) ? ' bad' : '');
-  $('tb-legend').textContent = `${HINT[B.tool]}${B.tool !== 'view' && B.tool !== 'road' && B.tool !== 'pieces' ? ` · brush ${B.size} m, strength ${B.power}` : ''} · contours every 5 m`;
+  $('tb-legend').textContent = `${HINT[B.tool]}${B.tool !== 'view' && B.tool !== 'road' && B.tool !== 'pieces' ? ` · brush ${B.size} m, strength ${B.power}` : ''} · WASD / arrows move, Q E turn, Space + drag moves, 1-9 tools · contours every 5 m`;
 }
 function stage() {
   const rd = B.road, look = STAGES[0];
