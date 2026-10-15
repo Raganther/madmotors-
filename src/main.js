@@ -13,7 +13,7 @@ import { initTerrainBuilder } from './ui/terrain-builder.js';
 import { initSketch } from './ui/sketch.js';
 import { openWorkshop, workshopParam } from './ui/workshop.js';
 import { AudioSys } from './audio/audio.js';
-import { wireSound } from './ui/sounds.js';
+import { showTrack, wireSound } from './ui/sounds.js';
 import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
 import { raceStep } from './core/sim/race.js';
@@ -52,7 +52,7 @@ export function frame(t) {
     if (n < G.lastBeep && n >= 1) { G.lastBeep = n; AudioSys.beep(440, 0.15); }
     $('countdown').hidden = false; $('countdown').textContent = n >= 1 ? n : 'Go!';
     AudioSys.update(race.player, 'rev', race.cars, G.camDir);
-    if (G.countdown <= 0.2) { G.state = 'racing'; race.phase = 'racing'; AudioSys.beep(880, 0.3); AudioSys.music('race'); G.goTimer = 0.8; G.accumulator = 0; }
+    if (G.countdown <= 0.2) { G.state = 'racing'; race.phase = 'racing'; AudioSys.beep(880, 0.3); AudioSys.music('race'); showTrack(AudioSys.track()); G.goTimer = 0.8; G.accumulator = 0; }
   } else if (G.state === 'racing') {
     if (!race.player.finished) readInput(dt);
     let simDt = dt; if (G.slowmo > 0) { G.slowmo -= dt; simDt = dt * 0.35; }

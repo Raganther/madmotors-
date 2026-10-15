@@ -271,7 +271,14 @@ collisions go through `AudioSys.crash(kind, v, at)` by material (`car`, `rail`, 
 quickening beep, a whistle over each incoming mortar shell. `audio/music.js` is the soundtrack, sequenced live: a synth
 band (kick, snare, hats, saw bass, detuned lead with echo, pads, arpeggio) playing a menu theme and an A minor race
 theme (intro, hook, second hook, bridge, break) that lifts on the final lap, with a fanfare or a fall at the finish;
-paused, it's muffled. Levels (Effects, Engines, Music) are the menu's Sound panel, kept in this browser; M mutes.
+paused, it's muffled. The race tracks are twenty songs, each a style (`audio/songs.js`: synth rock, synthwave,
+breakbeat, chiptune, surf, drum and bass, funk, desert, eurobeat, punk, ska, house, big beat, western, trance, jazz,
+dubstep, metal, lo-fi, arcade), written as data: tempo, swing, key and scale, verse and bridge chords, drum patterns
+and kit, a bass pattern and sound, the chords' instrument, the lead's sound and the feel its melody is drawn from
+(`music.js` `melody`: generated motifs that follow the chords, seeded by the name; the theme's lines are written
+out). Each race plays the next one in turn (or only the liked ones); in a race ] / [ or the HUD's note button change
+track and L likes it, and the Sound panel lists them all to play and heart. Levels (Effects, Engines, Music) are the
+menu's Sound panel, kept in this browser; M mutes.
 To add a sound: a recipe in `synth.js` (and its takes), then play it from `sounds.js`.
 
 ### Rules that keep it maintainable

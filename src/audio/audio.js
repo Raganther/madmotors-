@@ -4,14 +4,14 @@ import { WPN, roadPos } from '../core/features/weapons.js';
 import { G } from '../game.js';
 import { wallFx } from '../render/effects/impacts.js';
 import { engineHz, playerEngine, rivalEngine } from './engine.js';
-import { Music } from './music.js';
+import { Music, SONGS } from './music.js';
 import { SFX } from './sfx.js';
 
 // ---------- audio ----------
 // Three buses into one master (and a compressor that keeps a pile-up from clipping): the engines and road noise, the
 // effects (sfx.js: the designed sounds, placed in the scene) and the music (music.js). Their levels are the Sound
 // settings (menu: Sound), kept in this browser. M mutes everything.
-const SETTINGS = 'downhill-rush-sound', DEF = { fx: 0.9, eng: 0.8, mus: 0.55, on: true };
+const SETTINGS = 'downhill-rush-sound', DEF = { fx: 0.9, eng: 0.8, mus: 0.55, on: true, liked: [], only: false, next: 0 };
 const load = () => { try { return { ...DEF, ...JSON.parse(localStorage.getItem(SETTINGS) || '{}') }; } catch (e) { return { ...DEF }; } };
 // what a collision sounds like, by what was hit: [sound, pitch, level] layers (pitch drops as the hit gets heavier)
 const HIT = {
@@ -128,7 +128,21 @@ export const AudioSys = {
   click() { this.sfx('click', { vol: 0.5, jitter: 0.04, wet: 0 }); },
   // ---- music and settings ----
   /** Which song plays ('menu' / 'race' / null); remembered until the audio is allowed to start. */
-  music(name) { this.wantSong = name; if (this.ctx) Music.play(name); },
+  music(name) {
+    if (name === 'race' && this.wantSong !== 'race') {   // a new race: the next track in turn (of the liked ones, if that's the setting)
+      const pool = this.set.only && this.set.liked.length ? SONGS.map((s, i) => i).filter(i => this.set.liked.includes(SONGS[i].name)) : SONGS.map((s, i) => i);
+      Music.idx = pool[this.set.next % pool.length]; this.set.next = (this.set.next + 1) % pool.length; this.save();
+    }
+    this.wantSong = name; if (this.ctx) Music.play(name);
+  },
+  /** The race track playing (or next to): its number, the song, and whether it's liked. */
+  track() { const i = Music.idx, s = SONGS[i]; return { i, n: SONGS.length, song: s, liked: this.set.liked.includes(s.name) }; },
+  /** Change the race track by `dir` (1 next, -1 back); it plays at once if a race track is playing. */
+  musicNext(dir) { Music.idx = (Music.idx + dir + SONGS.length) % SONGS.length; if (this.wantSong === 'race' && this.ctx) Music.play('race'); return this.track(); },
+  /** Heart / un-heart a race track (song number i, or the current one). */
+  like(i = Music.idx) { const n = SONGS[i].name, L = this.set.liked; if (L.includes(n)) L.splice(L.indexOf(n), 1); else L.push(n); this.save(); return L.includes(n); },
+  /** Play song i in the menu (the Sound panel's list), or go back to the menu theme (null). */
+  preview(i) { this.init(); if (i === null) { this.music('menu'); return; } Music.idx = i; this.wantSong = 'preview'; Music.play(i); },
   musicIntensity(k) { Music.intensity = k; },
   musicPause(on) { Music.pause(on); },
   stinger(kind) { Music.stinger(kind); },

@@ -193,7 +193,10 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .ed-pinbtns{display:flex;gap:6px;margin-top:6px} .ed-pinbtns button{padding:5px 10px;font-size:13px;min-width:0}
 .ed-pins{padding:0 10px;font-size:13px} .ed-pins:empty{display:none} .ed-pins h4{margin:8px 0 4px;font-size:13px;color:var(--mist)} .ed-pins div{padding:4px 6px;border-radius:7px;cursor:pointer} .ed-pins div:hover{background:rgba(255,255,255,.06)} .ed-pins b{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:var(--yellow);color:var(--ink);text-align:center;font-size:11px;line-height:18px;margin-right:6px}
 .ed-f textarea{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:4px 6px;font:inherit;font-size:14px}
-.snd-panel{display:flex;flex-direction:column;gap:6px;background:var(--panel);border-radius:12px;padding:10px 14px;margin-top:8px;max-width:320px;font-size:14px} .snd-panel[hidden]{display:none} .snd-panel label{display:flex;align-items:center;justify-content:space-between;gap:10px} .snd-panel input{width:170px}
+#mus-tag{display:flex;align-items:center;gap:4px;margin-top:6px;background:var(--panel);border-radius:10px;padding:4px 6px;pointer-events:auto;max-width:360px;font-size:13px} #mus-tag[hidden]{display:none} #mus-tag button{background:none;border:0;color:#fff;font-size:15px;padding:2px 6px} #mus-name{flex:1;line-height:1.2} #mus-name small{display:block;opacity:.75;font-size:11px} #mus-like.on{color:#FF5A7A}
+.snd-list{display:flex;flex-direction:column;gap:2px;max-height:260px;overflow:auto;background:rgba(0,0,0,.2);border-radius:8px;padding:4px} .snd-list div{display:flex;align-items:center;gap:6px;font-size:13px} .snd-list span{flex:1} .snd-list small{opacity:.7} .snd-list button{background:none;border:0;color:#fff;font-size:15px;padding:2px 6px} .snd-list .on{color:#FF5A7A} .snd-list .playing{color:#FFC72C}
+.snd-panel select{background:rgba(0,0,0,.3);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:7px;padding:3px 5px;font:inherit}
+.snd-panel{display:flex;flex-direction:column;gap:6px;background:var(--panel);border-radius:12px;padding:10px 14px;margin-top:8px;max-width:420px;font-size:14px} .snd-panel[hidden]{display:none} .snd-panel label{display:flex;align-items:center;justify-content:space-between;gap:10px} .snd-panel input{width:170px}
 .ed-zoom{position:absolute;right:10px;top:10px;display:flex;gap:6px} .ed-zoom button{background:var(--panel);border:0;border-radius:8px;min-width:34px;height:34px;font-weight:700;font-size:17px;color:#fff}
 .ed-side{display:flex;flex-direction:column;min-height:0;background:rgba(28,35,64,.7);border-left:1px solid rgba(255,255,255,.1)}
 #ed-sec{padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid rgba(255,255,255,.1)}
@@ -349,6 +352,8 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
       <label>Effects <input id="snd-fx" type="range" min="0" max="1" step="0.05"></label>
       <label>Engines <input id="snd-eng" type="range" min="0" max="1" step="0.05"></label>
       <label>Music <input id="snd-mus" type="range" min="0" max="1" step="0.05"></label>
+      <label>Race music <select id="snd-only"><option value="0">Every track in turn</option><option value="1">Only tracks I like</option></select></label>
+      <div class="snd-list" id="snd-list"></div>
       <button id="snd-mute" class="ghost-btn" type="button">Mute all (M)</button></div>
   </div>
 </div>
@@ -358,7 +363,8 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   <div id="sd-panel" hidden><div class="sd-title" id="sd-title">Showdown</div><ol id="sd-rows"></ol></div>
   <div id="pos-block"><div id="pos"><span id="pos-n">1</span><span id="pos-suf">st</span></div><div id="lap" hidden></div><ol id="standings"></ol></div>
   <div id="profile-wrap"><canvas id="profile" aria-label="Stage profile showing each car's position on the descent"></canvas><div id="stage-name"></div></div>
-  <div id="time-block"><div id="time">0:00.00</div><div id="best"></div><div class="hud-btns"><button id="note-btn" type="button" title="Leave a note on the track for Claude (N)">Note</button><button id="reset-btn" type="button">Reset</button><button id="pause-btn" type="button">Pause</button></div></div>
+  <div id="time-block"><div id="time">0:00.00</div><div id="best"></div><div class="hud-btns"><button id="note-btn" type="button" title="Leave a note on the track for Claude (N)">Note</button><button id="reset-btn" type="button">Reset</button><button id="pause-btn" type="button">Pause</button><button id="mus-btn" type="button" title="Race music: next track (]), previous ([), like (L)">&#9835;</button></div>
+    <div id="mus-tag" hidden><button id="mus-prev" type="button" aria-label="Previous track">&#9664;</button><span id="mus-name"></span><button id="mus-like" type="button" aria-label="Like this track">&#9825;</button><button id="mus-next" type="button" aria-label="Next track">&#9654;</button></div></div>
   <div id="wpn" hidden><b id="wpn-state">Missile ready</b><span id="wpn-bar"><i id="wpn-fill"></i></span></div>
   <div id="speed-block"><svg id="dmg" viewBox="0 0 24 40" role="img" aria-label="Car damage"><rect x="7" y="9" width="10" height="22" rx="2" fill="rgba(255,255,255,.12)"/><rect id="dz-f" x="4" y="0" width="16" height="7" rx="2"/><rect id="dz-b" x="4" y="33" width="16" height="7" rx="2"/><rect id="dz-l" x="0" y="9" width="5" height="22" rx="2"/><rect id="dz-r" x="19" y="9" width="5" height="22" rx="2"/></svg><div id="speed">0</div><div class="unit">km/h</div><div id="boost"><div id="boost-fill"></div></div></div>
   <div id="callout" hidden></div>

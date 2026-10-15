@@ -1,4 +1,5 @@
 import { AudioSys } from '../audio/audio.js';
+import { SONGS } from '../audio/songs.js';
 import { BREAKABLES } from '../data/breakables.js';
 import { G } from '../game.js';
 import { race } from './flow.js';
@@ -98,7 +99,39 @@ export function wireSound() {
   addEventListener('keydown', e => { if (e.code === 'KeyM') setTimeout(mute); });
   mute();
   document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b && AudioSys.ctx && !b.closest('#touch')) AudioSys.click(); }, true);
+  // the race music: the HUD's tag (back, next, like) and keys ] [ L; the panel's list (play one, like it)
+  $('mus-btn').addEventListener('click', () => { AudioSys.init(); showTrack(AudioSys.musicNext(1)); });
+  $('mus-prev').addEventListener('click', () => showTrack(AudioSys.musicNext(-1)));
+  $('mus-next').addEventListener('click', () => showTrack(AudioSys.musicNext(1)));
+  $('mus-like').addEventListener('click', () => { AudioSys.like(); showTrack(AudioSys.track()); list(); });
+  addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('input, textarea, select') || G.state === 'menu') return;
+    if (e.code === 'BracketRight') showTrack(AudioSys.musicNext(1)); else if (e.code === 'BracketLeft') showTrack(AudioSys.musicNext(-1)); else if (e.code === 'KeyL') { AudioSys.like(); showTrack(AudioSys.track()); }
+  });
+  $('snd-only').value = AudioSys.set.only ? '1' : '0';
+  $('snd-only').addEventListener('change', e => { AudioSys.set.only = e.target.value === '1'; AudioSys.set.next = 0; AudioSys.save(); });
+  const list = () => {
+    const playing = AudioSys.wantSong === 'preview' ? AudioSys.track().i : -1;
+    $('snd-list').innerHTML = SONGS.map((sg, i) => `<div><button type="button" data-play="${i}" class="${i === playing ? 'playing' : ''}" aria-label="Play ${sg.name}">${i === playing ? '&#9632;' : '&#9654;'}</button><span>${i + 1}. ${sg.name}<br><small>${sg.style}</small></span><button type="button" data-like="${i}" class="${AudioSys.set.liked.includes(sg.name) ? 'on' : ''}" aria-label="Like ${sg.name}">${AudioSys.set.liked.includes(sg.name) ? '&#9829;' : '&#9825;'}</button></div>`).join('');
+  };
+  $('snd-list').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.like) AudioSys.like(+b.dataset.like);
+    else { const i = +b.dataset.play; AudioSys.preview(AudioSys.wantSong === 'preview' && AudioSys.track().i === i ? null : i); }
+    list();
+  });
+  btn.addEventListener('click', () => { if (panel.hidden && AudioSys.wantSong === 'preview') { AudioSys.preview(null); } list(); });
+  list();
   // the menu's theme starts with the first tap or key (browsers keep the sound off until then)
   const wake = () => { AudioSys.init(); if (AudioSys.wantSong === undefined) AudioSys.music('menu'); removeEventListener('pointerdown', wake); removeEventListener('keydown', wake); };
   addEventListener('pointerdown', wake); addEventListener('keydown', wake);
+}
+
+let tagT = 0;
+/** Show the race track playing in the HUD for a few seconds: its number, name and style, and the heart. */
+export function showTrack(tr) {
+  if (!tr) return;
+  $('mus-name').innerHTML = `${tr.i + 1}/${tr.n} ${tr.song.name}<small>${tr.song.style}</small>`;
+  const lk = $('mus-like'); lk.classList.toggle('on', tr.liked); lk.innerHTML = tr.liked ? '&#9829;' : '&#9825;';
+  $('mus-tag').hidden = false; clearTimeout(tagT); tagT = setTimeout(() => { $('mus-tag').hidden = true; }, 5000);
 }
