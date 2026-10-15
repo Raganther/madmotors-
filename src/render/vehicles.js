@@ -125,7 +125,7 @@ export function wreckFx(c, isPlayer, near) {
   else if (v) { breakApart(c, v, { power: 1 }); v.wreckFx = 1; }                     // wheels, bumper, wing and lights fly off
   c.smokeT = c.out ? 1e9 : WRECK_T;
   if (isPlayer) { G.shake = Math.min(1.6, G.shake + 1.2); G.slowmo = Math.max(G.slowmo, 0.3); if (!race.sd) callout('Wrecked!'); }
-  if (isPlayer || near) AudioSys.crash('car', isPlayer ? 1 : 0.5);
+  if (isPlayer || near) { AudioSys.crash('car', isPlayer ? 1 : 0.6, c); AudioSys.sfx('glass', { at: c, vol: 0.6 }); AudioSys.sfx('rubble', { at: c, vol: 0.35, rate: 1.4 }); }   // bits raining down
 }
 // Road car takedown: it blows apart. Fireball, streaks of sparks, wheels and panels flying, glass, a black
 // smoke column; the shell is scorched and tumbles through the air (see drawCar), then burns where it lands.
@@ -145,7 +145,7 @@ export function takedownFx(c, e, isPlayer, near) {
   }
   c.smokeT = 1e9;
   if (isPlayer) { G.shake = Math.min(1.8, G.shake + 1.1); G.slowmo = Math.max(G.slowmo, 0.35); }
-  if (isPlayer || near) AudioSys.crash('car', isPlayer ? 1 : 0.6);
+  if (isPlayer || near) { AudioSys.boom(c, big > 1.1 ? 'big' : 'mid', isPlayer ? 1 : 0.8); AudioSys.crash('car', 1, c); AudioSys.sfx('glass', { at: c, vol: 0.7 }); }
 }
 const _scorch = new THREE.Color(0x1A1612);
 // a car out of a derby (core/modes/derby.js): it stays where it died, a scorched and battered shell that smokes till the
@@ -164,7 +164,7 @@ export function sdBoomFx(c, onScreen) {
   shockwave(c.x, c.y, c.z, 11, col); shockwave(c.x, c.y + 0.4, c.z, 6, 0xFFE08A);
   for (let k = 0; k < 20; k++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 7; emit(c.x, c.y + 1, c.z, Math.cos(a) * r, 4 + Math.random() * 7, Math.sin(a) * r, 0.5 + Math.random() * 0.5, 1.6 + Math.random() * 1.4, k % 4 === 0 ? col : k % 2 ? 0xFFB03A : 0xFFE27A, 4); }
   for (let k = 0; k < 9; k++) emit(c.x + (Math.random() - 0.5) * 1.5, c.y + 1.5, c.z + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, 5 + Math.random() * 4, (Math.random() - 0.5) * 1.5, 1.6 + Math.random() * 0.8, 2.2 + Math.random() * 1.5, 0x3A3A3A, -1.5);
-  if (onScreen) { G.shake = Math.min(1.8, G.shake + (c.isPlayer ? 1.4 : 0.7)); AudioSys.crash('car', c.isPlayer ? 1 : 0.8); }
+  if (onScreen) { G.shake = Math.min(1.8, G.shake + (c.isPlayer ? 1.4 : 0.7)); AudioSys.boom(c, 'mid', c.isPlayer ? 1 : 0.8); }
 }
 // Showdown respawn: a ring and sparkles in the car's colour so you can see where it came back
 export function sdSpawnFx(c) {

@@ -8,7 +8,7 @@ import { NO_PANELS } from '../../src/data/anatomy.js';
 
 const file = path.resolve('dist/index.html'), outDir = path.resolve('tests/e2e/shots');
 fs.mkdirSync(outDir, { recursive: true });
-const opts = { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] };
+const opts = { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] };   // (sound on: the audio runs too)
 if (fs.existsSync('/opt/pw-browsers/chromium')) opts.executablePath = undefined;
 const browser = await chromium.launch(opts);
 const page = await browser.newPage({ viewport: { width: 960, height: 540 } }); page.setDefaultTimeout(120000);   // (screenshots under SwiftShader on a busy machine)

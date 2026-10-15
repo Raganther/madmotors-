@@ -250,11 +250,29 @@ src/
   render/               three.js: renderer & quality, materials/shaders, world (terrain, road, barriers,
                         scenery: draws core's obstacles with world/shapes.js, spectators, houses), elements/ (each element's and feature's visuals), vehicles (racer bodies: carmodels.js, one builder per `model`; paint, glass, chrome and occlusion: carpaint.js; garage pictures: thumbs.js), effects,
                         camera, overlay.js (debug overlay)
-  audio/                Web Audio synth (engine, crashes, horns, bells)
+  audio/                Web Audio: engines (engine.js), the sound library synthesised at start (synth.js), placed
+                        one-shots and loops (sfx.js), the soundtrack (music.js), buses and settings (audio.js)
   ui/                   HUD, menu/flow (countdown, pause, results), garage, league, career, input, storage
 tests/                  golden simulation tests, scenarios, browser smoke test
 tools/                  layout / terrain / sandbox / benchmark tools
 ```
+
+### Sound
+
+No sample files: everything is made in the browser. `audio/synth.js` draws the effects into buffers when the audio
+starts (in the background, a few at a time): metal as inharmonic ringing modes (a panel, a barrel, a mine), explosions
+as a falling sub thump under closing noise and crackle, bricks as dozens of low noise grains, glass as high pings,
+wood as a snap and crackle, gunshots, ricochets, splashes, fire, a tyre bursting, a crowd (pitched voices through
+vowel formants), each in a few takes. `audio/sfx.js` plays them where they happened: quieter and duller with
+distance from the player, panned by where they are on screen, with a little generated reverb, takes and pitch varied,
+voices capped. Which event makes which sound is one table, `ui/sounds.js` (`eventSound`, called from `handleEvents`);
+collisions go through `AudioSys.crash(kind, v, at)` by material (`car`, `rail`, `stone`, `wood`, `hay`, `rubber`,
+`bricks`). Loops: fire near a burning slick, steam from a battered engine (which also misfires), the missile lock's
+quickening beep, a whistle over each incoming mortar shell. `audio/music.js` is the soundtrack, sequenced live: a synth
+band (kick, snare, hats, saw bass, detuned lead with echo, pads, arpeggio) playing a menu theme and an A minor race
+theme (intro, hook, second hook, bridge, break) that lifts on the final lap, with a fanfare or a fall at the finish;
+paused, it's muffled. Levels (Effects, Engines, Music) are the menu's Sound panel, kept in this browser; M mutes.
+To add a sound: a recipe in `synth.js` (and its takes), then play it from `sounds.js`.
 
 ### Rules that keep it maintainable
 

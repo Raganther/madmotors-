@@ -193,6 +193,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .ed-pinbtns{display:flex;gap:6px;margin-top:6px} .ed-pinbtns button{padding:5px 10px;font-size:13px;min-width:0}
 .ed-pins{padding:0 10px;font-size:13px} .ed-pins:empty{display:none} .ed-pins h4{margin:8px 0 4px;font-size:13px;color:var(--mist)} .ed-pins div{padding:4px 6px;border-radius:7px;cursor:pointer} .ed-pins div:hover{background:rgba(255,255,255,.06)} .ed-pins b{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:var(--yellow);color:var(--ink);text-align:center;font-size:11px;line-height:18px;margin-right:6px}
 .ed-f textarea{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:4px 6px;font:inherit;font-size:14px}
+.snd-panel{display:flex;flex-direction:column;gap:6px;background:var(--panel);border-radius:12px;padding:10px 14px;margin-top:8px;max-width:320px;font-size:14px} .snd-panel[hidden]{display:none} .snd-panel label{display:flex;align-items:center;justify-content:space-between;gap:10px} .snd-panel input{width:170px}
 .ed-zoom{position:absolute;right:10px;top:10px;display:flex;gap:6px} .ed-zoom button{background:var(--panel);border:0;border-radius:8px;min-width:34px;height:34px;font-weight:700;font-size:17px;color:#fff}
 .ed-side{display:flex;flex-direction:column;min-height:0;background:rgba(28,35,64,.7);border-left:1px solid rgba(255,255,255,.1)}
 #ed-sec{padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid rgba(255,255,255,.1)}
@@ -343,7 +344,12 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
       <dt>Q</dt><dd>Swing a door into the car beside you</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
-    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="models-btn" class="ghost-btn" type="button">Models: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button><button id="terrain-btn" class="ghost-btn" type="button">Terrain builder</button><button id="sketch-btn" class="ghost-btn" type="button">Sketch pad</button><button id="lab-btn" class="ghost-btn" type="button">Workshop</button></div>
+    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button" aria-expanded="false">Sound</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="models-btn" class="ghost-btn" type="button">Models: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button><button id="terrain-btn" class="ghost-btn" type="button">Terrain builder</button><button id="sketch-btn" class="ghost-btn" type="button">Sketch pad</button><button id="lab-btn" class="ghost-btn" type="button">Workshop</button></div>
+    <div id="snd-panel" class="snd-panel" hidden><b>Sound</b>
+      <label>Effects <input id="snd-fx" type="range" min="0" max="1" step="0.05"></label>
+      <label>Engines <input id="snd-eng" type="range" min="0" max="1" step="0.05"></label>
+      <label>Music <input id="snd-mus" type="range" min="0" max="1" step="0.05"></label>
+      <button id="snd-mute" class="ghost-btn" type="button">Mute all (M)</button></div>
   </div>
 </div>
 

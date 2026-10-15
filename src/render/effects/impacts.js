@@ -12,14 +12,14 @@ export const WALL_FX = {
   1: { cols: [0x1E1E1E, 0x2A2A2A, 0x3A3A3A, 0xE0402F, 0xF4F4F0], size: [0.25, 0.55], n: 1, sparks: 0.3, dust: 0x9A9A9A, snd: 'rubber' },
   2: { cols: [0x8A5E3B, 0xC4935E, 0x6E4A2E], size: [0.1, 0.7], n: 1, sparks: 0.2, dust: 0xB89A70, snd: 'wood', splinter: true },
   3: { cols: [0xE2C265, 0xD4B050, 0xF0D98A], size: [0.12, 0.35], n: 1.8, sparks: 0, dust: 0xE8D48E, snd: 'hay' },
-  4: { cols: [0xB9BBC0, 0xA7AAB1, 0xD5D8DE], size: [0.15, 0.45], n: 0.8, sparks: 1.2, dust: 0xC8CACE, snd: 'metal' },
-  5: { cols: [0x6A6660, 0x5F5C57, 0x807B73], size: [0.15, 0.45], n: 0.8, sparks: 1.2, dust: 0x8E8A84, snd: 'metal' },
-  7: { cols: [0x2B2F3A, 0x44474F, 0xB9B6AE], size: [0.12, 0.35], n: 0.6, sparks: 1.0, dust: 0xB9B6AE, snd: 'metal' },
-  6: { cols: [0x8E897E, 0x7A756B, 0xA39E92], size: [0.15, 0.5], n: 0.9, sparks: 1.0, dust: 0x9A958A, snd: 'metal' },
+  4: { cols: [0xB9BBC0, 0xA7AAB1, 0xD5D8DE], size: [0.15, 0.45], n: 0.8, sparks: 1.2, dust: 0xC8CACE, snd: 'stone' },
+  5: { cols: [0x6A6660, 0x5F5C57, 0x807B73], size: [0.15, 0.45], n: 0.8, sparks: 1.2, dust: 0x8E8A84, snd: 'stone' },
+  7: { cols: [0x2B2F3A, 0x44474F, 0xB9B6AE], size: [0.12, 0.35], n: 0.6, sparks: 1.0, dust: 0xB9B6AE, snd: 'stone' },
+  6: { cols: [0x8E897E, 0x7A756B, 0xA39E92], size: [0.15, 0.5], n: 0.9, sparks: 1.0, dust: 0x9A958A, snd: 'stone' },
   8: { cols: [0x6B4A32, 0x8A6443, 0x4E7A36], size: [0.1, 0.5], n: 0.9, sparks: 0, dust: 0x8A7A5E, snd: 'wood', splinter: true },   // a tree
-  9: { cols: [0x8E897E, 0x7A756B, 0xA39E92], size: [0.15, 0.45], n: 0.8, sparks: 0.6, dust: 0xA09A8E, snd: 'metal' },               // a rock
+  9: { cols: [0x8E897E, 0x7A756B, 0xA39E92], size: [0.15, 0.45], n: 0.8, sparks: 0.6, dust: 0xA09A8E, snd: 'stone' },               // a rock
   10: { cols: [0x5F7F3C, 0x4E6B30, 0x7A9A50], size: [0.1, 0.35], n: 0.9, sparks: 0, dust: 0x9A8A60, snd: 'hay' },                       // a cactus
-  armco: { cols: [0xCDD2D9, 0x8D939C, 0xB0B6BF], size: [0.1, 0.4], n: 0.7, sparks: 1.4, dust: 0xC0C4CA, snd: 'metal', splinter: true }
+  armco: { cols: [0xCDD2D9, 0x8D939C, 0xB0B6BF], size: [0.1, 0.4], n: 0.7, sparks: 1.4, dust: 0xC0C4CA, snd: 'rail', splinter: true }
 };
 export function wallFx(w) { return (w === 2 && G.world.stage.armco) ? WALL_FX.armco : (WALL_FX[w] || WALL_FX[1]); }
 export function paintChips(car, x, y, z, n, dirx, dirz, hint) {
@@ -48,7 +48,7 @@ export function impactFx(c, e, isPlayer, near) {
   const vis = visOf(c); if (vis) vis.wobble = Math.min(0.3, (vis.wobble || 0) + mag * 0.12);
   if (v > 14) c.smokeT = Math.max(c.smokeT || 0, 1.8);
   if (isPlayer) { G.shake = Math.min(1.4, G.shake + mag * 0.7); if (v > 15) G.slowmo = Math.max(G.slowmo, 0.22); }
-  if (isPlayer || near) AudioSys.crash(fx.snd, clamp(v / 18, 0.1, 1) * (isPlayer ? 1 : 0.45));
+  if (isPlayer || near) AudioSys.crash(fx.snd, clamp(v / 18, 0.1, 1) * (isPlayer ? 1 : 0.7), e);
 }
 export function carCrashFx(e, playerInvolved, near) {
   const v = e.v, A = e.a, B = e.b, mag = clamp(v / 16, 0.2, 1.5), hint = A.pr.i;
@@ -59,7 +59,7 @@ export function carCrashFx(e, playerInvolved, near) {
   shockwave(e.x, e.y, e.z, 2 + mag * 3.5, 0xFFFFFF);
   for (const car of [A, B]) { const vis = visOf(car); if (vis) vis.wobble = Math.min(0.3, (vis.wobble || 0) + mag * 0.14); if (v > 13) car.smokeT = Math.max(car.smokeT || 0, 1.4); }
   if (playerInvolved) { G.shake = Math.min(1.4, G.shake + mag * 0.8); if (v > 13) G.slowmo = Math.max(G.slowmo, 0.2); }
-  if (playerInvolved || near) AudioSys.crash('car', clamp(v / 16, 0.15, 1) * (playerInvolved ? 1 : 0.45));
+  if (playerInvolved || near) AudioSys.crash('car', clamp(v / 16, 0.15, 1) * (playerInvolved ? 1 : 0.7), e);
 }
 // sparks: bright streaks, plus a few glowing embers for body
 export function sparks(x, y, z, n, dx = 0, dz = 0) {

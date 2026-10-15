@@ -13,6 +13,7 @@ import { initTerrainBuilder } from './ui/terrain-builder.js';
 import { initSketch } from './ui/sketch.js';
 import { openWorkshop, workshopParam } from './ui/workshop.js';
 import { AudioSys } from './audio/audio.js';
+import { wireSound } from './ui/sounds.js';
 import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
 import { raceStep } from './core/sim/race.js';
@@ -51,7 +52,7 @@ export function frame(t) {
     if (n < G.lastBeep && n >= 1) { G.lastBeep = n; AudioSys.beep(440, 0.15); }
     $('countdown').hidden = false; $('countdown').textContent = n >= 1 ? n : 'Go!';
     AudioSys.update(race.player, 'rev', race.cars, G.camDir);
-    if (G.countdown <= 0.2) { G.state = 'racing'; race.phase = 'racing'; AudioSys.beep(880, 0.3); G.goTimer = 0.8; G.accumulator = 0; }
+    if (G.countdown <= 0.2) { G.state = 'racing'; race.phase = 'racing'; AudioSys.beep(880, 0.3); AudioSys.music('race'); G.goTimer = 0.8; G.accumulator = 0; }
   } else if (G.state === 'racing') {
     if (!race.player.finished) readInput(dt);
     let simDt = dt; if (G.slowmo > 0) { G.slowmo -= dt; simDt = dt * 0.35; }
@@ -60,7 +61,7 @@ export function frame(t) {
     if (n === 12) G.accumulator = 0;
     G.renderAlpha = G.accumulator / STEP;
     handleEvents(); applyBarrierChanges();
-    AudioSys.update(race.player, 'drive', race.cars, G.camDir);
+    AudioSys.update(race.player, 'drive', race.cars, G.camDir, race);
     if (G.goTimer > 0) { G.goTimer -= dt; if (G.goTimer <= 0) $('countdown').hidden = true; }
     if (race.player.finished && !resultsShown && !G.workshop && race.time - race.player.finishTime > 1.6) showResults();
     if (((race.sd && race.sd.phase === 'over') || (race.derby && race.derby.phase === 'over')) && !resultsShown && race.time - G.sdOverAt > 1.8) showResults();
@@ -85,7 +86,7 @@ export function wireUI() {
   $('menu-btn').addEventListener('click', toMenu);
   $('pause-btn').addEventListener('click', togglePause);
   $('reset-btn').addEventListener('click', () => { if (G.state === 'racing' && !race.player.finished) respawn(race.player, G.world.W); });
-  $('mute-btn').addEventListener('click', () => { AudioSys.init(); AudioSys.toggle(); });
+  wireSound();
   document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('rivals-less').addEventListener('click', () => setRivals(G.rivals - 1)); $('rivals-more').addEventListener('click', () => setRivals(G.rivals + 1));
   $('wpn-btn').addEventListener('click', () => setWeapons(!G.weapons));

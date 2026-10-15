@@ -24,7 +24,7 @@ export function effectsForCar(c, v, dt) {
   if (c.surface === 'ford' && v.lastSurf !== 'ford' && sp > 6) {
     const k = Math.min(1.6, sp / 18);
     for (let n = 0; n < 34 * k; n++) { const s = n % 2 ? 1 : -1, out = 2 + Math.random() * 5; emit(c.x + fx * 1.2 + (Math.random() - 0.5) * 2, c.y + 0.4, c.z + fz * 1.2 + (Math.random() - 0.5) * 2, c.vx * 0.35 - fz * s * out, 4 + Math.random() * 6 * k, c.vz * 0.35 + fx * s * out, 0.9 + Math.random() * 0.6, 1.2 + Math.random() * 1.4, n % 3 ? 0xF6FBFF : 0xD2E8F7, 2); }
-    if (c.isPlayer) AudioSys.burst(0.5 * k, 'bandpass', 1400, 0.7, 350);
+    AudioSys.sfx('splash', { at: c, vol: Math.min(1, 0.4 + 0.4 * k), rate: 1.15 - k * 0.15, max: 3 });
   }
   v.lastSurf = c.surface;
   const slide = Math.abs(c.vr), loose = c.surface !== 'tarmac';
