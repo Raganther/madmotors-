@@ -24,8 +24,8 @@ export function updateRocks(dt) {
     v.m.visible = true; v.m.position.set(o.x, o.y, o.z); v.m.scale.setScalar(o.r);
     v.m.rotation.x += Math.hypot(o.vx, o.vz) * dt / o.r; v.m.rotation.z += o.vx * dt * 0.2;
     const near = Math.hypot(o.x - P.x, o.z - P.z) < 70;
-    if (o.fresh) { o.fresh = false; if (near) { AudioSys.burst(0.35, 'lowpass', 160, 1.1); for (let k = 0; k < 10; k++) debris(o.x, o.y, o.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6, 0x8A857B, 0.3, 0.3, 0.3, 2.5, P.pr.i); } }
-    if (o.landed && !o.fxDone) { o.fxDone = true; if (near) { dustRing({ x: o.x, y: o.y - o.r, z: o.z }, 14, 0xB8B0A2); AudioSys.thud(0.8); if (Math.hypot(o.x - P.x, o.z - P.z) < 35) G.shake = Math.min(1.2, G.shake + 0.5); } }
+    if (o.fresh) { o.fresh = false; if (near) { AudioSys.sfx('rubble', { at: o, vol: 0.8, rate: 0.7, wet: 0.3 }); for (let k = 0; k < 10; k++) debris(o.x, o.y, o.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6, 0x8A857B, 0.3, 0.3, 0.3, 2.5, P.pr.i); } }
+    if (o.landed && !o.fxDone) { o.fxDone = true; if (near) { dustRing({ x: o.x, y: o.y - o.r, z: o.z }, 14, 0xB8B0A2); AudioSys.thud(1, o); AudioSys.sfx('crack', { at: o, vol: 0.6, rate: 0.6 }); if (Math.hypot(o.x - P.x, o.z - P.z) < 35) G.shake = Math.min(1.2, G.shake + 0.5); } }
   }
   rockVis.forEach(v => { if (!used.has(v)) { v.m.visible = false; v.id = -1; } });
 }

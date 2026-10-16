@@ -1,5 +1,6 @@
 import { clamp, wrapAngle } from '../math.js';
 import { arenaWall } from '../elements/arena.js';
+import { demoControl, demoOrder, demoOver, demoScore } from './demolition.js';
 
 // Derby (G3): createRace(W, defs, { mode: 'derby' }). No laps and no finish line: everyone fights in the arena (an
 // `arena` stage, core/elements/arena.js) or on any circuit, and a wrecked car is out for good (it stays where it died, a
@@ -20,6 +21,7 @@ export function initDerby(R) {
 }
 /** The derby's order right now: the survivors (healthiest first), then the wrecked, last out first. */
 export function derbyOrder(R) {
+  if (R.demo) return demoOrder(R, health);                                        // demolition (modes/demolition.js): by score
   const alive = R.cars.filter(live).sort((a, b) => health(b) - health(a) || R.cars.indexOf(a) - R.cars.indexOf(b));
   return alive.concat(R.derby.out.slice().reverse().map(k => R.cars[k]));
 }
@@ -36,13 +38,15 @@ export function derbyStep(R, W, dt) {
     if (!c.out && c.wreckT > 0) { c.out = true; c.wreckT = 1e9; D.out.push(R.cars.indexOf(c)); D.outT[R.cars.indexOf(c)] = D.t; c.events.push({ t: 'derby-out', left: R.cars.filter(live).length }); }
   }
   const left = R.cars.filter(live);
-  if (left.length <= DERBY.LAST || D.t >= D.time) {
+  if (R.demo) demoScore(R);
+  if (R.demo ? demoOver(R) : left.length <= DERBY.LAST || D.t >= D.time) {
     D.phase = 'over'; D.winner = R.cars.indexOf(derbyOrder(R)[0]);
     R.player.events.push({ t: 'derby-over', winner: D.winner, timeUp: left.length > DERBY.LAST });
   }
 }
 /** The derby AI's controls for car c (instead of aiControl). */
 export function derbyControl(R, c, W) {
+  if (R.demo) return demoControl(R, c, W);                                         // demolition: go for the buildings
   const inp = c.inp, A = c.dai, D = R.derby, ar = W.tr.arena; inp.handbrake = 0; inp.fire = false;
   if (c.out || D.phase !== 'run') { inp.throttle = 0; inp.brake = c.vf > 0.5 ? 1 : 0; inp.steer = 0; return; }
   const sp = Math.hypot(c.vx, c.vz), k0 = R.cars.indexOf(c), hurt = health(c) < 1 - DERBY.HURT && R.cars.filter(live).length > 2 && D.t < D.time * 0.6;   // (never hiding in the endgame: no stand-offs)

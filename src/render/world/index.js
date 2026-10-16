@@ -5,6 +5,7 @@ import { buildTrack } from '../../core/track/build.js';
 import { buildTerrain } from '../../core/track/terrain.js';
 import { STAGES } from '../../data/stages/index.js';
 import { clearSkids } from '../effects/skids.js';
+import { clearTrails } from '../effects/trails.js';
 import { disposeGroup } from '../geometry.js';
 import { FX } from '../materials.js';
 import { hemi, renderer, scene, setGrade, sun } from '../renderer.js';
@@ -53,5 +54,5 @@ export function buildWorld(idx) {
   elementHook('build', group, tr, terr, stage);                 // bridges, river, railways, town, gallery, tunnel, arches
   addSigns(group, tr, terr);
   G.world = { idx, stage, tr, terr, group, cover: coverMap(tr), W: { tr, terr, surf: stage.surface, armco: !!stage.armco, traffic: stage.traffic } };
-  clearSkids();
+  clearSkids(); clearTrails();
 }

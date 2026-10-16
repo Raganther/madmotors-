@@ -49,7 +49,7 @@ export function updateProps(dt) {
         d.vx = c.vx * k + dx / dl * (2 + sp * 0.2); d.vz = c.vz * k + dz / dl * (2 + sp * 0.2); d.vy = 2 + sp * (0.08 + Math.random() * 0.12);
         d.w.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(3 + sp * 0.3);
         d.rest = false; d.cool = 0.35; c.vx *= 0.99; c.vz *= 0.99;
-        if (c.isPlayer && sp > 6 && propSndT <= 0) { AudioSys.crash(d.snd, clamp(sp / 45, 0.08, 0.45)); propSndT = 0.08; }
+        if (c.isPlayer && sp > 6 && propSndT <= 0) { AudioSys.crash(d.snd, clamp(sp / 45, 0.08, 0.45), d); propSndT = 0.08; }
         break;
       }
       if (d.rest) continue;

@@ -17,5 +17,7 @@ import { feature as weapons } from './weapons.js';
 import { feature as hammers } from './hammers.js';
 import { feature as gates } from './gates.js';
 import { feature as breakables } from './breakables.js';
+import { feature as structures } from './structures.js';
+import { feature as crumble } from './crumble.js';
 
-export const FEATURES = [traffic, trains, parked, rockfall, hazards, ferry, drawbridge, wear, weapons, hammers, gates, breakables];
+export const FEATURES = [traffic, trains, parked, rockfall, hazards, ferry, drawbridge, wear, weapons, hammers, gates, breakables, structures, crumble];

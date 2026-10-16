@@ -1,5 +1,6 @@
 // Handle for automated browser tests (tests/e2e/smoke.mjs) and console poking. Not used by the game itself.
 import { G } from './game.js';
+import { AudioSys } from './audio/audio.js';
 import { updatePieces } from './render/effects/pieces.js';
 import * as core from './core/index.js';
 import * as flow from './ui/flow.js';
@@ -15,7 +16,7 @@ import { updateParticles } from './render/effects/particles.js';
 import { updateFans, updateScenery } from './render/world/scenery.js';
 
 window.__dr = {
-  G, core, flow, CUT, get race() { return flow.race; },
+  G, core, flow, CUT, AudioSys, get race() { return flow.race; },
   // advance the simulation by `secs` without the real-time loop, then draw one frame
   step(secs) {
     const R = flow.race, W = G.world.W;

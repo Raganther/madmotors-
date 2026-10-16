@@ -1,6 +1,7 @@
 // Stage: Harbour Sprint. The second Rookie round: a seaside quay lap that teaches the drift boost. Three identical
-// hairpins at the ends of the quays (the same corner three times a lap is how drifting clicks), a boost-pad blast
-// along the harbour wall by the sea, and two easy sweepers home. Painted run-off and hay bales on every bend.
+// hairpins at the ends of the quays (the same corner three times a lap is how drifting clicks), a humpback bridge over
+// a dock and a cobbled stretch on the quays, a boost-pad blast along the harbour wall by the sea with a wave breaking
+// over it, and two easy sweepers home. Painted run-off and hay bales on every bend.
 export default { name: 'Harbour Sprint', blurb: 'Rookie: three quay hairpins to learn the drift, and a boost run along the sea wall', type: 'gorge', laps: 3, seed: 2202, surface: 'tarmac', hillAmp: 1.5, jumps: 0, armco: true, soft: true,
   light: { sun: 0xFFF4DE, sunI: 1.08, sky: 0xDDF0FF, ground: 0x7A8A78, hemiI: 0.66, cloud: 0.2, grade: [1.0, 1.0, 1.03], sat: 1.12 },
   colors: { grassA: 0x9CC266, grassB: 0x88AE58, rock: 0xA7A39C, dirt: 0xC9B58E, road: 0x55595F, sky: 0xB6DDF2, round: [0x5E9C45, 0x74B04E], pine: [0x3E7447] },
@@ -10,10 +11,10 @@ export default { name: 'Harbour Sprint', blurb: 'Rookie: three quay hairpins to 
     const quay = { far: 0.3, rampF: 30, near: -0.3, rampN: 30 }, wall = { far: -4.5, rampF: 9, near: 0.3, rampN: 30 };
     return [
       ['s', 120, 0, quay],                                                    // start along the first quay
-      ['a', 30, 180, 0, quay], ['s', 130, 0, quay],                            // hairpin 1, back along quay 2
-      ['a', 30, -180, 0, quay], ['s', 130, 0, quay],                           // hairpin 2, out along quay 3
+      ['a', 30, 180, 0, quay], ['s', 50, 0, quay], ['s', 30, 1.6, { ...quay, yump: 1.2 }], ['s', 50, 0, quay],   // hairpin 1, back along quay 2 over the humpback dock bridge
+      ['a', 30, -180, 0, quay], ['s', 60, 0, quay], ['s', 34, 0, { ...quay, whoops: 0.3 }], ['s', 36, 0, quay],   // hairpin 2, out along quay 3 over the cobbles
       ['a', 30, 180, 0, quay],                                                // hairpin 3
-      ['s', 230, 0, { ...wall, boost: true }],                                // the harbour wall: boost pads by the sea
+      ['s', 90, 0, { ...wall, boost: true }], ['s', 30, 0, { ...wall, mud: 'water' }], ['s', 110, 0, { ...wall, boost: true }],   // the harbour wall: boost pads by the sea, and a wave over the wall
       ['a', 50, 90, 0, quay], ['s', 80, 0, quay], ['a', 50, 90, 0, quay],      // two easy sweepers home
       ['s', 110, 0, quay]
     ];

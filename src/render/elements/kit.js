@@ -9,11 +9,11 @@ import { SHAPES } from './breakables.js';
 import { race } from '../../ui/flow.js';
 
 // The world kit, drawn (core/kit/layout.js lays the towns out as pieces; this turns each piece into a few parts).
-// Nearly every part is a coloured box in one instanced batch (walls, windows, doors, pickets, rails, hedges, slats,
-// bins...), with gable and hipped roofs, tree canopies and the ground (pavements, gardens, drives, lanes) as their own
-// batches, so a whole town is a handful of draw calls. A piece that breaks (core/features/breakables.js) has its parts
+// Nearly every part is a coloured box in one instanced batch (walls, pickets, rails, hedges, slats, bins...), with
+// tree canopies and the ground (pavements, gardens, drives, lanes) as their own batches (the houses and barns are
+// destructible buildings, drawn by render/elements/structures.js), so a whole town is a handful of draw calls. A piece that breaks (core/features/breakables.js) has its parts
 // hidden and thrown as props; side-road ends reuse the stand-alone breakables' shapes (render/elements/breakables.js).
-const SM = { small: true }, WIN = 0x33414F, DOOR = [0x5B3A29, 0x2E4A6B, 0x7A2E2E, 0x2F5D3A], WOOD = 0x8A5E3B;
+const SM = { small: true }, WOOD = 0x8A5E3B;
 let byPiece = new Map(), groups = [], shown = new Set();
 // a picket fence's face: slats with pointed tops and two rails, the gaps see-through (repeated ~14 times along a panel)
 let picketT = null;
@@ -22,37 +22,17 @@ function picketTex() {
   picketT = canvasTex(64, 64, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = '#fff'; for (let x = 4; x < w; x += 16) { g.beginPath(); g.moveTo(x, h); g.lineTo(x, 10); g.lineTo(x + 4, 2); g.lineTo(x + 8, 10); g.lineTo(x + 8, h); g.fill(); } g.fillRect(0, 22, w, 6); g.fillRect(0, 48, w, 6); });
   picketT.wrapS = THREE.RepeatWrapping; picketT.repeat.set(4, 1); return picketT;
 }
-function gableGeo() {
-  const P = [[-0.5, 0, -0.5], [0.5, 0, -0.5], [0, 1, -0.5], [-0.5, 0, 0.5], [0.5, 0, 0.5], [0, 1, 0.5]], f = [[0, 2, 1], [3, 4, 5], [0, 3, 5], [0, 5, 2], [1, 2, 5], [1, 5, 4], [0, 1, 4], [0, 4, 3]];
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(f.flatMap(t => t.flatMap(k => P[k])), 3)); return flat(g);
-}
 export function addKit(group, tr, terr, stage) {
   byPiece = new Map(); groups = []; shown = new Set();
   const K = terr.kit; if (!K) return;
-  const boxes = [], gables = [], hips = [], canopies = [], trunks = [], lamps = [];
+  const boxes = [], canopies = [], trunks = [], lamps = [];
   K.solid.forEach((o, n) => {
     const pid = (tr.breakables || []).length + n, cs = Math.cos(o.yaw), sn = Math.sin(o.yaw);
     // a part in the piece's own frame: lx across it (its depth), ly up from its foot, lz along its face
     const at = (lx, lz) => [o.x + lx * cs + lz * sn, o.z - lx * sn + lz * cs];
     const bx = (lx, ly, lz, sx, sy, sz, color, extra = {}) => { const [x, z] = at(lx, lz); boxes.push({ pid, x, y: o.y + ly, z, ry: o.yaw, sx, sy, sz, color, ...extra }); };
     const k = o.kind, L = o.w, D = o.d, H = o.h;
-    if (k === 'house' || k === 'barn') {
-      const front = (o.sd || 1) * D / 2, wall = o.wall, sink = 2;            // the walls go down into the ground: no gap on a slope
-      bx(0, (H - sink) / 2, 0, D, H + sink, L, wall);
-      const roofY = o.y + H, roofT = o.roof === 'flat' || k === 'barn' && o.style === 'industrial' ? 'flat' : k === 'barn' ? 'gable' : o.roof;
-      if (roofT === 'flat') { bx(0, H + 0.2, 0, D + 0.3, 0.4, L + 0.3, new THREE.Color(wall).multiplyScalar(0.8).getHex()); }
-      else { const [x, z] = at(0, 0), rh = roofT === 'steep' ? D * 0.75 : D * 0.42, r = { pid, x, y: roofY, z, ry: o.yaw, sx: D * 1.14, sy: rh, sz: L * 1.1, color: o.roofC }; (roofT === 'hip' ? hips : gables).push(r); if (k === 'house') bx(-front * 0.3, H + rh * 0.55, L * 0.25, 0.7, rh * 0.9 + 0.7, 0.7, 0x8C5A48); }
-      if (k === 'barn') { bx(front + Math.sign(front) * 0.02, 1.6, 0, 0.1, 3.2, Math.min(4, L * 0.5), o.style === 'farm' ? 0xF4F1EA : 0x5B5F66); return; }
-      // windows floor by floor on the front and the ends, a door on the ground floor facing the road
-      const nW = Math.max(1, Math.floor((L - 1.2) / 2.4)), s = Math.sign(front);
-      for (let f = 0; f < (o.floors || 1); f++) for (let w = 0; w < nW; w++) {
-        const v = (w - (nW - 1) / 2) * ((L - 1.2) / nW);
-        if (f === 0 && w === nW >> 1) { bx(front + s * 0.04, 1.05, v, 0.1, 2.1, 1.1, DOOR[(o.floors + nW) % DOOR.length], SM); continue; }
-        bx(front + s * 0.04, 1.6 + f * 3, v, 0.1, 1.2, 1.0, WIN, SM); bx(front + s * 0.1, 0.94 + f * 3, v, 0.2, 0.1, 1.2, 0xF4F1EA, SM);
-      }
-      for (const e of [-1, 1]) bx(0, 1.6, e * (L / 2 + 0.04), 1.0, 1.2, 0.1, WIN, SM);
-      return;
-    }
+    if (k === 'house' || k === 'barn') return;                                       // buildings: render/elements/structures.js draws (and breaks) them
     if (k === 'picket') { bx(0, H / 2, 0, 0.06, H, L, 0xF6F4EE, { picket: true }); return; }   // one panel, its pickets cut out of a texture
     if (k === 'wall') { const c = o.style === 'desert' ? 0xC98E5F : 0x9C968A; bx(0, H / 2 - 0.3, 0, D, H + 0.6, L, c); bx(0, H + 0.04, 0, D + 0.1, 0.12, L + 0.05, new THREE.Color(c).multiplyScalar(0.85).getHex()); return; }
     if (k === 'hedge') { bx(0, H / 2 - 0.1, 0, D, H + 0.2, L, 0x3F6B33); return; }
@@ -77,8 +57,6 @@ export function addKit(group, tr, terr, stage) {
   remember(addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1)), new THREE.MeshLambertMaterial({ color: 0xffffff, map: picketTex(), alphaTest: 0.5, side: THREE.DoubleSide }), boxes.filter(b => b.picket), { cast: true }));
   remember(addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1)), M(), boxes.filter(b => !b.glass && b.small), { receive: true }));
   remember(addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1)), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 }), boxes.filter(b => b.glass), {}));
-  remember(addInstanced(group, gableGeo(), M(), gables, { cast: true }));
-  remember(addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), M(), hips, { cast: true }));
   addInstanced(group, flat(new THREE.CylinderGeometry(0.5, 0.6, 1, 6)), M(), trunks, { cast: true });
   addInstanced(group, flat(new THREE.IcosahedronGeometry(0.5, 1)), M(), canopies, { cast: true });
   const LK = kitPack('lamp');

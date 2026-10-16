@@ -159,7 +159,28 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .gs i{height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden} .gs b{display:block;height:100%;background:var(--yellow);border-radius:3px}
 @media (max-width:520px){ .garage-grid{grid-template-columns:1fr 1fr;gap:8px} .g-blurb{display:none} .gs{grid-template-columns:62px 1fr;font-size:11px} .g-name{font-size:14px} }
 .btn-row button{flex:1;min-width:120px}
-#editor{position:fixed;inset:0;background:#141A30;display:flex;flex-direction:column;z-index:4;color:#fff}
+#sketch{position:fixed;inset:0;background:#141A30;display:flex;flex-direction:column;z-index:4;color:#fff}
+.sk-bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top,0px));background:var(--panel);font-size:14px}
+.sk-bar input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:6px 8px;font:inherit;font-size:15px;width:min(240px,40vw)}
+.sk-bar .btn,.sk-bar .cta{padding:8px 12px;font-size:15px;min-width:0} .sk-btns{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.sk-main{flex:1;display:flex;min-height:0}
+.sk-side{width:132px;flex:none;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:10px;background:rgba(28,35,64,.7);border-right:1px solid rgba(255,255,255,.1);touch-action:pan-y}
+#sk-tools{display:grid;grid-template-columns:1fr 1fr;gap:4px} #sk-tools button{display:flex;flex-direction:column;align-items:center;gap:1px;border:0;background:rgba(255,255,255,.07);border-radius:9px;padding:6px 2px;color:#fff}
+#sk-tools span{font-size:20px;line-height:1.1} #sk-tools small{font-size:11px;color:var(--mist)} #sk-tools button.on{background:var(--yellow);color:var(--ink)} #sk-tools button.on small{color:var(--ink)}
+#sk-cols{display:grid;grid-template-columns:repeat(5,1fr);gap:5px} #sk-cols button{aspect-ratio:1;border-radius:50%;border:2px solid rgba(255,255,255,.3);padding:0} #sk-cols button.on{border:3px solid var(--yellow);box-shadow:0 0 0 2px #141A30 inset}
+#sk-sizes{display:flex;gap:4px} #sk-sizes button{flex:1;height:34px;border:0;border-radius:8px;background:rgba(255,255,255,.07);display:grid;place-items:center} #sk-sizes i{display:block;border-radius:50%;background:#fff} #sk-sizes button.on{background:var(--yellow)} #sk-sizes button.on i{background:var(--ink)}
+.sk-acts{display:grid;grid-template-columns:1fr 1fr;gap:4px} .sk-acts button{border:0;background:rgba(255,255,255,.1);border-radius:8px;padding:7px 4px;font-weight:600;font-size:13px;color:#fff} .sk-acts button:disabled{opacity:.35} .sk-acts .wide{grid-column:span 2}
+.sk-wrap{position:relative;flex:1;min-width:0} #sk-paper{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair} #sk-paper.sk-hand{cursor:grab} #sk-paper.sk-text{cursor:text}
+#sk-textform{position:absolute;z-index:2;background:var(--panel);border-radius:10px;padding:8px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,.4)} #sk-textform input{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:16px;padding:6px}
+.sk-formbtns{display:flex;gap:6px;margin-top:6px} .sk-formbtns button{padding:6px 12px;font-size:14px;min-width:0}
+#sk-sendform textarea{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:16px;padding:8px}
+#sk-toast{pointer-events:none;position:fixed;left:50%;top:18%;transform:translateX(-50%);background:var(--yellow);color:var(--ink);font-weight:700;border-radius:999px;padding:8px 16px;z-index:6}
+.sk-listcard{width:min(640px,100%);max-height:calc(100vh - 32px);box-sizing:border-box} #sk-listbody{overflow-y:auto;display:flex;flex-direction:column;gap:8px;touch-action:pan-y}
+.sk-item{display:flex;gap:10px;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:12px;padding:8px} .sk-item.done{border-color:#7BD88F}
+.sk-item img,.sk-noimg{width:150px;height:112px;flex:none;object-fit:contain;background:#fff;border-radius:6px} .sk-item p{margin:4px 0;font-size:14px;color:var(--mist)} .sk-item em{display:block;font-size:14px;color:#7BD88F;margin:4px 0} .sk-item small{color:var(--mist)}
+.sk-itembtns{display:flex;gap:6px;margin-top:6px} .sk-itembtns .btn{padding:5px 10px;font-size:13px;min-width:0}
+@media (max-width:700px){ .sk-main{flex-direction:column-reverse} .sk-side{width:auto;flex-direction:row;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;border-right:0;border-top:1px solid rgba(255,255,255,.1)} #sk-tools{grid-template-columns:repeat(9,44px)} #sk-cols{grid-template-columns:repeat(10,26px)} #sk-sizes{width:110px;flex:none} .sk-acts{grid-template-columns:repeat(3,64px)} .sk-acts .wide{grid-column:auto} .sk-side>*{flex:none} .sk-item img,.sk-noimg{width:96px;height:72px} }
+#editor,#tb{position:fixed;inset:0;background:#141A30;display:flex;flex-direction:column;z-index:4;color:#fff}
 .ed-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 12px;background:var(--panel);font-size:14px} .ed-title{font-family:var(--display);font-weight:400;color:var(--yellow);font-size:18px}
 .ed-bar label{display:flex;align-items:center;gap:6px} .ed-bar input,.ed-bar select,.ed-f input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:4px 6px;font:inherit} #ed-laps{width:48px} #ed-name{width:150px}
 .ed-bar .btn,.ed-bar .cta{padding:7px 12px;font-size:14px;min-width:0} .ed-btns{display:flex;gap:6px;margin-left:auto}
@@ -172,6 +193,10 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .ed-pinbtns{display:flex;gap:6px;margin-top:6px} .ed-pinbtns button{padding:5px 10px;font-size:13px;min-width:0}
 .ed-pins{padding:0 10px;font-size:13px} .ed-pins:empty{display:none} .ed-pins h4{margin:8px 0 4px;font-size:13px;color:var(--mist)} .ed-pins div{padding:4px 6px;border-radius:7px;cursor:pointer} .ed-pins div:hover{background:rgba(255,255,255,.06)} .ed-pins b{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:var(--yellow);color:var(--ink);text-align:center;font-size:11px;line-height:18px;margin-right:6px}
 .ed-f textarea{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:4px 6px;font:inherit;font-size:14px}
+#mus-tag{display:flex;align-items:center;gap:4px;margin-top:6px;background:var(--panel);border-radius:10px;padding:4px 6px;pointer-events:auto;max-width:360px;font-size:13px} #mus-tag[hidden]{display:none} #mus-tag button{background:none;border:0;color:#fff;font-size:15px;padding:2px 6px} #mus-name{flex:1;line-height:1.2} #mus-name small{display:block;opacity:.75;font-size:11px} #mus-like.on{color:#FF5A7A}
+.snd-list{display:flex;flex-direction:column;gap:2px;max-height:260px;overflow:auto;background:rgba(0,0,0,.2);border-radius:8px;padding:4px} .snd-list div{display:flex;align-items:center;gap:6px;font-size:13px} .snd-list span{flex:1} .snd-list small{opacity:.7} .snd-list button{background:none;border:0;color:#fff;font-size:15px;padding:2px 6px} .snd-list .on{color:#FF5A7A} .snd-list .playing{color:#FFC72C}
+.snd-panel select{background:rgba(0,0,0,.3);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:7px;padding:3px 5px;font:inherit}
+.snd-panel{display:flex;flex-direction:column;gap:6px;background:var(--panel);border-radius:12px;padding:10px 14px;margin-top:8px;max-width:420px;font-size:14px} .snd-panel[hidden]{display:none} .snd-panel label{display:flex;align-items:center;justify-content:space-between;gap:10px} .snd-panel input{width:170px}
 .ed-zoom{position:absolute;right:10px;top:10px;display:flex;gap:6px} .ed-zoom button{background:var(--panel);border:0;border-radius:8px;min-width:34px;height:34px;font-weight:700;font-size:17px;color:#fff}
 .ed-side{display:flex;flex-direction:column;min-height:0;background:rgba(28,35,64,.7);border-left:1px solid rgba(255,255,255,.1)}
 #ed-sec{padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid rgba(255,255,255,.1)}
@@ -183,6 +208,14 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .ed-acts{display:flex;flex-wrap:wrap;gap:5px} .ed-acts button{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:8px;padding:4px 8px;font-size:12px} .ed-acts .ed-del{color:#FF8A7A;border-color:rgba(255,138,122,.5)}
 .ed-list{list-style:none;margin:0;padding:6px;overflow-y:auto;flex:1;min-height:0;font-size:13px} .ed-list li{padding:5px 8px;border-radius:7px;cursor:pointer} .ed-list li:hover{background:rgba(255,255,255,.06)} .ed-list li.on{background:rgba(255,199,44,.18)} .ed-list b{color:var(--yellow);margin-right:4px}
 .ed-send{display:flex;gap:6px;padding:8px;border-top:1px solid rgba(255,255,255,.1)} .ed-send textarea{flex:1;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:14px;padding:6px} .ed-send .cta{padding:8px 12px;font-size:14px}
+.tb-main{flex:1;position:relative;min-height:0} #tb-view{width:100%;height:100%;display:block;touch-action:none;cursor:grab} #tb-view.raise,#tb-view.lower,#tb-view.smooth,#tb-view.flatten{cursor:none} #tb-view.road{cursor:crosshair}
+#tb .tb-left{position:absolute;left:10px;top:10px;right:10px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;pointer-events:none} #tb .tb-left>*{pointer-events:auto} #tb .ed-tools{position:static;flex-wrap:wrap} #tb-legend{position:absolute;left:10px;bottom:8px;color:#1C2340;font-size:12px;background:rgba(255,255,255,.7);border-radius:6px;padding:2px 6px;max-width:calc(100% - 20px)}
+.tb-brush{display:flex;flex-direction:column;gap:4px;background:var(--panel);border-radius:10px;padding:8px 10px;font-size:13px} .tb-brush label{display:flex;align-items:center;gap:8px;justify-content:space-between} .tb-brush input{width:120px} .tb-brush[hidden]{display:none}
+#tb .ed-zoom{top:auto;bottom:34px}
+.tb-gen{display:flex;flex-direction:column;gap:5px;background:var(--panel);border-radius:10px;padding:7px 8px;font-size:13px} .tb-gen>div{display:flex;gap:6px;align-items:center;flex-wrap:wrap} .tb-gen select{background:rgba(0,0,0,.3);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:7px;padding:4px 6px;font:inherit} .tb-gen .btn{padding:5px 10px;font-size:13px;min-width:0} .tb-chk{display:flex;align-items:center;gap:4px}
+.tb-pad{position:absolute;right:10px;bottom:80px;display:grid;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(2,38px);gap:4px} .tb-pad button{background:var(--panel);border:0;border-radius:8px;color:#fff;font-size:15px;touch-action:none} .tb-pad [data-pan=u]{grid-column:2} .tb-pad [data-pan=l]{grid-column:1;grid-row:2} .tb-pad [data-pan=d]{grid-column:2;grid-row:2} .tb-pad [data-pan=r]{grid-column:3;grid-row:2} .tb-pad button:active{background:#FFC72C;color:#1C2340}
+.tb-pick{position:absolute;z-index:3;background:var(--panel);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;width:250px;box-shadow:0 8px 24px rgba(0,0,0,.4)} .tb-pick[hidden]{display:none} .tb-pick button{border:0;border-radius:7px;padding:6px 8px;background:rgba(255,255,255,.08);color:#fff;font-weight:600;font-size:13px;text-align:left} .tb-pick button i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px} .tb-pick .tb-x{grid-column:1/-1;background:rgba(255,138,122,.18);color:#FF8A7A}
+.tb-foot{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--panel)} .tb-foot textarea{flex:1;min-width:200px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:14px;padding:6px} .tb-foot .btn,.tb-foot .cta{padding:7px 12px;font-size:14px;min-width:0}
 @media (max-width:760px){ .ed-main{grid-template-columns:1fr;grid-template-rows:44vh 1fr} .ed-side{border-left:0;border-top:1px solid rgba(255,255,255,.1)} .ed-btns{margin-left:0} #ed-name{width:110px} }
 #note-bar{position:fixed;left:50%;top:calc(var(--top) + 104px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;background:var(--panel);border-radius:14px;padding:8px 12px;max-width:calc(100% - 24px);box-sizing:border-box;font-size:15px}
 #note-bar small{display:block;color:var(--mist);font-size:12px} #note-bar .btn,#note-bar .cta{padding:8px 14px;font-size:15px;min-width:0}
@@ -314,7 +347,14 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
       <dt>Q</dt><dd>Swing a door into the car beside you</dd>
       <dt>Esc</dt><dd>Pause</dd>
     </dl>
-    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button">Sound on</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="models-btn" class="ghost-btn" type="button">Models: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button><button id="lab-btn" class="ghost-btn" type="button">Workshop</button></div>
+    <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button" aria-expanded="false">Sound</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="models-btn" class="ghost-btn" type="button">Models: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button><button id="terrain-btn" class="ghost-btn" type="button">Terrain builder</button><button id="sketch-btn" class="ghost-btn" type="button">Sketch pad</button><button id="lab-btn" class="ghost-btn" type="button">Workshop</button></div>
+    <div id="snd-panel" class="snd-panel" hidden><b>Sound</b>
+      <label>Effects <input id="snd-fx" type="range" min="0" max="1" step="0.05"></label>
+      <label>Engines <input id="snd-eng" type="range" min="0" max="1" step="0.05"></label>
+      <label>Music <input id="snd-mus" type="range" min="0" max="1" step="0.05"></label>
+      <label>Race music <select id="snd-only"><option value="0">Every track in turn</option><option value="1">Only tracks I like</option></select></label>
+      <div class="snd-list" id="snd-list"></div>
+      <button id="snd-mute" class="ghost-btn" type="button">Mute all (M)</button></div>
   </div>
 </div>
 
@@ -323,7 +363,8 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   <div id="sd-panel" hidden><div class="sd-title" id="sd-title">Showdown</div><ol id="sd-rows"></ol></div>
   <div id="pos-block"><div id="pos"><span id="pos-n">1</span><span id="pos-suf">st</span></div><div id="lap" hidden></div><ol id="standings"></ol></div>
   <div id="profile-wrap"><canvas id="profile" aria-label="Stage profile showing each car's position on the descent"></canvas><div id="stage-name"></div></div>
-  <div id="time-block"><div id="time">0:00.00</div><div id="best"></div><div class="hud-btns"><button id="note-btn" type="button" title="Leave a note on the track for Claude (N)">Note</button><button id="reset-btn" type="button">Reset</button><button id="pause-btn" type="button">Pause</button></div></div>
+  <div id="time-block"><div id="time">0:00.00</div><div id="best"></div><div class="hud-btns"><button id="note-btn" type="button" title="Leave a note on the track for Claude (N)">Note</button><button id="reset-btn" type="button">Reset</button><button id="pause-btn" type="button">Pause</button><button id="mus-btn" type="button" title="Race music: next track (]), previous ([), like (L)">&#9835;</button></div>
+    <div id="mus-tag" hidden><button id="mus-prev" type="button" aria-label="Previous track">&#9664;</button><span id="mus-name"></span><button id="mus-like" type="button" aria-label="Like this track">&#9825;</button><button id="mus-next" type="button" aria-label="Next track">&#9654;</button></div></div>
   <div id="wpn" hidden><b id="wpn-state">Missile ready</b><span id="wpn-bar"><i id="wpn-fill"></i></span></div>
   <div id="speed-block"><svg id="dmg" viewBox="0 0 24 40" role="img" aria-label="Car damage"><rect x="7" y="9" width="10" height="22" rx="2" fill="rgba(255,255,255,.12)"/><rect id="dz-f" x="4" y="0" width="16" height="7" rx="2"/><rect id="dz-b" x="4" y="33" width="16" height="7" rx="2"/><rect id="dz-l" x="0" y="9" width="5" height="22" rx="2"/><rect id="dz-r" x="19" y="9" width="5" height="22" rx="2"/></svg><div id="speed">0</div><div class="unit">km/h</div><div id="boost"><div id="boost-fill"></div></div></div>
   <div id="callout" hidden></div>
@@ -365,6 +406,46 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   </div>
 </div>
 
+<div id="tb" hidden>
+  <div class="ed-bar">
+    <b class="ed-title">Terrain builder</b>
+    <label>Name <input id="tb-name" maxlength="40"></label>
+    <label>Laps <input id="tb-laps" type="number" min="1" max="9"></label>
+    <label>Surface <select id="tb-surface"><option value="tarmac">Tarmac</option><option value="gravel">Gravel</option><option value="snow">Snow</option></select></label>
+    <span class="ed-btns"><button id="tb-close" class="btn" type="button">Close the loop</button><button id="tb-drive" class="cta" type="button">Test drive</button><button id="tb-exit" class="btn" type="button">Exit</button></span>
+  </div>
+  <div id="tb-status" class="ed-status"></div>
+  <div class="tb-main"><canvas id="tb-view"></canvas>
+    <div class="tb-left"><div class="ed-tools" role="toolbar" aria-label="Terrain tools"><button type="button" data-tool="view">&#10021; View</button><button type="button" data-tool="raise">&#9650; Raise</button><button type="button" data-tool="lower">&#9660; Lower</button><button type="button" data-tool="smooth">&#8776; Smooth</button><button type="button" data-tool="flatten">&#9644; Flatten</button><button type="button" data-tool="road">&#9998; Road</button><button type="button" data-tool="lift">&#8679; Road up</button><button type="button" data-tool="sink">&#8681; Road down</button><button type="button" data-tool="pieces">&#9733; Pieces</button><button type="button" id="tb-undo" disabled>Undo</button></div>
+    <div id="tb-brush" class="tb-brush"><label>Size <input id="tb-size" type="range" min="15" max="160" step="5"></label><label>Strength <input id="tb-power" type="range" min="1" max="10" step="1"></label></div>
+    <div class="tb-gen"><div><select id="tb-landstyle" aria-label="Kind of land"></select><button id="tb-genland" class="btn" type="button">&#9968; Generate land</button></div>
+      <div><select id="tb-roadlen" aria-label="Road length"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="long">Long</option></select><label class="tb-chk"><input id="tb-genpieces" type="checkbox" checked> Set pieces</label><button id="tb-genroad" class="btn" type="button">&#10227; Generate road</button></div></div></div>
+    <div class="ed-zoom"><button id="tb-left" type="button" aria-label="Turn left">&#10226;</button><button id="tb-right" type="button" aria-label="Turn right">&#10227;</button><button id="tb-top" type="button">Top</button><button id="tb-zoomin" type="button" aria-label="Zoom in">+</button><button id="tb-zoomout" type="button" aria-label="Zoom out">&minus;</button><button id="tb-fit" type="button">Fit</button></div>
+    <div class="tb-pad" aria-label="Move the view"><button type="button" data-pan="u" aria-label="Move up">&#9650;</button><button type="button" data-pan="l" aria-label="Move left">&#9664;</button><button type="button" data-pan="d" aria-label="Move down">&#9660;</button><button type="button" data-pan="r" aria-label="Move right">&#9654;</button></div>
+    <small id="tb-legend"></small>
+    <div id="tb-pick" class="tb-pick" hidden></div></div>
+  <div class="tb-foot"><button id="tb-clearroad" class="btn" type="button">Clear road</button><button id="tb-clearground" class="btn" type="button">Flatten all</button><textarea id="tb-msg" rows="1" maxlength="2000" placeholder="A message for Claude about this track (optional)"></textarea><button id="tb-send" class="cta" type="button">Send to Claude</button></div>
+</div>
+<div id="sketch" hidden>
+  <div class="sk-bar">
+    <b class="ed-title">Sketch pad</b>
+    <input id="sk-title" maxlength="60" placeholder="Name this idea">
+    <span class="sk-btns"><button id="sk-new" class="btn" type="button">New</button><button id="sk-mine" class="btn" type="button">My sketches</button><button id="sk-send" class="cta" type="button">Send to Claude</button><button id="sk-exit" class="btn" type="button">Exit</button></span>
+  </div>
+  <div class="sk-main">
+    <div class="sk-side">
+      <div id="sk-tools" role="toolbar" aria-label="Drawing tools"></div>
+      <div id="sk-cols" role="toolbar" aria-label="Colours"></div>
+      <div id="sk-sizes" role="toolbar" aria-label="Sizes"></div>
+      <div class="sk-acts"><button id="sk-undo" type="button" disabled>Undo</button><button id="sk-redo" type="button" disabled>Redo</button><button id="sk-clear" type="button">Clear</button><button id="sk-fit" type="button">Fit</button><button id="sk-bg" class="wide" type="button">Paper: grid</button></div>
+    </div>
+    <div class="sk-wrap"><canvas id="sk-paper"></canvas></div>
+  </div>
+  <div id="sk-textform" hidden><input id="sk-text" maxlength="120" placeholder="Words to put here"><div class="sk-formbtns"><button id="sk-textok" class="cta" type="button">Add</button><button id="sk-textcancel" class="btn" type="button">Cancel</button></div></div>
+  <div id="sk-sendform" class="overlay" hidden><div class="card" role="dialog" aria-labelledby="sk-sendtitle"><h2 id="sk-sendtitle">Send to Claude</h2><textarea id="sk-msg" rows="4" maxlength="2000" placeholder="What is this idea? (optional: what the drawing shows, where it goes, what should happen there)"></textarea><div class="btn-row"><button id="sk-sendgo" class="cta" type="button">Send</button><button id="sk-sendcancel" class="btn" type="button">Cancel</button></div></div></div>
+  <div id="sk-list" class="overlay" hidden><div class="card sk-listcard" role="dialog" aria-labelledby="sk-listtitle"><h2 id="sk-listtitle">My sketches</h2><p id="sk-listsub"></p><div id="sk-listbody"></div><div class="btn-row"><button id="sk-listclose" class="cta" type="button">Close</button></div></div></div>
+  <div id="sk-toast" hidden></div>
+</div>
 <div id="editor" hidden>
   <div class="ed-bar">
     <b class="ed-title">Track editor</b>

@@ -57,7 +57,7 @@ export function updateCrossings(dt, now) {
           g.broken = true; g.arm.visible = false;
           const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(g.dirx, g.dirz) + Math.PI / 2);
           spawnProp('box', new THREE.Vector3(mx, g.gy + 1.05, mz), q, [g.len, 0.16, 0.1], 0xD8352A, c.vx * 0.7, 4, c.vz * 0.7, 8, 'wood');
-          if (c.isPlayer) AudioSys.crash('wood', 0.5);
+          if (c.isPlayer) AudioSys.crash('wood', 0.5, c);
           break;
         }
       }

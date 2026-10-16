@@ -1,6 +1,6 @@
 // Off-piste (core/elements/open.js, features/gates.js, sim/nav.js): gates count only in order and only through the
 // posts, a car can't gain anything by going round one, there's always a way from open country to the next gate, and
-// the AI gets a field round Open Country taking every gate.
+// the AI gets a field round every off-piste stage taking every gate.
 import { describe, it, expect } from 'vitest';
 import M from './core-under-test.js';
 import { seedRandom } from './scenarios.js';
@@ -21,26 +21,30 @@ describe('off-piste', () => {
     for (let k = 0; k < 240; k++) { c.inp.throttle = 1; M.raceStep(R, 1 / 120, w); }
     expect(c.gateK).toBe(1); expect(c.progress).toBeGreaterThan(g); expect(c.gateMiss).toBe(false);
   });
-  it('from anywhere in open country there is a way to the next gate', () => {
-    const nv = navOf(W()), N = tr.loopN, bad = [];
-    for (let i = 0; i < N; i += 5) {
-      if (!tr.open[tr.bi(i)]) continue;
-      const w = nv.wps.get(nv.next[tr.bi(i)]);
-      for (const o of [-30, 0, 30]) {
-        const x = tr.xs[i] + tr.rx[i] * o, z = tr.zs[i] + tr.rz[i] * o, c = Math.round((x - nv.x0) / 2), r = Math.round((z - nv.z0) / 2);
-        let best = Infinity; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) best = Math.min(best, w.f[(r + a) * nv.cols + c + b]);   // next to a tree is fine
-        if (!(best < 1e5)) bad.push(`sample ${i} lat ${o}`);
+  // every off-piste stage: a way to every gate from anywhere, and a field of AI that takes every gate in order
+  for (const name of ['Open Country', 'Village Hill']) {
+    const st = M.STAGES.find(s => s.name === name), tr = M.buildTrack(st), terr = M.buildTerrain(tr, st), W = () => ({ tr, terr, surf: st.surface, armco: !!st.armco });
+    it(`${name}: from anywhere in open country there is a way to the next gate`, () => {
+      const nv = navOf(W()), N = tr.loopN, bad = [];
+      for (let i = 0; i < N; i += 5) {
+        if (!tr.open[tr.bi(i)]) continue;
+        const w = nv.wps.get(nv.next[tr.bi(i)]);
+        for (const o of [-30, 0, 30]) {
+          const x = tr.xs[i] + tr.rx[i] * o, z = tr.zs[i] + tr.rz[i] * o, c = Math.round((x - nv.x0) / 2), r = Math.round((z - nv.z0) / 2);
+          let best = Infinity; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) best = Math.min(best, w.f[(r + a) * nv.cols + c + b]);   // next to a tree (or a house) is fine
+          if (!(best < 1e5)) bad.push(`sample ${i} lat ${o}`);
+        }
       }
-    }
-    expect(bad.slice(0, 5)).toEqual([]);
-  });
-  it('the AI gets round Open Country taking every gate in order', () => {
-    seedRandom(7); const w = W();
-    const R = M.createRace(w, [{ name: 'a', skill: 0.95, flick: 0.3, driftK: 1 / 50 }, { name: 'b', skill: 0.9, flick: 0.2, driftK: 1 / 40 }, { name: 'c', skill: 0.85, flick: 0.3, driftK: 1 / 45 }, { name: 'p', player: true }]);
-    R.phase = 'racing'; R.autoPlayer = true; const taken = R.cars.map(() => []);
-    let t = 0; while (t < 300 && !R.cars.every(c => c.finished)) { M.raceStep(R, 1 / 120, w); R.cars.forEach((c, k) => { for (const e of c.events) if (e.t === 'gate') taken[k].push(e.n); c.events.length = 0; }); t += 1 / 120; }
-    expect(R.cars.every(c => c.finished)).toBe(true);
-    for (const g of taken) expect(g).toEqual(tr.gates.map((_, n) => n + 1));
-    expect(R.cars.reduce((a, c) => a + c.respawns, 0)).toBeLessThanOrEqual(4);
-  });
+      expect(bad.slice(0, 5)).toEqual([]);
+    });
+    it(`the AI gets round ${name} taking every gate in order`, () => {
+      seedRandom(7); const w = W();
+      const R = M.createRace(w, [{ name: 'a', skill: 0.95, flick: 0.3, driftK: 1 / 50 }, { name: 'b', skill: 0.9, flick: 0.2, driftK: 1 / 40 }, { name: 'c', skill: 0.85, flick: 0.3, driftK: 1 / 45 }, { name: 'p', player: true }]);
+      R.phase = 'racing'; R.autoPlayer = true; const taken = R.cars.map(() => []);
+      let t = 0; while (t < 400 && !R.cars.every(c => c.finished)) { M.raceStep(R, 1 / 120, w); R.cars.forEach((c, k) => { for (const e of c.events) if (e.t === 'gate') taken[k].push(e.n); c.events.length = 0; }); t += 1 / 120; }
+      expect(R.cars.every(c => c.finished)).toBe(true);
+      for (const g of taken) expect(g).toEqual(tr.gates.map((_, n) => n + 1));
+      expect(R.cars.reduce((a, c) => a + c.respawns, 0)).toBeLessThanOrEqual(4);
+    });
+  }
 });

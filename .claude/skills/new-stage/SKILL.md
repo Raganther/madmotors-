@@ -9,6 +9,18 @@ argument-hint: <theme and what should happen on it>
 A stage is **data**: one file in `src/data/stages/` that picks a road shape, a look and a list of track elements.
 New behaviour belongs in elements (`/new-element`), never special cases for this stage.
 
+## 0. What makes a stage fun (the user's favourite is Bogwood Rally; learn from it)
+Bogwood is a 37 s lap with eight beats: a crest jump, whoops, a kink into a hairpin, a mud bog, a big jump, a water
+splash, a double jump, a muddy S-bend. The rules it follows:
+- **Something every 4-8 seconds.** A straight longer than ~6 s with nothing on it is a dead spot: put a crest, a
+  splash, a kink or scenery that changes the view on it.
+- **Short laps, more of them**: 35-60 s a lap, 3 laps. Close racing and learnable lines beat one long lap.
+- **Mix the kinds of beat**: air (yump, kick, double), surface (mud, water, ice, dirt), rhythm (whoops), braking
+  (hairpin), flow (fast kinks and S-bends). Never two of the same kind back to back.
+- **The ground moves**: heights change through the lap (5-15 m), and corners sit on crests, dips and banks.
+- **A look of its own at a glance**: one strong palette (Bogwood's autumn orange) and dense scenery close to the road.
+- Rookie rounds can be gentle, but still need a beat or two per lap (a hump, a splash, a bridge).
+
 ## 1. Design (in chat, briefly, before code)
 - One sentence: what makes it different from the stages we have (`npm run layout` lists them; README table).
 - The run as beats: start, 4-8 set pieces, finish. For each beat name the **existing element** that does it
@@ -66,3 +78,8 @@ New behaviour belongs in elements (`/new-element`), never special cases for this
   every gate (`tests/offpiste.test.js` does this for Open Country: add yours to it).
 - `tests/scenery.test.js` checks every stage for gaps in the road, open tunnel mouths, ground through bridge decks and
   piers on roads: if one fails on your stage, fix the segs or the element, not the test.
+- Buildings (`buildings`, core/elements/structures.js): `at`/`lat` puts one beside the main road facing it (the barrier
+  in front comes out); a building that should stand on a branch (a short cut it blocks) needs `a`/`b` (screen axes
+  round the circuit's middle) and `road: true`: build the track, take the branch's middle sample (`tr.NM + n/2`) and
+  convert it (a = ((x - cx) - (z - cz)) / sqrt2, b = (-(z - cz) - (x - cx)) / sqrt2, cx/cz the main lap's mean), make
+  it wider than the road (`w`), and check with a scripted scene (`tools/scene.mjs`) that a heavy car goes through it.

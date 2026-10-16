@@ -1,0 +1,86 @@
+// Painted ground (core/track/ground.js, the Terrain builder): the landscape is read back where it was painted, a road
+// drawn across it follows it at a climb a car can take, and a stage carrying it builds with that landscape as its ground.
+import { describe, it, expect } from 'vitest';
+import M from './core-under-test.js';
+import { closeLoop, fromStroke, sketch } from '../src/core/track/editing.js';
+import { GROUND, LAND_STYLES, autoRoad, blankGround, generateGround, groundAt, groundFor, groundXZ, roadOnGround } from '../src/core/track/ground.js';
+import { buildTerrain } from '../src/core/track/terrain.js';
+
+// a 70 m mountain north-east of the middle, a 25 m deep basin south-west
+const land = () => {
+  const g = blankGround();
+  for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) {
+    const a = g.a0 + c * g.cell, b = g.b0 + r * g.cell;
+    g.h[r * g.cols + c] = 70 * Math.exp(-((a - 110) ** 2 + (b - 60) ** 2) / (2 * 60 ** 2)) - 25 * Math.exp(-((a + 110) ** 2 + (b + 60) ** 2) / (2 * 55 ** 2));
+  }
+  return g;
+};
+// an oval lap round the middle, over the mountain's flank and through the basin
+const lap = g => {
+  const pts = Array.from({ length: 200 }, (_, k) => ({ a: 170 * Math.cos(k / 200 * Math.PI * 2), b: 110 * Math.sin(k / 200 * Math.PI * 2) }));
+  const r = fromStroke(pts, { tol: 4, closeDist: 40 }), c = closeLoop(r.segs, r.heading);
+  return { r, segs: roadOnGround(c.segs, r.heading, g, r.start) };
+};
+describe('painted ground', () => {
+  it('reads back the painted heights, bilinear between grid points, in the plan and in the world', () => {
+    const g = blankGround(0, 0, 0, 80, 8); g.h[5 * g.cols + 5] = 8;
+    expect(groundAt(g, g.a0 + 40, g.b0 + 40)).toBeCloseTo(8); expect(groundAt(g, g.a0 + 44, g.b0 + 40)).toBeCloseTo(4); expect(groundAt(g, 999, 999)).toBe(0);
+    const [a, b] = [g.a0 + 40, g.b0 + 40]; expect(groundXZ(g)((a - b) / Math.SQRT2, -(a + b) / Math.SQRT2)).toBeCloseTo(8);
+  });
+  it('a road follows the land: climbs the mountain, dips into the basin, never steeper than GRADE, and closes at one height', () => {
+    const g = land(), { r, segs } = lap(g), k = sketch(segs, r.heading, 2), hs = k.pts.map(p => p.h);
+    expect(k.gap).toBeLessThan(0.6);
+    expect(Math.max(...hs)).toBeGreaterThan(20); expect(Math.min(...hs)).toBeLessThan(-5);
+    for (let i = 1; i < k.pts.length; i++) {
+      const d = Math.hypot(k.pts[i].a - k.pts[i - 1].a, k.pts[i].b - k.pts[i - 1].b);
+      expect(Math.abs(hs[i] - hs[i - 1]) / Math.max(d, 0.5)).toBeLessThan(GROUND.GRADE + 0.02);
+    }
+    expect(Math.abs(hs[0] - hs[hs.length - 1])).toBeLessThan(0.11);
+  });
+  it('a stage carrying the landscape builds on it: the ground away from the road is the painted land, the road on its own heights', () => {
+    const g = land(), { r, segs } = lap(g), base = M.STAGES[0];
+    const st = { name: 'Painted', blurb: '', type: 'gorge', laps: 2, seed: 7, surface: 'tarmac', hillAmp: 0, armco: true, startHeading: r.heading, segs, ground: groundFor(g, r.start), light: base.light, colors: base.colors, trees: base.trees };
+    const tr = M.buildTrack(st), T = buildTerrain(tr, st);
+    const peak = { a: 110 - r.start.a, b: 60 - r.start.b }, x = (peak.a - peak.b) / Math.SQRT2, z = -(peak.a + peak.b) / Math.SQRT2;
+    const c = Math.round((x - T.x0) / T.S), row = Math.round((z - T.z0) / T.S);
+    expect(T.h[row * T.cols + c]).toBeGreaterThan(55);                       // the mountain top, well off the road
+    expect(Math.max(...tr.H)).toBeGreaterThan(20); expect(Math.min(...tr.H)).toBeLessThan(-5);
+  });
+  it('the road lifted over a valley is a bridge, sunk under a hill a tunnel, and set pieces land where they were put', () => {
+    const g = blankGround(), seg = [['s', 400, 0, {}]];   // a straight run east across a 40 m deep valley at 200 m
+    for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) { const a = g.a0 + c * g.cell; g.h[r * g.cols + c] = -40 * Math.exp(-((a - 200) ** 2) / (2 * 40 * 40)); }
+    const tags = segs => segs.map(sg => sg[3]);
+    const lift = Array.from({ length: 41 }, (_, j) => Math.max(0, 40 * Math.exp(-((j * 10 - 200) ** 2) / (2 * 45 * 45))));
+    const bridges = l => tags(roadOnGround(seg, 0, g, { a: 0, b: 0 }, { lift: l })).filter(t => t.bridge).length;
+    expect(bridges(lift)).toBeGreaterThan(Math.max(1, bridges(null)));                            // too steep to follow is already a short bridge; held up, a long one
+    for (let k = 0; k < g.h.length; k++) g.h[k] = -g.h[k];                                    // now a 40 m hill: sunk, the road tunnels through
+    const sunk = roadOnGround(seg, 0, g, { a: 0, b: 0 }, { lift: lift.map(v => -v) }); expect(tags(sunk).filter(t => t.tunnel).length).toBeGreaterThan(1);
+    const withPieces = roadOnGround(seg, 0, g, { a: 0, b: 0 }, { pieces: [{ s: 60, tag: 'kick', v: 2.4 }, { s: 330, tag: 'mud', v: 'water' }] }), k = sketch(withPieces, 0, 2);
+    const at = tag => { const s = withPieces.findIndex(sg => sg[3][tag] !== undefined); return k.starts[s].a; };
+    expect(Math.abs(at('kick') - 60)).toBeLessThan(26); expect(Math.abs(at('mud') - 330)).toBeLessThan(26);
+  });
+  it('Generate land: every style makes land with some lie to it (the same each time for a seed), and Generate road lays a lap on it that builds, with its pieces', () => {
+    const base = M.STAGES[0];
+    for (const style of Object.keys(LAND_STYLES)) {
+      const g = generateGround(style, 11), lo = Math.min(...g.h), hi = Math.max(...g.h);
+      expect(hi - lo, style).toBeGreaterThan(25); expect(generateGround(style, 11).h).toEqual(g.h); expect(generateGround(style, 12).h).not.toEqual(g.h);
+      const rd = autoRoad(g, { seed: 4 }); expect(rd, style).not.toBe(null);
+      const k = sketch(rd.segs, rd.heading, 2); expect(k.gap, style).toBeLessThan(0.6);
+      expect(rd.pieces.some(pc => pc.tag === 'yump'), style).toBe(true);
+      const segs = roadOnGround(rd.segs, rd.heading, g, rd.start, { pieces: rd.pieces });
+      const st = { name: style, blurb: '', type: 'gorge', laps: 2, seed: 7, surface: 'tarmac', hillAmp: 0, armco: true, startHeading: rd.heading, segs, ground: groundFor(g, rd.start), light: base.light, colors: base.colors, trees: base.trees };
+      const tr = M.buildTrack(st); buildTerrain(tr, st); expect(tr.xs.length, style).toBeGreaterThan(600);
+    }
+    for (const len of ['short', 'long']) expect(autoRoad(generateGround('hills', 3), { seed: 2, length: len, pieces: false }).pieces).toEqual([]);
+  });
+  it('every set piece the Terrain builder offers builds on a painted stage', () => {
+    const g = land(), { r } = lap(g), base = M.STAGES[0];
+    const offered = [['kick', 2.4], ['yump', 2.6], ['whoops', 0.7], ['mud', 'water'], ['mud', true], ['boost', true], ['chicane', 'concrete'], ['crumble', true], ['hammers', 3], ['rockfall', true], ['ice', true], ['dirt', true], ['town', true], ['falls', true]];
+    const c = closeLoop(fromStroke(Array.from({ length: 200 }, (_, k) => ({ a: 170 * Math.cos(k / 200 * Math.PI * 2), b: 110 * Math.sin(k / 200 * Math.PI * 2) })), { tol: 4, closeDist: 40 }).segs, r.heading);
+    const pieces = offered.map(([tag, v], n) => ({ s: 30 + n * 60, tag, v }));
+    const segs = roadOnGround(c.segs, r.heading, g, r.start, { pieces });
+    const st = { name: 'Painted pieces', blurb: '', type: 'gorge', laps: 2, seed: 7, surface: 'tarmac', hillAmp: 0, armco: true, startHeading: r.heading, segs, ground: groundFor(g, r.start), light: base.light, colors: base.colors, trees: base.trees };
+    const tr = M.buildTrack(st); buildTerrain(tr, st);
+    for (const [tag] of offered) expect(segs.some(sg => (sg[0] === 's' ? sg[3] : sg[4])[tag] !== undefined), tag).toBe(true);
+  });
+});

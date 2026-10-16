@@ -9,7 +9,7 @@ import { fxSurf } from './carfx.js';
 // latest muck: pale dust, green-brown, dark mud, or snow.
 const MUCK = { gravel: { rate: 0.025, col: 0xB49A74 }, grass: { rate: 0.012, col: 0x6E6A3A }, mud: { rate: 0.4, col: 0x4A3322 }, ford: { rate: -0.3, col: 0x5A4632 }, tarmac: { rate: -0.004, col: null },
   snow: { rate: 0.02, col: 0xEEF3F8 }, powder: { rate: 0.05, col: 0xFFFFFF }, ice: { rate: -0.002, col: null } };   // snow: a crust of white builds up instead
-let tex = null;
+let tex = null, heavy = null;
 function dirtTex() {
   if (tex) return tex;
   tex = canvasTex(128, 128, (g, w, h) => {
@@ -29,6 +29,18 @@ function dirtTex() {
   });
   return tex;
 }
+// a heavy coat (an oil drum burst over the car, wet cement): big blobs and runs over most of the panel
+function heavyTex() {
+  if (heavy) return heavy;
+  heavy = canvasTex(128, 128, (g, w, h) => {
+    let s = 21; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(0, 0, w, h);
+    for (let k = 0; k < 90; k++) { const x = r() * w, y = r() * h, rad = 6 + r() * 16; g.fillStyle = `rgba(255,255,255,${(0.7 + r() * 0.3).toFixed(2)})`; g.beginPath(); g.ellipse(x, y, rad * (1 + r() * 0.6), rad, r() * 3, 0, Math.PI * 2); g.fill(); }
+    for (let k = 0; k < 40; k++) { const x = r() * w, y = r() * h * 0.6; g.fillRect(x, y, 2 + r() * 3, 10 + r() * 40); }   // runs down the panel
+    for (let k = 0; k < 30; k++) { g.clearRect(r() * w, r() * h, 2 + r() * 5, 2 + r() * 5); }   // the odd clean fleck
+  });
+  return heavy;
+}
 /** Give a car's panels a dirt layer, and its wheels one of their own: tyres and hubs muck up first and darkest. */
 export function addDirt(v, panels, wheels = []) {
   const mk = () => new THREE.MeshLambertMaterial({ map: dirtTex(), color: 0xB49A74, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
@@ -37,7 +49,12 @@ export function addDirt(v, panels, wheels = []) {
   for (const w of wheels) w.traverse(m => { if (m.isMesh && !m.userData.dirt) { const o = new THREE.Mesh(m.geometry, wmat); o.userData.dirt = true; o.renderOrder = 1; o.scale.setScalar(1.01); m.add(o); } });
   v.dirt = { amt: 0, mat, wmat, col: new THREE.Color(0xB49A74), tmp: new THREE.Color() };
 }
-export function resetDirt(v) { if (v.dirt) { v.dirt.amt = 0; v.dirt.mat.opacity = 0; v.dirt.wmat.opacity = 0; v.dirt.mat.visible = v.dirt.wmat.visible = false; } }
+/** Something thrown over the car (an oil drum bursting on it, wet cement): the body takes that colour, at least `amt` of it. */
+export function coat(v, hex, amt) { const D = v && v.dirt; if (!D) return; D.col.setHex(hex); D.amt = Math.min(1, Math.max(D.amt, amt)); if (amt > 0.6) texOf(D, heavyTex()); show(D); }
+/** A soaking (the water cannon): it rinses most of the muck off. */
+export function rinse(v, k = 0.4) { const D = v && v.dirt; if (!D) return; D.amt *= k; if (D.amt < 0.3) texOf(D, dirtTex()); show(D); }
+const texOf = (D, t) => { if (D.mat.map === t) return; D.mat.map = t; D.wmat.map = t; D.mat.needsUpdate = D.wmat.needsUpdate = true; };
+export function resetDirt(v) { if (v.dirt) { texOf(v.dirt, dirtTex()); v.dirt.amt = 0; v.dirt.mat.opacity = 0; v.dirt.wmat.opacity = 0; v.dirt.mat.visible = v.dirt.wmat.visible = false; } }
 // the body shows the muck at its level; the wheels, which sit in it, at three times that, caked paler than the rubber
 function show(D) { D.mat.color.copy(D.col); D.mat.opacity = Math.min(0.95, D.amt * 1.3); D.wmat.color.copy(D.col).multiplyScalar(1.45); D.wmat.opacity = Math.min(0.97, D.amt * 3); D.mat.visible = D.mat.opacity > 0.01; D.wmat.visible = D.wmat.opacity > 0.01; }   /* caked mud dries paler than the tyre under it */
 // following a car through a bog: its rooster tail lands on you

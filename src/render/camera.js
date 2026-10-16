@@ -6,6 +6,8 @@ import { CAM_DIR as CORE_CAM_DIR, WALL } from '../core/constants.js';
 import { camera, pcamera, sun } from './renderer.js';
 import { CUT } from './materials.js';
 import { houseBoxes } from './elements/town.js';
+import { structureCover } from './elements/structures.js';
+import { inFootprint } from '../core/elements/structures.js';
 import { _v1, _v3 } from './vehicles.js';
 import { race } from '../ui/flow.js';
 
@@ -15,10 +17,15 @@ export const CAM_DIR = new THREE.Vector3(...CORE_CAM_DIR);
 // are perspective cameras behind the car: back / up metres from it, looking look metres ahead and lookUp above the
 // road; tv films you from trackside spots up the road. Zoom scales the view height, or the distance behind the car.
 // Showdown, Deuce and Tiebreak judge "off the screen" on the top-down view, so there the perspective views fall back to chase.
+// Dynamic Low (dynamicDir) is Low that swings round, slowly, to see the road ahead three-quarter on (never straight up it
+// or straight across it), and a building just ahead at an angle to its walls; it keeps within DYN.SPAN of Low's own
+// bearing, so up the screen stays roughly where it was. It looks a little lower on climbs and drops, pulls in a little
+// while you're smashing through something and out while you're in the air. In Showdown it's plain Low (the view is the rules).
 export const CAM_MODES = {
   classic: { name: 'Classic', dir: CORE_CAM_DIR },
   overhead: { name: 'Overhead', dir: [1, 3.5, 1] },
   low: { name: 'Low', dir: [1, 0.82, 1] },
+  dynamic: { name: 'Dynamic Low', dir: [1, 0.82, 1], dynamic: true },
   chase: { name: 'Chase', el: 0.72 },
   behind: { name: 'Behind', persp: { back: 7.5, up: 3.1, look: 10, lookUp: 1.1, fov: 60, turn: 4 } },
   follow: { name: 'Follow', persp: { back: 15, up: 7, look: 14, lookUp: 0.4, fov: 52, turn: 3 } },
@@ -27,7 +34,46 @@ export const CAM_MODES = {
   tv: { name: 'TV', tv: true }
 };
 export const CAM_ZOOMS = { close: { name: 'Close', k: 0.6 }, near: { name: 'Near', k: 0.78 }, normal: { name: 'Normal', k: 1 }, far: { name: 'Far', k: 1.3 } };
-const PORTRAIT = 1.25;   // a tall screen sees less road across, so pull out a little (not so far the cars are specks)
+const PORTRAIT = 1.25;
+export const DYN = { SPAN: 60 * Math.PI / 180, VIEW: 40 * Math.PI / 180, BLD: 45 * Math.PI / 180, FRONT: 0.6, KEEP: 0.3, RATE: 0.55, EASE: 0.9, EL: 30 * Math.PI / 180, EL_SLOPE: 6 * Math.PI / 180,
+  SIGHT: 140, HIDE: 0.35, SIDE: 0.8, EL_MAX: 62 * Math.PI / 180, EL_RATE: 0.6 };   // hills between the camera and the car: look-out (m), cost per m of hill in the way, how far up it may tilt (rad, rad/s)
+const dyn = { az: null, target: null, el: null };
+// Dynamic Low's bearing (radians, the camera's side of the car) and its height angle
+function dynamicDir(dt, snap, out) {
+  const P = race.player, tr = G.world.tr, base = Math.atan2(CAM_MODES.low.dir[0], CAM_MODES.low.dir[2]);
+  // the road ahead: its average heading over the next 60 m, and how much it climbs or drops
+  let fx = 0, fz = 0; const at = d => tr.nx ? tr.adv(P.pr.i, d) : Math.min(tr.N - 1, P.pr.i + d);
+  for (let d = 10; d <= 60; d += 10) { const j = at(d), w = 70 - d; fx += tr.tx[j] * w; fz += tr.tz[j] * w; }
+  const road = Math.atan2(fx, fz), grade = Math.abs(tr.H[at(40)] - tr.H[P.pr.i]) / 40;
+  // where to stand: behind the road at VIEW either side (the road runs up the screen at an angle), or in front of it
+  // (it runs down the screen) at a cost; a building close ahead: at BLD to its walls; the nearest to Low's own bearing
+  const cands = [[road + Math.PI + DYN.VIEW, 0], [road + Math.PI - DYN.VIEW, 0], [road + DYN.VIEW, DYN.FRONT], [road - DYN.VIEW, DYN.FRONT]];
+  const S = race.st, v = Math.hypot(P.vx, P.vz);
+  if (S) for (const o of S.blds) {
+    if (o.collapsed) continue; const dx = o.x - P.x, dz = o.z - P.z, d = Math.hypot(dx, dz); if (d > 38) continue;
+    const ahead = v > 3 ? (dx * P.vx + dz * P.vz) / v : 0, inside = inFootprint(o, P.x, P.z, 1);
+    if (!inside && (ahead < 0 || Math.abs(dx * P.vz - dz * P.vx) / Math.max(v, 1) > 16)) continue;
+    for (const k of [0, 1, 2, 3]) for (const s of [1, -1]) cands.push([o.f + k * Math.PI / 2 + s * DYN.BLD, -0.2]);   // (a little preferred)
+    break;
+  }
+  // hills and mountains in the way: from each side, how far the ground stands above the line of sight to the car
+  const terr = G.world.terr, cx = P.dx ?? P.x, cy = (P.dy ?? P.y) + 1, cz = P.dz ?? P.z;
+  const hidden = (a, el) => { const sx = Math.sin(a), sz = Math.cos(a), tn = Math.tan(el); let m = 0; for (let h = 6; h <= DYN.SIGHT; h += h < 40 ? 4 : 8) m = Math.max(m, terr.at(cx + sx * h, cz + sz * h) - (cy + h * tn)); return m; };
+  for (let k = -3; k <= 3; k++) cands.push([base + k * DYN.SPAN / 3, 0.15]);           // more sides to see from, when the road's ones are behind a hill
+  const el0 = DYN.EL - clamp(grade * 1.5, 0, 1) * DYN.EL_SLOPE;
+  const bridge = [0, 15, 30].some(d => tr.bridge[at(d)]);   // on a bridge: the more side on the better, to see the drop under it
+  const cost = ([a, pen]) => { const off = Math.abs(wrapAngle(a - base)); return (off > DYN.SPAN ? 9 + off : off * 0.5 + pen) + Math.min(6, hidden(a, el0) * DYN.HIDE) - (bridge ? DYN.SIDE * Math.abs(Math.sin(a - road)) : 0); };
+  let best = cands[0]; for (const c of cands) if (cost(c) < cost(best)) best = c;
+  if (dyn.target === null || snap) dyn.target = best[0];
+  else if (cost(best) < cost([dyn.target, 0]) - DYN.KEEP || Math.abs(wrapAngle(dyn.target - base)) > DYN.SPAN) dyn.target = best[0];   // only for a clearly better angle: no dithering
+  if (dyn.az === null || snap) dyn.az = dyn.target;
+  else { const want = wrapAngle(dyn.target - dyn.az) * (1 - Math.exp(-dt * DYN.EASE)); dyn.az += clamp(want, -DYN.RATE * dt, DYN.RATE * dt); }
+  // still a hill in the way from where we are: tilt up (towards looking straight down) just enough to see over it
+  let elW = el0; while (elW < DYN.EL_MAX && hidden(dyn.az, elW) > 0.5) elW += 4 * Math.PI / 180;
+  dyn.el = dyn.el == null || snap ? elW : dyn.el + clamp(elW - dyn.el, -DYN.EL_RATE * dt * 0.5, DYN.EL_RATE * dt);   // up quickly, down gently
+  const el = dyn.el;
+  return out.set(Math.sin(dyn.az) * Math.cos(el), Math.sin(el), Math.cos(dyn.az) * Math.cos(el));
+}   // a tall screen sees less road across, so pull out a little (not so far the cars are specks)
 let tv = null; const _look = new THREE.Vector3(), _cam = new THREE.Vector3();
 // the perspective views: place pcamera behind (or over, or on) the car, or at a trackside spot for TV
 function perspCamera(dt, snap, M, c) {
@@ -72,9 +118,9 @@ const CUT_R = 20;
 function updateCut(dt, snap) {
   if (!race || G.state === 'menu') { CUT.r.value = CUT.r2.value = 0; return; }
   const P = race.player; CUT.car.value.set(P.x, P.y, P.z);
-  const covered = G.world.cover[G.world.tr.bi(P.pr.i)], hill = !covered && hidden(P), want = covered || hill || overBridge(P) || behindHouse(P) ? CUT_R : 0;
+  const covered = G.world.cover[G.world.tr.bi(P.pr.i)], hill = !covered && hidden(P), bld = !covered && !hill && structureCover(P, CUT.dir.value), want = covered || hill || overBridge(P) || behindHouse(P) || bld ? CUT_R : 0;
   CUT.r.value += (want - CUT.r.value) * (snap ? 1 : Math.min(1, dt * 6));
-  if (hill) CUT.lift.value = 0.5; else if (CUT.r.value < 0.5) CUT.lift.value = 1.4;   // a hillside in the way sits low: cut closer to the car's height
+  if (hill) CUT.lift.value = 0.5; else if (bld) CUT.lift.value = 2.6; else if (CUT.r.value < 0.5) CUT.lift.value = 1.4;   // a hillside in the way sits low: cut closer to the car's height; in a building, above the ground floor's walls
   // the road ahead: a hillside between the camera and where the player is about to drive opens its own window there
   const tr = G.world.tr, ahead = [18, 32].map(k => tr.loopN ? tr.nb0(P.pr.i, k) : Math.min(tr.N - 1, P.pr.i + k)).find(j => hidden({ x: tr.xs[j], y: tr.H[j], z: tr.zs[j] }));
   if (ahead !== undefined) CUT.ahead.value.lerp(_ah.set(tr.xs[ahead], tr.H[ahead], tr.zs[ahead]), snap || CUT.r2.value < 0.5 ? 1 : Math.min(1, dt * 4));
@@ -147,7 +193,8 @@ export function updateCamera(dt, snap) {
     chaseHd = chaseHd === null || snap ? hd : chaseHd + wrapAngle(hd - chaseHd) * (1 - Math.exp(-dt * 2.2));
     const el = CAM_MODES.chase.el; _want.set(-Math.sin(chaseHd) * Math.cos(el), Math.sin(el), -Math.cos(chaseHd) * Math.cos(el));
     if (!race.sd) { tx += Math.sin(chaseHd) * 7; tz += Math.cos(chaseHd) * 7; }   // look further up the road: it's up the screen
-  } else { chaseHd = null; _want.set(...CAM_MODES[mode].dir).normalize(); }
+  } else if (PM.dynamic && race && !race.sd && true) { chaseHd = null; dynamicDir(dt, snap, _want); }
+  else { chaseHd = null; dyn.az = dyn.target = dyn.el = null; _want.set(...CAM_MODES[mode].dir).normalize(); }
   camDir.lerp(_want, snap ? 1 : 1 - Math.exp(-dt * 5)).normalize();
   G.camDir = [camDir.x, camDir.y, camDir.z]; if (race) race.camDir = G.camDir;   // the touch wheel and Showdown's "on screen" follow it
   const k = snap ? 1 : 1 - Math.exp(-dt * (G.state === 'menu' ? 2.5 : 5));
@@ -161,6 +208,11 @@ export function updateCamera(dt, snap) {
     if (tr.town && tr.town[tr.bi(c.pr.i)]) vh -= 6;
   }
   if (race && race.derby && G.state !== 'menu' && G.world.tr.arena) vh = G.derbyFit || 50;
+  else if (PM.dynamic && race && G.state !== 'menu' && !race.sd) {                   // Dynamic Low: in for a smash, out for a jump
+    const c = race.player;
+    if (race.time - (G.smashT ?? -9) < 2 || (race.st && race.st.blds.some(o => !o.collapsed && inFootprint(o, c.x, c.z, 1)))) vh *= 0.84;
+    if (!c.onGround && c.airT > 0.25) vh += 7;
+  }
   if (aspect < 1) vh *= PORTRAIT;
   if (Math.min(innerWidth, innerHeight) < 520) vh *= 0.85;                            // a phone: the cars were specks
   if (G.state === 'menu') vh = 58; else vh *= (CAM_ZOOMS[G.camZoom] || CAM_ZOOMS.normal).k;

@@ -81,7 +81,8 @@ export function updateHUD(dt) {
   }
   else if (race.derby) {   // a derby (core/modes/derby.js): how many are left, the clock, your health
     const D = race.derby, left = race.cars.filter(c => !c.out).length;
-    $('lap').hidden = false; setTxt('lap', P.out ? `Out · ${left} left` : `Derby · ${left} left · ${fmt(Math.max(0, D.time - D.t))} · you ${Math.round(100 * health(P))}%`);
+    if (race.demo) { const S = race.st, up = S ? S.blds.filter(o => !o.collapsed).length : 0, pts = race.demo.pts[race.cars.indexOf(P)]; $('lap').hidden = false; setTxt('lap', `${pts} pts · ${up} standing · ${fmt(Math.max(0, D.time - D.t)).replace(/\.\d+$/, '')}${P.out ? ' · out' : ''}`); }
+    else { $('lap').hidden = false; setTxt('lap', P.out ? `Out · ${left} left` : `Derby · ${left} left · ${fmt(Math.max(0, D.time - D.t))} · you ${Math.round(100 * health(P))}%`); }
   }
   else if (G.world.tr.loopN) {
     const L = G.world.tr.laps, GT = G.world.tr.gates, per = GT ? GT.length / L : 0, gate = GT && !P.finished ? ` · Gate ${(P.gateK || 0) % per + 1}/${per}` : '';   // off-piste: which gate is next this lap
@@ -94,13 +95,15 @@ export function updateHUD(dt) {
   for (const z of ['f', 'b', 'l', 'r']) { const d = P.dmg[z], el = $('dz-' + z), f = d < 0.05 ? '' : `hsl(${Math.round(46 - 42 * d)} 92% ${Math.round(58 - 6 * d)}%)`; if (el._f !== f) { el._f = f; el.style.fill = f; } }
   // weapons: what you're holding (and how many), a flashing warning while a missile is homing in on you
   if (race.weapons && P.wpn) {
-    const W = P.wpn, pi = race.cars.indexOf(P), lock = race.missiles.some(m => m.tgt === pi), el = $('wpn'), it = W.item;
+    const W = P.wpn, pi = race.cars.indexOf(P), lock = race.missiles.some(m => m.tgt === pi) || race.cars.some(o => o !== P && o.wpn && o.wpn.lockTgt === pi && o.wpn.lockK > 0.35), el = $('wpn'), it = W.item;
+    const aiming = it === 'missile' && !(W.gunT > 0) ? (W.lockK >= 1 ? ' · LOCKED' : W.lockTgt >= 0 ? ' · locking' : ' · no target') : '';   // the missile's lock (core lockedOn)
     const act = W.gunT > 0 ? ['gun', W.gunT, wv(P, 'gun', 'GUN_T')] : W.waterT > 0 ? ['water', W.waterT, wv(P, 'water', 'WATER_T')] : W.cementT > 0 ? ['cement', W.cementT, wv(P, 'cement', 'CEMENT_T')] : W.jingleT > 0 ? ['jingle', W.jingleT, WPN.JINGLE_T] : null, firing = !!act;
     const gear = W.gear ? ` · ${GEAR[W.gear].name}${W.gear === 'magnet' ? '' : (W.gear === 'shield' ? W.shieldT : W.flareT) > 0 ? ' ' + Math.ceil(W.gear === 'shield' ? W.shieldT : W.flareT) + 's' : ' ready'}` : '';
     el.hidden = false; el.className = lock ? 'lock' : it || firing ? '' : 'reload';
-    setTxt('wpn-state', (lock ? 'Missile incoming!' : firing ? ITEM_NAME[act[0]] + '!' : it ? ITEM_NAME[it] + (levelOf(W.load, it) > 1 ? ' L' + levelOf(W.load, it) : '') + (W.uses > 1 ? ` ×${W.uses}` : '') + (isTouch ? '' : ' · F') : 'Grab a ? crate') + gear);
-    const fw = (firing ? 100 * act[1] / act[2] : it ? 100 : 0).toFixed(0) + '%', ff = $('wpn-fill'); if (ff._w !== fw) { ff._w = fw; ff.style.width = fw; }
-    $('wpn-fire').classList.toggle('ready', !!it); $('wpn-fire').classList.toggle('lock', lock);   // on touch the Fire button is the weapon panel setTxt('wpn-fire', it ? { missile: 'Missile', gun: 'Guns', oil: 'Oil', pulse: 'Pulse', harpoon: 'Hook', water: 'Water', cement: 'Cement', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle' }[it] : 'Fire');
+    setTxt('wpn-state', (lock ? (race.missiles.some(m => m.tgt === pi) ? 'Missile incoming!' : 'Locked on to you!') : firing ? ITEM_NAME[act[0]] + '!' : it ? ITEM_NAME[it] + (levelOf(W.load, it) > 1 ? ' L' + levelOf(W.load, it) : '') + (W.uses > 1 ? ` ×${W.uses}` : '') + aiming + (isTouch ? '' : ' · F') : 'Grab a ? crate') + gear);
+    const fw = (firing ? 100 * act[1] / act[2] : it === 'missile' ? 100 * (W.lockK || 0) : it ? 100 : 0).toFixed(0) + '%', ff = $('wpn-fill'); if (ff._w !== fw) { ff._w = fw; ff.style.width = fw; }
+    $('wpn-fire').classList.toggle('ready', !!it); $('wpn-fire').classList.toggle('lock', lock);
+    setTxt('wpn-fire', it ? { missile: 'Missile', gun: 'Guns', oil: 'Oil', pulse: 'Pulse', harpoon: 'Hook', water: 'Water', cement: 'Cement', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle', mortar: 'Mortar', mine: 'Mines' }[it] : 'Fire');   // on touch the Fire button is the weapon panel: it says what you hold
   } else $('wpn').hidden = true;
   $('touch').classList.toggle('nowpn', !race.weapons);
   const wrong = P.wrongT > 1 && !race.derby, missed = P.gateMiss && !P.finished;

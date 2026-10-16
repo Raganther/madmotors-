@@ -7,7 +7,7 @@ import { raceDefs, MORE_RIVALS } from '../src/data/cars.js';
 import { SIGNATURES, WEAPON_IDS } from '../src/data/weapons.js';
 import { VEHICLES } from '../src/data/vehicles.js';
 const args = process.argv.slice(2), li = args.indexOf('--level'), LEVEL = li >= 0 ? +args.splice(li, 2)[1] : 1;
-const HIT = { 'missile-hit': 'missile', 'bullet-hit': 'gun', 'oil-hit': 'oil', 'pulse-hit': 'pulse', 'harpoon-hit': 'harpoon', 'door-hit': 'door', 'hammer-hit': 'hammer', 'water-hit': 'water', 'cement-hit': 'cement', 'stinger-hit': 'stinger', 'crush-hit': 'crush', 'jingle-hit': 'jingle' };
+const HIT = { 'missile-hit': 'missile', 'mortar-hit': 'mortar', 'crater-hit': 'mortar', 'bullet-hit': 'gun', 'oil-hit': 'oil', 'drum-hit': 'oil', 'pulse-hit': 'pulse', 'harpoon-hit': 'harpoon', 'door-hit': 'door', 'hammer-hit': 'hammer', 'water-hit': 'water', 'cement-hit': 'cement', 'stinger-hit': 'stinger', 'crush-hit': 'crush', 'jingle-hit': 'jingle', 'mine-hit': 'mine' };
 // the standard field, with the rivals in signature vehicles swapped in for the last four, every car at LEVEL
 const lv = Object.fromEntries(WEAPON_IDS.map(id => [id, LEVEL]));
 const defs = () => { const d = raceDefs(VEHICLES[0], 7), sig = Object.keys(SIGNATURES).map(v => MORE_RIVALS.find(r => r.vehicle === v)).filter(Boolean);

@@ -1,6 +1,7 @@
 import { FEATURES } from '../features/index.js';
 import { SD_KINDS, initShowdown, sdLeader, showdownStep } from '../modes/showdown.js';
 import { derbyControl, derbyStep, initDerby } from '../modes/derby.js';
+import { initDemolition } from '../modes/demolition.js';
 import { clamp, mulberry32 } from '../math.js';
 import { aiControl } from './ai.js';
 import { makeBarriers } from './barriers.js';
@@ -14,9 +15,9 @@ import { healCar } from './damage.js';
 export function gridSlots(n) {
   if (n <= 4) return [[30, -2.8], [30, 2.8], [22, -2.8], [22, 2.8]];
   const L = n > 15 ? [-4.3, -1.45, 1.45, 4.3] : [-3.5, 0, 3.5], rows = Math.ceil(n / L.length), gap = rows > 5 ? 24 / (rows - 1) : 6;   // a full field goes four abreast
-  return Array.from({ length: n }, (_, k) => [30 - Math.floor(k / L.length) * gap, L[k % L.length]]);
+  return Array.from({ length: n }, (_, k) => [Math.round(30 - Math.floor(k / L.length) * gap), L[k % L.length]]);   // a whole sample: the track is looked up by index
 }
-/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'|'deuce'|'tiebreak', weapons?: boolean}} [opts] @returns {import('../types.js').Race} */
+/** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'|'deuce'|'tiebreak'|'derby'|'demolition', weapons?: boolean}} [opts] @returns {import('../types.js').Race} */
 export function createRace(W, defs, opts = {}) {
   W.bar = makeBarriers(W.tr, W.armco);
   const grid = gridSlots(defs.length), cars = defs.map((d, k) => makeCar(W, grid[k][0], grid[k][1], d));
@@ -25,6 +26,7 @@ export function createRace(W, defs, opts = {}) {
   R.mode = opts.mode || 'race';
   if (SD_KINDS[R.mode]) initShowdown(R, SD_KINDS[R.mode]);
   if (R.mode === 'derby') initDerby(R);   // last car running (modes/derby.js)
+  if (R.mode === 'demolition') { initDerby(R); initDemolition(R, W.tr.demolition || {}); }   // the derby's rules, scored on what you knock down (modes/demolition.js)
   return R;
 }
 /** Advance the whole race by one fixed step (STEP = 1/120 s). @param {import('../types.js').Race} R @param {number} dt @param {import('../types.js').World} W */
@@ -48,6 +50,7 @@ export function raceStep(R, dt, W) {
     if (c.hold) {                                                                     // the Workshop's test cars (nothing else sets it): parked, or held at a speed
       const sp = Math.hypot(c.vx, c.vz); c.inp.steer = 0; c.inp.handbrake = 0;
       c.inp.throttle = typeof c.hold === 'number' && sp < c.hold ? 1 : 0; c.inp.brake = c.hold === true && c.vf > 0.5 ? 1 : 0;   // (brake at a standstill would reverse)
+      if (c.hold === true) c.stuckT = 0;                                              // parked on purpose: never 'stuck' and respawned
     }
     else if (R.derby && (!c.isPlayer || R.autoPlayer || c.out)) derbyControl(R, c, W);
     else if (!c.isPlayer || c.finished || R.autoPlayer) aiControl(c, W, all, dt, R.hazards, R.sd && R.sd.gate);

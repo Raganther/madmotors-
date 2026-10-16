@@ -1,11 +1,12 @@
 import { G } from '../game.js';
 import { clearSceneryHits, sceneryHit } from '../render/world/scenery.js';
 import { AudioSys } from '../audio/audio.js';
-import { clamp } from '../core/math.js';
+import { eventSound } from './sounds.js';
 import { createRace, ranking } from '../core/sim/race.js';
 import { derbyOrder, health } from '../core/modes/derby.js';
 import { screenOffset } from '../core/sim/view.js';
 import { CP, SD } from '../core/modes/showdown.js';
+import { upgradedVeh } from '../data/career.js';
 import { DEFAULT_RIVALS, MAX_RIVALS, raceDefs } from '../data/cars.js';
 import { vehicleById } from '../data/vehicles.js';
 import { BREAKABLES } from '../data/breakables.js';
@@ -20,9 +21,12 @@ import { carCrashFx, dustRing, impactFx, sparks } from '../render/effects/impact
 import { clearProps } from '../render/effects/props.js';
 import { shockwave } from '../render/effects/rings.js';
 import { clearSkids } from '../render/effects/skids.js';
-import { camera, renderer, scene } from '../render/renderer.js';
+import { camera, contextLost, recoverGraphics, renderer, scene } from '../render/renderer.js';
 import { resetDirt } from '../render/effects/dirt.js';
-import { bulletHitFx, crushFx, flaresFx, shieldFx, stingerFx, flash, missileBlast, missilePuff, mountKick, oilDropFx, pickupFx, pulseFx, smoke, muzzleFx } from '../render/weapons.js';
+import { drumBounceFx, drumBurstFx } from '../render/weapons.js';
+import { coat, rinse } from '../render/effects/dirt.js';
+import { clearTrails } from '../render/effects/trails.js';
+import { bulletHitFx, crushFx, mineBlast, flaresFx, shieldFx, stingerFx, flash, missileBlast, mortarBlast, mortarLaunchFx, craterHitFx, missilePuff, mountKick, oilDropFx, pickupFx, pulseFx, smoke, muzzleFx } from '../render/weapons.js';
 import { landDust } from '../render/effects/carfx.js';
 import { carVis, setRoster, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
@@ -44,11 +48,12 @@ G.accumulator = 0; G.lastT = 0; G.countdown = 0; G.lastBeep = 4; G.goTimer = 0; 
 export let resultsShown = false, racesStarted = 0, newBest = false;
 G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
-  const lg = G.league, cr = G.career, ws = G.workshop, arena = !!G.world.stage.arena, mode = cr ? careerMode() : arena ? 'derby' : lg || ws ? 'race' : G.mode;   // league rounds are Races; a career special may be a Showdown; an arena is always a derby
-  let defs = cr ? careerRaceDefs() : raceDefs(vehicleById(G.vehicle), ws ? ws.rivals : lg ? LEAGUE_RIVALS : mode === 'derby' ? Math.max(5, G.rivals) : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);   // the line-up, with the player's pick
+  const lg = G.league, cr = G.career, ws = G.workshop, arena = !!G.world.stage.arena, demo = !!G.world.stage.demolition, mode = cr ? careerMode() : demo ? 'demolition' : arena ? 'derby' : lg || ws ? 'race' : G.mode;   // a stage with `demolition` is always one (modes/demolition.js)   // league rounds are Races; a career special may be a Showdown; an arena is always a derby
+  let defs = cr ? careerRaceDefs() : raceDefs(vehicleById(G.vehicle), ws ? ws.rivals : lg ? LEAGUE_RIVALS : mode === 'derby' || mode === 'demolition' ? Math.max(5, G.rivals) : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);   // the line-up, with the player's pick
+  if (ws && ws.build) defs = defs.map(d => { if (!d.player) return d; const veh = upgradedVeh(G.vehicle, ws.build); return { ...d, veh, im: veh.im, build: ws.build }; });   // the Workshop's Upgrades tab: the player's car with the parts picked there
   if (lg && lg.round > 0) { const order = standings(lg, defs.map(d => d.name)).map(s => s.name).reverse(); defs = order.map(n => defs.find(d => d.name === n)).filter(Boolean); }   // the championship leader starts at the back
   setRoster(defs);
-  const r = createRace(G.world.W, defs, { mode, weapons: ws ? ws.weapons : cr ? true : G.weapons }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); resetDirt(v); });   // repaired and washed; a career always races with weapons
+  const r = createRace(G.world.W, defs, { mode, weapons: ws ? ws.weapons : cr ? true : G.weapons }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); v.dripT = v.burnT = v.flatT = v.soakT = 0; v.trail = null; resetDirt(v); });   // repaired and washed; a career always races with weapons
   elementHook('newRace', r);
   return r;
 }
@@ -61,6 +66,7 @@ export function handleEvents() {
       if (G.tally) tally(c, e, pi);
       if (G.workshop && G.workshop.onEvent) G.workshop.onEvent(c, e);
       const near = Math.hypot(c.x - race.player.x, c.z - race.player.z) < 40;
+      eventSound(c, e, near);
       switch (e.t) {
         case 'hit': impactFx(c, e, c.isPlayer, near); break;
         case 'smash': impactFx(c, e, c.isPlayer, near); if (c.isPlayer && e.v > 9 && G.calloutTimer <= 0) callout('Smash!'); break;
@@ -68,21 +74,20 @@ export function handleEvents() {
         case 'land':   // bigger jumps kick up more dust; long ones throw a second ring of grit and jolt the camera
           if (e.air > 0.25) { const k = Math.min(1, (e.air - 0.25) / 0.6), dirt = G.world.stage.colors.dirt; dustRing(c, 12 + Math.round(k * 14), landDust(c), 5 + k * 5, 1.1 + k * 0.6); if (e.air > 0.5 && near) dustRing(c, 10, dirt, 9, 0.8); }
           if (e.imp > 15 && c.surface === 'tarmac' && near) sparks(c.x, c.y - 0.5, c.z, Math.round(e.imp * 0.8), c.vx / (Math.hypot(c.vx, c.vz) + 1), c.vz / (Math.hypot(c.vx, c.vz) + 1));   // bottoming out
-          if (c.isPlayer && e.air > 0.2) { AudioSys.thud(e.imp / 22); if (e.air > 0.4) G.shake = Math.min(1.2, G.shake + e.imp / 40); }
+          if (c.isPlayer && e.air > 0.4) G.shake = Math.min(1.2, G.shake + e.imp / 40);
           break;
         case 'bigair': if (c.isPlayer) { callout('Big air!'); AudioSys.whoosh(); } break;
         case 'drift': if (c.isPlayer) { callout(e.amt > 1.6 ? 'Mega drift!' : 'Drift boost!'); AudioSys.whoosh(); } else if (near) AudioSys.whoosh(0.35); break;
         case 'respawn': if (c.isPlayer) callout('Back on track'); break;
         case 'dent': dentFx(c, e); break;
         case 'tree': sceneryHit(e, c.pr.i); break;
-        case 'bush': sceneryHit(e, c.pr.i); if (c.isPlayer || near) AudioSys.crash('hay', Math.min(1, e.v / 25) * (c.isPlayer ? 0.6 : 0.3)); break;
+        case 'bush': sceneryHit(e, c.pr.i); break;
         case 'wreck': if (!c.destroyed) wreckFx(c, c.isPlayer, near); break;
         case 'hazard': { const d = e.i - race.player.pr.i; if (d > 0 && d < 260) callout(e.kind === 'cows' ? 'Cows on the road!' : 'Oil ahead!'); break; }
         case 'cowhit': dustRing(e, 14, 0xC9B79C, 6, 1.3); for (let k = 0; k < 8; k++) emit(e.x, e.y + 1, e.z, (Math.random() - 0.5) * 6, 3 + Math.random() * 4, (Math.random() - 0.5) * 6, 0.9, 0.5, k % 2 ? 0xF4F1EA : 0x22201E, 12);
           if (c.isPlayer || near) AudioSys.moo(c.isPlayer ? 1 : 0.5); if (c.isPlayer) { callout('Moo!'); G.shake = Math.min(1.2, G.shake + 0.6); AudioSys.thud(0.6); } break;
         case 'oil': for (let k = 0; k < 10; k++) emit(e.x, e.y + 0.2, e.z, (Math.random() - 0.5) * 5, 1 + Math.random() * 2, (Math.random() - 0.5) * 5, 0.6, 0.5, 0x151218, 10); if (c.isPlayer) callout('Oil slick!'); break;
         case 'fell': if (c.isPlayer) { callout('Into the gorge!'); AudioSys.tone(500, 0.6, 0.08, 'triangle', 0.4); } break;
-        case 'boostpad': if (c.isPlayer) AudioSys.whoosh(0.6); break;
         case 'ferry-board': callout('All aboard!'); AudioSys.bell(); break;
         case 'ferry-depart': { const pi = race.cars.indexOf(race.player); AudioSys.horn(0.55); if (e.aboard.includes(pi)) callout('Ferry departing!'); else if (e.left.includes(pi)) callout('Missed the ferry!'); break; }
         case 'ferry-arrive': if (race.ferries.some(f => f.pOn)) { callout('Go go go!'); AudioSys.bell(); } break;
@@ -96,11 +101,17 @@ export function handleEvents() {
         case 'break':   // smashed through a breakable (core/features/breakables.js): splinters, hay or concrete dust the way it went
           impactFx(c, { ...e, w: BRK_FX[e.kind] }, c.isPlayer, near);
           if (c.isPlayer && BREAKABLES[e.kind].hp >= 7) { callout(e.kind === 'concrete' || e.kind === 'wall' ? `Through the ${e.kind}!` : 'Smashed through!'); G.shake = Math.min(1.2, G.shake + 0.3 + e.v / 60); }
-          if (c.isPlayer || near) AudioSys.crash(e.kind === 'hay' || e.kind === 'hedge' ? 'hay' : ['crates', 'fence', 'picket', 'yardgate', 'bench'].includes(e.kind) ? 'wood' : 'metal', c.isPlayer ? 0.8 : 0.4);
           break;
-        case 'takedown': if (c.isPlayer) { callout(e.kind === 'truck' ? 'Truck takedown!' : 'Takedown!'); AudioSys.whoosh(); } break;
-        case 'rockhit': sparks(e.x, e.y, e.z, 14); if (c.isPlayer || near) AudioSys.crash('metal', clamp(e.v / 20, 0.2, 0.9) * (c.isPlayer ? 1 : 0.5)); if (c.isPlayer) G.shake = Math.min(1.4, G.shake + 0.8); break;
-        case 'trainhit': sparks(e.x, e.y, e.z, 45); shockwave(e.x, e.y, e.z, 9, 0xFFFFFF); if (c.isPlayer) { G.shake = 1.8; callout('Hit by a train!'); } if (c.isPlayer || near) AudioSys.crash('metal', c.isPlayer ? 1 : 0.5); break;
+        case 'wallbreak':   // burst through a building's wall (core/features/structures.js; the bricks and dust are render/elements/structures.js)
+          if (c.isPlayer) G.smashT = race.time;   // (Dynamic Low pulls in: render/camera.js)
+          if (c.isPlayer) { if (G.calloutTimer <= 0 && !e.blast) callout(e.v > 22 ? 'Straight through the house!' : 'Through the wall!'); G.shake = Math.min(1.4, G.shake + 0.4 + e.v / 50); }
+          break;
+        case 'plank': if (c.isPlayer && G.calloutTimer <= 0) callout('The bridge is giving way!'); break;   // a crumbling bridge's plank went (core/features/crumble.js)
+        case 'bayfall': if (c.isPlayer && G.calloutTimer <= 0) callout('The roof\'s coming in!'); break;   // a bay of roof and floors fell in (core/features/structures.js)
+        case 'collapse': if (c.isPlayer) callout(e.floors > 2 ? 'Brought the block down!' : `${e.type[0].toUpperCase() + e.type.slice(1)} down!`); break;
+        case 'takedown': if (c.isPlayer) callout(e.kind === 'truck' ? 'Truck takedown!' : 'Takedown!'); break;
+        case 'rockhit': sparks(e.x, e.y, e.z, 14); if (c.isPlayer) G.shake = Math.min(1.4, G.shake + 0.8); break;
+        case 'trainhit': sparks(e.x, e.y, e.z, 45); shockwave(e.x, e.y, e.z, 9, 0xFFFFFF); if (c.isPlayer) { G.shake = 1.8; callout('Hit by a train!'); } break;
         case 'repair': { const v = visOf(c); if (v) repairCarVis(v); break; }
         case 'horn': if (Math.hypot(c.x - race.player.x, c.z - race.player.z) < 70) AudioSys.horn(c.def.kind === 'truck' ? 0.75 : 1); break;
         case 'gate': if (c.isPlayer) { const per = e.of / G.world.tr.laps, n = (e.n - 1) % per + 1; if (n < per) callout(`Gate ${n}/${per}`); AudioSys.beep(880, 0.12); } break;   // off-piste gates (features/gates.js); the last one each lap leads into the lap callout
@@ -108,37 +119,49 @@ export function handleEvents() {
         case 'sd-boom': sdBoom(e); for (const k of e.losers) { const b = race.cars[k]; sdBoomFx(b, b.isPlayer || onScreen(b)); } break;
         case 'sd-crown': sdCrown(e); break;
         case 'cp-point': cpPoint(e); break;
-        case 'hammer-hit': shockwave(e.x, e.y - 1, e.z, 5, 0xFFC72C); sparks(e.x, e.y, e.z, 22); flash(e.x, e.y, e.z, 4, 0xFFFFFF, 0.2); for (let k = 0; k < 3; k++) smoke(e.x + (Math.random() - 0.5) * 2, e.y - 0.5, e.z + (Math.random() - 0.5) * 2, 3, 0xB8A890, 1.1, 1); if (near) { AudioSys.crash('metal', 1); AudioSys.burst(0.5, 'lowpass', 120, 0.4); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1); callout('Wrecking ball!'); } break;
-        case 'pickup': pickupFx(e); if (c.isPlayer) { callout(ITEM_NAME[e.item] + '!'); AudioSys.tone(660, 0.12, 0.07, 'triangle', 1.6); AudioSys.tone(990, 0.16, 0.05, 'triangle', 1.3); } else if (near) AudioSys.tone(520, 0.08, 0.03, 'triangle', 1.5); break;
-        case 'use': mountKick(visOf(c)); useFx(c, e.item, near); break;
-        case 'shot': if (near) { AudioSys.burst(c.isPlayer ? 0.1 : 0.05, 'highpass', 2200, 0.05); muzzleFx(c); } break;
-        case 'bullet-hit': bulletHitFx(e, race.cars[e.from]); if (c.isPlayer) { G.shake = Math.min(1, G.shake + 0.12); if (G.calloutTimer <= 0) callout('Taking fire!'); } break;
-        case 'oil-hit': for (let k = 0; k < 8; k++) emit(c.x, c.y + 0.3, c.z, (Math.random() - 0.5) * 5, 1 + Math.random() * 2, (Math.random() - 0.5) * 5, 0.5, 0.35, 0x1A1820, -9, 'solid'); if (c.isPlayer) callout('Oil!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} hit your oil!`); break;
+        case 'hammer-hit': shockwave(e.x, e.y - 1, e.z, 5, 0xFFC72C); sparks(e.x, e.y, e.z, 22); flash(e.x, e.y, e.z, 4, 0xFFFFFF, 0.2); for (let k = 0; k < 3; k++) smoke(e.x + (Math.random() - 0.5) * 2, e.y - 0.5, e.z + (Math.random() - 0.5) * 2, 3, 0xB8A890, 1.1, 1); if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1); callout('Wrecking ball!'); } break;
+        case 'pickup': pickupFx(e); if (c.isPlayer) callout(ITEM_NAME[e.item] + '!'); break;
+        case 'use': mountKick(visOf(c)); useFx(c, e.item); break;
+        case 'shot': if (near) muzzleFx(c); break;
+        case 'bullet-hit': { bulletHitFx(e, race.cars[e.from]); const v = visOf(c); if (v) v.wobble = Math.min(0.3, (v.wobble || 0) + 0.08); } if (c.isPlayer) { G.shake = Math.min(1, G.shake + 0.12); if (G.calloutTimer <= 0) callout('Taking fire!'); } break;
+        case 'oil-hit': coat(visOf(c), 0x101014, 0.3); for (let k = 0; k < 8; k++) emit(c.x, c.y + 0.3, c.z, (Math.random() - 0.5) * 5, 1 + Math.random() * 2, (Math.random() - 0.5) * 5, 0.5, 0.35, 0x1A1820, -9, 'solid'); if (c.isPlayer) callout('Oil!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} hit your oil!`); break;
         case 'pulse-hit': flash(c.x, c.y + 1, c.z, 3.5, 0x9ADCFF, 0.3); for (let k = 0; k < 6; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.3, 0.3, 0xBFE8FF, -2); if (c.isPlayer) { callout('Shockwave! Engine out!'); G.shake = Math.min(1.4, G.shake + 0.7); } break;
-        case 'harpoon-hit': { flash(c.x, c.y + 1, c.z, 2.2, 0xFFFFFF, 0.15); sparks(c.x, c.y + 0.8, c.z, 8); const by = race.cars[e.from]; if (c.isPlayer) callout(`Harpooned by ${by.name}!`); else if (by === race.player) callout(`Hooked ${c.name}!`); if (near) AudioSys.crash('metal', 0.4); break; }
+        case 'harpoon-hit': { flash(c.x, c.y + 1, c.z, 2.2, 0xFFFFFF, 0.15); sparks(c.x, c.y + 0.8, c.z, 8); const by = race.cars[e.from]; if (c.isPlayer) callout(`Harpooned by ${by.name}!`); else if (by === race.player) callout(`Hooked ${c.name}!`); break; }
+        case 'locked': if (c.isPlayer) { AudioSys.beep(1800, 0.08); AudioSys.tone(1500, 0.2, 0.05, 'square', 1.4); } break;   // your lock is on: fire
+        case 'locked-on': if (c.isPlayer) { callout(`${race.cars[e.from].name} has a missile lock on you!`); AudioSys.beep(900, 0.12); } break;
         case 'missile-lock': if (c.isPlayer) { callout(`${race.cars[e.from].name} fired a missile at you!`); AudioSys.beep(1500, 0.1); AudioSys.tone(1200, 0.25, 0.05, 'square', 1.2); } break;
-        case 'water-hit': for (let k = 0; k < 10; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.6, 0.5, 0xCFE8FF, -9, 'solid'); if (c.isPlayer) callout('Soaked!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`Hosed ${c.name}!`); break;
-        case 'cement-hit': if (c.isPlayer) callout('Stuck in cement!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} is in your cement!`); break;
-        case 'stinger-hit': stingerFx(e); if (near) AudioSys.burst(0.3, 'highpass', 2400, 0.4); if (c.isPlayer) callout('Stinger! Tyres shredded'); else if (race.cars[e.from] === race.player) callout(`${c.name} hit the stinger!`); break;
-        case 'crush': crushFx(e); if (near) { AudioSys.crash('car', 1); AudioSys.burst(0.6, 'lowpass', 90, 0.6); G.shake = Math.min(1.4, G.shake + (c.isPlayer ? 0.8 : 0.4)); } break;
+        case 'water-hit': { const v = visOf(c); rinse(v); if (v) { v.soakT = 1.6; v.dripT = 2; v.dripCol = 0xCFE8FF; } } for (let k = 0; k < 10; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.6, 0.5, 0xCFE8FF, -9, 'solid'); if (c.isPlayer) callout('Soaked!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`Hosed ${c.name}!`); break;
+        case 'cement-hit': coat(visOf(c), 0x9A968E, 0.45); if (c.isPlayer) callout('Stuck in cement!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} is in your cement!`); break;
+        case 'stinger-hit': { const v = visOf(c); if (v) { v.flatT = 1.6; v.flatSide = Math.random() < 0.5 ? 1 : -1; } } stingerFx(e); if (c.isPlayer) callout('Stinger! Tyres shredded'); else if (race.cars[e.from] === race.player) callout(`${c.name} hit the stinger!`); break;
+        case 'crush': crushFx(e); if (near) G.shake = Math.min(1.4, G.shake + (c.isPlayer ? 0.8 : 0.4)); break;
         case 'crush-hit': if (c.isPlayer) callout('Crushed!'); else if (race.cars[e.from] === race.player) callout(`Crushed ${c.name}!`); break;
         case 'jingle-hit': if (c.isPlayer) callout('Ice cream! Engine stuttering'); break;
-        case 'shield': shieldFx(c); if (near) AudioSys.tone(1200, 0.25, 0.05, 'sine', 0.6); if (c.isPlayer) callout('Shield!'); break;
+        case 'shield': shieldFx(c); if (c.isPlayer) callout('Shield!'); break;
         case 'shield-hit': flash(e.x, e.y + 1, e.z, 2.5, 0x9ADCFF, 0.15); break;
-        case 'flares': flaresFx(c); if (near) AudioSys.burst(0.3, 'bandpass', 3000, 0.3); if (c.isPlayer) callout('Flares! Missile decoyed'); else if (race.cars[e.from] === race.player) callout(`${c.name} fired flares`); break;
-        case 'missile-hit': missileBlast(e); if (near) { AudioSys.crash('car', 1); AudioSys.burst(0.7, 'lowpass', 140, 0.7); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1.1); callout('Hit by a missile!'); } else if (race.cars[e.from] === race.player) callout(`Direct hit on ${c.name}!`); break;
-        case 'missile-fizzle': missilePuff(e); break;
-        case 'door': if (near) AudioSys.burst(0.12, 'bandpass', 1500, 0.12); break;
-        case 'door-hit': sparks(e.x, e.y, e.z, 8); if (near) AudioSys.crash('metal', 0.55); { const by = race.cars[e.by]; if (c.isPlayer) { G.shake = Math.min(1.2, G.shake + 0.5); callout(`Door slam from ${by.name}!`); } else if (by === race.player) callout(`Slammed ${c.name}!`); } break;
+        case 'flares': flaresFx(c); if (c.isPlayer) callout('Flares! Missile decoyed'); else if (race.cars[e.from] === race.player) callout(`${c.name} fired flares`); break;
+        case 'missile-hit': { const v = visOf(c); if (v) v.burnT = 2.5; } missileBlast(e); if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1.1); callout('Hit by a missile!'); } else if (race.cars[e.from] === race.player) callout(`Direct hit on ${c.name}!`); break;
+        case 'missile-fizzle': if (e.boom) missileBlast(e); else missilePuff(e); break;
+        case 'mine-boom': mineBlast(e); break;
+        case 'mine-hit': { const v = visOf(c); if (v) v.burnT = 2; } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1); callout('Mine!'); } else if (race.cars[e.from] === race.player) callout(`${c.name} hit your mine!`); break;
+        case 'oil-fire': flash(e.x, e.y + 1, e.z, (e.r || 3) * 2.4, 0xFFFFFF, 0.4); break;
+        case 'fire-hit': { const v = visOf(c); if (v) v.burnT = 2.5; coat(v, 0x1A1614, 0.5); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.4); callout('Through the fire!'); } else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} drove through the fire!`); break;
+        case 'mine-bounce': drumBounceFx(e); sparks(e.x, e.y + 0.2, e.z, 5); break;
+        case 'drum-bounce': drumBounceFx(e); break;
+        case 'drum-burst': drumBurstFx(e); break;
+        case 'drum-hit': { const v = visOf(c); coat(v, 0x08080B, 0.95); if (v) { v.dripT = 4; v.dripCol = 0x0C0C10; } } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.8); callout('Oil drum! Covered in it'); } else if (race.cars[e.from] === race.player) callout(`Oiled ${c.name}!`); break;
+        case 'mortar-blast': mortarBlast(e); if (near || Math.hypot(race.player.x - e.x, race.player.z - e.z) < 60) { G.shake = Math.min(1.5, G.shake + 0.5); } break;
+        case 'mortar-hit': { const v = visOf(c); if (v) v.burnT = 2.2; } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.9); callout(e.me ? 'Caught in your own blast!' : 'Shelled!'); } else if (race.cars[e.from] === race.player) callout(`Shelled ${c.name}!`); break;
+        case 'crater-hit': craterHitFx(e); if (c.isPlayer) { G.shake = Math.min(1.3, G.shake + 0.6); if (G.calloutTimer <= 0) callout('Crater!'); } break;
+        case 'door-hit': sparks(e.x, e.y, e.z, 8); { const by = race.cars[e.by]; if (c.isPlayer) { G.shake = Math.min(1.2, G.shake + 0.5); callout(`Door slam from ${by.name}!`); } else if (by === race.player) callout(`Slammed ${c.name}!`); } break;
         case 'cp-miss': callout('Nobody through the gate'); break;
         case 'sd-streak': if (c.isPlayer) { callout(`Crown streak ×${e.mult}!`); AudioSys.tone(880, 0.1, 0.07, 'triangle', 1.3); } break;
         case 'sd-spawn': sdSpawnFx(c); if (c.isPlayer) { callout(e.slot === 'front' ? 'Back in, ahead!' : e.slot === 'beside' ? 'Back in, alongside!' : 'Back in, behind!'); AudioSys.tone(440, 0.25, 0.08, 'triangle', 2); } break;
-        case 'derby-out': flash(c.x, c.y + 1, c.z, 6, 0xFFB03A, 0.4); if (near) AudioSys.crash('car', 0.8); callout(c.isPlayer ? 'Wrecked: you\'re out! Watching the rest' : `${c.name} is out! ${e.left} left`); if (c.isPlayer) $('reset-btn').hidden = true; break;   // out is out: the wreck stays put (core respawn)
-        case 'derby-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? 'You win the derby!' : `${w.name} wins the derby${e.timeUp ? ' on damage' : ''}`); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
-        case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? `You win the ${MODE_NAME[G.mode]}!` : `${w.name} wins the ${MODE_NAME[G.mode]}`); AudioSys.beep(w.isPlayer ? 988 : 330, 0.4); break; }
+        case 'derby-out': flash(c.x, c.y + 1, c.z, 6, 0xFFB03A, 0.4); callout(c.isPlayer ? 'Wrecked: you\'re out! Watching the rest' : `${c.name} is out! ${e.left} left`); if (c.isPlayer) $('reset-btn').hidden = true; break;   // out is out: the wreck stays put (core respawn)
+        case 'derby-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; if (race.demo) callout(w.isPlayer ? 'You win the demolition!' : `${w.name} wins the demolition`); else callout(w.isPlayer ? 'You win the derby!' : `${w.name} wins the derby${e.timeUp ? ' on damage' : ''}`); break; }
+        case 'sd-over': { G.sdOverAt = race.time; const w = race.cars[e.winner]; callout(w.isPlayer ? `You win the ${MODE_NAME[G.mode]}!` : `${w.name} wins the ${MODE_NAME[G.mode]}`); break; }
         case 'finish':
           if (c.isPlayer) {
-            callout(ordinal(c.place) + ' place!'); AudioSys.beep(880, 0.35);
+            callout(ordinal(c.place) + ' place!');
             newBest = !best[G.world.idx] || c.finishTime < best[G.world.idx];
             if (newBest) { best[G.world.idx] = c.finishTime; saveBest(); refreshBest(); }
           }
@@ -172,19 +195,12 @@ function cpPoint(e) {
   if (e.state !== 'win') callout(call ? (me ? `Checkpoint! ${call}` : call) : me ? `Checkpoint! ${pts}` : `${who} takes the gate`);
   AudioSys.tone(me ? 988 : 587, 0.16, 0.08, 'triangle', me ? 1.5 : 0.8);
 }
-export const ITEM_NAME = { missile: 'Homing missile', gun: 'Machine gun', oil: 'Oil slick', pulse: 'Shockwave', harpoon: 'Harpoon', water: 'Water cannon', cement: 'Cement trail', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle' };
-// firing: the effect and sound for each weapon
-function useFx(c, item, near) {
-  const v = near ? 1 : 0.4;
-  if (item === 'missile') { AudioSys.whoosh(c.isPlayer ? 1.2 : 0.6 * v); if (c.isPlayer) AudioSys.tone(220, 0.35, 0.08, 'sawtooth', 2.2); }
-  else if (item === 'oil') { oilDropFx(c); if (near) AudioSys.burst(0.2, 'lowpass', 500, 0.25); }
-  else if (item === 'pulse') { pulseFx(c); AudioSys.burst(0.5 * v, 'lowpass', 160, 0.6); AudioSys.tone(180, 0.5, 0.08 * v, 'sine', 3); }
-  else if (item === 'harpoon') { AudioSys.tone(900, 0.2, 0.06 * v, 'triangle', 0.4); AudioSys.burst(0.15 * v, 'bandpass', 1800, 0.15); }
-  else if (item === 'water') AudioSys.burst(0.4 * v, 'highpass', 1200, 2.4);
-  else if (item === 'cement') AudioSys.burst(0.3 * v, 'lowpass', 300, 1.5);
-  else if (item === 'stinger') AudioSys.tone(300, 0.15, 0.06 * v, 'square', 0.8);
-  else if (item === 'crush') { AudioSys.burst(0.4 * v, 'lowpass', 200, 0.4); if (c.isPlayer) AudioSys.tone(140, 0.4, 0.08, 'sawtooth', 2); }
-  else if (item === 'jingle') [784, 659, 698, 784, 880, 784, 659, 523].forEach((f, k) => setTimeout(() => AudioSys.tone(f, 0.22, 0.06 * v, 'triangle'), k * 240));   // the van's chimes
+export const ITEM_NAME = { missile: 'Homing missile', gun: 'Machine gun', oil: 'Oil slick', pulse: 'Shockwave', harpoon: 'Harpoon', water: 'Water cannon', cement: 'Cement trail', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle', mortar: 'Mortar', mine: 'Proximity mines' };
+// firing: the effect for each weapon (its sound: ui/sounds.js)
+function useFx(c, item) {
+  if (item === 'oil') oilDropFx(c);
+  else if (item === 'pulse') pulseFx(c);
+  else if (item === 'mortar') mortarLaunchFx(c);
 }
 function sdCrown(e) {
   const pi = race.cars.indexOf(race.player), to = race.cars[e.to];
@@ -193,6 +209,7 @@ function sdCrown(e) {
   else callout(`${to.name} takes the crown`);
 }
 export function showResults() {
+  AudioSys.music('menu');
   if (race.sd) return showShowdownResults();
   if (race.derby) return showDerbyResults();
   resultsShown = true; $('results').hidden = false; $('touch').hidden = true;
@@ -219,16 +236,18 @@ function showShowdownResults() {
 // a derby's results (core/modes/derby.js): last car running first, then the rest by when they went out
 function showDerbyResults() {
   resultsShown = true; $('results').hidden = false; $('touch').hidden = true;
-  const D = race.derby, w = race.cars[D.winner], won = w === race.player, pl = derbyOrder(race).indexOf(race.player) + 1;
-  $('res-title').innerHTML = `<span class="chip" style="background:#${w.def.color.toString(16).padStart(6, '0')}"></span>` + (won ? 'You won the derby' : `${w.name} won the derby · you ${ordinal(pl)}`);
-  $('res-stage').textContent = `${G.world.stage.name} · ${fmt(D.t)}${race.cars.filter(c => !c.out).length > 1 ? ', time up: the least damaged wins' : ''}`;
-  $('res-best').textContent = 'Derby: wrecked cars are out; the last car running wins';
+  const D = race.derby, w = race.cars[D.winner], won = w === race.player, pl = derbyOrder(race).indexOf(race.player) + 1, what = race.demo ? 'demolition' : 'derby';
+  $('res-title').innerHTML = `<span class="chip" style="background:#${w.def.color.toString(16).padStart(6, '0')}"></span>` + (won ? `You won the ${what}` : `${w.name} won the ${what} · you ${ordinal(pl)}`);
+  if (race.demo) { const S = race.st, down = S.blds.filter(o => o.collapsed).length; $('res-stage').textContent = `${G.world.stage.name} · ${fmt(D.t)} · ${down} of ${S.blds.length} buildings down`; }
+  else $('res-stage').textContent = `${G.world.stage.name} · ${fmt(D.t)}${race.cars.filter(c => !c.out).length > 1 ? ', time up: the least damaged wins' : ''}`;
+  $('res-best').textContent = race.demo ? 'Demolition: points for every wall you break and more for every building you bring down' : 'Derby: wrecked cars are out; the last car running wins';
   $('next-btn').textContent = G.world.idx < STAGES.length - 1 ? 'Next stage' : 'Back to stage 1';
   resetResultsUI(); updateResultsTable(); careerResults(); $('next-btn').focus({ preventScroll: true }); $('results').querySelector('.card').scrollTop = 0;
 }
 export function updateResultsTable() {
   if (race.derby) {
-    const D = race.derby;
+    const D = race.derby, M = race.demo;
+    if (M) { $('res-table').innerHTML = derbyOrder(race).map((c, i) => { const k = race.cars.indexOf(c); return `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}<span class="rs">${M.walls[k]} walls · ${M.razed[k]} down${c.out ? ' · wrecked' : ''}</span></td><td class="rt">${M.pts[k]} pts</td></tr>`; }).join(''); return; }
     $('res-table').innerHTML = derbyOrder(race).map((c, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td class="rp">${ordinal(i + 1)}</td><td><span class="chip" style="background:#${c.def.color.toString(16).padStart(6, '0')}"></span>${c.name}<span class="rs">${c.out ? 'out' : 'running'}</span></td><td class="rt">${c.out ? fmt(D.outT[race.cars.indexOf(c)] || 0) : Math.round(100 * health(c)) + '%'}</td></tr>`).join('');
     return;
   }
@@ -256,14 +275,15 @@ export function selectStage(i, cb) {
   $('loading-text').textContent = 'Building ' + STAGES[i].name; $('loading').hidden = false;
   clearTimeout(pendingBuild);
   pendingBuild = setTimeout(() => {
-    try { buildWorld(i); renderer.compile(scene, camera); } catch (e) { console.error(e); window.__bootError(e.message + ' (while building ' + STAGES[i].name + ')'); return; } race = newRace(); G.attractS = 0; updateCamera(0, true);
+    if (contextLost || renderer.getContext().isContextLost()) { recoverGraphics(); return; }   // no graphics to build with: the reload brings them back
+    try { buildWorld(i); renderer.compile(scene, camera); } catch (e) { console.error(e); if (renderer.getContext().isContextLost()) { recoverGraphics(); return; } window.__bootError(e.message + ' (while building ' + STAGES[i].name + ')'); return; } race = newRace(); G.attractS = 0; updateCamera(0, true);
     $('loading').hidden = true; cb && cb();
   }, 40);
 }
 export function startRace(idx) {
-  AudioSys.init();
+  AudioSys.init(); AudioSys.music(null); AudioSys.musicPause(false);
   selectStage(idx, () => {
-    $('reset-btn').hidden = false; race = newRace(); clearSkids(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0; G.tally = G.career ? newTally(race.cars.length) : null; G.tallyFmt = G.career ? careerFormat() : null;
+    $('reset-btn').hidden = false; race = newRace(); clearSkids(); clearTrails(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0; G.tally = G.career ? newTally(race.cars.length) : null; G.tallyFmt = G.career ? careerFormat() : null;
     G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; G.sdTick = 0; $('edge').className = '';
     $('menu').hidden = true; $('garage').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
     $('stage-name').textContent = G.editDrive ? `Test drive: ${STAGES[idx].name}` : `Stage ${idx + 1}: ${STAGES[idx].name}`; $('quit-btn').textContent = G.editDrive ? 'Back to editor' : G.career ? 'Career menu' : 'Choose stage';
@@ -276,13 +296,13 @@ export function toMenu() {
   const cr = G.career; G.league = null; G.career = null; G.tally = null; G.tallyFmt = null;
   if (G.editDrive && G.onEditorBack) { G.onEditorBack(); }   // leaving a test drive goes back to the track editor
   G.state = 'menu'; $('hud').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('touch').hidden = true; $('menu').hidden = false; $('countdown').hidden = true;
-  race = newRace(); clearSkids(); AudioSys.update(null, 'off'); updateCamera(0, true); $('race-btn').focus();
+  race = newRace(); clearSkids(); clearTrails(); AudioSys.update(null, 'off'); AudioSys.musicPause(false); AudioSys.music('menu'); updateCamera(0, true); $('race-btn').focus();
   if (cr && G.onCareerMenu) G.onCareerMenu(cr);   // leaving a career race goes back to the career screen
   else if (G.workshop && G.onWorkshopMenu) G.onWorkshopMenu();   // and a Workshop tab to the Workshop
 }
 export function togglePause() {
-  if (G.state === 'countdown' || G.state === 'racing') { if (resultsShown) return; pausedFrom = G.state; G.state = 'paused'; $('pause').hidden = false; AudioSys.update(null, 'off'); $('resume-btn').focus(); }
-  else if (G.state === 'paused') { G.state = pausedFrom; $('pause').hidden = true; G.lastT = performance.now() / 1000; }
+  if (G.state === 'countdown' || G.state === 'racing') { if (resultsShown) return; pausedFrom = G.state; G.state = 'paused'; $('pause').hidden = false; AudioSys.update(null, 'off'); AudioSys.musicPause(true); $('resume-btn').focus(); }
+  else if (G.state === 'paused') { G.state = pausedFrom; $('pause').hidden = true; G.lastT = performance.now() / 1000; AudioSys.musicPause(false); }
 }
 export function refreshBest() {
   STAGES.forEach((s, i) => { const el = $('best-' + i), v = G.stageCars[s.name]; if (el) el.textContent = (best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet') + (v ? ' · ' + vehicleById(v).name : ''); });

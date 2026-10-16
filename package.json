@@ -27,6 +27,7 @@
     "labshot": "vite build --logLevel error && node tools/labshot.mjs",
     "ratings": "node tools/ratings.mjs",
     "derby": "node tools/derby.mjs",
+    "demolition": "node tools/demolition.mjs",
     "dashboard": "node tools/dashboard.mjs"
   },
   "dependencies": {

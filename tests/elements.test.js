@@ -28,7 +28,7 @@ describe('element registry and stage validation', () => {
 });
 
 // what each sandbox must contain, by element name
-const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'], rally: ['mud', 'whoops', 'yump'], snow: ['ice'], shortcut: ['dirt', 'whoops'], breach: ['dirt', 'breakables'], hammer: ['hammer'] };
+const EXPECT = { kick: ['kick'], jump: ['jump'], bridge: ['bridge'], viaduct: ['bridge'], tunnel: ['tunnel', 'arch'], town: ['town', 'rockfall', 'gallery'], rails: ['rails'], gap: ['gap', 'boost', 'kick'], ferry: ['ferry'], branch: ['kick', 'boost', 'falls'], drawbridge: ['drawbridge', 'mill'], rally: ['mud', 'whoops', 'yump'], snow: ['ice'], shortcut: ['dirt', 'whoops'], breach: ['dirt', 'breakables'], hammer: ['hammer'], structures: ['structures'], crumble: ['crumble', 'kick'], chicane: ['chicane'] };
 describe('sandboxes', () => {
   it('there is a sandbox listed here for each one defined', () => expect(Object.keys(SANDBOXES).sort()).toEqual(Object.keys(EXPECT).sort()));
   for (const [name, stage] of Object.entries(SANDBOXES)) it(`${name}: builds, closes, has its elements, and four AI cars lap it cleanly`, () => {
@@ -286,11 +286,11 @@ describe('the garage', () => {
     const std = raceDefs(VEHICLES[0]); expect(std.map(d => d.model)).toEqual(CAR_DEFS.map(d => d.model));
     expect(std.find(d => d.player).veh).toBeUndefined();
     const h = raceDefs(VEHICLES.find(v => v.id === 'hatch')); expect(h.find(d => d.player).model).toBe('hatch'); expect(h.filter(d => d.model === 'hatch').length).toBe(1);
-    expect(new Set(VEHICLES.map(v => v.id)).size).toBe(VEHICLES.length); expect(VEHICLES.length).toBe(25);
+    expect(new Set(VEHICLES.map(v => v.id)).size).toBe(VEHICLES.length); expect(VEHICLES.length).toBe(29);
   });
-  it('a full field: one of every vehicle, 25 cars on the grid, the player at the back; everyone gets round', () => {
+  it('a full field: one of every vehicle, 29 cars on the grid, the player at the back; everyone gets round', () => {
     const defs = raceDefs(VEHICLES[0], MAX_RIVALS);
-    expect(defs.length).toBe(25); expect(new Set(defs.map(d => d.model)).size).toBe(25); expect(defs.at(-1).player).toBe(true);
+    expect(defs.length).toBe(29); expect(new Set(defs.map(d => d.model)).size).toBe(29); expect(defs.at(-1).player).toBe(true);
     expect(raceDefs(VEHICLES.find(v => v.id === 'kart'), MAX_RIVALS).filter(d => d.model === 'kart').length).toBe(1);   // whoever drove it takes a coupe
     expect(raceDefs(VEHICLES[0], 1).map(d => d.name)).toEqual(['Okafor', 'You']);
     for (const st of [M.STAGES[0], M.STAGES[10]]) {

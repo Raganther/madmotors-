@@ -58,7 +58,7 @@ export function initEditor() {
     if (drag && !drag.moved) { if (E.tool === 'note') notePin(e.clientX, e.clientY); else pickAt(e.clientX, e.clientY); }
     drag = null;
   });
-  document.querySelectorAll('.ed-tools [data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+  document.querySelectorAll('#editor .ed-tools [data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
   $('ed-undo').addEventListener('click', () => { const u = undo.pop(); if (!u) return; Object.assign(E.stage, { segs: u.segs, startHeading: u.heading }); E.pins = u.pins; E.sel = Math.min(E.sel, Math.max(0, E.stage.segs.length - 1)); changed(); });
   $('ed-pinsave').addEventListener('click', () => { const t = $('ed-pintext').value.trim(); if (pinAt) { if (t) { pinAt.text = t; if (!E.pins.includes(pinAt)) E.pins.push(pinAt); } else E.pins = E.pins.filter(p => p !== pinAt); } hidePin(); changed(); });
   $('ed-pindel').addEventListener('click', () => { remember(); E.pins = E.pins.filter(p => p !== pinAt); hidePin(); changed(); });
@@ -79,7 +79,7 @@ export function openEditor(back = false) {
   fillBase(); fillFields(); setTool(E.tool, true); requestAnimationFrame(() => { if (!back || !view.fitted) fit(); draw(); list(); secPanel(); pinList(); status(); });
 }
 function setTool(t, quiet) {
-  E.tool = t; document.querySelectorAll('.ed-tools [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  E.tool = t; document.querySelectorAll('#editor .ed-tools [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   $('ed-map').className = t === 'move' ? '' : t; hidePin(); if (!quiet) { save(); draw(); status(); }
 }
 // ---------- drawing and commenting ----------
@@ -276,7 +276,7 @@ function drive() {
     status(err.message, true); return;
   }
   if (EDIT_IDX < 0) { EDIT_IDX = STAGES.length; STAGES.push(st); } else STAGES[EDIT_IDX] = st;
-  forgetTrack(EDIT_IDX); G.forceBuild = true; G.editDrive = true;
+  forgetTrack(EDIT_IDX); G.forceBuild = true; G.editDrive = true; G.onEditorBack = () => openEditor(true);
   $('editor').hidden = true; startRace(EDIT_IDX);
 }
 async function send() {

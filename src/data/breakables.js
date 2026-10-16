@@ -11,7 +11,8 @@ export const BREAKABLES = {
   concrete: { name: 'Concrete blocks', hp: 40, minMass: 1.6, w: 6, d: 0.8, h: 1.0, chunks: 3, color: 0xC9C6BE },
 };
 // The world kit's pieces (core/kit/layout.js lays them out per town, render/elements/kit.js draws them, `kit: true`):
-// sizes come with each piece, these give how strong. Houses and barns never break (hp Infinity): you bounce off.
+// sizes come with each piece, these give how strong. Houses and barns are destructible buildings (data/structures.js,
+// core/features/structures.js: brick, timber, stone or concrete by the town's style); these entries only name them.
 Object.assign(BREAKABLES, {
   house: { name: 'House', hp: Infinity, minMass: Infinity, kit: true },
   barn: { name: 'Barn', hp: Infinity, minMass: Infinity, kit: true },

@@ -7,11 +7,13 @@ import { costCurve } from './prices.js';
 export const WEAPON_MAX = 3;
 /** Every weapon: what it is and what each level adds. `fx` is per level (1..3): numbers that replace core WPN's. */
 export const WEAPONS = {
-  missile: { name: 'Missile', blurb: 'Locks on to the car ahead and knocks it flying', looks: ['Homing missile', 'Quicker lock', 'Twin missiles'], fx: [{}, { TURN: 5.4 }, { TURN: 5.4, TWIN: 1 }] },
-  gun: { name: 'Machine gun', blurb: 'A burst of rounds straight ahead; each hit costs speed', looks: ['3 s burst', '4 s burst', '5 s burst'], fx: [{}, { GUN_T: 4 }, { GUN_T: 5 }] },
+  missile: { name: 'Missile', blurb: 'Hold the car ahead in your sights to lock on, then fire: it homes in and knocks it flying', looks: ['Homing missile', 'Quicker lock', 'Twin missiles'], fx: [{}, { TURN: 5.4, LOCK_T: 0.65 }, { TURN: 5.4, LOCK_T: 0.65, TWIN: 1 }] },
+  gun: { name: 'Machine gun', blurb: 'A burst of rounds where you point the car (follow the laser); each hit knocks the car off line', looks: ['3 s burst', '4 s burst', '5 s burst'], fx: [{}, { GUN_T: 4 }, { GUN_T: 5 }] },
   oil: { name: 'Oil', blurb: 'Two slicks behind you: the tail steps out', looks: ['Oil slicks', 'Wider slicks', 'Glue: slicks that grab too'], fx: [{}, { OIL_R: 3.4 }, { OIL_R: 3.4, GLUE: 0.75 }] },
   pulse: { name: 'Pulse', blurb: 'A shockwave that blows everyone near away', looks: ['13 m wave', '16 m wave', '19 m wave'], fx: [{}, { PULSE_R: 16 }, { PULSE_R: 19 }] },
   harpoon: { name: 'Harpoon', blurb: 'Hooks the car ahead and reels you in', looks: ['2.2 s tow', '3 s tow', '3.8 s tow'], fx: [{}, { TOW_T: 3 }, { TOW_T: 3.8 }] },
+  mortar: { name: 'Mortar', blurb: 'A shell lobbed high onto the car ahead: the blast throws it and leaves a crater in the road', looks: ['One shell', 'Bigger blast', 'Three-shell barrage'], fx: [{}, { MORTAR_R: 7 }, { MORTAR_R: 7, SHELLS: 3 }] },
+  mine: { name: 'Mines', blurb: 'Two proximity mines dropped behind you: they throw up whoever sets them off, and blow fences and walls apart', looks: ['5 m blast', '6.5 m blast', 'Heavy charge'], fx: [{}, { MINE_BLAST: 6.5 }, { MINE_BLAST: 6.5, MINE_DMG: 9 }] },
   // signature weapons: only their own vehicle finds them (SIGNATURES)
   water: { name: 'Water cannon', sig: true, blurb: 'A jet ahead that shoves cars aside and soaks their grip', looks: ['2.5 s jet', '3.2 s jet', '4 s jet'], fx: [{}, { WATER_T: 3.2 }, { WATER_T: 4 }] },
   cement: { name: 'Cement trail', sig: true, blurb: 'Wet cement behind you: anyone in it bogs down', looks: ['1.6 s trail', '2.2 s trail', '2.8 s trail'], fx: [{}, { CEMENT_T: 2.2 }, { CEMENT_T: 2.8 }] },

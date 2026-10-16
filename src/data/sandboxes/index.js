@@ -75,6 +75,21 @@ export const SANDBOXES = {
   breach: loop('breach', 'a fenced-off shortcut: the first car fast and heavy enough smashes the fence, then it is open to everyone', {
     bottom: [flat(40), ['a', 40, 60, 0], ['a', 40, -120, 0], ['a', 40, 60, 0], flat(40)], right: [flat(40)], top: [flat(190)], left: [flat(20)]
   }, { branches: [{ from: 1, to: 4, name: 'fenced cut', share: 0.8, segs: [['s', 30, 0, { dirt: true, breach: 'fence' }], ['s', 50, 0, { dirt: true }], ['s', { toA: 178.564 }, 0, { dirt: true }]] }] }),
+  structures: loop('structures', 'destructible buildings: a street of houses, sheds and a warehouse right at the road edge, flats and a chapel inside the loop: heavy cars burst through, light ones crack the walls', {
+    bottom: [flat(240)], right: [flat(60)], top: [flat(220)], left: [flat(30)]
+  }, { surface: 'tarmac', armco: false, buildings: [
+    { type: 'house', at: 40, lat: -13.5 }, { type: 'shed', at: 70, lat: 12 }, { type: 'cottage', at: 95, lat: -12.5 }, { type: 'shop', at: 130, lat: 13.5 },
+    { type: 'terrace', at: 165, lat: -13 }, { type: 'warehouse', at: 205, lat: 16 }, { type: 'stall', at: 60, lat: -11 },
+    { type: 'flats', a: 0, b: -5, face: 0 }, { type: 'chapel', a: 40, b: 25, face: 90 }, { type: 'barn', a: -45, b: 20, face: 180 }
+  ] }),
+  crumble: loop('crumble', 'an old timber bridge over a river that wears through plank by plank as the race crosses it, with a kicker to jump what is left', {
+    bottom: [flat(150)],
+    right: [['s', 30, 2], ['s', 16, 2, { kick: 1.6 }], ['s', 30, 0, { crumble: 0.5, far: -10, near: -10, rampF: 3, rampN: 3 }], ['s', 40, 0]],
+    top: [flat(60)], left: [flat(20)]
+  }),
+  chicane: loop('chicane', 'barrier chicanes: concrete blocks to weave through (heavy cars go straight through), then hay bales', {
+    bottom: [flat(90), ['s', 140, 0, { chicane: 'concrete' }], flat(40)], right: [flat(40)], top: [flat(30), ['s', 140, 0, { chicane: 'hay', chicaneSide: -1 }], flat(50)], left: [flat(20)]
+  }),
   hammer: loop('hammer', 'wrecking balls swinging across the road: time your run', {
     bottom: [flat(40), ['s', 120, 0, { hammers: 3 }], flat(40)], right: [flat(40)], top: [flat(180)], left: [flat(20)]
   }),

@@ -17,6 +17,9 @@ export const QUALITY = {
 export const Q_ORDER = ['auto', 'high', 'medium', 'low'];
 export let autoPost = !isTouchDevice(), quality = 'auto', dynPR = Math.min(devicePixelRatio || 1, isTouchDevice() ? 1.25 : 1.5), perfAcc = 0, perfN = 0, perfGood = 0, perfCool = 0;
 try { const q = localStorage.getItem('downhill-rush-quality'); if (QUALITY[q]) quality = q; } catch (e) { }
+// after the graphics were lost (out of GPU memory, most often on a tablet): this session runs a step lighter (Medium: no
+// post effects and their buffers, a smaller shadow map); the saved setting is untouched
+try { if (sessionStorage.getItem('dr-recovered')) { sessionStorage.removeItem('dr-recovered'); if (quality === 'auto' || quality === 'high') quality = 'medium'; } } catch (e) { }
 setGfx(quality);
 export function applyQuality() {
   const Q = QUALITY[quality], dpr = devicePixelRatio || 1;
@@ -114,11 +117,16 @@ export function createGLContext() {
   if (/Disabled|BindToCurrentSequence/i.test(reason)) throw new Error('Chrome has switched off 3D graphics after a graphics crash. Quit Chrome completely with Cmd+Q (closing the window is not enough), reopen it, and load this page again. Safari will also work.');
   throw new Error('your browser blocked WebGL' + (reason ? ' (' + reason + ')' : '') + '. Quit the browser completely, reopen it, and check that hardware acceleration is on.');
 }
+/** Start again after the graphics were lost: a reload (the stage, car and settings are kept by the menu). */
+export function recoverGraphics() { if (recovering) return; recovering = true; try { sessionStorage.setItem('dr-recovered', '1'); } catch (_) { /* private mode */ } location.reload(); }
+let recovering = false;
 export function initRenderer() {
   const gl = createGLContext();
   renderer = new THREE.WebGLRenderer({ canvas: gl.canvas, context: gl.context, antialias: gl.aa });
-  gl.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); contextLost = true; $('loading').hidden = false; $('loading-text').textContent = 'Graphics reset, recovering…'; });
-  gl.canvas.addEventListener('webglcontextrestored', () => { try { sessionStorage.setItem('dr-recovered', '1'); } catch (_) { } location.reload(); });
+  // the browser took the graphics away (out of GPU memory, too many 3D canvases, the tab in the background): wait for
+  // them back and reload; Safari often never says they're back, so reload anyway after a few seconds
+  gl.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); contextLost = true; $('loading').hidden = false; $('loading-text').textContent = 'Graphics reset, recovering…'; setTimeout(recoverGraphics, 3000); });
+  gl.canvas.addEventListener('webglcontextrestored', recoverGraphics);
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   $('game').appendChild(renderer.domElement);

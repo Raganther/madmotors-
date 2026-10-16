@@ -9,8 +9,11 @@ import { wireLeagues, leagueNext } from './ui/league.js';
 import { wireCareer, careerNext } from './ui/career.js';
 import { initNotes } from './ui/notes.js';
 import { initEditor } from './ui/editor.js';
+import { initTerrainBuilder } from './ui/terrain-builder.js';
+import { initSketch } from './ui/sketch.js';
 import { openWorkshop, workshopParam } from './ui/workshop.js';
 import { AudioSys } from './audio/audio.js';
+import { showTrack, wireSound } from './ui/sounds.js';
 import { STEP } from './core/constants.js';
 import { respawn } from './core/sim/car.js';
 import { raceStep } from './core/sim/race.js';
@@ -25,6 +28,7 @@ import { initProps, updateProps } from './render/effects/props.js';
 import { initRings, updateRings } from './render/effects/rings.js';
 import { MODEL_LABEL, MODEL_MODES, modelMode, setModelMode } from './render/assets/index.js';
 import { initSkids } from './render/effects/skids.js';
+import { initTrails } from './render/effects/trails.js';
 import { FX } from './render/materials.js';
 import { contextLost, cycleQuality, initRenderer, perfSample, renderFrame, renderer } from './render/renderer.js';
 import { initCars, updateCarVisuals, rebuildCars } from './render/vehicles.js';
@@ -48,7 +52,7 @@ export function frame(t) {
     if (n < G.lastBeep && n >= 1) { G.lastBeep = n; AudioSys.beep(440, 0.15); }
     $('countdown').hidden = false; $('countdown').textContent = n >= 1 ? n : 'Go!';
     AudioSys.update(race.player, 'rev', race.cars, G.camDir);
-    if (G.countdown <= 0.2) { G.state = 'racing'; race.phase = 'racing'; AudioSys.beep(880, 0.3); G.goTimer = 0.8; G.accumulator = 0; }
+    if (G.countdown <= 0.2) { G.state = 'racing'; race.phase = 'racing'; AudioSys.beep(880, 0.3); AudioSys.music('race'); showTrack(AudioSys.track()); G.goTimer = 0.8; G.accumulator = 0; }
   } else if (G.state === 'racing') {
     if (!race.player.finished) readInput(dt);
     let simDt = dt; if (G.slowmo > 0) { G.slowmo -= dt; simDt = dt * 0.35; }
@@ -57,7 +61,7 @@ export function frame(t) {
     if (n === 12) G.accumulator = 0;
     G.renderAlpha = G.accumulator / STEP;
     handleEvents(); applyBarrierChanges();
-    AudioSys.update(race.player, 'drive', race.cars, G.camDir);
+    AudioSys.update(race.player, 'drive', race.cars, G.camDir, race);
     if (G.goTimer > 0) { G.goTimer -= dt; if (G.goTimer <= 0) $('countdown').hidden = true; }
     if (race.player.finished && !resultsShown && !G.workshop && race.time - race.player.finishTime > 1.6) showResults();
     if (((race.sd && race.sd.phase === 'over') || (race.derby && race.derby.phase === 'over')) && !resultsShown && race.time - G.sdOverAt > 1.8) showResults();
@@ -82,7 +86,7 @@ export function wireUI() {
   $('menu-btn').addEventListener('click', toMenu);
   $('pause-btn').addEventListener('click', togglePause);
   $('reset-btn').addEventListener('click', () => { if (G.state === 'racing' && !race.player.finished) respawn(race.player, G.world.W); });
-  $('mute-btn').addEventListener('click', () => { AudioSys.init(); AudioSys.toggle(); });
+  wireSound();
   document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('rivals-less').addEventListener('click', () => setRivals(G.rivals - 1)); $('rivals-more').addEventListener('click', () => setRivals(G.rivals + 1));
   $('wpn-btn').addEventListener('click', () => setWeapons(!G.weapons));
@@ -92,7 +96,7 @@ export function wireUI() {
   $('models-btn').addEventListener('click', () => { setModelMode(MODEL_MODES[(MODEL_MODES.indexOf(modelMode) + 1) % MODEL_MODES.length]); modelsLabel(); rebuildCars(); });
   modelsLabel();
   for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
-  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); wireCareer(); initNotes(); initEditor(); $('lab-btn').addEventListener('click', () => openWorkshop()); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
+  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); wireCareer(); initNotes(); initEditor(); initTerrainBuilder(); initSketch(); $('lab-btn').addEventListener('click', () => openWorkshop()); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
   for (const b of document.querySelectorAll('.cam-btn')) b.addEventListener('click', () => setCamera(nextCamera()));
   for (const b of document.querySelectorAll('.zoom-btn')) b.addEventListener('click', () => setCamera(G.camMode, nextZoom()));
 }
@@ -111,7 +115,7 @@ export async function boot() {
     setSteer(loadSteer()); for (const b of document.querySelectorAll('.steer-btn')) b.hidden = !isTouch;   // steering choice only matters with touch controls
     if (isTouch) { document.documentElement.classList.add('touch'); $('time-block').insertBefore($('speed-block'), $('time-block').querySelector('.hud-btns')); }   // keep the speedo clear of the thumb controls
     $('race-btn').textContent = 'Race ' + STAGES[0].name;
-    step = 'starting WebGL'; initRenderer(); initParticles(); initSparks(); initSkids(); initDebris(); initRings(); initProps();
+    step = 'starting WebGL'; initRenderer(); initParticles(); initSparks(); initSkids(); initTrails(); initDebris(); initRings(); initProps();
     step = 'loading fonts';
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
     step = 'building the cars'; initCars(); elementHook('init'); showVehicle(G.vehicle); refreshBest();

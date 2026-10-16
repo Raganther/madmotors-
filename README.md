@@ -19,15 +19,30 @@ drive *through* it scores (a leader on the wrong line can miss it). Win by two, 
 (3-3 is deuce, then advantage), Tiebreak first to 7. The rules are in the same file (`R.sd.kind`, `CP`).
 
 **Weapons** (menu: Weapons on/off, every mode; `src/core/features/weapons.js`): drive through a **?** crate with
-nothing in hand to get one of five weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
-tracers), an oil slick (two, dropped behind), a shockwave (blows the cars round you away and cuts their engines) and a
-harpoon (hooks the car ahead: you're reeled in, they're held back). F fires. Crates are offered up the road to every
+nothing in hand to get one of seven weapons, which rises out of your roof: a homing missile, a machine gun (a burst of
+tracers out of the roof gun's muzzle, aimed by pointing the car: no lock, a red laser sight shows where it's pointing,
+and each hit knocks the car sideways off its line), oil (two drums dropped off the back: each tumbles, bounces and bursts into a slick, and one that lands on a car
+bursts all over it: a long slide and a black car), a shockwave (blows the cars round you away and cuts their engines), a
+harpoon (hooks the car ahead: you're reeled in, they're held back), a mortar and proximity mines (two, thrown off the back:
+each tumbles and bounces down the road, going off against any car it hits on the way, then settles and arms; the car
+that sets one off is thrown up and slowed). F fires. The missile has to **lock**
+first: holding one, keep the car ahead in your sights and corner brackets close in on it (`WPN.LOCK_T`, quicker at
+level 2) until they flash red: fired locked it homes in on that car, fired early it flies straight down the road
+(`lockedOn`; the target hears the lock and gets a warning). The **mortar** lobs a shell high onto where the car ahead
+will be (a red ring on the road shows where it's coming down, so it can be dodged); the blast throws everyone near
+and leaves a **crater** in the road (missiles that miss leave small ones) that jolts, scrubs and knocks aside any car
+driving into it for the rest of the race, and the AI steers round craters and rings (`W.craters`, `sim/ai.js`). Nuances (render only): tyres print the road for a while out of oil (black), wet cement (grey) and
+water (dark), `render/effects/trails.js`; an oiled or cemented car is coated (`dirt.js` `coat`), oil and water drip off
+it, the water cannon rinses the muck off, a car hit by a missile, shell or mine trails smoke, a stinger leaves a rim
+sparking, and mines tumble end over end and wobble as they settle. Blasts reach the scenery: a missile that hits or runs out, a mine, a mortar
+shell, a shockwave and the monster truck's crush break fences, crates and even concrete near them, crack or knock holes
+in buildings and shove rubble about, and a missile that flies into a wall goes off there (`blastScenery`). Crates are offered up the road to every
 racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets
 missiles and harpoons, the front oil and shockwaves). Q swings a door into the car beside you (the side is picked
 for you). The AI uses all of it. On touch there are Fire and Door buttons; a gamepad uses B and the bumpers.
 Weapons have levels and cars carry gear (`src/data/weapons.js`; a race def's `wpn: { lv, gear }`): each level swaps
 some of the core's `WPN` numbers (a longer gun burst, wider slicks, glue at level 3, a bigger shockwave, a longer tow,
-twin missiles). Gear works by itself: flares draw off a missile locked on to you, a shield soaks up the next hit, a
+twin missiles, a bigger mortar blast, then a three-shell barrage). Gear works by itself: flares draw off a missile locked on to you, a shield soaks up the next hit, a
 magnet pulls crates in from across the road. Five vehicles find a **signature weapon** in crates too (`SIGNATURES`):
 the fire engine's water cannon, the mixer's cement trail, the police car's stinger, the monster truck's crush (a leap
 that slams whoever is near when it lands) and the ice cream van's jingle (everyone in earshot stutters). In the career
@@ -70,6 +85,9 @@ every car and its parts, against rivals `PRESTIGE.SKILL` sharper and a parts lev
 `PRESTIGE_PAY` more prize money. The garage's paint shop resprays a car
 (`PAINTS`) for a fee; the player's career car wears it in the race. A cup's top three win a trophy (paid once per step up). Career races always have weapons on;
 Quick Race and Leagues are untouched. The state is one localStorage entry (`downhill-rush-career`).
+An event can carry `arms: { weapon: bias }` (the Artillery Cup, Barrage): every car's crate odds lean to those weapons
+(`careerDefs` puts it on each def's `wpn.bias`, read by `pickupOdds`). The new dirt stages and family cars have their
+own events: Hill & Dale (Rookie), the Artillery Cup and Van Wars (Club), Rally Raid (Pro), Dead Fast and Barrage (Legend).
 `npm run career` races every career round with the AI at a casual and a good player's skill and prints places,
 stars and cash: tune `TIERS`, prices and payouts against it.
 
@@ -105,10 +123,41 @@ dirt oval with two big kickers, whoops, a mud pit and crates on the back straigh
 street circuit of square corners between Armco and houses with a fast chicane; a speed course on a salt lake, two
 straights with boost pads and sweepers you can almost take flat. They're in the series too.
 
+**Demolition** (stage 41, Demolition Yard; `src/core/modes/demolition.js`, the mode `createRace(W, defs, { mode:
+'demolition' })`, any stage with `demolition: { time }`): the derby's rules (no laps, damage stays, wrecked is out, the
+clock) scored on what you knock down. Every wall panel you break is worth its material's points (timber 1, brick 2,
+stone 3, concrete 4) and every building you bring down 10 a floor more. Highest score when the two minutes are up (or
+everything is down) wins. Demolition Yard is a condemned estate walled in with concrete: a market square inside the
+ring road the cars line up on, a ring of cottages, houses, a terrace, a chapel, a barn, a warehouse and flats round
+it. The demolition AI (`demoControl`) goes for buildings it can break (heavy enough for the material, fast enough for
+the walls), near and part-down ones first, and backs off for a run-up when it's stopped against one. `npm run
+demolition` plays it at two skills; the Workshop's Demolition tab with any car.
+
+**Wrecking Row** (stage 42): a special where the scenery is in the race. Shops and terraces stand right at the kerb
+down the High Street (no barrier: clip one and you're in the front room, and its rubble is on the road next lap), a
+concrete chicane (weave it, or smash it in something heavy), a cottage across the short cut through an S-bend (the
+first heavy car opens it for everyone), a kicker onto an old timber bridge over the canal that wears through lap by
+lap, whoops along the towpath, the lock's lifting bridge, a ford and a jump by the gasworks.
+
+**Alpine Viaduct** (stage 43): the first stage on a described landscape. Its file lists hills and ridges
+(`ground: { hills, ridges }`) and how the road is held up or sunk along the lap (`drape: { lift, pieces }`);
+`prepareGround` (core/track/ground.js) turns them into the height grid and the draped road when it's first built, as
+the Terrain builder does for a painted one. A crest off the start shelf, a downhill S, a 190 m viaduct 30 m over the
+valley, whoops, two lefts and a boost, a tunnel under the ridge, a mountain stream, a second crest, the chicane straight
+and a kicker: about 52 s a lap. Dynamic Low turns side on over a bridge, to show the drop.
+
 **Special tracks** (stages 36-37): **Building Site**, a dirt lap round a half-built estate (a fenced cut through the
 foundations that heavy cars smash open, a spoil-heap kicker, two wrecking balls on the demolition block, a mud wallow,
 pallets of crates at the roadside), and **Seafront**, a tarmac lap with boost pads along the promenade by the sea, a cut
 along the sand round the pier, the harbour's lifting bridge and the old town. Both are in the career's oddball cups.
+**Village Hill** (stage 38) came from the user's Sketch pad: an off-piste climb (gates across a meadow, up through an
+alpine village, over a stream and a boulder field with rockfall), then a ridge road and switchbacks down to the start.
+A town on an open leg is plots only (no pavement, lamps or side roads), its plots keep off the open-country trail, and
+the AI's way across open country (`sim/nav.js`) goes round houses and walls and through fences.
+**Dune Rally** and **Highland Rally** (stages 39-40) follow Bogwood's recipe (the new-stage skill's design rules):
+~37 s dirt laps with a beat every few seconds. Dune: a dune crest jump, washboard whoops, a hairpin through a red rock
+arch, an oasis splash, a double jump, a mud wallow. Highland: a crest, burns to splash through on a hillside edge, a
+hairpin, cattle-grid whoops, a stone bridge over a gully, a peat bog, a double jump, under purple heather.
 The stage list (`src/data/stages/index.js` LIST) is append only, versions included, so a stage's number never moves.
 
 **Track versions** (stages 30-35, `src/data/versions.js`): a stage at night or in the rain, made from the stage itself
@@ -169,6 +218,8 @@ npm run check      # lint + tests: run before every commit
 | `npm run terrain -- gorge` | Shaded relief map of a stage's terrain |
 | `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
 | `npm run dashboard` | The career pacing dashboard (`tools/out/pacing.html`) from `npm run career -- --upg tier --json` |
+| `npm run demolition -- [stage] [--car id]` | Demolitions with the AI at two skills: scores, walls and buildings down, who was wrecked |
+| `node tools/scene.mjs <stage> <script.js>` | A scripted scene on the build (the script drives `window.__dr` and calls `shot(name)`): for things a race rarely shows on cue, like a car through a house |
 | `npm run derby -- [arena,...]` | A derby in each arena with the AI at a casual and a good skill: how long, who went out when, who won |
 | `npm run ratings` | Measure every vehicle's pace (tarmac, loose) and toughness and how much each stat moves a lap → `src/data/ratings-data.js` (commit it; a test fails when it's stale) |
 | `npm run destruct [-- kmh]` | What each vehicle can smash: the speed it breaks each breakable from, and a real run into each at a set speed |
@@ -199,11 +250,36 @@ src/
   render/               three.js: renderer & quality, materials/shaders, world (terrain, road, barriers,
                         scenery: draws core's obstacles with world/shapes.js, spectators, houses), elements/ (each element's and feature's visuals), vehicles (racer bodies: carmodels.js, one builder per `model`; paint, glass, chrome and occlusion: carpaint.js; garage pictures: thumbs.js), effects,
                         camera, overlay.js (debug overlay)
-  audio/                Web Audio synth (engine, crashes, horns, bells)
+  audio/                Web Audio: engines (engine.js), the sound library synthesised at start (synth.js), placed
+                        one-shots and loops (sfx.js), the soundtrack (music.js), buses and settings (audio.js)
   ui/                   HUD, menu/flow (countdown, pause, results), garage, league, career, input, storage
 tests/                  golden simulation tests, scenarios, browser smoke test
 tools/                  layout / terrain / sandbox / benchmark tools
 ```
+
+### Sound
+
+No sample files: everything is made in the browser. `audio/synth.js` draws the effects into buffers when the audio
+starts (in the background, a few at a time): metal as inharmonic ringing modes (a panel, a barrel, a mine), explosions
+as a falling sub thump under closing noise and crackle, bricks as dozens of low noise grains, glass as high pings,
+wood as a snap and crackle, gunshots, ricochets, splashes, fire, a tyre bursting, a crowd (pitched voices through
+vowel formants), each in a few takes. `audio/sfx.js` plays them where they happened: quieter and duller with
+distance from the player, panned by where they are on screen, with a little generated reverb, takes and pitch varied,
+voices capped. Which event makes which sound is one table, `ui/sounds.js` (`eventSound`, called from `handleEvents`);
+collisions go through `AudioSys.crash(kind, v, at)` by material (`car`, `rail`, `stone`, `wood`, `hay`, `rubber`,
+`bricks`). Loops: fire near a burning slick, steam from a battered engine (which also misfires), the missile lock's
+quickening beep, a whistle over each incoming mortar shell. `audio/music.js` is the soundtrack, sequenced live: a synth
+band (kick, snare, hats, saw bass, detuned lead with echo, pads, arpeggio) playing a menu theme and an A minor race
+theme (intro, hook, second hook, bridge, break) that lifts on the final lap, with a fanfare or a fall at the finish;
+paused, it's muffled. The race tracks are twenty songs, each a style (`audio/songs.js`: synth rock, synthwave,
+breakbeat, chiptune, surf, drum and bass, funk, desert, eurobeat, punk, ska, house, big beat, western, trance, jazz,
+dubstep, metal, lo-fi, arcade), written as data: tempo, swing, key and scale, verse and bridge chords, drum patterns
+and kit, a bass pattern and sound, the chords' instrument, the lead's sound and the feel its melody is drawn from
+(`music.js` `melody`: generated motifs that follow the chords, seeded by the name; the theme's lines are written
+out). Each race plays the next one in turn (or only the liked ones); in a race ] / [ or the HUD's note button change
+track and L likes it, and the Sound panel lists them all to play and heart. Levels (Effects, Engines, Music) are the
+menu's Sound panel, kept in this browser; M mutes.
+To add a sound: a recipe in `synth.js` (and its takes), then play it from `sounds.js`.
 
 ### Rules that keep it maintainable
 
@@ -245,6 +321,9 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | yump | `yump: <m>` | a natural dirt crest jump (no painted ramp); `kick` is the painted one |
 | dirt | `dirt: true` | a loose dirt track (gravel grip, no kerbs) on any stage; on a branch it's an off-road shortcut |
 | breakables | `breach: '<kind>'` on a branch; stage `props: [{ kind, at, lat }]` | a fence, gate, hay, crates or concrete blocks across a shortcut's mouth (only cars heavy and fast enough smash through; the AI knows), or placed on the road |
+| structures | stage `buildings: [{ type, at, lat } \| { type, a, b, face }]`, `demolition` | destructible buildings (see "Destructible buildings" below): beside the road (the barrier in front comes out), anywhere in screen axes, or across a branch (`road: true`) as a breach |
+| crumble | `crumble: true \| <strength>` | an old timber bridge that wears through plank by plank as the race crosses it (heavy cars fastest); fall through a hole and you're back past the far end. The AI takes the soundest lane. Put a `kick` before it |
+| chicane | `chicane: '<kind>'`, `chicaneSide` | barrier blocks staggered across a straight: weave through, or smash through in something heavy (concrete leaves its blocks on the road); the AI weaves and slows for it |
 | hammer | `hammers: <n>` | wrecking balls swinging across the road from gantries (hits in `features/hammers.js`); the AI times its run |
 | ice | `ice: true` | an ice patch across the road: hardly any grip; the AI slows for it. Best on a snow stage |
 | open | `open: 'field' \| 'forest' \| 'rocks' \| 'stream'`, `gate` | off-piste: a leg with no road (rolling ground, no barriers, no resets for leaving the line) through a meadow, a forest with gaps, a rock garden or a stream; `gate: true` puts a gate at the section's start. See "Off-piste" below |
@@ -319,8 +398,8 @@ side road closed at the end by something breakable; lamps, bins, benches and pos
 would hit a road, a railway, a tunnel or too steep a slope are left out. `src/data/styles.js` holds the styles
 (village, alpine, seaside, farm, desert, industrial): colours, roof shapes, plot sizes, what bounds a garden, what
 closes a side road, what stands on the pavement. A new style is a new entry; the rules are shared. Everything you can
-hit is a breakable (kit kinds in `data/breakables.js`: houses and barns never give way, picket fences snap, stone walls
-need a heavy car), so towns join in F3's destruction. Trees and rocks keep out of the plots. `render/elements/kit.js`
+hit is a breakable (kit kinds in `data/breakables.js`: picket fences snap, stone walls need a heavy car) or, for the
+houses and barns, a destructible building ("Destructible buildings" below), so towns join in the destruction. Trees and rocks keep out of the plots. `render/elements/kit.js`
 draws a town as a handful of instanced batches. Village Green, Harbour Sprint, Hay Bale Farm and Village Descent use it;
 the Workshop's Scenery kit tab shows every style.
 
@@ -347,6 +426,36 @@ it was), and leaves concrete's blocks on the road as chunks that get shoved abou
 shortcut once it's down or it can smash it), or stage `props`. `npm run destruct` tables every vehicle against every
 kind; Workshop → Destruction yard drives any car into any of them.
 
+### Destructible buildings
+
+`src/data/structures.js` (types, materials, furniture and every number), `src/core/kit/building.js` (one building's
+layout), `src/core/elements/structures.js` (placing them), `src/core/features/structures.js` (breaking them),
+`src/render/elements/structures.js` (drawing them).
+- **Brick walls.** Every wall is a grid of cells (0.5 m, a few bricks each) with windows, a door and, inside, partition
+  walls with doorways between the rooms. A car hitting a wall spends its impact (mass x speed into it) knocking cells
+  out, the middle of its nose first, low first, so the hole is the car's shape: as wide as it, as tall as it (`rowsHit`:
+  taller for heavier vehicles). If it clears everything in front of it, it carries on through with what it had over and
+  the hole's edges go ragged (`RAG`); if not, it's stopped and what's left of the hit cracks the cells it hit, so the
+  next hit gets further (a hit below `BREAK` x the wall's strength only cracks it). Brickwork that has lost what's under
+  it and to both sides below falls in after the hole, so holes come out as stepped arches.
+- **Bricks fly.** Every cell knocked out throws a brick (a plank, a lump of stone) out of the hole the way the car went,
+  as a loose prop that lands and gets batted about; windows shatter; core lumps of brickwork land on the road and slow
+  whoever hits them; a hole leaves a strip of rubble.
+- **Inside.** Rooms by type (living room, kitchen, bedroom, shop, barn, warehouse, chapel...) with their furniture
+  (`FURNITURE`): sofas, beds, kitchen units, shelves, pews, bales, pallets. It's loose: a car shoves it about (and
+  loses a little speed, `FURN_SLOW`), and it stays inside unless it goes out through a hole.
+- **Roofs and floors in bays.** The roof and the upper floors are slices across the building; a bay falls in when fewer
+  than `BAY_FALL` of the wall cells holding it up are left, its roof breaking into slabs on a heap. All the bays down and
+  the building is gone (`collapse`).
+- **See-through.** Inside a building, or behind one from the camera, its roof, upper floors and the walls above the
+  ground floor turn see-through round the car (the cutaway shader tunnels use: `structureCover` in the render).
+- **Blasts** (`blastStructures`): weapons knock out or crack the cells in reach and throw the furniture about.
+- **Scoring:** a hole is a smash, a collapse is `razed`; Demolition scores cells and fallen bays.
+- **The towns' houses and barns** (the world kit) are buildings too (`buildingsOf`), so every town can be knocked down.
+- **A building across a branch** (`road: true`) blocks the short cut until a car has been through it or part of it is
+  down; the AI takes it only then, or if it can smash through (`canRaze` in `sim/ai.js`).
+Workshop → Demolition (and the `structures` sandbox) to try it; `tests/structures.test.js` locks the rules.
+
 ### Car anatomy (panels)
 
 Cars come apart panel by panel. `src/data/anatomy.js` lists the panels (bonnet, boot, two doors): the damage zone that
@@ -371,7 +480,8 @@ bar (nudge bar, bull bar, plough: `veh.ram`, what breaks scenery) and roll cage 
 box, the panels), so every car of either provider takes every part, and a part on the bonnet, boot or a door rides on
 that panel (it opens and flies off with it). Rivals show the tier's parts (engine, tyres, suspension). In the career
 garage a car's upgrades screen is a turntable (`src/render/showcar.js`): a part goes on with the car up on jacks. Try
-any part on any car in the Workshop's Cars tab.
+any part on any car in the Workshop's Cars tab, or drive a car with any build on the Upgrades tab (`G.workshop.build`
+replaces the player's def's `build` and `veh` in `newRace`).
 
 ### The economy and pacing
 
@@ -426,6 +536,8 @@ or `?workshop` (the hub) / `?workshop=<tab>`. Tabs live in `src/data/workshop.js
   other input for them. Nothing else sets it, so races and golden runs are untouched.
 - **Destruction yard**: any car into crates, hay, a fence, a gate or concrete blocks (a row of `props` on the loop's far
   straight) at a set speed: what breaks, the speed after, mass and toughness.
+- **Upgrades**: any car with any level of each part (and road or gravel tyres), rebuilt and driven round the loop (or by
+  the autopilot), with what the build does to its handling.
 - **Scenery kit**: the loop with a town in any style along both straights (`?workshop=kit&style=seaside`): drive or fly
   round it, smash its fences and gates.
 - Each roadmap phase adds its tab: a new system gets a Workshop tab, a
@@ -468,6 +580,35 @@ In the game, the menu's **Track editor** (`src/ui/editor.js`, geometry in `src/c
 (`editing.js` `fromStroke`: simplify, round each corner off with an arc, close it if it ends near its start), and
 dragging from the open end carries the track on. The Comment tool pins notes anywhere on the plan, and each section
 has a note box; both go to Claude with the track.
+
+The menu's **Terrain builder** (`src/ui/terrain-builder.js`, landscape in `src/core/track/ground.js`) starts from the
+land instead: an 800 m square of ground seen in 3D, shaped with the Raise / Lower / Smooth / Flatten brushes (a
+height grid every 8 m, contours every 5 m), then the Road tool paints the track's line on it (the same `fromStroke`).
+The road's heights come from the ground under it (`roadOnGround`: short sections, smoothed over 30 m, no steeper than
+14%), so the climbs and drops are the land's. The stage it makes is a gorge stage with `ground` = { a0, b0, cell,
+cols, rows, h } in plan metres from the start line: `circuit.js` uses it as the ground away from the road (no
+generated hills, no far/near profiles), and the road cuts and fills across it with guard rails along the drops.
+Road up / Road down brush the road's own height along it (`road.lift`, every 10 m): held 6 m over the ground a piece
+becomes a bridge, 9 m under it a tunnel (`roadOnGround` tags them). Pieces drops set pieces on the road (`road.pieces`
+= { s: metres along, tag, v }: kickers, crests, whoops, water, mud, boost pads, chicanes, a crumbling bridge,
+wrecking balls, rockfall, ice, dirt, a town, a waterfall); chicanes and timber bridges go on the nearest straight.
+"Send to Claude" stores it in `tracks` with base "terrain". To make a real stage of one, keep `ground` and `segs`
+and add the look and set pieces on top.
+**Generate land** fills the square with a landscape in a style (rolling hills, mountains, a river valley, canyon
+country, mesas: `generateGround`, seeded value noise, gentler in the middle than at the edges); **Generate road** lays
+a lap on it (`autoRoad`: a loop with a few bends, the best of 18 tries at sitting on the land, short / medium / long,
+with a crest jump on a straight and a water splash in the lowest dip if Set pieces is ticked). Both can be pressed
+again for another and are undoable. Getting about: drag turns, right-drag / Space + drag / two fingers move, wheel or
+pinch zooms; a trackpad's two-finger slide moves the view and its pinch zooms; double-click or double-tap flies
+there; WASD or the arrows move (Shift: faster), Q / E turn, R / F tilt, + / - zoom, 1-9 pick the tools, T top view,
+Home fits, Ctrl+Z undoes; the arrow pad does the moving on a touch screen.
+
+The menu's **Sketch pad** (`src/ui/sketch.js`) is for ideas that aren't a track yet: a 1600 x 1200 sheet (grid or
+plain) with a pen that follows Apple Pencil pressure, a marker, an eraser, line, arrow, box, circle and words, ten
+colours, three sizes, undo / redo and pinch zoom (with a Pencil, fingers only move the paper). Strokes are kept as
+data (`{ k, c, w, p: [x, y, pressure, ...] }`), so a sketch is redrawn from them and can be reopened. "Send to Claude"
+uploads the picture (PNG) and the strokes (JSON) as assets and writes a `sketches` doc; My sketches lists them with
+Claude's replies. Without the database they're kept in this browser.
 
 ## Adding a vehicle
 
