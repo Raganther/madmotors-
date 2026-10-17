@@ -439,7 +439,7 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
     if (!await lp.$eval('#lab-dent', b => b.hidden)) for (const b of ['#lab-dent', '#lab-bump', '#lab-wing', '#lab-fix']) await lp.click(b);
     const veh = VEHICLES.find(v => v.id === id);   // a car's panels (render/anatomy.js): every one except NO_PANELS, either provider
     if (veh) await lp.evaluate(() => { const b = document.querySelector('#lab-parts [data-s="all"]'); if (/Full/.test(b.textContent)) b.click(); });   // every upgrade part on (render/parts.js)
-    if (veh) { const has = !await lp.$eval('#lab-pan', b => b.hidden); if (has === NO_PANELS.includes(veh.model)) errors.push(`lab: ${id} (${pr}) ${has ? 'has panels but is in NO_PANELS' : 'got no panels'}`); if (has) for (let k = 0; k < 3; k++) await lp.click('#lab-pan'); await lp.click('#lab-fix'); }
+    if (veh) { const has = !await lp.$eval('#lab-pan', b => b.hidden); if (has === NO_PANELS.includes(veh.model)) errors.push(`lab: ${id} (${pr}) ${has ? 'has panels but is in NO_PANELS' : 'got no panels'}`); if (has && !await lp.evaluate(() => Object.values(window.__labCur.v.panels).some(p => p.userData.bay === 'engine'))) errors.push(`lab: ${id} (${pr}) has no engine under its bonnet or boot (render/anatomy.js, data/anatomy.js ENGINE)`); if (has) for (let k = 0; k < 3; k++) await lp.click('#lab-pan'); await lp.click('#lab-fix'); }
     await lp.click('#lab-lod');
   }
   const blender = await lp.evaluate(() => document.querySelectorAll('#lab-list small:not(:empty)').length);

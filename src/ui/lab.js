@@ -132,7 +132,7 @@ function build(it) {
   return { root, v: null, lod: null, hit: null, blender: true };
 }
 function show() {
-  holder.clear(); const it = itemOf(S.id); cur = build(it); holder.add(cur.root);
+  holder.clear(); const it = itemOf(S.id); cur = build(it); window.__labCur = cur; holder.add(cur.root);   // (__labCur: for browser tests, tools/bayprobe.mjs)
   cur.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
   const box = new THREE.Box3().setFromObject(cur.root); cur.size = box.getSize(new THREE.Vector3()).length();
   document.getElementById('lab-list').innerHTML = items().map(i => `<button data-id="${i.id}" class="${i.id === S.id ? 'on' : ''}">${esc(i.label)} <small>${packOf(i.pack) ? 'B' : ''}</small></button>`).join('');

@@ -20,6 +20,7 @@ The agreed plan for upcoming work is docs/ROADMAP.md (foundations F0-F6, then th
 - `npm run bench -- <n>`: render benchmark (SwiftShader here, so only compare against a previous run). `MODELS=classic|blender` (also for `shot`) sets the Models setting: price Blender assets against Classic with `RIVALS=13`.
 - Car families (`src/data/families.js`): a new car from a shared chassis is a data entry; both providers draw it (README "A car in a family", `/new-vehicle`).
 - `npm run assets [ids]`: build the Blender assets headless (installs `bpy` if missing; ~1 min per car) → `src/assets/gen/` (commit it) and previews in `blender/out/`. Look at them: `npm run labshot -- <ids>` (Blender beside Classic), and the Asset Lab (`?lab`, `npm run lab`; published on its own at https://claude.ai/artifact/YbX3XQF3kMha8K6a6GgdMj, whose db also holds `assetNotes`).
+- `npm run bays -- [ids] [--shots dir]`: what each car's bonnet, boot and doors open onto (engine, front boot, luggage, seats), both providers; `--shots` saves them open, stripped, and from above. Look after any body change.
 - Headless Chromium lives at /opt/pw-browsers (don't `playwright install`); pass `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`.
 
 ## Notes from the user

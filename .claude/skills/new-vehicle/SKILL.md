@@ -28,6 +28,19 @@ existing vehicle's role (list: `src/data/vehicles.js`).
   the car, not a stack of slabs, and keep it unrotated. A vehicle with no closed shell (open wheels, a frame) goes in
   `NO_PANELS`; the e2e run fails if a car gets panels it shouldn't, or none when it should. Check them in the Workshop:
   Cars tab, "Panels" button (bend, open, off), and the Crash test.
+- **Insides (the reference: Rally Hatch and Muscle Coupe).** Every car with panels must open onto something: an engine
+  under one lid, a front boot or a luggage bay under the other, seats, a dash and a wheel behind the doors.
+  `render/anatomy.js` draws all of it from the shell, so the work is: say where the engine is (`ENGINE` in
+  `src/data/anatomy.js`, by model: front is the default; a mid-engined supercar or racer is `mid`, an engine over the
+  back axle `rear`), list an open cockpit that draws its own seats in `OPEN_COCKPIT`, and make sure the shell is deep
+  enough under each lid (the engine shrinks to fit, then turns into a flat engine; a lid lying on the floor leaves
+  the bay bare). Check with `npm run bays -- <id> --shots <dir>` and look at the pictures beside `hatch` and `coupe`:
+  nothing poking through a shut lid, no bay showing the road, the engine at the right end. The e2e fails a car with
+  panels and no engine.
+- **The full set, as on the hatch and the coupe:** panels that bend, open and tear off; an engine, a boot and seats under
+  them; a `bumper`, `wing` and `struts` that knock loose; `heads` and `tails` that light and break; dents and dirt on
+  the shell; upgrade parts that sit on the body; and all of it on both providers (a Blender pack for the body, the
+  Classic builder kept working). Check each in the Workshop Cars tab and the Asset Lab with Blender and Classic.
 - **Upgrade parts** (`render/parts.js`) mount from the body's own shape: the tallest point along it (bonnet, boot),
   its widest (sills, ram bar), the cabin's box (roll cage) and the panels. Check a Full build in the Workshop Cars tab
   (both providers): a part floating clear of the body or buried in it means the body's top or cabin is unusual.
@@ -61,6 +74,9 @@ Adding a vehicle changes no stage's golden run (rivals keep their cars); if gold
 sending a garage screenshot and one in-race shot per new vehicle.
 
 ## Traps
+- The insides are sized from the shell, not authored, so a body that looks fine shut can open onto nothing: a wedge
+  nose with no depth, a mid-engined car showing a V8 under its front bonnet. `npm run bays` after every body change
+  (all of them: it takes a few minutes), not just the new car's.
 - A bigger garage means a bigger full field (Rivals at max): tests/elements.test.js and the e2e count it, and the grid
   must fit before the start line (core/sim/race.js gridSlots closes the rows up past five).
 - The Asset Lab lists cars by vehicle id (`npm run labshot -- taxi`), not by pack id (`car-taxi`).

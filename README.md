@@ -468,6 +468,16 @@ flap when open, tear off as real pieces, swing for a door bash, and go with ever
 (it's stripped to the shell). Vehicles with no closed shell are listed in `NO_PANELS`. No per-car work: a new car
 gets panels if its body is one painted box (or Blender part).
 
+What the panels open onto is drawn too, sized from the shell, standing on the floor of its hollow and kept under each
+lid's lowest point. The engine goes where the car carries it (`ENGINE` in data/anatomy.js, by model: front by
+default, `mid` behind the seats, `rear` over the back axle): a V engine (radiator and hoses up front; a silencer across
+the tail when it's mid-mounted), or a flat engine with its cooling fan for a rear engine or a bay too shallow for the
+V. The other lid opens on a front boot (radiator, spare, fuel tank) or a luggage bay (carpet, spare, toolbox, jack).
+Behind the doors: two seats, the dash and the wheel (`OPEN_COCKPIT` lists bodies that draw their own seats). The tub
+is cut open under the lids and the doors so all of it shows. `npm run bays [ids] [--shots dir]` (tools/bayprobe.mjs)
+lists each car's panels and what each lid opens on, both providers, and saves pictures; the e2e fails a car with
+panels but no engine.
+
 ### Upgrade parts
 
 An upgrade is a part you can see. `src/data/parts.js` has seven slots, three levels each: engine (scoop, side pipes,
@@ -642,8 +652,8 @@ Quadra S1 (an 80s box-flared rally coupe) and Sarthe 40 (a 60s Le Mans racer). T
 their Classic bodies share a `shell` helper (underbody, painted shell, raked glasshouse, roof, number). Showrooms:
 Rookie sells Stallion, Wasp, Clubman, Bandit, Judge and Pleiades (the first three can start a career); Club the
 Nightbrute, Quadra, Barra, Strato, Swabia and Asp; Pro the Sarthe, Cyclone, Turin and Toro; Legend the Taurus and Rosso.
-A wedge's nose is too shallow for the engine bay: `render/anatomy.js` sizes it to the bonnet's lowest point and leaves
-a bare front boot when there's no room.
+The mid-engined ones (Sarthe, Strato, Turin, Toro, Taurus, Rosso) and the rear-engined Swabia are in `ENGINE`
+(data/anatomy.js): their engine is under the engine cover, a front boot under the bonnet.
 
 ## Blender assets (the asset lab)
 
