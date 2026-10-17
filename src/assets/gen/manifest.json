@@ -34,6 +34,55 @@
    "wing:tyre"
   ]
  },
+ "car-clubman": {
+  "family": "cars",
+  "hiTris": 8094,
+  "kb": 205,
+  "loTris": 4480,
+  "max": [
+   1.07,
+   1.7,
+   1.97
+  ],
+  "min": [
+   -1.07,
+   0.19,
+   -1.9
+  ],
+  "parts": [
+   "band0:accent",
+   "band1:accent",
+   "body:paint",
+   "body:trim",
+   "bumper:chrome",
+   "cabin:glass",
+   "cabin:paint",
+   "exh0:chrome",
+   "flaps:tyre",
+   "flares:trim",
+   "grille:chrome",
+   "grille:trim",
+   "lamp0:lamp",
+   "lamp1:lamp",
+   "lamp2:lamp",
+   "lamp3:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "rbumper:chrome",
+   "spot0:lamp",
+   "spot1:lamp",
+   "spotcans:chrome",
+   "stripes:accent",
+   "tail0:tail",
+   "tail1:tail",
+   "vent:trim",
+   "wing:accent"
+  ]
+ },
  "car-coupe": {
   "family": "cars",
   "hiTris": 7156,
@@ -121,6 +170,55 @@
    "stripe1:accent",
    "tail0:tail",
    "tail1:tail"
+  ]
+ },
+ "car-fastback": {
+  "family": "cars",
+  "hiTris": 8000,
+  "kb": 202,
+  "loTris": 4434,
+  "max": [
+   1.03,
+   1.417,
+   1.94
+  ],
+  "min": [
+   -1.03,
+   0.305,
+   -1.98
+  ],
+  "parts": [
+   "body:paint",
+   "body:trim",
+   "bumper:chrome",
+   "cabin:glass",
+   "cabin:paint",
+   "emblem:chrome",
+   "exh0:chrome",
+   "exh1:chrome",
+   "fog0:lamp",
+   "fog1:lamp",
+   "lamp0:lamp",
+   "lamp1:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "mouth:trim",
+   "rbumper:chrome",
+   "scoop0:trim",
+   "scoop1:trim",
+   "stripes:accent",
+   "tail0:tail",
+   "tail1:tail",
+   "tail2:tail",
+   "tail3:tail",
+   "tail4:tail",
+   "tail5:tail",
+   "tailpanel:trim",
+   "wing:paint"
   ]
  },
  "car-firetruck": {
@@ -569,6 +667,53 @@
    "wing:trim"
   ]
  },
+ "car-nightbrute": {
+  "family": "cars",
+  "hiTris": 7236,
+  "kb": 187,
+  "loTris": 4148,
+  "max": [
+   1.033,
+   1.421,
+   2.03
+  ],
+  "min": [
+   -1.033,
+   0.304,
+   -2.07
+  ],
+  "parts": [
+   "body:paint",
+   "body:trim",
+   "bulge:paint",
+   "bumper:chrome",
+   "cabin:glass",
+   "cabin:paint",
+   "exh0:chrome",
+   "exh1:chrome",
+   "exh2:chrome",
+   "exh3:chrome",
+   "grille:chrome",
+   "grille:trim",
+   "head0:lamp",
+   "head1:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "pin0:chrome",
+   "pin1:chrome",
+   "rbumper:chrome",
+   "sail0:paint",
+   "sail1:paint",
+   "stripes:accent",
+   "tail0:tail",
+   "tail1:tail",
+   "wing:paint"
+  ]
+ },
  "car-pickup": {
   "family": "cars",
   "hiTris": 8038,
@@ -659,6 +804,53 @@
    "tail0:tail",
    "tail1:tail",
    "wing:paint"
+  ]
+ },
+ "car-quadra": {
+  "family": "cars",
+  "hiTris": 8312,
+  "kb": 206,
+  "loTris": 4462,
+  "max": [
+   1.1,
+   1.677,
+   1.92
+  ],
+  "min": [
+   -1.1,
+   0.31,
+   -1.94
+  ],
+  "parts": [
+   "body:paint",
+   "body:trim",
+   "bumper:accent",
+   "cabin:glass",
+   "cabin:paint",
+   "exh0:chrome",
+   "flares:paint",
+   "grille:chrome",
+   "grille:trim",
+   "head0:lamp",
+   "head1:lamp",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "pod:trim",
+   "rbumper:trim",
+   "spot0:lamp",
+   "spot1:lamp",
+   "spot2:lamp",
+   "spot3:lamp",
+   "stripes:accent",
+   "tail0:tail",
+   "tail1:tail",
+   "vent:trim",
+   "wing:accent",
+   "wing:trim"
   ]
  },
  "car-roadster": {
@@ -753,6 +945,50 @@
    "mast:chrome",
    "seats:paint",
    "solar:solar",
+   "tail0:tail",
+   "tail1:tail",
+   "wing:paint"
+  ]
+ },
+ "car-sarthe": {
+  "family": "cars",
+  "hiTris": 8412,
+  "kb": 203,
+  "loTris": 3964,
+  "max": [
+   1.03,
+   1.076,
+   2.01
+  ],
+  "min": [
+   -1.03,
+   0.261,
+   -2.02
+  ],
+  "parts": [
+   "body:paint",
+   "body:trim",
+   "bumper:trim",
+   "cabin:glass",
+   "cabin:paint",
+   "cover0:glass",
+   "cover1:glass",
+   "exh0:chrome",
+   "exh1:chrome",
+   "intake0:trim",
+   "intake1:trim",
+   "lamp0:lamp",
+   "lamp1:lamp",
+   "louvres:trim",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "mouth:trim",
+   "rbumper:trim",
+   "stripes:accent",
    "tail0:tail",
    "tail1:tail",
    "wing:paint"
@@ -950,6 +1186,53 @@
    "tail0:tail",
    "tail1:tail",
    "wing:accent"
+  ]
+ },
+ "car-wasp": {
+  "family": "cars",
+  "hiTris": 7244,
+  "kb": 184,
+  "loTris": 3982,
+  "max": [
+   1.04,
+   1.417,
+   1.93
+  ],
+  "min": [
+   -1.04,
+   0.305,
+   -1.98
+  ],
+  "parts": [
+   "body:paint",
+   "body:trim",
+   "bumper:chrome",
+   "cabin:glass",
+   "cabin:paint",
+   "exh0:chrome",
+   "exh1:chrome",
+   "flank0:accent",
+   "flank1:accent",
+   "flankup0:accent",
+   "flankup1:accent",
+   "lamp0:lamp",
+   "lamp1:lamp",
+   "lamp2:lamp",
+   "lamp3:lamp",
+   "mask:trim",
+   "mirror0:glass",
+   "mirror0:paint",
+   "mirror0:trim",
+   "mirror1:glass",
+   "mirror1:paint",
+   "mirror1:trim",
+   "rbumper:chrome",
+   "shaker:dark",
+   "shaker:trim",
+   "stripes:accent",
+   "tail0:tail",
+   "tail1:tail",
+   "wing:paint"
   ]
  },
  "car-wedge": {

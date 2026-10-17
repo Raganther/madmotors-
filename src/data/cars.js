@@ -44,7 +44,13 @@ export const MORE_RIVALS = [
   { name: 'Brennan', vehicle: 'van', num: 31, skill: 0.92, flick: 0.3, driftK: 1 / 60 },
   { name: 'Graves', vehicle: 'hearse', num: 13, skill: 0.93, flick: 0.26, driftK: 1 / 50 },
   { name: 'Achebe', vehicle: 'pocket', num: 8, skill: 0.94, flick: 0.36, driftK: 1 / 36 },
-  { name: 'Yamada', vehicle: 'drift', num: 86, skill: 0.94, flick: 0.42, driftK: 1 / 30 }
+  { name: 'Yamada', vehicle: 'drift', num: 86, skill: 0.94, flick: 0.42, driftK: 1 / 30 },
+  { name: 'Carver', vehicle: 'fastback', num: 68, skill: 0.95, flick: 0.32, driftK: 1 / 44 },
+  { name: 'Duke', vehicle: 'nightbrute', num: 69, skill: 0.94, flick: 0.36, driftK: 1 / 40 },
+  { name: 'Ricci', vehicle: 'wasp', num: 70, skill: 0.95, flick: 0.38, driftK: 1 / 38 },
+  { name: 'Vatanen', vehicle: 'clubman', num: 75, skill: 0.96, flick: 0.3, driftK: 1 / 46 },
+  { name: 'Mikkola', vehicle: 'quadra', num: 84, skill: 0.96, flick: 0.28, driftK: 1 / 48 },
+  { name: 'Ickx', vehicle: 'sarthe', num: 40, skill: 0.97, flick: 0.22, driftK: 1 / 52 }
 ];
 export const MAX_RIVALS = 3 + MORE_RIVALS.length, DEFAULT_RIVALS = 3;
 const asVehicle = (d, v) => ({ ...d, model: v.model, color: v.color, accent: v.accent, hw: v.hw, hl: v.hl, im: v.veh ? v.veh.im : undefined, veh: v.veh, vehicle: v.id });

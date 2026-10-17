@@ -1,6 +1,6 @@
 // Written by `npm run ratings` (tools/ratings.mjs): measured, do not edit. data/ratings.js reads it.
 export default {
- "key": "fda1c08f",
+ "key": "fdeac814",
  "sens": {
   "tarmac": {
    "accel": -25.98,
@@ -159,6 +159,36 @@ export default {
   "drift": {
    "tarmac": -1.07,
    "loose": 1.8,
+   "tough": 1
+  },
+  "fastback": {
+   "tarmac": -1.09,
+   "loose": 1.12,
+   "tough": 1
+  },
+  "nightbrute": {
+   "tarmac": -1.99,
+   "loose": 0.64,
+   "tough": 1.18
+  },
+  "wasp": {
+   "tarmac": -0.89,
+   "loose": 1.29,
+   "tough": 1
+  },
+  "clubman": {
+   "tarmac": 0.42,
+   "loose": -2.94,
+   "tough": 0.99
+  },
+  "quadra": {
+   "tarmac": -0.82,
+   "loose": -3.39,
+   "tough": 1.01
+  },
+  "sarthe": {
+   "tarmac": -2.63,
+   "loose": 2.59,
    "tough": 1
   }
  }
