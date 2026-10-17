@@ -184,6 +184,18 @@ export function setCarDetail(lod, near) {
 }
 /** Every geometry of a dentable panel with its undented positions: [[geometry, orig], ...]. */
 export const panelGeos = m => m.userData.lod ? m.userData.lod.map((g, i) => [g, m.userData.origs[i]]) : [[m.geometry, m.userData.orig]];
+// the classics' Classic bodies: a dark underbody, the painted shell (render/anatomy.js cuts it into panels), a glasshouse
+// raked by `cab[5]` with a painted roof on it, and the roof number
+function shell(K, def, { len, wid, h = 0.5, y = 0.77, cab }) {
+  K.box(wid - 0.04, 0.3, len - 0.04, DARK, 0, 0.44, 0);
+  K.panel(wid, h, len, def.color, 0, y, 0, { seg: [3, 2, 6] });
+  const [cw, ch, cd, cy, cz, rake = 0.22] = cab;
+  const cabin = K.panel(cw, ch, cd, GLASS, 0, cy, cz, { seg: [2, 1, 2], shape: (x, yy, z) => [yy > 0 ? x * 0.88 : x, yy, yy > 0 && z > 0 ? z - rake : z] });
+  K.panel(cw - 0.18, 0.08, cd * 0.55, def.color, 0, cy + ch / 2 + 0.02, cz, { seg: [2, 1, 1] });
+  K.number(0.6, cy + ch / 2 + 0.07, cz);
+  return cabin;
+}
+const W4 = (x, zf, zr, rf, wf, rr = rf, wr = wf, xr = x) => [[x, zf, rf, wf], [-x, zf, rf, wf], [xr, zr, rr, wr], [-xr, zr, rr, wr]];
 const MODELS = {
   // Okafor: a 70s rally hatchback. Short and square, upright glasshouse, four spotlights on the bonnet, stripes, a
   // spare wheel on the roof rack (falls off with the rear spoiler), mud flaps.
@@ -357,6 +369,151 @@ const MODELS = {
     const heads = [-0.6, 0.6].map(x => K.lamp(0.1, x, 0.8, 1.72));
     const tails = [-1, 1].map(s => K.light(false, 0.4, 0.1, s * 0.6, 0.66, -1.92));
     return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels([[0.97, 1.28, 0.38, 0.32], [-0.97, 1.28, 0.38, 0.32], [0.98, -1.2, 0.41, 0.4], [-0.98, -1.2, 0.41, 0.4]]) };
+  },
+  // The second and third batches of classics (blender/classics.py): their Classic bodies are a shell, a glasshouse and
+  // the details that name them.
+  bandit(K, def) {
+    const cabin = shell(K, def, { len: 3.66, wid: 2.0, cab: [1.52, 0.42, 1.5, 1.21, -0.45] });
+    K.box(0.6, 0.1, 0.62, def.color, 0, 1.03, 0.62); K.box(0.5, 0.05, 0.03, DARK, 0, 1.05, 0.31);   // cowl-induction bonnet
+    for (const s of [-1, 1]) { K.box(0.26, 0.02, 1.4, def.accent, s * 0.22, 1.01, 1.1); K.box(0.26, 0.02, 0.62, def.accent, s * 0.22, 1.02, -1.5); for (let j = 0; j < 3; j++) K.box(0.04, 0.12, 0.05, DARK, s * 1.0, 0.8, -0.6 - j * 0.09); }
+    K.box(1.7, 0.26, 0.06, DARK, 0, 0.74, 1.83);
+    const bumper = K.box(1.9, 0.12, 0.14, CHROME, 0, 0.52, 1.86); K.box(1.92, 0.12, 0.14, CHROME, 0, 0.54, -1.86);
+    const wing = K.box(1.6, 0.05, 0.2, def.color, 0, 1.06, -1.72, { rx: -0.25 });
+    const heads = [-0.66, 0.66].map(x => K.lamp(0.12, x, 0.76, 1.87)), tails = [-1, 1].map(s => K.light(false, 0.5, 0.12, s * 0.5, 0.84, -1.86));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels(W4(0.96, 1.2, -1.14, 0.41, 0.34, 0.42, 0.38, 0.98)) };
+  },
+  barra(K, def) {
+    const cabin = shell(K, def, { len: 3.6, wid: 2.06, cab: [1.56, 0.42, 1.5, 1.19, -0.45] });
+    for (const s of [-1, 1]) { K.box(0.3, 0.1, 0.5, def.color, s * 0.36, 1.02, 0.95); K.box(0.24, 0.06, 0.03, DARK, s * 0.36, 1.04, 1.21); K.box(0.02, 0.22, 1.1, def.accent, s * 1.045, 0.78, -1.0); }
+    K.box(1.76, 0.28, 0.06, DARK, 0, 0.72, 1.79); K.box(0.1, 0.28, 0.08, def.color, 0, 0.72, 1.81); K.box(1.8, 0.16, 0.04, DARK, 0, 0.84, -1.81);
+    const bumper = K.box(1.98, 0.12, 0.14, CHROME, 0, 0.5, 1.82); K.box(2.0, 0.12, 0.14, CHROME, 0, 0.52, -1.82);
+    const wing = K.box(1.5, 0.05, 0.18, def.color, 0, 1.03, -1.68, { rx: -0.2 });
+    const heads = [-0.76, -0.52, 0.52, 0.76].map(x => K.lamp(0.1, x, 0.74, 1.82)), tails = [-1, 1].map(s => K.light(false, 0.6, 0.1, s * 0.5, 0.84, -1.83));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels(W4(0.98, 1.18, -1.12, 0.42, 0.36, 0.44, 0.42, 1.0)) };
+  },
+  judge(K, def) {
+    const cabin = shell(K, def, { len: 3.82, wid: 2.0, cab: [1.52, 0.42, 1.6, 1.21, -0.5] });
+    K.box(0.24, 0.3, 0.3, def.color, 0, 0.78, 1.8);                                        // the beak
+    for (const s of [-1, 1]) { K.box(0.62, 0.22, 0.05, DARK, s * 0.5, 0.74, 1.84); K.box(0.08, 0.02, 1.7, def.accent, s * 0.75, 1.01, 0.65); K.box(0.08, 0.2, 0.12, def.color, s * 0.7, 1.1, -1.72); }
+    K.box(0.7, 0.06, 0.4, DARK, 0, 1.03, 1.0);
+    const bumper = K.box(1.9, 0.1, 0.12, def.color, 0, 0.5, 1.86); K.box(1.92, 0.12, 0.14, CHROME, 0, 0.52, -1.9);
+    const wing = K.box(1.76, 0.06, 0.3, def.accent, 0, 1.22, -1.72, { rx: -0.15 });
+    const heads = [-0.72, -0.48, 0.48, 0.72].map(x => K.lamp(0.09, x, 0.75, 1.88)), tails = [-1, 1].map(s => K.light(false, 0.52, 0.1, s * 0.55, 0.84, -1.9));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels(W4(0.97, 1.26, -1.18, 0.42, 0.34, 0.44, 0.4, 1.0)) };
+  },
+  asp(K, def) {
+    K.box(1.9, 0.26, 3.36, DARK, 0, 0.42, 0);
+    K.panel(2.0, 0.44, 3.44, def.color, 0, 0.66, 0, { seg: [3, 2, 6], shape: (x, y, z) => [x * (Math.abs(z) > 1.4 ? 0.86 : 1), y > 0 ? y + 0.08 * (Math.exp(-((z - 1.12) ** 2) * 5) + Math.exp(-((z + 1.1) ** 2) * 5)) : y, z] });
+    K.box(1.2, 0.08, 1.1, DARK, 0, 0.9, -0.3);                                             // the cockpit
+    K.box(0.9, 0.3, 0.4, DARK, 0, 1.0, -0.55); K.part(sph(0.17, 8, 6), def.accent, -0.25, 1.3, -0.4, [1, 1, 1]);
+    for (const s of [-1, 1]) { K.box(0.2, 0.02, 1.2, def.accent, s * 0.2, 0.93, 1.05); K.box(0.2, 0.02, 0.9, def.accent, s * 0.2, 0.97, -1.25); K.part(cyl(0.07, 0.07, 1.4, 8, g => g.rotateX(Math.PI / 2)), CHROME, s * 1.03, 0.36, -0.05, [1, 1, 1]); }
+    const bar = K.box(0.88, 0.5, 0.06, CHROME, 0, 1.13, -0.75);
+    const cabin = K.box(1.1, 0.24, 0.04, GLASS, 0, 1.0, 0.32, { rx: 0.45 });
+    K.box(0.7, 0.2, 0.05, DARK, 0, 0.6, 1.72);
+    const bumper = K.box(1.2, 0.06, 0.08, CHROME, 0, 0.52, 1.76); K.box(1.4, 0.06, 0.08, CHROME, 0, 0.56, -1.74);
+    const wing = K.box(1.3, 0.04, 0.16, def.color, 0, 0.9, -1.64, { rx: -0.3 });
+    const heads = [-0.6, 0.6].map(x => K.lamp(0.12, x, 0.74, 1.61)), tails = [-1, 1].map(s => K.light(false, 0.2, 0.12, s * 0.55, 0.78, -1.72));
+    return { bumper, wing, struts: [bar], heads, tails, cabin, ...K.wheels(W4(0.98, 1.12, -1.1, 0.4, 0.34, 0.43, 0.44, 1.0)) };
+  },
+  strato(K, def) {
+    K.box(1.96, 0.28, 3.28, DARK, 0, 0.4, 0);
+    K.panel(2.04, 0.46, 3.32, def.color, 0, 0.66, 0, { seg: [3, 2, 6], shape: (x, y, z) => [x, y > 0 && z > 0.3 ? y - 0.3 * (z - 0.3) / 1.4 : y, z] });
+    const cabin = K.panel(1.7, 0.5, 1.6, GLASS, 0, 1.16, -0.2, { seg: [2, 1, 2], shape: (x, y, z) => [y > 0 ? x * 0.9 : x, y, y > 0 && z > 0 ? z - 0.1 : z] });
+    K.panel(1.4, 0.08, 0.7, def.color, 0, 1.43, -0.25, { seg: [2, 1, 1] }); K.number(0.6, 1.49, -0.2);
+    for (let k = 0; k < 5; k++) K.box(1.1, 0.03, 0.05, DARK, 0, 0.99 + 0.003 * k, -1.08 - k * 0.1);
+    for (const s of [-1, 1]) K.box(0.16, 0.02, 1.15, def.accent, s * 0.3, 0.9, 1.0);
+    const roofwing = K.box(1.2, 0.05, 0.22, def.accent, 0, 1.44, -0.62, { rx: -0.25 });
+    K.box(1.0, 0.2, 0.14, DARK, 0, 0.92, 1.22);
+    const bumper = K.box(1.86, 0.1, 0.16, DARK, 0, 0.42, 1.66); K.box(1.8, 0.14, 0.1, DARK, 0, 0.5, -1.66);
+    const wing = K.box(1.7, 0.06, 0.24, def.accent, 0, 1.02, -1.6, { rx: -0.3 });
+    const heads = [-0.38, -0.13, 0.13, 0.38].map(x => K.lamp(0.1, x, 0.94, 1.3)).concat([-1, 1].map(s => K.light(true, 0.3, 0.08, s * 0.62, 0.72, 1.62)));
+    const tails = [-0.62, 0.62].map(x => K.light(false, 0.22, 0.22, x, 0.78, -1.67));
+    return { bumper, wing, struts: [roofwing], heads, tails, cabin, ...K.wheels(W4(0.98, 1.06, -1.02, 0.41, 0.36)) };
+  },
+  pleiades(K, def) {
+    const cabin = shell(K, def, { len: 3.6, wid: 1.94, cab: [1.62, 0.54, 1.7, 1.27, -0.35, 0.14] });
+    K.box(0.56, 0.12, 0.5, def.color, 0, 1.0, 0.95); K.box(0.46, 0.08, 0.03, DARK, 0, 1.02, 1.21); K.box(0.4, 0.06, 0.3, DARK, 0, 1.58, -0.2);
+    for (const s of [-1, 1]) { K.box(0.02, 0.18, 2.6, def.accent, s * 0.97, 0.74, 0); K.box(0.06, 0.36, 0.14, def.color, s * 0.62, 1.2, -1.58); K.box(0.34, 0.3, 0.04, 0xF4F4F0, s * 0.93, 0.34, -1.56); }
+    K.grille(0.7, 0.16, 0, 0.8, 1.78);
+    const bumper = K.box(1.84, 0.24, 0.2, def.color, 0, 0.5, 1.76); K.box(1.84, 0.18, 0.16, def.color, 0, 0.5, -1.78);
+    const wing = K.box(1.66, 0.06, 0.32, def.color, 0, 1.4, -1.6, { rx: -0.12 });
+    const heads = [-1, 1].map(s => K.light(true, 0.4, 0.14, s * 0.6, 0.84, 1.8)).concat([-0.55, -0.35, 0.35, 0.55].map(x => K.lamp(0.07, x, 0.5, 1.87)));
+    const tails = [-1, 1].map(s => K.light(false, 0.42, 0.14, s * 0.62, 0.88, -1.81));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels(W4(0.95, 1.18, -1.12, 0.41, 0.34), { hub: def.accent }) };
+  },
+  cyclone(K, def) {
+    const cabin = shell(K, def, { len: 3.64, wid: 1.98, cab: [1.62, 0.54, 1.7, 1.26, -0.35, 0.14] });
+    K.box(0.6, 0.04, 0.3, DARK, 0, 1.0, 1.05);
+    for (const s of [-1, 1]) { K.box(0.1, 0.02, 1.2, def.accent, s * 0.42, 1.0, 1.15); K.box(0.05, 0.36, 0.3, DARK, s * 0.86, 1.2, -1.62); K.box(0.34, 0.3, 0.04, TYRE, s * 0.94, 0.34, -1.58); }
+    K.box(1.6, 0.04, 0.22, DARK, 0, 1.2, -1.66, { rx: -0.2 });
+    const bumper = K.box(1.9, 0.3, 0.22, def.color, 0, 0.52, 1.76); for (const x of [-0.6, 0, 0.6]) K.box(0.42, 0.14, 0.04, DARK, x, 0.5, 1.88);
+    K.box(1.88, 0.2, 0.16, DARK, 0, 0.5, -1.8);
+    const wing = K.box(1.72, 0.05, 0.3, DARK, 0, 1.36, -1.62, { rx: -0.15 });
+    const heads = [-1, 1].map(s => K.light(true, 0.4, 0.13, s * 0.62, 0.84, 1.8)), tails = [-1, 1].map(s => K.light(false, 0.42, 0.14, s * 0.62, 0.88, -1.82));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels(W4(0.96, 1.2, -1.14, 0.41, 0.36)) };
+  },
+  turin(K, def) {
+    K.box(1.96, 0.24, 3.66, DARK, 0, 0.36, 0);
+    K.panel(2.06, 0.42, 3.72, def.color, 0, 0.62, 0, { seg: [3, 2, 7], shape: (x, y, z) => [x * (z > 1.6 ? 0.88 : 1), y > 0 ? y + 0.1 * Math.exp(-((z + 1.16) ** 2) * 4) - (z > 1.4 ? 0.12 * (z - 1.4) / 0.46 : 0) : y, z] });
+    const cabin = K.panel(1.5, 0.44, 1.4, GLASS, 0, 1.04, -0.2, { seg: [2, 1, 2], shape: (x, y, z) => [y > 0 ? x * 0.86 : x, y, y > 0 && z > 0 ? z - 0.22 : z] });
+    K.panel(1.2, 0.06, 0.55, def.color, 0, 1.27, -0.2, { seg: [2, 1, 1] }); K.number(0.56, 1.32, -0.2);
+    for (let k = 0; k < 6; k++) K.box(1.0, 0.03, 0.05, DARK, 0, 0.97 + 0.004 * k, -1.0 - k * 0.11);
+    for (const x of [-0.36, -0.2, 0.2, 0.36]) { K.box(0.1, 0.02, 1.4, def.accent, x, 0.84, 1.1); K.box(0.1, 0.02, 0.85, def.accent, x, 1.0, -1.4); }
+    K.box(1.1, 0.16, 0.12, DARK, 0, 0.84, 1.5);
+    const bumper = K.box(1.8, 0.1, 0.2, DARK, 0, 0.38, 1.84); K.box(1.84, 0.14, 0.1, DARK, 0, 0.48, -1.86);
+    const wing = K.box(1.8, 0.06, 0.24, def.color, 0, 1.04, -1.8, { rx: -0.3 });
+    const heads = [-0.4, -0.13, 0.13, 0.4].map(x => K.lamp(0.09, x, 0.86, 1.57)).concat([-1, 1].map(s => K.light(true, 0.3, 0.08, s * 0.66, 0.66, 1.78)));
+    const tails = [-1, 1].map(s => K.light(false, 0.4, 0.12, s * 0.62, 0.82, -1.87));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels(W4(0.98, 1.28, -1.16, 0.4, 0.34, 0.42, 0.4)) };
+  },
+  toro(K, def) {
+    K.box(1.9, 0.24, 3.76, DARK, 0, 0.36, 0);
+    K.panel(2.04, 0.42, 3.84, def.color, 0, 0.6, 0, { seg: [3, 2, 7], shape: (x, y, z) => [x * (z > 1.6 ? 0.86 : 1), y > 0 ? y + 0.08 * (Math.exp(-((z - 1.3) ** 2) * 5) + Math.exp(-((z + 1.16) ** 2) * 4)) - (z > 1.5 ? 0.16 * (z - 1.5) / 0.42 : 0) : y, z] });
+    const cabin = K.panel(1.44, 0.36, 1.3, GLASS, 0, 0.96, -0.2, { seg: [2, 1, 2], shape: (x, y, z) => [y > 0 ? x * 0.84 : x, y, y > 0 && z > 0 ? z - 0.24 : z] });
+    K.panel(1.16, 0.06, 0.5, def.color, 0, 1.15, -0.2, { seg: [2, 1, 1] }); K.number(0.5, 1.2, -0.2);
+    for (let k = 0; k < 7; k++) K.box(0.9, 0.03, 0.04, DARK, 0, 0.93 + 0.004 * k, -0.95 - k * 0.11);
+    for (const s of [-1, 1]) { for (let j = 0; j < 4; j++) K.box(0.04, 0.03, 0.18, DARK, s * (0.46 + j * 0.07), 0.82, 1.52); K.box(0.05, 0.12, 0.4, DARK, s * 0.98, 0.7, -0.6); }
+    K.box(0.9, 0.08, 0.05, DARK, 0, 0.44, 1.86);
+    const bumper = K.box(1.3, 0.05, 0.1, CHROME, 0, 0.46, 1.9); K.box(1.6, 0.05, 0.08, CHROME, 0, 0.5, -1.92);
+    const wing = K.box(1.5, 0.04, 0.14, def.color, 0, 0.88, -1.86, { rx: -0.3 });
+    const heads = [-0.56, 0.56].map(x => K.lamp(0.1, x, 0.76, 1.6)), tails = [-1, 1].map(s => K.light(false, 0.4, 0.08, s * 0.6, 0.7, -1.93));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels(W4(0.98, 1.3, -1.16, 0.38, 0.32, 0.41, 0.38)) };
+  },
+  taurus(K, def) {
+    K.box(1.96, 0.24, 3.84, DARK, 0, 0.34, 0);
+    K.panel(2.06, 0.46, 3.88, def.color, 0, 0.6, 0, { seg: [3, 2, 6], shape: (x, y, z) => [x, y > 0 && z > -0.2 ? y - 0.3 * (z + 0.2) / 2.14 : y, z] });
+    const cabin = K.panel(1.46, 0.38, 1.6, GLASS, 0, 0.94, -0.2, { seg: [2, 1, 2], shape: (x, y, z) => [y > 0 ? x * 0.86 : x, y, y > 0 && z > 0 ? z - 0.45 : z] });
+    K.panel(1.18, 0.06, 0.6, def.color, 0, 1.14, -0.35, { seg: [2, 1, 1] }); K.number(0.5, 1.19, -0.3);
+    for (const s of [-1, 1]) { K.box(0.32, 0.2, 0.6, def.color, s * 0.7, 1.02, -0.85); K.box(0.26, 0.14, 0.03, DARK, s * 0.7, 1.02, -0.54); K.box(0.04, 0.12, 0.36, DARK, s * 1.0, 0.7, -0.15); K.box(0.1, 0.4, 0.3, def.color, s * 0.55, 1.1, -1.66, { rx: 0.3 }); }
+    const bumper = K.box(1.8, 0.06, 0.12, DARK, 0, 0.42, 1.92); K.box(1.9, 0.18, 0.08, DARK, 0, 0.5, -1.95);
+    const wing = K.box(1.9, 0.07, 0.42, def.color, 0, 1.32, -1.66, { rx: -0.1 });
+    const heads = [-1, 1].map(s => K.light(true, 0.36, 0.06, s * 0.62, 0.6, 1.88)), tails = [-1, 1].map(s => K.light(false, 0.62, 0.14, s * 0.56, 0.72, -1.96));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels(W4(1.0, 1.28, -1.18, 0.38, 0.34, 0.42, 0.44)) };
+  },
+  swabia(K, def) {
+    K.box(1.8, 0.28, 3.36, DARK, 0, 0.42, 0);
+    K.panel(1.9, 0.46, 3.4, def.color, 0, 0.67, 0, { seg: [3, 2, 6], shape: (x, y, z) => [x * (Math.abs(z) > 1.45 ? 0.86 : 1) * (z < -0.8 ? 1.06 : 1), y > 0 ? y + 0.08 * Math.exp(-((z - 1.18) ** 2) * 6) - (z < -1.0 ? 0.1 * (-1.0 - z) / 0.7 : 0) : y, z] });
+    const cabin = K.panel(1.46, 0.44, 1.7, GLASS, 0, 1.1, -0.4, { seg: [2, 1, 3], shape: (x, y, z) => [y > 0 ? x * 0.86 : x, y > 0 && z < 0 ? y + z * 0.3 : y, y > 0 && z > 0 ? z - 0.25 : z] });
+    K.panel(1.24, 0.06, 0.6, def.color, 0, 1.33, -0.2, { seg: [2, 1, 1] }); K.number(0.55, 1.38, -0.25);
+    for (const s of [-1, 1]) { K.box(0.02, 0.1, 2.2, def.accent, s * 0.955, 0.56, 0); K.box(0.34, 0.3, 0.12, def.color, s * 0.62, 0.84, 1.42); }
+    K.box(0.6, 0.04, 0.2, DARK, 0, 0.84, -1.42);
+    const bumper = K.box(1.6, 0.1, 0.12, CHROME, 0, 0.5, 1.7); K.box(1.7, 0.1, 0.12, CHROME, 0, 0.52, -1.72);
+    const wing = K.box(1.3, 0.06, 0.3, def.color, 0, 0.98, -1.55, { rx: 0.3 });
+    const heads = [-0.62, 0.62].map(x => K.lamp(0.13, x, 0.86, 1.49)), tails = [-1, 1].map(s => K.light(false, 0.36, 0.1, s * 0.55, 0.72, -1.71));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels(W4(0.92, 1.18, -1.12, 0.39, 0.32, 0.41, 0.38, 0.97)) };
+  },
+  rosso(K, def) {
+    K.box(1.96, 0.24, 3.84, DARK, 0, 0.34, 0);
+    K.panel(2.06, 0.46, 3.88, def.color, 0, 0.6, 0, { seg: [3, 2, 6], shape: (x, y, z) => [x, y > 0 && z > 0 ? y - 0.32 * z / 1.94 : y, z] });
+    const cabin = K.panel(1.44, 0.36, 1.4, GLASS, 0, 0.94, -0.15, { seg: [2, 1, 2], shape: (x, y, z) => [y > 0 ? x * 0.86 : x, y, y > 0 && z > 0 ? z - 0.35 : z] });
+    K.panel(1.16, 0.06, 0.55, def.color, 0, 1.13, -0.25, { seg: [2, 1, 1] }); K.number(0.5, 1.18, -0.3);
+    for (let k = 0; k < 7; k++) K.box(1.1, 0.03, 0.05, DARK, 0, 0.97 + 0.003 * k, -0.95 - k * 0.11);
+    for (const s of [-1, 1]) { K.box(0.16, 0.03, 0.4, DARK, s * 0.3, 0.72, 1.2); K.box(0.04, 0.12, 0.36, DARK, s * 1.02, 0.68, -0.4); K.box(0.06, 0.2, 0.42, def.color, s * 1.0, 1.02, -1.78); }
+    K.box(1.1, 0.1, 0.05, DARK, 0, 0.48, 1.92);
+    const bumper = K.box(1.8, 0.06, 0.14, DARK, 0, 0.38, 1.9); K.box(1.9, 0.16, 0.08, DARK, 0, 0.48, -1.95);
+    const wing = K.box(2.0, 0.08, 0.36, def.color, 0, 1.12, -1.8, { rx: -0.15 });
+    const heads = [-1, 1].map(s => K.light(true, 0.4, 0.08, s * 0.66, 0.58, 1.86)), tails = [-0.62, -0.42, 0.42, 0.62].map(x => K.light(false, 0.15, 0.15, x, 0.74, -1.96));
+    return { bumper, wing, struts: [], heads, tails, cabin, ...K.wheels(W4(1.0, 1.28, -1.18, 0.38, 0.34, 0.42, 0.44)) };
   },
   // Vasquez: a desert trophy truck. Open cockpit in a tube roll cage, big knobbly wheels out at the corners, soft
   // long-travel suspension, light bar, nudge bar, spare tyre on the back deck.

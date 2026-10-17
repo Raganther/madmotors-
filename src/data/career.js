@@ -32,7 +32,8 @@ export const STARTERS = ['coupe', 'hatch', 'fastback', 'clubman', 'wasp', 'tuktu
 const SHOP_TIER = { tuktuk: 0, kart: 0, icecream: 0, sidecar: 0, coupe: 0, hatch: 0, buggy: 0, mixer: 0, firetruck: 1, rover: 1, hotrod: 1, police: 1,
   snowcat: 2, hover: 2, monster: 2, wedge: 2, formula: 3, rocket: 3, limo: 3,
   taxi: 0, stockcar: 0, estate: 1, pickup: 1, roadster: 1, gt: 2, pocket: 0, van: 1, drift: 1, hearse: 2,   // the car families (data/families.js)
-  fastback: 0, wasp: 0, clubman: 0, nightbrute: 1, quadra: 1, sarthe: 2 };   // the classics (blender/classics.py)
+  fastback: 0, wasp: 0, clubman: 0, nightbrute: 1, quadra: 1, sarthe: 2,
+  bandit: 0, judge: 0, pleiades: 0, barra: 1, strato: 1, swabia: 1, asp: 1, cyclone: 2, turin: 2, toro: 2, taurus: 3, rosso: 3 };   // the classics (blender/classics.py)
 export const SHOP = Object.fromEntries(Object.entries(SHOP_TIER).map(([id, tier]) => [id, { tier, price: carPrice(id, tier) }]));
 // ---------- entry (disciplines) and upgrades ----------
 const STD = { accel: 1, top: 1, grip: 1, off: 1, im: 1 };

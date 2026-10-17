@@ -50,7 +50,19 @@ export const MORE_RIVALS = [
   { name: 'Ricci', vehicle: 'wasp', num: 70, skill: 0.95, flick: 0.38, driftK: 1 / 38 },
   { name: 'Vatanen', vehicle: 'clubman', num: 75, skill: 0.96, flick: 0.3, driftK: 1 / 46 },
   { name: 'Mikkola', vehicle: 'quadra', num: 84, skill: 0.96, flick: 0.28, driftK: 1 / 48 },
-  { name: 'Ickx', vehicle: 'sarthe', num: 40, skill: 0.97, flick: 0.22, driftK: 1 / 52 }
+  { name: 'Ickx', vehicle: 'sarthe', num: 40, skill: 0.97, flick: 0.22, driftK: 1 / 52 },
+  { name: 'Callahan', vehicle: 'bandit', num: 69, skill: 0.94, flick: 0.36, driftK: 1 / 40 },
+  { name: 'Petty', vehicle: 'barra', num: 43, skill: 0.95, flick: 0.38, driftK: 1 / 36 },
+  { name: 'Royce', vehicle: 'judge', num: 22, skill: 0.94, flick: 0.34, driftK: 1 / 42 },
+  { name: 'Miles', vehicle: 'asp', num: 98, skill: 0.96, flick: 0.3, driftK: 1 / 40 },
+  { name: 'Munari', vehicle: 'strato', num: 1, skill: 0.96, flick: 0.32, driftK: 1 / 42 },
+  { name: 'McRae', vehicle: 'pleiades', num: 555, skill: 0.96, flick: 0.36, driftK: 1 / 38 },
+  { name: 'Makinen', vehicle: 'cyclone', num: 3, skill: 0.97, flick: 0.3, driftK: 1 / 44 },
+  { name: 'Rohrl', vehicle: 'turin', num: 37, skill: 0.97, flick: 0.26, driftK: 1 / 48 },
+  { name: 'Balboni', vehicle: 'toro', num: 7, skill: 0.95, flick: 0.26, driftK: 1 / 48 },
+  { name: 'Gandini', vehicle: 'taurus', num: 74, skill: 0.95, flick: 0.24, driftK: 1 / 50 },
+  { name: 'Herrmann', vehicle: 'swabia', num: 911, skill: 0.95, flick: 0.32, driftK: 1 / 42 },
+  { name: 'Alboreto', vehicle: 'rosso', num: 27, skill: 0.97, flick: 0.24, driftK: 1 / 52 }
 ];
 export const MAX_RIVALS = 3 + MORE_RIVALS.length, DEFAULT_RIVALS = 3;
 const asVehicle = (d, v) => ({ ...d, model: v.model, color: v.color, accent: v.accent, hw: v.hw, hl: v.hl, im: v.veh ? v.veh.im : undefined, veh: v.veh, vehicle: v.id });

@@ -7,8 +7,8 @@ import { bandRank, ratingOf } from './ratings.js';
 // better than that band in pace (on the discipline's surface) or toughness.
 //   surface  which pace counts for the discipline: 'tarmac', 'loose', or 'pace' (the car's better one)
 export const DISCIPLINES = {
-  road: { name: 'Road', blurb: 'road cars built for tarmac', surface: 'tarmac', cars: ['coupe', 'wedge', 'formula', 'rocket', 'hotrod', 'police', 'limo', 'kart', 'sidecar', 'taxi', 'gt', 'roadster', 'pocket', 'drift', 'fastback', 'nightbrute', 'wasp', 'sarthe'] },
-  rally: { name: 'Rally', blurb: 'quick on tarmac and gravel alike', surface: 'loose', cars: ['hatch', 'wedge', 'buggy', 'tuktuk', 'police', 'estate', 'pocket', 'clubman', 'quadra'] },
+  road: { name: 'Road', blurb: 'road cars built for tarmac', surface: 'tarmac', cars: ['coupe', 'wedge', 'formula', 'rocket', 'hotrod', 'police', 'limo', 'kart', 'sidecar', 'taxi', 'gt', 'roadster', 'pocket', 'drift', 'fastback', 'nightbrute', 'wasp', 'sarthe', 'bandit', 'barra', 'judge', 'asp', 'toro', 'taurus', 'swabia', 'rosso', 'turin'] },
+  rally: { name: 'Rally', blurb: 'quick on tarmac and gravel alike', surface: 'loose', cars: ['hatch', 'wedge', 'buggy', 'tuktuk', 'police', 'estate', 'pocket', 'clubman', 'quadra', 'strato', 'pleiades', 'cyclone', 'turin'] },
   offroad: { name: 'Off-road', blurb: 'mud, snow and open country', surface: 'loose', cars: ['buggy', 'monster', 'rover', 'hover', 'snowcat', 'hatch', 'pickup'] },
   heavy: { name: 'Heavy', blurb: 'trucks, vans and limos', surface: 'pace', cars: ['monster', 'icecream', 'firetruck', 'snowcat', 'limo', 'mixer', 'van', 'hearse'] },
   oddball: { name: 'Oddball', blurb: 'karts, trikes, bikes and stranger things', surface: 'pace', cars: ['kart', 'tuktuk', 'icecream', 'hover', 'sidecar', 'rocket', 'rover', 'taxi', 'hearse'] },
