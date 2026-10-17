@@ -633,6 +633,18 @@ in `src/data/vehicles.js` (model = its id), steps 3 and 4 above, then `npm run a
 Asset Lab (`npm run labshot -- <id>`: Blender beside Classic). A new extra goes in both builders. The first wave: City
 Cab, Rally Estate, Ranch Pickup and Banger (saloon), GT Racer and Roadster (sports).
 
+**The classics** (hand-designed, to the Rally Hatch's and the Muscle Coupe's standard): `blender/classics.py` holds
+cars modelled one by one with the car kit (body lofts, glasshouses, stripes, lamps), each with its Classic builder in
+`render/carmodels.js` (same wheels and damage parts). The first batch: Stallion (a 60s pony fastback), Nightbrute (a
+long late-60s muscle coupe), Wasp SS (a 70s pony coupe with a shaker scoop), Clubman Rally (a boxy 70s rally saloon),
+Quadra S1 (an 80s box-flared rally coupe) and Sarthe 40 (a 60s Le Mans racer). Then more muscle (Bandit SS, Barra
+440, Judge, Asp 427), rally (Strato, Pleiades, Cyclone, Turin 037) and supercars (Toro, Taurus, Swabia, Rosso 40);
+their Classic bodies share a `shell` helper (underbody, painted shell, raked glasshouse, roof, number). Showrooms:
+Rookie sells Stallion, Wasp, Clubman, Bandit, Judge and Pleiades (the first three can start a career); Club the
+Nightbrute, Quadra, Barra, Strato, Swabia and Asp; Pro the Sarthe, Cyclone, Turin and Toro; Legend the Taurus and Rosso.
+A wedge's nose is too shallow for the engine bay: `render/anatomy.js` sizes it to the bonnet's lowest point and leaves
+a bare front boot when there's no room.
+
 ## Blender assets (the asset lab)
 
 Every visual asset can come from two providers: the **Classic** builders (code: `render/carmodels.js`,

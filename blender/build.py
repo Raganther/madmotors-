@@ -8,7 +8,7 @@
 import sys, os, json, glob, importlib
 sys.path.insert(0, os.path.dirname(__file__))
 from kit import reset, studio, render, GEN, ROOT
-FAMILIES = { 'cars': 'car', 'chassis': 'car', 'scenery': 'scn', 'pieces': 'kit' }   # module -> asset id prefix (chassis: the car families)
+FAMILIES = { 'cars': 'car', 'chassis': 'car', 'classics': 'car', 'scenery': 'scn', 'pieces': 'kit' }   # module -> asset id prefix (chassis: the car families; classics: muscle, rally, Le Mans)
 def all_designs():
     out = {}
     for fam in FAMILIES:

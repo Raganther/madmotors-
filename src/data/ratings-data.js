@@ -1,6 +1,6 @@
 // Written by `npm run ratings` (tools/ratings.mjs): measured, do not edit. data/ratings.js reads it.
 export default {
- "key": "fda1c08f",
+ "key": "734aab3e",
  "sens": {
   "tarmac": {
    "accel": -25.98,
@@ -160,6 +160,96 @@ export default {
    "tarmac": -1.07,
    "loose": 1.8,
    "tough": 1
+  },
+  "fastback": {
+   "tarmac": -1.09,
+   "loose": 1.12,
+   "tough": 1
+  },
+  "nightbrute": {
+   "tarmac": -1.99,
+   "loose": 0.64,
+   "tough": 1.18
+  },
+  "wasp": {
+   "tarmac": -0.89,
+   "loose": 1.29,
+   "tough": 1
+  },
+  "clubman": {
+   "tarmac": 0.42,
+   "loose": -2.94,
+   "tough": 0.99
+  },
+  "quadra": {
+   "tarmac": -0.82,
+   "loose": -3.39,
+   "tough": 1.01
+  },
+  "sarthe": {
+   "tarmac": -2.63,
+   "loose": 2.59,
+   "tough": 1
+  },
+  "bandit": {
+   "tarmac": -0.9,
+   "loose": 1.31,
+   "tough": 1
+  },
+  "barra": {
+   "tarmac": -1.59,
+   "loose": 0.94,
+   "tough": 1.06
+  },
+  "judge": {
+   "tarmac": -1.09,
+   "loose": 0.89,
+   "tough": 1.09
+  },
+  "asp": {
+   "tarmac": -1.06,
+   "loose": 2.37,
+   "tough": 0.98
+  },
+  "strato": {
+   "tarmac": -1.49,
+   "loose": -2.69,
+   "tough": 0.99
+  },
+  "pleiades": {
+   "tarmac": -0.28,
+   "loose": -2.75,
+   "tough": 1
+  },
+  "cyclone": {
+   "tarmac": -1.78,
+   "loose": -4.46,
+   "tough": 1
+  },
+  "turin": {
+   "tarmac": -2.11,
+   "loose": -3.78,
+   "tough": 1
+  },
+  "toro": {
+   "tarmac": -2.9,
+   "loose": 1.74,
+   "tough": 0.99
+  },
+  "taurus": {
+   "tarmac": -3.79,
+   "loose": 2.17,
+   "tough": 1
+  },
+  "swabia": {
+   "tarmac": -1.68,
+   "loose": 0.49,
+   "tough": 0.98
+  },
+  "rosso": {
+   "tarmac": -4.03,
+   "loose": 1.79,
+   "tough": 0.99
   }
  }
 };

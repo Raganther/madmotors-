@@ -594,7 +594,7 @@ function aiWeapons(R, W, dt) {
   const rng = R.wpn.rng;
   for (const c of R.cars) {
     if ((c.isPlayer && !R.autoPlayer) || c.hold || !live(c)) continue;
-    const P = c.ai.persona, bold = P === 'bomber' || P === 'nemesis', keen = (0.6 + (c.ai.flick || 0.3)) * (P === 'bomber' ? 2 : P === 'nemesis' ? 1.6 : 1), w = c.wpn;   // personalities (G5): fire sooner, at more
+    const P = c.ai.persona, bold = P === 'bomber' || P === 'nemesis', keen = (0.6 + (c.ai.flick || 0.3)) * (P === 'bomber' ? 2.5 : P === 'nemesis' ? 1.6 : 1), w = c.wpn;   // personalities (G5): fire sooner, at more
     w.heldT = w.item ? (w.heldT || 0) + dt : 0;
     if (w.item && !(w.gunT > 0) && rng() < dt * 0.8 * keen) {
       const ahead = missileTarget(R, c), gap = ahead >= 0 ? R.cars[ahead].progress - c.progress : 999;

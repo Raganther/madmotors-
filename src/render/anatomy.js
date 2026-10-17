@@ -122,8 +122,13 @@ export function carvePanels(K, out, def, body, tubColor) {
   const cylZ = (r, l, c, x, y, z) => K.part(d => new THREE.CylinderGeometry(r, r, l, d ? 18 : 8).rotateX(Math.PI / 2), c, x, y, z, [r * 2, r * 2, l]);
   const cylY = (r, l, c, x, y, z) => K.part(d => new THREE.CylinderGeometry(r, r, l, d ? 18 : 8), c, x, y, z, [r * 2, l, r * 2]);
   if (panels.bonnet) {
-    const z0 = zf + 0.08, z1 = B.max.z - 0.32, zl = z1 - z0, zm = (z0 + z1) / 2, w = Wd * 0.5, bh = Math.max(0.14, top - yb), ez = zm - zl * 0.08, el = zl * 0.72;
-    if (zl > 0.25) {
+    // a low or wedge nose: the engine has to fit under the bonnet where it actually is (its lowest point over the
+    // middle of the bay), not under the shell's highest point, or it shows through the shut lid
+    const pb = panels.bonnet, a = pb.geometry.attributes.position.array; let lo = Infinity;
+    for (let i = 0; i < a.length; i += 3) { const x = a[i] + pb.position.x, y = a[i + 1] + pb.position.y, z = a[i + 2] + pb.position.z; if (Math.abs(x - cx) < Wd * 0.25 && z > zf + 0.1 && z < B.max.z - 0.35 && y > yb + 0.02) lo = Math.min(lo, y); }
+    const z0 = zf + 0.08, z1 = B.max.z - 0.32, zl = z1 - z0, zm = (z0 + z1) / 2, w = Wd * 0.5, ez = zm - zl * 0.08, el = zl * 0.72;
+    const bh = Math.min(Math.max(0.14, top - yb), lo < Infinity ? Math.max(0.06, (lo - 0.05 - yb) / 1.22) : Infinity);
+    if (zl > 0.25 && bh >= 0.12) {   // (too shallow, a wedge's nose: a bare front boot)
       K.box(w * 0.62, bh * 0.55, el, BAY.block, cx, yb + bh * 0.28, ez);                                     // the block
       for (const sd of [-1, 1]) {
         tilt(K.box(w * 0.34, bh * 0.36, el * 0.92, BAY.block, cx + sd * w * 0.3, yb + bh * 0.7, ez), -sd * 0.45);     // a cylinder head

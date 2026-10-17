@@ -79,13 +79,16 @@ describe('prestige', () => {
 });
 describe('personalities (core/sim/ai.js, features/weapons.js)', () => {
   const st = STAGES.find(s => s.name === 'Mountain Loop'), tr = M.buildTrack(st), W = { tr, terr: M.buildTerrain(tr, st), surf: st.surface, armco: !!st.armco };
-  const run = persona => {
-    let seed = 3; Math.random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    const defs = careerDefs(newCareer('coupe'), eventById('circuit-series')).map(d => d.player ? d : { ...d, persona });
-    const R = M.createRace(W, defs, { weapons: true }); R.phase = 'racing'; R.autoPlayer = true; const got = new Map(); let held = 0, used = 0;
-    for (let i = 0; i < 120 * 60; i++) {   // how long a rival holds an item before using it
-      M.raceStep(R, 1 / 120, W);
-      for (const c of R.cars) { for (const e of c.events) if (!c.isPlayer && e.t === 'pickup') got.set(c, R.time); else if (!c.isPlayer && e.t === 'use' && got.has(c)) { held += R.time - got.get(c); used++; got.delete(c); } c.events.length = 0; }
+  const run = persona => {   // over three races (seeds), so one race's luck doesn't decide it
+    let held = 0, used = 0, R;
+    for (const s0 of [3, 7, 11]) {
+      let seed = s0; Math.random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+      const defs = careerDefs(newCareer('coupe'), eventById('circuit-series')).map(d => d.player ? d : { ...d, persona });
+      R = M.createRace(W, defs, { weapons: true }); R.phase = 'racing'; R.autoPlayer = true; const got = new Map();
+      for (let i = 0; i < 120 * 60; i++) {   // how long a rival holds an item before using it
+        M.raceStep(R, 1 / 120, W);
+        for (const c of R.cars) { for (const e of c.events) if (!c.isPlayer && e.t === 'pickup') got.set(c, R.time); else if (!c.isPlayer && e.t === 'use' && got.has(c)) { held += R.time - got.get(c); used++; got.delete(c); } c.events.length = 0; }
+      }
     }
     return { hold: held / Math.max(1, used), R };
   };
