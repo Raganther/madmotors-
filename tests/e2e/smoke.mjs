@@ -32,7 +32,7 @@ await click0('#quick-btn'); await page.waitForSelector('#quick-menu:not([hidden]
 await page.waitForFunction(() => [...document.querySelectorAll('.tcard canvas')].filter(c => c.width > 0).length >= 10, null, { timeout: 60000 }).catch(() => errors.push('quick race: the track outlines were not drawn'));
 { const g = await page.evaluate(() => ({ groups: document.querySelectorAll('.tg-h').length, cards: document.querySelectorAll('.tcard').length, suit: document.getElementById('veh-suit').textContent })); console.log(`quick race: ${g.cards} track cards in ${g.groups} groups; ${g.suit}`); if (g.groups < 5 || g.cards < 30 || !g.suit) errors.push('quick race: track cards or car fit missing'); }
 await page.screenshot({ path: path.join(outDir, 'menu.png') });
-const n = await page.evaluate(() => window.__dr.core.STAGES.length);
+const n = process.env.E2E_STAGES ? +process.env.E2E_STAGES : await page.evaluate(() => window.__dr.core.STAGES.length);   // E2E_STAGES=2: a quick run over the rest of the checks
 for (let i = 0; i < n; i++) {
   await page.evaluate(i => window.__dr.flow.startRace(i), i);
   await page.waitForFunction(i => window.__dr.G.world && window.__dr.G.world.idx === i && window.__dr.race, i, { timeout: 30000 });
@@ -89,7 +89,7 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await page.click('#garage-done'); await page.evaluate(() => window.__dr.flow.toMenu());
   const pick = async (i, id) => { await page.evaluate(i => window.__dr.flow.selectStage(i), i); await page.click('#veh-btn'); await page.click(`.g-card[data-id="${id}"]`); await page.click('#garage-done'); };
   await pick(2, 'rover'); await pick(3, 'kart');
-  const back = await page.evaluate(() => { window.__dr.flow.selectStage(2); const a = window.__dr.G.vehicle; window.__dr.flow.selectStage(3); return [a, window.__dr.G.vehicle, document.getElementById('best-2').textContent]; });
+  const back = await page.evaluate(() => { window.__dr.flow.selectStage(2); const a = window.__dr.G.vehicle; window.__dr.flow.selectStage(3); const s2 = window.__dr.core.STAGES[2], card = document.querySelector(`.tcard[data-base="${s2.base || s2.name}"] .tc-fit`); return [a, window.__dr.G.vehicle, card ? card.textContent : '']; });   // its Quick Race card names the car picked for it
   if (back[0] !== 'rover' || back[1] !== 'kart' || !/Rover|rover/i.test(back[2])) errors.push('car per stage: ' + JSON.stringify(back));
   console.log(`car per stage: stage 3 ${back[0]}, stage 4 ${back[1]} ("${back[2]}")`);
 }
