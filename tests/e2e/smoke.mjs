@@ -20,7 +20,7 @@ const SCREEN_OF = { 'veh-btn': 'quick', 'race-btn': 'quick', 'mode-btn': 'quick'
 const click0 = page.click.bind(page);
 page.click = async (sel, o) => {
   const m = /^[#.]([\w-]+)/.exec(sel), want = m && SCREEN_OF[m[1]];
-  if (want) await page.evaluate(w => { const d = window.__dr; if (d.G.state === 'menu' && d.G.screen !== w) d.menu.show(w); }, want);
+  if (want) await page.evaluate(([w, q]) => { const d = window.__dr, el = document.querySelector(q); if (el && !el.offsetParent && d.G.screen !== w) d.menu.show(w); }, [want, sel]);   // (not on screen yet)
   return click0(sel, o);
 };
 await page.goto('file://' + file);
