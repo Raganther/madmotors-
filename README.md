@@ -97,6 +97,14 @@ weapons on a figure of eight over its own stone bridge). They set `soft: true`, 
 walls on tight bends, so a mistake costs a second. The four downhill runs moved up to Club as the Downhill Classic
 cup. A stage's `river` can take a `color` (a lighter tint for a pond or the sea).
 
+All open water (rivers, the sea, ponds, water splashes, open-country streams) is drawn by `src/render/water.js`: a sheet
+that knows its depth over the ground at every corner, and a material that draws it by that depth (clear and pale in the
+shallows so the land slips away under it, a lapping line of foam at the edge, dark where it's deep, nothing where the
+ground is higher). So the ground makes the shoreline: shape the terrain (a river's bed, a splash's pool) and the water
+follows it. A water splash scoops a pool into the ground either side of the road (`splashBed` in core/elements/mud.js,
+so a car off the road drops into it); new water anywhere should use `waterGrid` / `waterMaterial`, never a flat plane
+with its own edges.
+
 **Derby** (stages 23-26: Scrapyard Bowl, Mud Pit, The Stadium, and the Banger Oval): `src/core/modes/derby.js`, the
 mode `createRace(W, defs, { mode: 'derby' })`. No laps, no finish line: a wrecked car is out for good (a shell to drive
 round), damage doesn't mend (and is scaled by `DERBY.DMG` so a fight lasts), the last car running wins, and at the time
@@ -316,7 +324,7 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | falls | `falls` | scenery waterfall arcing over the road off a cliff on the far side |
 | drawbridge | `drawbridge: <s>` | a bascule bridge that rises every so often: jump it while it's low, wait while it's up (cycle in `features/drawbridge.js`) |
 | mill | `mill`, `logs` | sawmill shed and log stacks; log piles along the road (scenery) |
-| mud | `mud: true`, `mud: 'water'` | a mud bog or a water splash: less grip, more drag, spray from the wheels. Bogs rut as the race goes on: the ruts are firmer but tug at the wheels; cars leaving a bog lay a mud trail (`features/wear.js`) |
+| mud | `mud: true`, `mud: 'water'` | a mud bog or a water splash (a pool scooped out either side of the road): less grip, more drag, spray from the wheels. Bogs rut as the race goes on: the ruts are firmer but tug at the wheels; cars leaving a bog lay a mud trail (`features/wear.js`) |
 | whoops | `whoops: <m>` | a run of rolling bumps |
 | yump | `yump: <m>` | a natural dirt crest jump (no painted ramp); `kick` is the painted one |
 | dirt | `dirt: true` | a loose dirt track (gravel grip, no kerbs) on any stage; on a branch it's an off-road shortcut |

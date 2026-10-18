@@ -13,6 +13,8 @@ Visual work is judged by eye, so the loop is: screenshot → change → screensh
    (Red Mesa 8). Copy the "before" PNGs out of `tools/out/` (it's overwritten each run).
 2. **Find where it's drawn.** Map in README "How the code is organised". Common homes:
    - shared shader hooks: `src/render/materials.js` (`withCutaway` options: cut, cloud, grain, water; uniforms in `FX`)
+   - water: `src/render/water.js` (`waterGrid` + `waterMaterial`: drawn by its depth over the ground, so the terrain makes
+     the shoreline). Never a flat plane with its own edges: that's the square water the user complained about
    - ground `render/world/terrain.js`, road `render/world/road.js`, car bodies `render/carmodels.js` +
      `render/carpaint.js`, traffic `render/vehicles.js`, garage pictures `render/thumbs.js`, quality `render/renderer.js`
    - element visuals `src/render/elements/<name>.js`; track wear `render/elements/wear.js`

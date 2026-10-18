@@ -131,7 +131,7 @@ export function handleEvents() {
         case 'locked-on': if (c.isPlayer) { callout(`${race.cars[e.from].name} has a missile lock on you!`); AudioSys.beep(900, 0.12); } break;
         case 'missile-lock': if (c.isPlayer) { callout(`${race.cars[e.from].name} fired a missile at you!`); AudioSys.beep(1500, 0.1); AudioSys.tone(1200, 0.25, 0.05, 'square', 1.2); } break;
         case 'water-hit': { const v = visOf(c); rinse(v); if (v) { v.soakT = 1.6; v.dripT = 2; v.dripCol = 0xCFE8FF; } } for (let k = 0; k < 10; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.6, 0.5, 0xCFE8FF, -9, 'solid'); if (c.isPlayer) callout('Soaked!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`Hosed ${c.name}!`); break;
-        case 'cement-hit': coat(visOf(c), 0x9A968E, 0.45); if (c.isPlayer) callout('Stuck in cement!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} is in your cement!`); break;
+        case 'cement-hit': coat(visOf(c), 0x9A968E, 0.45, 12); if (c.isPlayer) callout('Stuck in cement!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} is in your cement!`); break;
         case 'stinger-hit': { const v = visOf(c); if (v) { v.flatT = 1.6; v.flatSide = Math.random() < 0.5 ? 1 : -1; } } stingerFx(e); if (c.isPlayer) callout('Stinger! Tyres shredded'); else if (race.cars[e.from] === race.player) callout(`${c.name} hit the stinger!`); break;
         case 'crush': crushFx(e); if (near) G.shake = Math.min(1.4, G.shake + (c.isPlayer ? 0.8 : 0.4)); break;
         case 'crush-hit': if (c.isPlayer) callout('Crushed!'); else if (race.cars[e.from] === race.player) callout(`Crushed ${c.name}!`); break;
@@ -144,11 +144,11 @@ export function handleEvents() {
         case 'mine-boom': mineBlast(e); break;
         case 'mine-hit': { const v = visOf(c); if (v) v.burnT = 2; } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1); callout('Mine!'); } else if (race.cars[e.from] === race.player) callout(`${c.name} hit your mine!`); break;
         case 'oil-fire': flash(e.x, e.y + 1, e.z, (e.r || 3) * 2.4, 0xFFFFFF, 0.4); break;
-        case 'fire-hit': { const v = visOf(c); if (v) v.burnT = 2.5; coat(v, 0x1A1614, 0.5); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.4); callout('Through the fire!'); } else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} drove through the fire!`); break;
+        case 'fire-hit': { const v = visOf(c); if (v) v.burnT = 2.5; coat(v, 0x1A1614, 0.5, 10); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.4); callout('Through the fire!'); } else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} drove through the fire!`); break;
         case 'mine-bounce': drumBounceFx(e); sparks(e.x, e.y + 0.2, e.z, 5); break;
         case 'drum-bounce': drumBounceFx(e); break;
         case 'drum-burst': drumBurstFx(e); break;
-        case 'drum-hit': { const v = visOf(c); coat(v, 0x08080B, 0.95); if (v) { v.dripT = 4; v.dripCol = 0x0C0C10; } } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.8); callout('Oil drum! Covered in it'); } else if (race.cars[e.from] === race.player) callout(`Oiled ${c.name}!`); break;
+        case 'drum-hit': { const v = visOf(c); coat(v, 0x08080B, 0.95, 14); if (v) { v.dripT = 4; v.dripCol = 0x0C0C10; } } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.8); callout('Oil drum! Covered in it'); } else if (race.cars[e.from] === race.player) callout(`Oiled ${c.name}!`); break;
         case 'mortar-blast': mortarBlast(e); if (near || Math.hypot(race.player.x - e.x, race.player.z - e.z) < 60) { G.shake = Math.min(1.5, G.shake + 0.5); } break;
         case 'mortar-hit': { const v = visOf(c); if (v) v.burnT = 2.2; } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.9); callout(e.me ? 'Caught in your own blast!' : 'Shelled!'); } else if (race.cars[e.from] === race.player) callout(`Shelled ${c.name}!`); break;
         case 'crater-hit': craterHitFx(e); if (c.isPlayer) { G.shake = Math.min(1.3, G.shake + 0.6); if (G.calloutTimer <= 0) callout('Crater!'); } break;

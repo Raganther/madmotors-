@@ -42,7 +42,7 @@ import { addCrumbles, newCrumbleRace, updateCrumbles } from './crumble.js';
 import { addAmbient, updateAmbient } from './ambient.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
-const river = { name: 'river', build(group, tr) { addRiver(group, tr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
+const river = { name: 'river', build(group, tr, terr) { addRiver(group, tr, terr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
 const railways = {
   name: 'rails',
   build(group, tr) { addRails(group, tr); addCrossings(group, tr); },

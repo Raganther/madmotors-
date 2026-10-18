@@ -36,6 +36,8 @@ new element. Scenery that doesn't touch the road or race may only need a render 
 - `/ship`.
 
 ## Traps we've hit
+- Water of any kind goes through `render/water.js` (`waterGrid`: give it the ground height under each corner) and gets
+  its shape from the terrain under it; a plane with straight edges reads as a blue rectangle, never as water.
 - In this code's dense one-liners, a `//` comment ends the line: code after it silently disappears (car dirt was
   dead for a release that way). Comments go at the end of a line, never in the middle.
 - Circuits wrap: use `tr.loopN || tr.N` and `tr.nb0`/`tr.adv`, never `i + 1`, or it breaks at the start line.

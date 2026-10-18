@@ -1,26 +1,27 @@
 import * as THREE from 'three';
 import { lerp } from '../../core/math.js';
-import { chunkMesh } from '../geometry.js';
-import { withCutaway } from '../materials.js';
+import { waterGrid, waterMaterial } from '../water.js';
 
 let logs = [];
-export function addRiver(group, tr) {
+// The river (or the sea, a lake, a park pond: stage.river): a water sheet at its level along the polyline and on past
+// both ends, its width plus room for the banks, every 2.5 m. The ground carved under it (core terrain.js riverBed)
+// makes the shoreline: render/water.js fades the sheet out where the land rises through it, so the water ends round
+// the shape of the bed instead of in a straight edge.
+export function addRiver(group, tr, terr) {
   logs = []; const rv = tr.river; if (!rv) return;
-  const pos = [], hw = rv.width / 2 + 6, y = rv.level;
-  for (let k = 0; k < rv.pts.length - 1; k++) {
-    const [ax, az] = rv.pts[k], [bx, bz] = rv.pts[k + 1], L = Math.hypot(bx - ax, bz - az), n = Math.ceil(L / 8), nx = -(bz - az) / L * hw, nz = (bx - ax) / L * hw;
-    for (let q = 0; q < n; q++) {
-      const t0 = q / n, t1 = (q + 1) / n, x0 = lerp(ax, bx, t0), z0 = lerp(az, bz, t0), x1 = lerp(ax, bx, t1), z1 = lerp(az, bz, t1);
-      pos.push(x0 - nx, y, z0 - nz, x1 - nx, y, z1 - nz, x0 + nx, y, z0 + nz, x0 + nx, y, z0 + nz, x1 - nx, y, z1 - nz, x1 + nx, y, z1 + nz);
-    }
+  const P = rv.pts, hw = rv.width / 2 + 8, STEP = 2.5, line = [];
+  const dirAt = k => { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az); return [(bx - ax) / L, (bz - az) / L]; };
+  const d0 = dirAt(0), d1 = dirAt(P.length - 2);
+  for (let e = hw; e > 0; e -= STEP) line.push([P[0][0] - d0[0] * e, P[0][1] - d0[1] * e, ...d0]);   // on past the first point
+  for (let k = 0; k < P.length - 1; k++) {
+    const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az), n = Math.ceil(L / STEP), d = dirAt(k);
+    for (let q = 0; q < n; q++) line.push([lerp(ax, bx, q / n), lerp(az, bz, q / n), ...d]);
   }
-  // wind the triangles upward if the polyline ran the other way (flipping only the normals left the top a back face, lit from below: near black)
-  const up = (pos[5] - pos[2]) * (pos[6] - pos[0]) - (pos[3] - pos[0]) * (pos[8] - pos[2]) > 0;
-  if (!up) for (let t = 0; t < pos.length; t += 9) for (let k = 0; k < 3; k++) { const v = pos[t + 3 + k]; pos[t + 3 + k] = pos[t + 6 + k]; pos[t + 6 + k] = v; }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
-  const mat = rv.frozen ? withCutaway(new THREE.MeshLambertMaterial({ color: 0xA9C8E0, side: THREE.DoubleSide }), false, { cut: false, cloud: true, grain: 0.25 })   // frozen over: no ripples
-    : withCutaway(new THREE.MeshLambertMaterial({ color: rv.color || 0x3E7DAE, side: THREE.DoubleSide }), false, { cut: false, cloud: true, water: true });   // opaque: nothing needs to show through
-  group.add(chunkMesh(g, mat, 80, true));
+  for (let e = 0; e <= hw; e += STEP) line.push([P[P.length - 1][0] + d1[0] * e, P[P.length - 1][1] + d1[1] * e, ...d1]);   // and past the last
+  const C = Math.ceil(2 * hw / STEP) + 1, y = rv.level;
+  const mat = rv.frozen ? waterMaterial({ color: 0xA9C8E0, frozen: true }) : waterMaterial({ color: rv.color || 0x3E7DAE, alpha: 0.94 });
+  const m = waterGrid(line.length, C, (r, c) => { const [x, z, dx, dz] = line[r], o = -hw + c * 2 * hw / (C - 1), wx = x - dz * o, wz = z + dx * o; return [wx, y, wz, terr.at(wx, wz)]; }, mat);
+  if (m) group.add(m);
 }
 // logs drifting downstream (river.logs of them): along the polyline from its first point, bobbing, wrapping at the end
 export function addRiverLogs(group, tr) {
