@@ -26,6 +26,7 @@
     "lab": "vite build --mode lab --outDir dist-lab",
     "labshot": "vite build --logLevel error && node tools/labshot.mjs",
     "bays": "vite build --logLevel error && node tools/bayprobe.mjs",
+    "water-audit": "node tools/water-audit.mjs",
     "ratings": "node tools/ratings.mjs",
     "derby": "node tools/derby.mjs",
     "demolition": "node tools/demolition.mjs",

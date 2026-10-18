@@ -26,9 +26,9 @@ export const RUT = { DEPTH: { mud: 0.24, gravel: 0.075, snow: 0.06 }, DEEPEN: { 
   RAIN: { DIG: 1.6, DEEP: 1.4, MUD: 0.5 }, FEEL: { TUG: 26, SCRUB: 1.4 }, PUDDLE: 0.075 };
 // Rain on a stage (its `wet`) on every surface: the line dries as the cars use it (tarmac: the wear grid's cells there
 // are how dry it is; WEATHER.DRY a wheel per metre), giving back up to DRY_GRIP of the grip the wet took; water stands
-// along the edges and in the dips (W.wear.pool: per row and side, how far in from the road's edge, POOL_MAX at most),
+// along the edges where the road is near level (steeper than SLOPE it runs off) and in the dips (W.wear.pool: per row and side, how far in from the road's edge, POOL_MAX at most),
 // and a car through it aquaplanes a little (AQUA: grip lost, AQUA_DRAG: drag) with a splash (render).
-export const WEATHER = { DRY: 0.03, DRY_GRIP: 0.85, POOL_MAX: 2.6, AQUA: 0.45, AQUA_DRAG: 0.35 };
+export const WEATHER = { DRY: 0.03, DRY_GRIP: 0.85, POOL_MAX: 2.6, AQUA: 0.45, AQUA_DRAG: 0.35, SLOPE: 0.03 };
 /** The options (menu: Weather & wear), all on by default: grooves (the road surface sinks into its ruts: looks), feel (the
  *  wheels ride in them and they tug: physics), rain (a wet stage wears faster and its worn gravel goes to mud),
  *  puddles (water lying in the ruts in the rain: looks), aiLines (the AI drives in the ruts on gravel and snow too, not
@@ -159,8 +159,11 @@ export function poolMap(W, opt) {
   const P = new Float32Array(tr.NB * 2), N = tr.NB;
   for (let r = 0; r < N; r++) {
     const i = tr.u0(r); if ((tr.mud && tr.mud[r]) || (tr.ice && tr.ice[r]) || (tr.open && tr.open[r]) || (tr.voidMask && tr.voidMask[r]) || tr.bridge[i] || tr.tunnel[i]) continue;
-    let lo = 0; for (let d = -14; d <= 14; d += 7) lo += tr.H[tr.u0(Math.min(N - 1, Math.max(0, r + d)))]; const dip = Math.max(0, lo / 5 - tr.H[i] - 0.15) * 3;   // lower than the road around it
-    for (let side = 0; side < 2; side++) P[r * 2 + side] = Math.min(WEATHER.POOL_MAX, Math.max(0, tr.noise.n2(r * 0.035, side * 7.3 + 1.1) - 0.2) * 4 * tr.wet + dip);
+    const h = d => tr.H[tr.u0(Math.min(N - 1, Math.max(0, r + d)))];
+    let lo = 0; for (let d = -14; d <= 14; d += 7) lo += h(d);
+    const hollow = h(0) <= Math.min(h(-4), h(4)) && Math.abs(h(2) - h(-2)) / 4 < WEATHER.SLOPE, dip = hollow ? Math.max(0, lo / 5 - h(0) - 0.15) * 3 : 0;   // the bottom of a hollow: lower than the road either side, level there
+    const flat = clamp(1 - Math.abs(tr.H[tr.u0(Math.min(N - 1, r + 5))] - tr.H[tr.u0(Math.max(0, r - 5))]) / 10 / WEATHER.SLOPE, 0, 1);   // it runs off a slope
+    for (let side = 0; side < 2; side++) P[r * 2 + side] = Math.min(WEATHER.POOL_MAX, Math.max(0, tr.noise.n2(r * 0.035, side * 7.3 + 1.1) - 0.2) * 4 * tr.wet * flat + dip);
   }
   return P;
 }

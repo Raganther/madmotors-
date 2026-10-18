@@ -11,6 +11,7 @@ import { wornSurf, WEATHER } from '../features/wear.js';
 import { groundAt, project, roadH } from '../track/query.js';
 import { gateStep } from '../features/gates.js';
 import { OPEN, onTrail } from '../elements/open.js';
+import { splashLevelOf } from '../elements/mud.js';
 
 export function computeGrad(c, W) {
   const tr = W.tr, pr = c.pr, i = pr.i, e = 0.8;
@@ -96,7 +97,7 @@ export function stepCar(c, dt, W, racing) {
   let pr = c.pr;
   const al0 = Math.abs(pr.lat), side0 = pr.lat >= 0 ? 1 : -1, wallSide0 = wallAt(W, pr.i, side0);
   c.surface = (al0 < HALF + 0.4 || (wallSide0 && al0 < wallPos(W, pr.i, side0) + 1.2)) ? W.surf : 'grass';
-  if (tr.mud && al0 < HALF + 1.5) { const m = tr.mud[tr.bi(pr.i)]; if (m) c.surface = m === 2 ? 'ford' : 'mud'; }   // a bog or a water splash
+  if (tr.mud && al0 < HALF + 1.5) { const m = tr.mud[tr.bi(pr.i)]; if (m === 1) c.surface = 'mud'; else if (m === 2 && tr.H[pr.i] < splashLevelOf(tr, pr.i) - 0.05) c.surface = 'ford'; }   // a bog, or a water splash where the road is under its (level) water
   if (tr.ice && al0 < HALF + 0.4 && tr.ice[tr.bi(pr.i)]) c.surface = 'ice';      // an ice patch
   if (tr.dirt && c.surface === W.surf && tr.dirt[tr.bi(pr.i)]) c.surface = 'gravel';   // a dirt track (off-road shortcuts)
   const open = tr.open ? tr.open[tr.bi(pr.i)] : 0;                                  // open country (elements/open.js): no road here

@@ -101,7 +101,10 @@ All open water (rivers, the sea, ponds, water splashes, open-country streams) is
 that knows its depth over the ground at every corner, and a material that draws it by that depth (clear and pale in the
 shallows so the land slips away under it, a lapping line of foam at the edge, dark where it's deep, nothing where the
 ground is higher). So the ground makes the shoreline: shape the terrain (a river's bed, a splash's pool) and the water
-follows it. A water splash scoops a pool into the ground either side of the road (`splashBed` in core/elements/mud.js,
+follows it. Standing water is always level: a splash's water is flat at its lowest road + `SPLASH_UP` (`splashLevelOf`;
+on a splash laid on a slope only the low end is wet, and only there is it a ford for the cars), rain only leaves water
+along the edges where the road is near level or at the bottom of a hollow, and puddles in ruts and bogs only form on
+the flat. `npm run water-audit` lists every stage's water and anything on a slope; tests/water.test.js keeps it so. A water splash scoops a pool into the ground either side of the road (`splashBed` in core/elements/mud.js,
 so a car off the road drops into it); new water anywhere should use `waterGrid` / `waterMaterial`, never a flat plane
 with its own edges.
 

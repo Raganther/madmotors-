@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { G } from '../../game.js';
-import { mudRuns, splashReach, SPLASH_DEEP, SPLASH_EXT, SPLASH_UP } from '../../core/elements/mud.js';
+import { mudRuns, splashLevelOf, splashReach, SPLASH_DEEP, SPLASH_EXT, SPLASH_UP } from '../../core/elements/mud.js';
 import { WEAR } from '../../core/features/wear.js';
 import { HALF } from '../../core/constants.js';
 import { canvasTex, flat } from '../geometry.js';
@@ -73,7 +73,7 @@ function makeRipples(group) {
 function addRipple(x, y, z, size) { const r = rips[ripK]; ripK = (ripK + 1) % RIP; r.m.position.set(x, y, z); r.t = 0; r.size = size; r.m.visible = true; }
 /** The water surface under (x, z), or null: a water splash on the road, or a puddle. */
 function waterAt(c) {
-  if (c.surface === 'ford') return wtr.H[c.pr.i] + 0.42;
+  if (c.surface === 'ford') return (splashLevelOf(wtr, c.pr.i) ?? wtr.H[c.pr.i] + SPLASH_UP) + 0.02;
   for (const p of pools) if (Math.abs(c.x - p.x) < p.r && Math.abs(c.z - p.z) < p.r && Math.hypot(c.x - p.x, c.z - p.z) < p.r) return p.y + 0.02;
   return null;
 }
@@ -106,14 +106,15 @@ export function addMud(group, tr, terr, stage) {
   }
   const road = new THREE.Color(stage.colors.road);
   bogs = mudRuns(tr).map(([a, b]) => bogMesh(group, tr, a, b, road));
-  // puddles: ragged pools lying on the road (each point at the road's height there, so none sinks half under a slope)
+  // puddles: ragged pools lying level on the flat parts of the bogs
   // in the same moving water as the splashes, darker where it's deeper in the middle
   pools = []; wet = new Map(); wtr = tr; makeRipples(group);
   const ppos = [], puv = [], pcol = [], deep = new THREE.Color(0x2A4254), rim = new THREE.Color(0x56707E), K = 14;
   for (const p of puddles) {
-    const [cx, , cz] = P(p.i, p.lat, 0), yc = tr.H[p.i] + 0.2, pt = k => {   // over the bog's churned surface (up to 0.19 m up)
+    if (Math.abs(tr.H[tr.nb0(p.i, 5)] - tr.H[tr.nb0(p.i, -5)]) / 10 > 0.03) continue;   // water doesn't stand on a slope: only on the flat bits of a bog
+    const [cx, , cz] = P(p.i, p.lat, 0), yc = tr.H[p.i] + 0.2, pt = k => {   // over the bog's churned surface (up to 0.19 m up), and level
       const a = k / K * Math.PI * 2, r = p.r * (0.72 + 0.4 * tr.noise.n2(p.i * 0.7 + Math.cos(a), p.lat + Math.sin(a) * 1.3)), al = Math.cos(a) * r * 1.6, lt = Math.sin(a) * r;
-      const j = tr.nb0(p.i, Math.round(al)); return [cx + tr.tx[p.i] * al + tr.rx[p.i] * lt, tr.H[j] + 0.2, cz + tr.tz[p.i] * al + tr.rz[p.i] * lt];
+      return [cx + tr.tx[p.i] * al + tr.rx[p.i] * lt, yc, cz + tr.tz[p.i] * al + tr.rz[p.i] * lt];
     };
     for (let k = 0; k < K; k++) {
       const a = pt(k), b = pt(k + 1);
@@ -127,8 +128,8 @@ export function addMud(group, tr, terr, stage) {
     const m = new THREE.Mesh(g, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, map: rippleTex(), emissive: 0x0E1A24, transparent: true, opacity: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), false, { cut: false, cloud: true, water: true }));
     m.renderOrder = 1; group.add(m);
   }
-  // water splashes: a sheet of water per run that follows the road SPLASH_UP above it (wheels in the water, the road bed
-  // showing through) and spreads over the pool scooped out either side (core elements/mud.js splashBed), dipping under
+  // water splashes: a level sheet of water per run (core elements/mud.js splashLevelOf: the lowest road under it +
+  // SPLASH_UP; on a slope the road climbs out of it) over the road bed and the pool scooped out either side (splashBed), dipping under
   // the ground just past the pool's wandering edge and, past the ends of the splash, below the road along a wavy line.
   // render/water.js draws it by its depth over the ground at every corner (1 m apart), so the banks make the
   // shoreline: clear where it laps up the bank, foam on the edge, dark out over the deep middle. Where the ground falls
@@ -144,11 +145,11 @@ export function addMud(group, tr, terr, stage) {
       const i = tr.nb0(a, t - EXT), out = t < EXT ? EXT - t : t >= EXT + n ? t - EXT - n + 1 : 0, o = OFF[c];   // out: samples past the splash's ends
       const along = out ? Math.max(0, (out + 2.5 * wob(o, t)) / 5) : 0, side = Math.max(0, (Math.abs(o) - splashReach(tr, i, o) - 0.5) / 3);
       const [x, , z] = P(i, o, 0), road = Math.abs(o) <= HALF, g = road ? tr.H[i] : terr.at(x, z);
-      const y = tr.H[i] + SPLASH_UP - 1.4 * Math.min(1, along + side);
-      return [x, y, z, !road && g < tr.H[i] + SPLASH_UP - 0.3 - SPLASH_DEEP ? y + 1 : g];   // ground below the pool's bed: a drop, dry (not water hanging over it)
+      const lv = splashLevelOf(tr, i) ?? tr.H[i] + SPLASH_UP, y = lv - 1.4 * Math.min(1, along + side);   // level water (the splash's lowest road + SPLASH_UP)
+      return [x, y, z, !road && g < lv - 0.3 - SPLASH_DEEP ? y + 1 : g];   // ground below the pool's bed: a drop, dry (not water hanging over it)
     };
     const m = waterGrid(rowsN, OFF.length, corner, water); if (m) group.add(m);
-    const h = tr.H[mid] + 0.4;
+    const h = splashLevelOf(tr, mid) ?? tr.H[mid] + SPLASH_UP;
     for (const s of [-1, 1]) for (let q = 0; q < 3; q++) {                          // stepping stones on the banks
       const [x, , z] = P(mid, s * (HALF + 3 + q * 2.4), 0), r = new THREE.Mesh(flat(new THREE.DodecahedronGeometry(0.7 + q * 0.2, 0)), new THREE.MeshLambertMaterial({ color: 0x8C877C }));
       r.position.set(x + (q - 1) * 1.3, Math.max(h - 0.2, terr.at(x, z)), z); r.castShadow = true; group.add(r);

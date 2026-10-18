@@ -70,6 +70,7 @@ export function addRuts(group, tr, stage, rd) {
   const pos = [], wuv = [], idx = [], C = Math.round(2 * (6 - 0.6) / 0.5) + 1;
   for (const i of tr.all0) {
     const r = tr.bi(i), j = tr.nb0(i, 1); if (j === i || !rd[r] || !rd[tr.bi(j)]) continue;
+    if (Math.abs(tr.H[tr.nb0(i, 5)] - tr.H[tr.nb0(i, -5)]) / 10 > WEATHER.SLOPE) continue;   // water runs out of a rut on a slope
     const b = pos.length / 3;
     for (const k of [i, j]) for (let c = 0; c < C; c++) { const o = -5.4 + c * 0.5; pos.push(tr.xs[k] + tr.rx[k] * o, tr.H[k] + 0.05 - RUT.PUDDLE, tr.zs[k] + tr.rz[k] * o); wuv.push(...wuvOf(tr, tr.bi(k), o, tr.rx[k], tr.rz[k])); }
     for (let c = 0; c < C - 1; c++) idx.push(b + c, b + C + c, b + c + 1, b + c + 1, b + C + c, b + C + c + 1);
