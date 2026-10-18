@@ -99,7 +99,7 @@ export function canvasTex(w, h, draw) { const cv = document.createElement('canva
 export function disposeGroup(g) { g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); } }); }
 // split a non-indexed mesh into square tiles so the parts off screen are culled instead of drawn every frame
 export function chunkMesh(geo, mat, cell, receive) {
-  const pos = geo.attributes.position.array, nor = geo.attributes.normal.array, col = geo.attributes.color ? geo.attributes.color.array : null;
+  const pos = geo.attributes.position.array, names = Object.keys(geo.attributes);   // every attribute is carried (colour, wuv: render/ruts.js)
   const buckets = new Map();
   for (let t = 0, nt = pos.length / 9; t < nt; t++) {
     const o = t * 9, k = (Math.floor((pos[o] + pos[o + 3] + pos[o + 6]) / 3 / cell) + 5000) * 10000 + Math.floor((pos[o + 2] + pos[o + 5] + pos[o + 8]) / 3 / cell) + 5000;
@@ -107,10 +107,12 @@ export function chunkMesh(geo, mat, cell, receive) {
   }
   const group = new THREE.Group();
   for (const tris of buckets.values()) {
-    const P = new Float32Array(tris.length * 9), Nn = new Float32Array(tris.length * 9), C = col ? new Float32Array(tris.length * 9) : null;
-    tris.forEach((t, q) => { P.set(pos.subarray(t * 9, t * 9 + 9), q * 9); Nn.set(nor.subarray(t * 9, t * 9 + 9), q * 9); if (C) C.set(col.subarray(t * 9, t * 9 + 9), q * 9); });
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3)); if (C) g.setAttribute('color', new THREE.BufferAttribute(C, 3));
-    g.computeBoundingSphere();
+    const g = new THREE.BufferGeometry();
+    for (const nm of names) {
+      const A = geo.attributes[nm], n = A.itemSize * 3, src = A.array, out = new Float32Array(tris.length * n);
+      tris.forEach((t, q) => out.set(src.subarray(t * n, t * n + n), q * n)); g.setAttribute(nm, new THREE.BufferAttribute(out, A.itemSize));
+    }
+    g.computeBoundingSphere(); if (g.attributes.wuv) g.boundingSphere.radius += 1;   // (ruts move the surface a little)
     const m = new THREE.Mesh(g, mat); m.receiveShadow = !!receive; group.add(m);
   }
   geo.dispose();

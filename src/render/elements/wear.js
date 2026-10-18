@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { G } from '../../game.js';
 import { HALF } from '../../core/constants.js';
-import { WEAR } from '../../core/features/wear.js';
 import { withCutaway } from '../materials.js';
+import { addRuts, newRutsRace, NO_WUV, updateRuts, withRuts, wuvOf } from '../ruts.js';
+import { rowDepths, WEAR, WEAR_OPT } from '../../core/features/wear.js';
 
 // Track wear visuals (core/features/wear.js): a see-through layer over the road and its verges, one texel per wear
 // track cell (WEAR.TCOLS across), repainted from W.wear a few times a second. On it: fresh tyre tracks (dark on dirt and
@@ -14,13 +15,18 @@ const T = WEAR.TCOLS, SPAN = T * WEAR.TCELL / 2, GK = k => Math.floor(((k + 0.5)
 const LOOK = { gravel: { groove: [0x5E, 0x48, 0x32], gk: 12, gmax: 0.35, track: [0x4A, 0x36, 0x24], tmax: 0.6 },
   tarmac: { groove: [0x1C, 0x1C, 0x1E], gk: 40, gmax: 0.3, track: [0x2A, 0x2A, 0x2A], tmax: 0.45 },
   snow: { groove: [0x9C, 0xA9, 0xB8], gk: 14, gmax: 0.4, track: [0x86, 0x94, 0xA6], tmax: 0.5, verge: [0x8E, 0x9E, 0xB2] } };   // snow: packed grey-blue, powder ploughed
-const VERGE = [0x44, 0x3E, 0x24], TRAIL = [0x3A, 0x26, 0x16], BOG = [0x2A, 0x1C, 0x10];
+const VERGE = [0x44, 0x3E, 0x24], TRAIL = [0x3A, 0x26, 0x16], BOG = [0x2A, 0x1C, 0x10], MUDDY = [0x3E, 0x2C, 0x1C];
+const mixC = (a, b, k) => [0, 1, 2].map(c => a[c] + (b[c] - a[c]) * k);
 let vis = null;
 export function addWear(group, tr, terr, stage) {
   vis = null;
   const NB = tr.NB, data = new Uint8Array(T * NB * 4), tex = new THREE.DataTexture(data, T, NB, THREE.RGBAFormat);
   tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
-  const pos = [], uv = [], idx = [], STEP = 1, NX = Math.round(2 * SPAN / STEP) + 1;
+  const pos = [], uv = [], wuv = [], idx = [];
+  const rd = rowDepths({ tr, surf: stage.surface }, { ...WEAR_OPT, rain: true }).rd;
+  // across: every 0.5 m over the road (so it sinks into the ruts with it, render/ruts.js), every 1.5 m over the verges
+  const OFFS = []; for (let o = -SPAN; o < -HALF; o += 1.5) OFFS.push(o); for (let o = -HALF; o <= HALF + 0.01; o += 0.5) OFFS.push(o); for (let o = HALF + 1.5; o <= SPAN + 0.01; o += 1.5) OFFS.push(o);
+  const NX = OFFS.length;
   const up = (i, o) => {                                                            // on the road, the shoulder, or the ground
     const x = tr.xs[i] + tr.rx[i] * o, z = tr.zs[i] + tr.rz[i] * o, a = Math.abs(o), H = tr.H[i];
     if (a <= HALF - 0.2) return H + 0.075;
@@ -33,36 +39,40 @@ export function addWear(group, tr, terr, stage) {
     const deck = tr.bridge[i] || tr.bridge[j] || tr.tunnel[i] || tr.tunnel[j], w = deck ? HALF - 0.2 : SPAN;   // no verges off a bridge
     const base = pos.length / 3;
     for (const [k, v] of [[i, (b + 0.5) / NB], [j, (b + 1.5) / NB]]) for (let n = 0; n < NX; n++) {
-      const o = Math.max(-w, Math.min(w, -SPAN + n * STEP));
+      const o = Math.max(-w, Math.min(w, OFFS[n]));
       pos.push(tr.xs[k] + tr.rx[k] * o, up(k, o), tr.zs[k] + tr.rz[k] * o); uv.push((o / WEAR.TCELL + T / 2) / T, v);
+      wuv.push(...(Math.abs(o) <= HALF + 0.01 && rd[tr.bi(k)] ? wuvOf(tr, tr.bi(k), o, tr.rx[k], tr.rz[k]) : NO_WUV));
     }
     for (let n = 0; n < NX - 1; n++) idx.push(base + n, base + NX + n, base + n + 1, base + n + 1, base + NX + n, base + NX + n + 1);
   }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
-  const mat = withCutaway(new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }), false, { cut: false, cloud: true });
-  const m = new THREE.Mesh(g, mat); m.receiveShadow = true; m.renderOrder = 1; group.add(m);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('wuv', new THREE.Float32BufferAttribute(wuv, 4)); g.setIndex(idx); g.computeVertexNormals();
+  const mat = withRuts(withCutaway(new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }), false, { cut: false, cloud: true }));
+  const m = new THREE.Mesh(g, mat); m.receiveShadow = true; m.renderOrder = 1; m.frustumCulled = false; group.add(m);
+  addRuts(group, tr, stage, rd);
   vis = { tr, data, tex, look: LOOK[stage.surface] || LOOK.tarmac, seen: -1, t: 0 };
   paint(null);
 }
 function paint(W) {
   const { tr, data, look } = vis, NB = tr.NB, road = HALF / WEAR.TCELL;
   if (!W) { data.fill(0); vis.tex.needsUpdate = true; return; }
-  const { g, t, m } = W.wear;
+  const { g, t, m, d } = W.wear, wet = W.wear.opt && W.wear.opt.rain ? tr.wet || 0 : 0;
   for (let b = 0; b < NB; b++) {
-    const bog = tr.mud && tr.mud[b] === 1;
+    const bog = tr.mud && tr.mud[b] === 1, digs = W.wear.rd && W.wear.rd[b] > 0;
     for (let k = 0; k < T; k++) {
       const q = b * T + k, p = q * 4, verge = Math.abs(k + 0.5 - T / 2) > road, gk = GK(k);
-      const gv = !bog && !verge && gk >= 0 && gk < WEAR.COLS ? look.gmax * (1 - Math.exp(-g[b * WEAR.COLS + gk] * look.gk)) : 0;
+      const on = !bog && !verge && gk >= 0 && gk < WEAR.COLS, dv = on && digs ? d[b * WEAR.COLS + gk] : 0;   // dug in: darker, and in the rain mud
+      const gv = on ? Math.max(look.gmax * (1 - Math.exp(-g[b * WEAR.COLS + gk] * look.gk)), Math.min(0.75, dv * (0.55 + 0.4 * wet))) : 0, gc = dv && wet ? mixC(look.groove, MUDDY, Math.min(1, dv * wet * 1.6)) : look.groove;
       const tv = (verge ? 0.6 : bog ? 0.5 : look.tmax) * (1 - Math.exp(-t[q] * 5)), mv = bog ? 0 : 0.85 * (1 - Math.exp(-m[q] * 2));
       const a = Math.min(0.9, Math.max(gv, tv, mv)), sum = gv + tv + mv || 1, tc = verge ? look.verge || VERGE : bog ? BOG : look.track;
-      for (let ch = 0; ch < 3; ch++) data[p + ch] = (look.groove[ch] * gv + tc[ch] * tv + TRAIL[ch] * mv) / sum;
+      for (let ch = 0; ch < 3; ch++) data[p + ch] = (gc[ch] * gv + tc[ch] * tv + TRAIL[ch] * mv) / sum;
       data[p + 3] = a * 255;
     }
   }
   vis.tex.needsUpdate = true;
 }
-export function newWearRace() { if (vis) { vis.seen = -1; paint(null); } }
+export function newWearRace() { newRutsRace(); if (vis) { vis.seen = -1; paint(null); } }
 export function updateWear(dt) {
+  updateRuts(dt);
   const W = G.world && G.world.W; if (!vis || !W || !W.wear || (vis.t -= dt) > 0) return;
   vis.t = 0.2; if (W.wear.ver === vis.seen) return;
   vis.seen = W.wear.ver; paint(W);

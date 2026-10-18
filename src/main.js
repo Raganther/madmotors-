@@ -38,6 +38,7 @@ import { updateFans, updateScenery } from './render/world/scenery.js';
 import { setMode, setRivals, setWeapons, buildStageList, handleEvents, refreshBest, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
 import { updateHUD } from './ui/hud.js';
 import { nextCamera, nextZoom, readInput, setCamera, setSteer } from './ui/input.js';
+import { wireWear } from './ui/wear.js';
 
 export function frame(t) {
   requestAnimationFrame(frame);
@@ -86,7 +87,7 @@ export function wireUI() {
   $('menu-btn').addEventListener('click', toMenu);
   $('pause-btn').addEventListener('click', togglePause);
   $('reset-btn').addEventListener('click', () => { if (G.state === 'racing' && !race.player.finished) respawn(race.player, G.world.W); });
-  wireSound();
+  wireSound(); wireWear();
   document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('rivals-less').addEventListener('click', () => setRivals(G.rivals - 1)); $('rivals-more').addEventListener('click', () => setRivals(G.rivals + 1));
   $('wpn-btn').addEventListener('click', () => setWeapons(!G.weapons));

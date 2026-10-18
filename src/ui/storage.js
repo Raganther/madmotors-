@@ -15,6 +15,9 @@ export function saveCamera(c) { try { localStorage.setItem(CAM_KEY, JSON.stringi
 export const WPN_KEY = 'downhill-rush-weapons';
 export function loadWeapons() { try { return localStorage.getItem(WPN_KEY) !== 'off'; } catch (e) { return true; } }
 export function saveWeapons(on) { try { localStorage.setItem(WPN_KEY, on ? 'on' : 'off'); } catch (e) { } }
+export const WEAR_KEY = 'downhill-rush-wear';   // the menu's Track wear options (core features/wear.js WEAR_OPT)
+export function loadWear() { try { return JSON.parse(localStorage.getItem(WEAR_KEY) || '{}') || {}; } catch (e) { return {}; } }
+export function saveWear(o) { try { localStorage.setItem(WEAR_KEY, JSON.stringify(o)); } catch (e) { } }
 export const RIVALS_KEY = 'downhill-rush-rivals';
 export function loadRivals(max, def) { try { const n = parseInt(localStorage.getItem(RIVALS_KEY), 10); return n >= 1 && n <= max ? n : def; } catch (e) { return def; } }
 export function saveRivals(n) { try { localStorage.setItem(RIVALS_KEY, String(n)); } catch (e) { } }

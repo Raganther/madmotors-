@@ -6,6 +6,7 @@ import { HALF } from '../../core/constants.js';
 import { canvasTex, flat } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { waterGrid, waterMaterial } from '../water.js';
+import { withRuts, wuvOf } from '../ruts.js';
 import { race } from '../../ui/flow.js';
 
 // Mud visuals ('mud' element): bogs get a churned brown layer over the road with glossy puddles; a water splash gets
@@ -30,7 +31,7 @@ const FRESH = [new THREE.Color(0x6E4E32), new THREE.Color(0x8C6A44)], RUTC = new
 let bogs = [], redraw = 0, seen = -1;
 function bogMesh(group, tr, a, b, road) {
   const len = b - a, K0 = Math.ceil(WEAR.COLS / 2 - EDGE / WEAR.CELL), K1 = WEAR.COLS - K0, C = K1 - K0 + 1, R = len + 2 * FADE + 1;
-  const pos = new Float32Array(R * C * 3), col = new Float32Array(pos.length), fresh = [], mix = [], idx = [], rows = [], base = [];
+  const pos = new Float32Array(R * C * 3), col = new Float32Array(pos.length), wuv = new Float32Array(R * C * 4), fresh = [], mix = [], idx = [], rows = [], base = [];
   for (let n = 0; n < R; n++) {
     const u = n - FADE, bb = tr.nb(a, u), i = tr.u0(bb); rows.push(i); base.push(bb);
     for (let k = K0; k <= K1; k++) {
@@ -38,12 +39,13 @@ function bogMesh(group, tr, a, b, road) {
       const ends = Math.min(u, len - u) + FADE * 0.55 + rag * 3, side = EDGE - Math.abs(o) + rag * 0.6;   // ragged: in from the ends and the edges
       mix.push(Math.min(1, Math.max(0, ends / (FADE * 0.7))) * Math.min(1, Math.max(0, side / 1.2)));
       fresh.push(FRESH[0].clone().lerp(FRESH[1], 0.5 + 0.5 * ns)); pos.set([tr.xs[i] + tr.rx[i] * o, tr.H[i] + 0.07, tr.zs[i] + tr.rz[i] * o], (n * C + k - K0) * 3);
+      wuv.set(wuvOf(tr, bb, o, tr.rx[i], tr.rz[i]), (n * C + k - K0) * 4);   // it sinks into the ruts with the road (render/ruts.js)
     }
   }
   for (let n = 0; n < R - 1; n++) for (let k = 0; k < C - 1; k++) { const q = n * C + k; idx.push(q, q + C, q + 1, q + 1, q + C, q + C + 1); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setIndex(idx);
-  const m = new THREE.Mesh(g, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 }), false, { cut: false, cloud: true }));
-  m.receiveShadow = true; group.add(m);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('wuv', new THREE.BufferAttribute(wuv, 4)); g.setIndex(idx);
+  const m = new THREE.Mesh(g, withRuts(withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 }), false, { cut: false, cloud: true })));
+  m.receiveShadow = true; m.frustumCulled = false; group.add(m);
   const bog = { tr, R, C, K0, rows, base, fresh, mix, road, g, pos, col };
   paintBog(bog, null); return bog;
 }

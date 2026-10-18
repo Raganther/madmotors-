@@ -16,6 +16,19 @@ import { clamp } from '../math.js';
 // skid marks do (render/effects/skids.js). Tracks and mud trail are looks only, on a wider grid (WEAR.TCOLS, reaching
 // over the verges, in finer WEAR.TCELL cells so a tyre track is about a tyre wide). Deterministic, no randomness.
 export const WEAR = { COLS: 28, TCOLS: 80, TCELL: 0.25, TMARK: { gravel: 0.45, grass: 0.6, mud: 0.7, snow: 0.55 }, CELL: 0.5, TRACK: 0.95, DIG: { mud: 0.2, gravel: 0.035, tarmac: 0.006, snow: 0.03 }, SPREAD: 0.35, TUG: 4.5, SCRUB: 0.4, CARRY: 30, TRAIL: 0.5 };
+// Ruts with depth (the depth grid, W.wear.d: 0 fresh .. 1 dug to the surface's full depth): it builds up far slower
+// than the packing above, so a loose road gets worse lap by lap. DEPTH is how deep a fully dug rut is on each surface
+// (metres; tarmac doesn't rut), DEEPEN how much of that one wheel adds per metre it rolls, RIDGE how much of a rut's
+// spoil is pushed up beside it. Rain (the stage's `wet`) digs faster (RAIN.DIG), softens gravel so it ruts deeper
+// (RAIN.DEEP) and turns a worn line to mud (RAIN.MUD: grip and drag head for SURF.mud). FEEL: how hard the ruts steer
+// and scrub a car that isn't sitting in their bottom. PUDDLE: in the rain water lies in ruts deeper than this.
+export const RUT = { DEPTH: { mud: 0.24, gravel: 0.075, snow: 0.06 }, DEEPEN: { mud: 0.09, gravel: 0.08, snow: 0.09 }, RIDGE: 0.3, TRACKS: 0.95,
+  RAIN: { DIG: 1.6, DEEP: 1.4, MUD: 0.5 }, FEEL: { TUG: 26, SCRUB: 1.4 }, PUDDLE: 0.075 };
+/** The options (menu: Track wear), all on by default: grooves (the road surface sinks into its ruts: looks), feel (the
+ *  wheels ride in them and they tug: physics), rain (a wet stage wears faster and its worn gravel goes to mud),
+ *  puddles (water lying in the ruts in the rain: looks), aiLines (the AI drives in the ruts on gravel and snow too, not
+ *  just in bogs), depth and rate (multipliers on how deep and how fast). A race takes them as opts.wear. */
+export const WEAR_OPT = { grooves: true, feel: true, rain: true, puddles: true, aiLines: true, depth: 1, rate: 1 };
 const FIRM = { mud: 'mudPacked', gravel: 'gravelSwept', snow: 'snowPacked' };                          // what each surface wears into
 const row = (tr, s) => s >= tr.NM ? tr.bi(s | 0) : tr.bi(Math.floor(s));
 const colOf = lat => Math.floor(lat / WEAR.CELL + WEAR.COLS / 2), tcolOf = lat => Math.floor(lat / WEAR.TCELL + WEAR.TCOLS / 2);
@@ -24,8 +37,8 @@ const at = (g, r, k) => k < 0 || k >= WEAR.COLS ? 0 : g[r * WEAR.COLS + k];
 const blend = {};
 export function wornSurf(c) {
   const a = SURF[c.surface], to = FIRM[c.surface]; if (!to || !(c.rut > 0)) return a;
-  const b = SURF[to], k = clamp(c.rut, 0, 1);
-  for (const key of ['engine', 'latMax', 'grip', 'drag']) blend[key] = a[key] + (b[key] - a[key]) * k;
+  const b = SURF[to], k = clamp(c.rut, 0, 1), m = c.surface === 'gravel' ? c.rutMud || 0 : 0, M = SURF.mud;
+  for (const key of ['engine', 'latMax', 'grip', 'drag']) { const v = a[key] + (b[key] - a[key]) * k; blend[key] = v + (M[key] - v) * m; }   // in the rain, a dug-in gravel line turns to mud
   return blend;
 }
 const inBog = (W, r) => W.tr.mud && W.tr.mud[r] === 1;
@@ -36,11 +49,32 @@ export function rutDepth(W, s, lat) {
 }
 /** For the AI: the lateral offset of the best pair of ruts in a bog `ahead` samples along, or null (no bog, no ruts yet). */
 export function rutLane(W, c, ahead) {
-  if (!W.wear || !W.tr.mud) return null;
-  const r = row(W.tr, c.pr.s + ahead); if (!inBog(W, r)) return null;
+  if (!W.wear) return null;
+  const r = row(W.tr, c.pr.s + ahead); if (!inBog(W, r) && !(W.wear.opt.aiLines && W.wear.rd[r] > 0 && !W.wear.mudRow[r])) return null;
   const g = W.wear.g, gap = Math.round(2 * WEAR.TRACK / WEAR.CELL); let best = 0.35, lat = null;   // a rut under each wheel
   for (let k = 0; k + gap < WEAR.COLS; k++) { const v = at(g, r, k) + at(g, r, k + gap); if (v > best) { best = v; lat = (k + gap / 2 + 0.5 - WEAR.COLS / 2) * WEAR.CELL; } }
   return lat;
+}
+// ---------- the ruts' shape ----------
+/** Rut height at row r, column k (metres: below 0 in a rut, above it on the spoil pushed up beside one). */
+export function rutCellH(W, r, k) {
+  const sc = W.wear.rd[r]; if (!sc) return 0;
+  const D = W.wear.d, v = at(D, r, k), side = Math.max(at(D, r, k - 2), at(D, r, k + 2));
+  return sc * (-v + RUT.RIDGE * Math.max(0, side - v));
+}
+/** The ruts' height at road position s, lat (bilinear between the cells: smooth to drive over and to draw). */
+export function rutHeight(W, s, lat) {
+  const tr = W.tr, s0 = Math.floor(s), f = s - s0, r0 = row(tr, s0), r1 = row(tr, s0 + 1);
+  if (!W.wear.rd[r0] && !W.wear.rd[r1]) return 0;
+  const kf = lat / WEAR.CELL + WEAR.COLS / 2 - 0.5, k = Math.floor(kf), u = kf - k;
+  const rowH = r => rutCellH(W, r, k) * (1 - u) + rutCellH(W, r, k + 1) * u;
+  return rowH(r0) * (1 - f) + rowH(r1) * f;
+}
+/** The ground under a car at s, lat: where its two wheel tracks are (so it sinks when they're in the ruts and rolls
+ *  when one is), or 0 when the ruts have no feel. */
+export function rutGround(W, s, lat) {
+  if (!W.wear || !W.wear.opt.feel || !W.wear.dug) return 0;
+  return (rutHeight(W, s, lat - RUT.TRACKS) + rutHeight(W, s, lat + RUT.TRACKS)) / 2;
 }
 // fresh tyre tracks and the mud trail, where each wheel actually is (a drift leaves a curved scuff)
 function marks(W, c, dt, sp) {
@@ -56,37 +90,66 @@ function marks(W, c, dt, sp) {
   }
 }
 function step(R, W, dt) {
-  const tr = W.tr, { g } = W.wear;
+  const tr = W.tr, { g, d: Dg, opt } = W.wear, wetK = opt.rain ? tr.wet || 0 : 0;
   for (const c of R.cars) {
-    c.rut = 0; if (!c.onGround) continue;
+    c.rut = 0; c.rutMud = 0; if (!c.onGround) continue;
     if (c.surface === 'ford') { c.mudCarry = 0; continue; }                          // washed off
-    const dig = WEAR.DIG[c.surface], sp = Math.hypot(c.vx, c.vz), r = row(tr, c.pr.s), i = c.pr.i;
+    const sp = Math.hypot(c.vx, c.vz), r = row(tr, c.pr.s), i = c.pr.i, deepen = W.wear.rd[r] && RUT.DEEPEN[c.surface];
+    const dig = WEAR.DIG[c.surface] && WEAR.DIG[c.surface] * opt.rate * (deepen ? 1 + RUT.RAIN.DIG * wetK : 1);
     if (c.surface === 'mud') c.mudCarry = 1;
     const carry = c.mudCarry > 0 ? c.mudCarry : 0;
     if (sp > 1) { marks(W, c, dt, sp); W.wear.ver++; }
     if (!dig && !carry) continue;
-    let depth = 0, grad = 0, n = 0;
+    let depth = 0, grad = 0, n = 0, dug = 0;
     for (const side of [-1, 1]) {
       const k = colOf(c.pr.lat + side * WEAR.TRACK); if (k < 0 || k >= WEAR.COLS) continue;
       const q = r * WEAR.COLS + k;
-      depth += g[q]; grad += (at(g, r, k + 1) - at(g, r, k - 1)) / (2 * WEAR.CELL); n++;
+      depth += g[q]; grad += (at(g, r, k + 1) - at(g, r, k - 1)) / (2 * WEAR.CELL); n++; dug += Dg[q];
       if (dig) { const d = dig * sp * dt; g[q] = Math.min(1, g[q] + d); for (const e of [-1, 1]) if (k + e >= 0 && k + e < WEAR.COLS) g[q + e] = Math.min(1, g[q + e] + d * WEAR.SPREAD); }
+      if (deepen) {                                                               // and the rut gets deeper, slowly: lap by lap
+        const d = deepen * opt.rate * (1 + RUT.RAIN.DIG * wetK) * sp * dt; Dg[q] = Math.min(1, Dg[q] + d); W.wear.dug = true;
+        for (const e of [-1, 1]) if (k + e >= 0 && k + e < WEAR.COLS) Dg[q + e] = Math.min(1, Dg[q + e] + d * WEAR.SPREAD);
+      }
     }
     if (carry && c.surface !== 'mud') c.mudCarry = Math.max(0, carry - sp * dt / WEAR.CARRY);
     if (!n) continue;
     W.wear.ver++;                                                                 // tells the renderers to redraw
     if (!FIRM[c.surface]) continue;
     c.rut = depth / n;
-    if (c.surface !== 'mud') continue;
+    if (wetK && c.surface === 'gravel') c.rutMud = RUT.RAIN.MUD * wetK * clamp((dug / n - 0.3) / 0.5, 0, 1);   // a wet line, dug in: mud
+    if (c.surface !== 'mud') {
+      // ruts with feel steer a car that isn't in their bottom toward it, and scrub it as it climbs across them
+      if (!opt.feel || !W.wear.dug || !W.wear.rd[r]) continue;
+      let gh = 0; for (const side of [-1, 1]) { const l = c.pr.lat + side * RUT.TRACKS; gh += (rutHeight(W, c.pr.s, l + 0.25) - rutHeight(W, c.pr.s, l - 0.25)) / 1; }
+      const pull = clamp(-gh, -1, 1) * RUT.FEEL.TUG * dt; c.vx += tr.rx[i] * pull; c.vz += tr.rz[i] * pull;
+      const scrub = 1 - Math.min(0.5, Math.abs(gh) * RUT.FEEL.SCRUB * dt); c.vx *= scrub; c.vz *= scrub;
+      continue;
+    }
     // ruts grab: pulled toward the bottom of the rut, and climbing out of one scrubs a little speed
     const gr = grad / n, pull = clamp(gr, -1, 1) * WEAR.TUG * dt;
     c.vx += tr.rx[i] * pull; c.vz += tr.rz[i] * pull;
     const scrub = 1 - Math.abs(gr) * WEAR.SCRUB * dt; c.vx *= scrub; c.vz *= scrub;
   }
 }
+/** Per row: how deep its ruts go when fully dug (rd, metres; 0: it doesn't rut: tarmac, a water splash, ice, a deck,
+ *  open country) and whether it's a bog (mudRow). */
+export function rowDepths(W, opt) {
+  const tr = W.tr, rd = new Float32Array(tr.NB), mudRow = new Uint8Array(tr.NB), wet = opt.rain ? tr.wet || 0 : 0;
+  for (let r = 0; r < tr.NB; r++) {
+    const i = tr.u0(r), m = tr.mud && tr.mud[r];
+    if (m === 2 || (tr.ice && tr.ice[r]) || (tr.open && tr.open[r]) || (tr.voidMask && tr.voidMask[r]) || tr.bridge[i] || tr.tunnel[i]) continue;
+    const surf = m === 1 ? 'mud' : tr.dirt && tr.dirt[r] ? 'gravel' : W.surf, D = RUT.DEPTH[surf]; if (!D) continue;
+    rd[r] = D * opt.depth * (surf === 'gravel' ? 1 + RUT.RAIN.DEEP * wet : surf === 'mud' ? 1 + 0.3 * wet : 1); mudRow[r] = m === 1 ? 1 : 0;
+  }
+  return { rd, mudRow };
+}
 /** Track wear on every stage. */
 export const feature = {
   name: 'wear',
-  init(R, W) { const n = W.tr.NB * WEAR.COLS; W.wear = { g: new Float32Array(n), t: new Float32Array(W.tr.NB * WEAR.TCOLS), m: new Float32Array(W.tr.NB * WEAR.TCOLS), ver: 0 }; R.wear = W.wear; for (const c of R.cars) c.mudCarry = 0; },
+  init(R, W) {
+    const tr = W.tr, n = tr.NB * WEAR.COLS, opt = { ...WEAR_OPT, ...(R.wearOpt || {}) };
+    W.wear = { g: new Float32Array(n), d: new Float32Array(n), t: new Float32Array(tr.NB * WEAR.TCOLS), m: new Float32Array(tr.NB * WEAR.TCOLS), ver: 0, opt, dug: false, ...rowDepths(W, opt) };
+    R.wear = W.wear; for (const c of R.cars) c.mudCarry = 0;
+  },
   after(R, W, dt) { step(R, W, dt); }
 };

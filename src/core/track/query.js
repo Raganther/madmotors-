@@ -4,6 +4,7 @@ import { wallAt, wallPos } from '../sim/barriers.js';
 import { ferryDeckAt } from '../features/ferry.js';
 import { drawDeckAt } from '../features/drawbridge.js';
 import { crumbleDeckAt } from '../features/crumble.js';
+import { rutGround } from '../features/wear.js';
 
 export function project(tr, x, z, hint, back, fwd) {
   if (tr.nx) return projectG(tr, x, z, hint, back, fwd);
@@ -39,6 +40,6 @@ export function groundAt(W, s, lat, x, z) {
   const side = lat >= 0 ? 1 : -1, hasWall = wallAt(W, bi, side) && al < wallPos(W, bi, side) + 1.2;
   if (al >= HALF + 2 && !hasWall) return W.terr.at(x, z);
   const rh = roadH(W.tr, s);
-  if (al <= HALF || hasWall) return rh;
+  if (al <= HALF || hasWall) return al <= HALF ? rh + rutGround(W, s, lat) : rh;   // in the ruts (features/wear.js), where they have feel
   return lerp(rh, W.terr.at(x, z), (al - HALF) / 2);
 }

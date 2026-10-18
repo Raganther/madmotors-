@@ -53,7 +53,7 @@ export function newRace() {
   if (ws && ws.build) defs = defs.map(d => { if (!d.player) return d; const veh = upgradedVeh(G.vehicle, ws.build); return { ...d, veh, im: veh.im, build: ws.build }; });   // the Workshop's Upgrades tab: the player's car with the parts picked there
   if (lg && lg.round > 0) { const order = standings(lg, defs.map(d => d.name)).map(s => s.name).reverse(); defs = order.map(n => defs.find(d => d.name === n)).filter(Boolean); }   // the championship leader starts at the back
   setRoster(defs);
-  const r = createRace(G.world.W, defs, { mode, weapons: ws ? ws.weapons : cr ? true : G.weapons }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); v.dripT = v.burnT = v.flatT = v.soakT = 0; v.trail = null; resetDirt(v); });   // repaired and washed; a career always races with weapons
+  const r = createRace(G.world.W, defs, { mode, weapons: ws ? ws.weapons : cr ? true : G.weapons, wear: G.wearOpt }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); v.dripT = v.burnT = v.flatT = v.soakT = 0; v.trail = null; resetDirt(v); });   // repaired and washed; a career always races with weapons
   elementHook('newRace', r);
   return r;
 }

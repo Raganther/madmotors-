@@ -358,6 +358,19 @@ pass; on tarmac, skid marks do that job. `render/elements/wear.js`
 draws it over the road; the bogs draw their own ruts. A new surface gets its wear from `WEAR.DIG` and its worn-in
 grip from the `FIRM` table there.
 
+The ruts also have depth, dug lap by lap (a second, slower grid, `W.wear.d`; `RUT` in wear.js): fully dug, about
+24 cm in a bog, 7.5 cm on gravel and dirt tracks, 6 cm on snow; tarmac, water splashes, ice, bridges and open country
+don't rut. They pile spoil up beside them in a ridge. The cars ride in them (`rutGround`, through `groundAt`: the
+height under the two wheel tracks, so a car sinks when both are in and rolls when one is), they pull a car toward
+their bottom and scrub it crossing them, and the AI drives in them on gravel and snow as well as in bogs. On a wet
+stage (`wet`) everything digs faster, gravel softens to dig deeper (up to ~18 cm), a dug-in gravel line turns to mud
+(slower), and water lies in the deepest parts. Drawing them: `render/ruts.js` puts the heights in a small texture and
+the road's driving surface (cut every 0.5 m where it can rut), the wear overlay and the bogs all sink by it in their
+vertex shaders, normals tilted so the rut walls catch the light; the puddles are a sheet that reads the same texture.
+Every part can be switched off, and depth and rate scaled, from the menu's **Track wear** panel (`ui/wear.js`,
+`WEAR_OPT`; a race takes them as `opts.wear`, from the next race). On Bogwood Rally in the Rain the whole package
+costs the field about 8% over three laps (3-4 s of it the rain's mud, the rest the ruts' feel); dry gravel and snow 1-2%.
+
 ### Branches (the road splits and joins again)
 
 A `gorge` stage can add `branches: [{ from, to, name, share, segs }]`: an alternative route that leaves the main road
