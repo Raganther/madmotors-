@@ -30,7 +30,7 @@ import { MODEL_LABEL, MODEL_MODES, modelMode, setModelMode } from './render/asse
 import { initSkids } from './render/effects/skids.js';
 import { initTrails } from './render/effects/trails.js';
 import { FX } from './render/materials.js';
-import { contextLost, cycleQuality, initRenderer, perfSample, renderFrame, renderer } from './render/renderer.js';
+import { contextLost, cycleQuality, initRenderer, perfSample, renderFrame, renderer, safeBoot } from './render/renderer.js';
 import { initCars, updateCarVisuals, rebuildCars } from './render/vehicles.js';
 import { elementHook } from './render/elements/index.js';
 import { applyBarrierChanges } from './render/world/barriers.js';
@@ -125,7 +125,7 @@ export async function boot() {
     step = 'building the cars'; initCars(); elementHook('init'); showVehicle(G.vehicle); refreshBest();
     step = 'building the first stage';
     if (sbName || ws) { showScreen('quick'); selectStage(sbName ? STAGES.length - 1 : 0, ws ? () => openWorkshop(ws) : null); }   // ?workshop[=tab]: the Workshop (ui/workshop.js) once the menu's stage is built
-    else showScreen('title');                                                     // the title, its action scene behind it (ui/title.js)
+    else { if (safeBoot) { $('game').hidden = true; $('loading').hidden = true; } showScreen('title'); }   // the title, its action scene behind it (ui/title.js; just the logo in safe mode, after a graphics reset)
     requestAnimationFrame(frame);
   } catch (e) {
     console.error(e); window.__bootError((e && e.message ? e.message : String(e)) + ' (while ' + step + ')');

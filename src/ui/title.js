@@ -6,12 +6,13 @@ import { raceDefs } from '../data/cars.js';
 import { vehicleById } from '../data/vehicles.js';
 import { STAGES } from '../data/stages/index.js';
 import { handleEvents, race, savePrev, selectStage, titleRace } from './flow.js';
+import { isTouch } from './dom.js';
 
 // The title screen's action scene, played by the game itself: a pack of cars sent at the leap between the mesas on
 // Mesa Leap; as the leader takes off the clock drops to slow motion and a car behind fires a homing missile after it.
 // Filmed from beside the run-up, looking along it and up at them in the air, the camera drifting a little; when they're gone it starts again. Runs while the
 // title (and the main menu over it) is up; Quick Race builds the stage you pick instead.
-const SHOT = { stage: 'Mesa Leap', lip: 293, lead: 'monster', rivals: 5, loop: 8.5 };
+const SHOT = { stage: 'Mesa Leap', lip: 293, lead: 'monster', rivals: isTouch ? 3 : 5, loop: 8.5 };   // (a smaller pack on a phone or tablet)
 // where the camera stands (samples along from the lip, metres to the side and up from the lip's height) and what it
 // looks at; G.titleTune overrides any of them (for trying angles from the console)
 const CAM = { along: -10, side: 12, up: 2.5, lookAlong: 14, lookSide: -3, lookUp: 4.5, fov: 42 };

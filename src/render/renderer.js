@@ -19,7 +19,11 @@ export let autoPost = !isTouchDevice(), quality = 'auto', dynPR = Math.min(devic
 try { const q = localStorage.getItem('downhill-rush-quality'); if (QUALITY[q]) quality = q; } catch (e) { }
 // after the graphics were lost (out of GPU memory, most often on a tablet): this session runs a step lighter (Medium: no
 // post effects and their buffers, a smaller shadow map); the saved setting is untouched
-try { if (sessionStorage.getItem('dr-recovered')) { sessionStorage.removeItem('dr-recovered'); if (quality === 'auto' || quality === 'high') quality = 'medium'; } } catch (e) { }
+// after the graphics were lost (out of GPU memory, most often on a tablet): this session starts light (Low: a small
+// shadow map, no post effects) and in safe mode (no 3D scene behind the title: ui/title.js), so nothing heavy runs
+// before the player picks something; the saved setting is untouched
+export let safeBoot = false;
+try { if (sessionStorage.getItem('dr-recovered')) { sessionStorage.removeItem('dr-recovered'); quality = 'low'; safeBoot = true; } } catch (e) { }
 setGfx(quality);
 export function applyQuality() {
   const Q = QUALITY[quality], dpr = devicePixelRatio || 1;
@@ -118,7 +122,19 @@ export function createGLContext() {
   throw new Error('your browser blocked WebGL' + (reason ? ' (' + reason + ')' : '') + '. Quit the browser completely, reopen it, and check that hardware acceleration is on.');
 }
 /** Start again after the graphics were lost: a reload (the stage, car and settings are kept by the menu). */
-export function recoverGraphics() { if (recovering) return; recovering = true; try { sessionStorage.setItem('dr-recovered', '1'); } catch (_) { /* private mode */ } location.reload(); }
+// Never a reload loop: a browser that loses the graphics again and again blocks WebGL for the page until it's quit. A
+// second loss within LOSS_WINDOW stops and asks instead (the button reloads in safe mode).
+const LOSS_WINDOW = 180000;
+export function recoverGraphics() {
+  if (recovering) return; recovering = true;
+  let last = 0; try { last = +sessionStorage.getItem('dr-lost-at') || 0; sessionStorage.setItem('dr-lost-at', String(Date.now())); sessionStorage.setItem('dr-recovered', '1'); } catch (_) { /* private mode */ }
+  if (last && Date.now() - last < LOSS_WINDOW) {
+    const el = $('loading'); el.hidden = false; el.classList.add('err');
+    $('loading-text').innerHTML = 'The graphics keep resetting (this device is running out of graphics memory). <button id="gfx-retry" class="cta" type="button">Try again, lighter</button>';
+    $('gfx-retry').addEventListener('click', () => location.reload()); return;
+  }
+  location.reload();
+}
 let recovering = false;
 export function initRenderer() {
   const gl = createGLContext();
