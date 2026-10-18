@@ -4,7 +4,7 @@ import { clamp, lerp } from '../../core/math.js';
 import { chunkMesh } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { bridgeMat } from '../elements/bridge.js';
-import { NO_WUV, withRuts, wuvOf } from '../ruts.js';
+import { NO_WUV, wetShine, withRuts, wuvOf } from '../ruts.js';
 import { rowDepths, WEAR_OPT } from '../../core/features/wear.js';
 
 export const ROAD_STRIPS = [-HALF + 1.1, -3.7, -2.3, -1.2, 1.2, 2.3, 3.7, HALF - 1.1];
@@ -98,7 +98,9 @@ export function makeRoadMesh(tr, stage) {
     }
   }
   const mk = (P, C, Wv, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setAttribute('wuv', new THREE.Float32BufferAttribute(Wv, 4)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m; };
-  const mainM = mk(mainPos, mainCol, mainW, withRuts(withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), false, { cut: false, cloud: true, grain: tr.surface === 'tarmac' ? 0.07 : 0.12 }))), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
+  // in the rain the road gleams: a shiny material (render/ruts.js wetShine turns it up and down with the Shine option)
+  const roadMat = stage.wet > 0 ? wetShine(new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide }), tr.surface === 'tarmac' ? 1 : 0.45) : new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  const mainM = mk(mainPos, mainCol, mainW, withRuts(withCutaway(roadMat, false, { cut: false, cloud: true, grain: tr.surface === 'tarmac' ? 0.07 : 0.12 }))), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
   const bridge = brPos.length ? mk(brPos, brCol, brW, bridgeMat({ vertexColors: true, side: THREE.DoubleSide })) : null;
   if (bridge) bridge.castShadow = true;
   return { main, bridge };

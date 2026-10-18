@@ -1,4 +1,4 @@
-import { SURF } from '../constants.js';
+import { HALF, SURF } from '../constants.js';
 import { clamp } from '../math.js';
 
 // ---------- track wear: every surface remembers where the cars have been ----------
@@ -24,11 +24,18 @@ export const WEAR = { COLS: 28, TCOLS: 80, TCELL: 0.25, TMARK: { gravel: 0.45, g
 // and scrub a car that isn't sitting in their bottom. PUDDLE: in the rain water lies in ruts deeper than this.
 export const RUT = { DEPTH: { mud: 0.24, gravel: 0.075, snow: 0.06 }, DEEPEN: { mud: 0.09, gravel: 0.08, snow: 0.09 }, RIDGE: 0.3, TRACKS: 0.95,
   RAIN: { DIG: 1.6, DEEP: 1.4, MUD: 0.5 }, FEEL: { TUG: 26, SCRUB: 1.4 }, PUDDLE: 0.075 };
-/** The options (menu: Track wear), all on by default: grooves (the road surface sinks into its ruts: looks), feel (the
+// Rain on a stage (its `wet`) on every surface: the line dries as the cars use it (tarmac: the wear grid's cells there
+// are how dry it is; WEATHER.DRY a wheel per metre), giving back up to DRY_GRIP of the grip the wet took; water stands
+// along the edges and in the dips (W.wear.pool: per row and side, how far in from the road's edge, POOL_MAX at most),
+// and a car through it aquaplanes a little (AQUA: grip lost, AQUA_DRAG: drag) with a splash (render).
+export const WEATHER = { DRY: 0.03, DRY_GRIP: 0.85, POOL_MAX: 2.6, AQUA: 0.45, AQUA_DRAG: 0.35 };
+/** The options (menu: Weather & wear), all on by default: grooves (the road surface sinks into its ruts: looks), feel (the
  *  wheels ride in them and they tug: physics), rain (a wet stage wears faster and its worn gravel goes to mud),
  *  puddles (water lying in the ruts in the rain: looks), aiLines (the AI drives in the ruts on gravel and snow too, not
- *  just in bogs), depth and rate (multipliers on how deep and how fast). A race takes them as opts.wear. */
-export const WEAR_OPT = { grooves: true, feel: true, rain: true, puddles: true, aiLines: true, depth: 1, rate: 1 };
+ *  just in bogs), depth and rate (multipliers on how deep and how fast); and the rain's: shine (wet roads gleam: looks),
+ *  spray (cars throw up a mist: looks), drying (the line dries: physics), drops (raindrops splash on the road: looks),
+ *  standing (water along the edges and in dips: physics and looks). A race takes them as opts.wear. */
+export const WEAR_OPT = { grooves: true, feel: true, rain: true, puddles: true, aiLines: true, depth: 1, rate: 1, shine: true, spray: true, drying: true, drops: true, standing: true };
 const FIRM = { mud: 'mudPacked', gravel: 'gravelSwept', snow: 'snowPacked' };                          // what each surface wears into
 const row = (tr, s) => s >= tr.NM ? tr.bi(s | 0) : tr.bi(Math.floor(s));
 const colOf = lat => Math.floor(lat / WEAR.CELL + WEAR.COLS / 2), tcolOf = lat => Math.floor(lat / WEAR.TCELL + WEAR.TCOLS / 2);
@@ -90,12 +97,13 @@ function marks(W, c, dt, sp) {
   }
 }
 function step(R, W, dt) {
-  const tr = W.tr, { g, d: Dg, opt } = W.wear, wetK = opt.rain ? tr.wet || 0 : 0;
+  const tr = W.tr, { g, d: Dg, opt } = W.wear, wetK = opt.rain ? tr.wet || 0 : 0, wetW = tr.wet || 0;
   for (const c of R.cars) {
     c.rut = 0; c.rutMud = 0; if (!c.onGround) continue;
     if (c.surface === 'ford') { c.mudCarry = 0; continue; }                          // washed off
     const sp = Math.hypot(c.vx, c.vz), r = row(tr, c.pr.s), i = c.pr.i, deepen = W.wear.rd[r] && RUT.DEEPEN[c.surface];
-    const dig = WEAR.DIG[c.surface] && WEAR.DIG[c.surface] * opt.rate * (deepen ? 1 + RUT.RAIN.DIG * wetK : 1);
+    const dries = c.surface === 'tarmac' && wetW && opt.drying, dig = dries ? (WEAR.DIG.tarmac + WEATHER.DRY * wetW) * opt.rate : WEAR.DIG[c.surface] && WEAR.DIG[c.surface] * opt.rate * (deepen ? 1 + RUT.RAIN.DIG * wetK : 1);
+    c.dry = 0; c.aqua = W.wear.pool ? inPool(W, c) : 0;
     if (c.surface === 'mud') c.mudCarry = 1;
     const carry = c.mudCarry > 0 ? c.mudCarry : 0;
     if (sp > 1) { marks(W, c, dt, sp); W.wear.ver++; }
@@ -114,6 +122,7 @@ function step(R, W, dt) {
     if (carry && c.surface !== 'mud') c.mudCarry = Math.max(0, carry - sp * dt / WEAR.CARRY);
     if (!n) continue;
     W.wear.ver++;                                                                 // tells the renderers to redraw
+    if (dries) c.dry = depth / n;                                                  // on the line, out of the wet
     if (!FIRM[c.surface]) continue;
     c.rut = depth / n;
     if (wetK && c.surface === 'gravel') c.rutMud = RUT.RAIN.MUD * wetK * clamp((dug / n - 0.3) / 0.5, 0, 1);   // a wet line, dug in: mud
@@ -143,12 +152,29 @@ export function rowDepths(W, opt) {
   }
   return { rd, mudRow };
 }
+/** Where water stands on a wet stage: per row, how far in from each edge (metres; [r * 2] left, [r * 2 + 1] right),
+ *  in patches along the road and deeper in its dips; none on decks, splashes, ice or open country. */
+export function poolMap(W, opt) {
+  const tr = W.tr; if (!(tr.wet > 0) || !opt.standing) return null;
+  const P = new Float32Array(tr.NB * 2), N = tr.NB;
+  for (let r = 0; r < N; r++) {
+    const i = tr.u0(r); if ((tr.mud && tr.mud[r]) || (tr.ice && tr.ice[r]) || (tr.open && tr.open[r]) || (tr.voidMask && tr.voidMask[r]) || tr.bridge[i] || tr.tunnel[i]) continue;
+    let lo = 0; for (let d = -14; d <= 14; d += 7) lo += tr.H[tr.u0(Math.min(N - 1, Math.max(0, r + d)))]; const dip = Math.max(0, lo / 5 - tr.H[i] - 0.15) * 3;   // lower than the road around it
+    for (let side = 0; side < 2; side++) P[r * 2 + side] = Math.min(WEATHER.POOL_MAX, Math.max(0, tr.noise.n2(r * 0.035, side * 7.3 + 1.1) - 0.2) * 4 * tr.wet + dip);
+  }
+  return P;
+}
+/** How deep in standing water car c's outside wheels are (0..1), on a wet stage. */
+function inPool(W, c) {
+  const r = row(W.tr, c.pr.s), lat = c.pr.lat, side = lat < 0 ? 0 : 1, w = W.wear.pool[r * 2 + side]; if (!w) return 0;
+  const into = Math.abs(lat) + RUT.TRACKS - (HALF - w); return into > 0 ? Math.min(1, into / 1.2) : 0;
+}
 /** Track wear on every stage. */
 export const feature = {
   name: 'wear',
   init(R, W) {
     const tr = W.tr, n = tr.NB * WEAR.COLS, opt = { ...WEAR_OPT, ...(R.wearOpt || {}) };
-    W.wear = { g: new Float32Array(n), d: new Float32Array(n), t: new Float32Array(tr.NB * WEAR.TCOLS), m: new Float32Array(tr.NB * WEAR.TCOLS), ver: 0, opt, dug: false, ...rowDepths(W, opt) };
+    W.wear = { g: new Float32Array(n), d: new Float32Array(n), t: new Float32Array(tr.NB * WEAR.TCOLS), m: new Float32Array(tr.NB * WEAR.TCOLS), ver: 0, opt, dug: false, ...rowDepths(W, opt), pool: poolMap(W, opt) };
     R.wear = W.wear; for (const c of R.cars) c.mudCarry = 0;
   },
   after(R, W, dt) { step(R, W, dt); }

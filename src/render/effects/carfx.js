@@ -27,6 +27,13 @@ export function effectsForCar(c, v, dt) {
     AudioSys.sfx('splash', { at: c, vol: Math.min(1, 0.4 + 0.4 * k), rate: 1.15 - k * 0.15, max: 3 });
   }
   v.lastSurf = c.surface;
+  // rain (the stage's wet): the tyres throw a mist up behind the car, more the faster it goes, enough to hide the car
+  // behind; through standing water (core features/wear.js poolMap) a sheet of spray out to the side
+  const W = G.world && G.world.W, wo = W && W.wear && W.wear.opt;
+  if (W && W.tr.wet > 0 && c.onGround && sp > 9 && c.surface !== 'ford' && c.surface !== 'grass') {
+    if (!wo || wo.spray) { v.sprayAcc = (v.sprayAcc || 0) + sp * 0.8 * W.tr.wet * dt; while (v.sprayAcc > 1) { v.sprayAcc--; const s = Math.random() < 0.5 ? 1 : -1; emit(c.x - fx * 1.7 - fz * 0.9 * s, c.y + 0.35, c.z - fz * 1.7 + fx * 0.9 * s, c.vx * 0.5 + (Math.random() - 0.5) * 2, 1 + Math.random(), c.vz * 0.5 + (Math.random() - 0.5) * 2, 0.75, 1.5 + Math.random() * 0.9, 0xC9D1DA, 0.12); } }
+    if (c.aqua > 0.25 && Math.random() < dt * sp * 1.2) { const s = c.pr.lat < 0 ? -1 : 1; emit(c.x - fz * 1.1 * s, c.y + 0.3, c.z + fx * 1.1 * s, c.vx * 0.3 - fz * s * (3 + Math.random() * 4), 2.5 + Math.random() * 3, c.vz * 0.3 + fx * s * (3 + Math.random() * 4), 0.6, 1.2, 0xEEF4FA, 6); }
+  }
   const slide = Math.abs(c.vr), loose = c.surface !== 'tarmac';
   const skidding = c.onGround && c.surface !== 'grass' && (slide > 4.2 || (c.inp.handbrake && sp > 6));
   for (let w = 0; w < 2; w++) {

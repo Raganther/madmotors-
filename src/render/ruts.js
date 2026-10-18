@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { G } from '../game.js';
-import { WEAR, RUT, rutCellH } from '../core/features/wear.js';
+import { WEAR, RUT, WEATHER, WEAR_OPT, poolMap, rutCellH } from '../core/features/wear.js';
+import { HALF } from '../core/constants.js';
+import { waterGrid, waterMaterial } from './water.js';
 
 // Ruts you can see (core/features/wear.js digs them): their height, cell by cell, in a small texture (WEAR.COLS across,
 // a row per base sample), redrawn when the wear changes. Every surface that should sink into them (the road's driving
@@ -11,7 +13,10 @@ import { WEAR, RUT, rutCellH } from '../core/features/wear.js';
 // wet stage. G.wearOpt (menu: Track wear) / the race's W.wear.opt: grooves, puddles.
 const RANGE = 0.4;                                                         // metres either side of 0 the texture holds
 const U = { uRut: { value: null }, uRutOn: { value: 0 }, uRutDu: { value: 1 / WEAR.COLS } };
-let vis = null;
+let vis = null, shiny = [];
+/** A wet road's material: specular, gleaming in the rain; k: how much (tarmac 1, gravel less). The Shine option turns it
+ *  off from the next race (updateRuts). */
+export function wetShine(mat, k) { mat.specular = new THREE.Color(0x262B32).multiplyScalar(k); mat.shininess = 40 + 60 * k; mat.userData.shine = mat.specular.clone(); shiny = [mat]; return mat; }   // (one road per world)
 /** wuv for a vertex at lateral offset o on base row r of track tr (rx, rz: the road's right vector there). */
 export const wuvOf = (tr, r, o, rx, rz) => [(o / WEAR.CELL + WEAR.COLS / 2) / WEAR.COLS, (r + 0.5) / tr.NB, rx, rz];
 export const NO_WUV = [-1, 0, 0, 0];
@@ -35,8 +40,30 @@ export function withRuts(mat) {
 export function addRuts(group, tr, stage, rd) {
   const NB = tr.NB, data = new Uint8Array(WEAR.COLS * NB * 4).fill(128), tex = new THREE.DataTexture(data, WEAR.COLS, NB, THREE.RGBAFormat);
   tex.magFilter = tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true; U.uRut.value = tex;
-  vis = { tr, data, tex, seen: -1, t: 0, puddles: null, shown: false };
+  vis = { tr, data, tex, seen: -1, t: 0, puddles: null, shown: false, standing: null };
+  if (!(stage.wet > 0)) shiny = [];
   if (!(stage.wet > 0)) return;
+  // standing water along the edges and in the dips (core features/wear.js poolMap: the same water the cars aquaplane
+  // in): a sheet a few cm over the road's edge, its depth running to nothing where the pool's edge is, so render/water.js
+  // gives it a soft shore on the road
+  const P = poolMap({ tr }, { ...WEAR_OPT, standing: true });
+  if (P) {
+    const mat = waterMaterial({ color: 0x40505E, deep: 0x2A3742, alpha: 0.62 }), D = 0.07;
+    for (let side = 0; side < 2; side++) {
+      const sg = side ? 1 : -1;
+      for (let r0 = 0; r0 < tr.NB;) {
+        if (!P[r0 * 2 + side]) { r0++; continue; }
+        let r1 = r0; while (r1 + 1 < tr.NB && P[(r1 + 1) * 2 + side]) r1++;
+        const rows = []; for (let r = Math.max(0, r0 - 1); r <= Math.min(tr.NB - 1, r1 + 1); r++) rows.push(r);
+        const C = 15, m = waterGrid(rows.length, C, (q, c) => {
+          const r = rows[q], i = tr.u0(r), w = P[r * 2 + side] || 0, o = sg * (HALF + 0.4 - (c / (C - 1)) * (WEATHER.POOL_MAX + 0.8)), into = HALF - Math.abs(o);   // from just past the edge inward
+          return [tr.xs[i] + tr.rx[i] * o, tr.H[i] + 0.05 + D, tr.zs[i] + tr.rz[i] * o, w > 0 ? tr.H[i] + 0.05 + D * Math.min(1.4, Math.max(0, into + 0.4) / (w + 0.01)) : tr.H[i] + 1];
+        }, mat);
+        if (m) { m.renderOrder = 2; group.add(m); (vis.standing = vis.standing || []).push(m); }
+        r0 = r1 + 1;
+      }
+    }
+  }
   // puddles: a flat sheet RUT.PUDDLE under the fresh surface over every row that ruts; it shows only where a rut goes
   // deeper than that (its fragments read the same texture), so only the deepest bits of the line hold water: lighter
   // at the edge, dark in the middle
@@ -68,6 +95,8 @@ export function newRutsRace() { if (!vis) return; vis.data.fill(128); vis.tex.ne
 export function updateRuts(dt) {
   const W = G.world && G.world.W; if (!vis || !W || !W.wear || !W.wear.opt) return;
   const O = W.wear.opt; U.uRutOn.value = O.grooves ? 1 : 0; if (vis.puddles) vis.puddles.visible = !!(O.puddles && O.grooves && W.wear.dug);
+  if (vis.standing) for (const m of vis.standing) m.visible = !!O.standing;
+  for (const m of shiny) m.specular.copy(m.userData.shine).multiplyScalar(O.shine === false ? 0 : 1);
   if (!O.grooves || !W.wear.dug || (vis.t -= dt) > 0) return;
   vis.t = 0.25; if (W.wear.ver === vis.seen) return; vis.seen = W.wear.ver;
   const { data, tr } = vis, C = WEAR.COLS;

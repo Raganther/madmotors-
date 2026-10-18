@@ -15,7 +15,7 @@ const T = WEAR.TCOLS, SPAN = T * WEAR.TCELL / 2, GK = k => Math.floor(((k + 0.5)
 const LOOK = { gravel: { groove: [0x5E, 0x48, 0x32], gk: 12, gmax: 0.35, track: [0x4A, 0x36, 0x24], tmax: 0.6 },
   tarmac: { groove: [0x1C, 0x1C, 0x1E], gk: 40, gmax: 0.3, track: [0x2A, 0x2A, 0x2A], tmax: 0.45 },
   snow: { groove: [0x9C, 0xA9, 0xB8], gk: 14, gmax: 0.4, track: [0x86, 0x94, 0xA6], tmax: 0.5, verge: [0x8E, 0x9E, 0xB2] } };   // snow: packed grey-blue, powder ploughed
-const VERGE = [0x44, 0x3E, 0x24], TRAIL = [0x3A, 0x26, 0x16], BOG = [0x2A, 0x1C, 0x10], MUDDY = [0x3E, 0x2C, 0x1C];
+const VERGE = [0x44, 0x3E, 0x24], TRAIL = [0x3A, 0x26, 0x16], BOG = [0x2A, 0x1C, 0x10], MUDDY = [0x3E, 0x2C, 0x1C], DRYC = [0x8C, 0x8E, 0x94];
 const mixC = (a, b, k) => [0, 1, 2].map(c => a[c] + (b[c] - a[c]) * k);
 let vis = null;
 export function addWear(group, tr, terr, stage) {
@@ -55,13 +55,14 @@ export function addWear(group, tr, terr, stage) {
 function paint(W) {
   const { tr, data, look } = vis, NB = tr.NB, road = HALF / WEAR.TCELL;
   if (!W) { data.fill(0); vis.tex.needsUpdate = true; return; }
-  const { g, t, m, d } = W.wear, wet = W.wear.opt && W.wear.opt.rain ? tr.wet || 0 : 0;
+  const { g, t, m, d } = W.wear, wet = W.wear.opt && W.wear.opt.rain ? tr.wet || 0 : 0, drying = tr.wet > 0 && W.wear.opt && W.wear.opt.drying && W.surf === 'tarmac';
   for (let b = 0; b < NB; b++) {
     const bog = tr.mud && tr.mud[b] === 1, digs = W.wear.rd && W.wear.rd[b] > 0;
     for (let k = 0; k < T; k++) {
       const q = b * T + k, p = q * 4, verge = Math.abs(k + 0.5 - T / 2) > road, gk = GK(k);
       const on = !bog && !verge && gk >= 0 && gk < WEAR.COLS, dv = on && digs ? d[b * WEAR.COLS + gk] : 0;   // dug in: darker, and in the rain mud
-      const gv = on ? Math.max(look.gmax * (1 - Math.exp(-g[b * WEAR.COLS + gk] * look.gk)), Math.min(0.75, dv * (0.55 + 0.4 * wet))) : 0, gc = dv && wet ? mixC(look.groove, MUDDY, Math.min(1, dv * wet * 1.6)) : look.groove;
+      const dry = on && drying && !digs ? g[b * WEAR.COLS + gk] : 0;                // wet tarmac: the line drying out, paler
+      const gv = dry ? Math.min(0.5, dry * 0.6) : on ? Math.max(look.gmax * (1 - Math.exp(-g[b * WEAR.COLS + gk] * look.gk)), Math.min(0.75, dv * (0.55 + 0.4 * wet))) : 0, gc = dry ? DRYC : dv && wet ? mixC(look.groove, MUDDY, Math.min(1, dv * wet * 1.6)) : look.groove;
       const tv = (verge ? 0.6 : bog ? 0.5 : look.tmax) * (1 - Math.exp(-t[q] * 5)), mv = bog ? 0 : 0.85 * (1 - Math.exp(-m[q] * 2));
       const a = Math.min(0.9, Math.max(gv, tv, mv)), sum = gv + tv + mv || 1, tc = verge ? look.verge || VERGE : bog ? BOG : look.track;
       for (let ch = 0; ch < 3; ch++) data[p + ch] = (gc[ch] * gv + tc[ch] * tv + TRAIL[ch] * mv) / sum;

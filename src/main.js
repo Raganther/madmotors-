@@ -39,6 +39,8 @@ import { setMode, setRivals, setWeapons, buildStageList, handleEvents, refreshBe
 import { updateHUD } from './ui/hud.js';
 import { nextCamera, nextZoom, readInput, setCamera, setSteer } from './ui/input.js';
 import { wireWear } from './ui/wear.js';
+import { showScreen, wireMenu } from './ui/menu.js';
+import { titleStep } from './ui/title.js';
 
 export function frame(t) {
   requestAnimationFrame(frame);
@@ -54,7 +56,8 @@ export function frame(t) {
     $('countdown').hidden = false; $('countdown').textContent = n >= 1 ? n : 'Go!';
     AudioSys.update(race.player, 'rev', race.cars, G.camDir);
     if (G.countdown <= 0.2) { G.state = 'racing'; race.phase = 'racing'; AudioSys.beep(880, 0.3); AudioSys.music('race'); showTrack(AudioSys.track()); G.goTimer = 0.8; G.accumulator = 0; }
-  } else if (G.state === 'racing') {
+  } else if (G.state === 'menu' && G.title) titleStep(dt);                         // the title's action scene
+  else if (G.state === 'racing') {
     if (!race.player.finished) readInput(dt);
     let simDt = dt; if (G.slowmo > 0) { G.slowmo -= dt; simDt = dt * 0.35; }
     G.accumulator += simDt; let n = 0;
@@ -87,7 +90,7 @@ export function wireUI() {
   $('menu-btn').addEventListener('click', toMenu);
   $('pause-btn').addEventListener('click', togglePause);
   $('reset-btn').addEventListener('click', () => { if (G.state === 'racing' && !race.player.finished) respawn(race.player, G.world.W); });
-  wireSound(); wireWear();
+  wireSound(); wireWear(); wireMenu();
   document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('rivals-less').addEventListener('click', () => setRivals(G.rivals - 1)); $('rivals-more').addEventListener('click', () => setRivals(G.rivals + 1));
   $('wpn-btn').addEventListener('click', () => setWeapons(!G.weapons));
@@ -121,7 +124,8 @@ export async function boot() {
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
     step = 'building the cars'; initCars(); elementHook('init'); showVehicle(G.vehicle); refreshBest();
     step = 'building the first stage';
-    selectStage(sbName ? STAGES.length - 1 : 0, ws ? () => openWorkshop(ws) : null);   // ?workshop[=tab]: the Workshop (ui/workshop.js) once the menu's stage is built
+    if (sbName || ws) { showScreen('quick'); selectStage(sbName ? STAGES.length - 1 : 0, ws ? () => openWorkshop(ws) : null); }   // ?workshop[=tab]: the Workshop (ui/workshop.js) once the menu's stage is built
+    else showScreen('title');                                                     // the title, its action scene behind it (ui/title.js)
     requestAnimationFrame(frame);
   } catch (e) {
     console.error(e); window.__bootError((e && e.message ? e.message : String(e)) + ' (while ' + step + ')');

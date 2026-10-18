@@ -4,6 +4,7 @@ import { AudioSys } from './audio/audio.js';
 import { updatePieces } from './render/effects/pieces.js';
 import * as core from './core/index.js';
 import * as flow from './ui/flow.js';
+import { showScreen } from './ui/menu.js';
 import { camera, pcamera, renderer, renderFrame, applyQuality } from './render/renderer.js';
 import { CUT } from './render/materials.js';
 import { carVis, updateCarVisuals } from './render/vehicles.js';
@@ -17,6 +18,7 @@ import { updateFans, updateScenery } from './render/world/scenery.js';
 
 window.__dr = {
   G, core, flow, CUT, AudioSys, get race() { return flow.race; },
+  menu: { show: showScreen },   // menu.show('title' | 'main' | 'quick'): ui/menu.js
   // advance the simulation by `secs` without the real-time loop, then draw one frame
   step(secs) {
     const R = flow.race, W = G.world.W;

@@ -7,7 +7,7 @@ import { hitBarrier, wallAt, wallPos } from './barriers.js';
 import { collideObstacles } from './obstacles.js';
 import { carWear, damageCar } from './damage.js';
 import { BOOST_PAD } from '../elements/boost.js';
-import { wornSurf } from '../features/wear.js';
+import { wornSurf, WEATHER } from '../features/wear.js';
 import { groundAt, project, roadH } from '../track/query.js';
 import { gateStep } from '../features/gates.js';
 import { OPEN, onTrail } from '../elements/open.js';
@@ -112,11 +112,11 @@ export function stepCar(c, dt, W, racing) {
     if (inp.brake > 0) { if (vf > 0.5) a -= inp.brake * PHYS.BRAKE; else if (vf > -12) a -= inp.brake * PHYS.REVERSE; }
     if (c.boost > 0) a += PHYS.BOOST;
     if (c.draft > 0) a += c.draft * PHYS.DRAFT;                        // slipstream: tucked in behind another racer
-    a -= PHYS.DRAG * vf * Math.abs(vf) / (V ? V.top * V.top : 1) + S.drag * vf * (V && rough ? 2 - V.off : 1);
+    a -= PHYS.DRAG * vf * Math.abs(vf) / (V ? V.top * V.top : 1) + S.drag * vf * (V && rough ? 2 - V.off : 1) + (c.aqua ? WEATHER.AQUA_DRAG * c.aqua * vf : 0);
     vf += a * dt;
     if (inp.throttle <= 0 && inp.brake <= 0 && Math.abs(vf) < 1) vf *= Math.max(0, 1 - 3 * dt);
     const hb = inp.handbrake > 0 && Math.abs(vf) > 6;
-    const slick = (c.oilT > 0 ? 0.22 : 1) * (tr.wet && !LOOSE[c.surface] ? 1 - WET.GRIP * tr.wet : 1);   // an oil slick: the tyres barely hold; a wet road (elements/weather.js): less
+    const slick = (c.oilT > 0 ? 0.22 : 1) * (tr.wet && !LOOSE[c.surface] ? 1 - WET.GRIP * tr.wet * (1 - (c.dry || 0) * WEATHER.DRY_GRIP) : 1) * (c.aqua ? 1 - WEATHER.AQUA * c.aqua : 1);   // a drying line gives grip back; standing water takes it (features/wear.js)   // an oil slick: the tyres barely hold; a wet road (elements/weather.js): less
     const vg = V ? V.grip * (rough ? Math.sqrt(V.off) : 1) : 1;
     const latMax = (hb ? PHYS.HB_LAT : S.latMax) * (0.8 + 0.2 * mod) * slick * vg;
     const grip = (hb ? 1.4 : S.grip) * slick * vg;

@@ -15,8 +15,22 @@ const page = await browser.newPage({ viewport: { width: 960, height: 540 } }); p
 const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push(m.text()); });
+// the menu has screens (ui/menu.js: title, main, quick): a click on a menu button first brings up the screen it's on
+const SCREEN_OF = { 'veh-btn': 'quick', 'race-btn': 'quick', 'mode-btn': 'quick', 'league-btn': 'main', 'career-btn': 'main', 'quick-btn': 'main', 'editor-btn': 'main', 'terrain-btn': 'main', 'sketch-btn': 'main', 'notes-btn': 'main', 'lab-btn': 'main', 'mute-btn': 'main', 'wear-btn': 'main' };
+const click0 = page.click.bind(page);
+page.click = async (sel, o) => {
+  const m = /^[#.]([\w-]+)/.exec(sel), want = m && SCREEN_OF[m[1]];
+  if (want) await page.evaluate(w => { const d = window.__dr; if (d.G.state === 'menu' && d.G.screen !== w) d.menu.show(w); }, want);
+  return click0(sel, o);
+};
 await page.goto('file://' + file);
-await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
+await page.waitForFunction(() => window.__dr && window.__dr.G.world && window.__dr.G.title && window.__dr.race, null, { timeout: 60000 });
+await page.waitForTimeout(1500); await page.screenshot({ path: path.join(outDir, 'title.png') });   // the title's action scene (ui/title.js)
+{ const ok = await page.evaluate(() => { const d = window.__dr, r = d.race; return !!(r && r.cars.length >= 4 && d.G.titleCam && !document.getElementById('title-screen').hidden); }); if (!ok) errors.push('title: no action scene behind the title'); }
+await click0('#start-btn', { force: true }); await page.waitForSelector('#main-menu:not([hidden])'); await page.screenshot({ path: path.join(outDir, 'main-menu.png') });
+await click0('#quick-btn'); await page.waitForSelector('#quick-menu:not([hidden])');
+await page.waitForFunction(() => [...document.querySelectorAll('.tcard canvas')].filter(c => c.width > 0).length >= 10, null, { timeout: 60000 }).catch(() => errors.push('quick race: the track outlines were not drawn'));
+{ const g = await page.evaluate(() => ({ groups: document.querySelectorAll('.tg-h').length, cards: document.querySelectorAll('.tcard').length, suit: document.getElementById('veh-suit').textContent })); console.log(`quick race: ${g.cards} track cards in ${g.groups} groups; ${g.suit}`); if (g.groups < 5 || g.cards < 30 || !g.suit) errors.push('quick race: track cards or car fit missing'); }
 await page.screenshot({ path: path.join(outDir, 'menu.png') });
 const n = await page.evaluate(() => window.__dr.core.STAGES.length);
 for (let i = 0; i < n; i++) {

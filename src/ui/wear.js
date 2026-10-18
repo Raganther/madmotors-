@@ -2,8 +2,8 @@ import { G } from '../game.js';
 import { WEAR_OPT } from '../core/features/wear.js';
 import { loadWear, saveWear } from './storage.js';
 
-// The menu's Track wear panel: the parts of core/features/wear.js to switch on and off while we tune them, and how deep
-// and how fast. Kept in this browser; a race takes them from G.wearOpt when it starts (flow.js newRace).
+// The menu's Weather & wear panel: the parts of core/features/wear.js (ruts, rain) to switch on and off while we tune
+// them, and how deep and how fast the ruts go. Kept in this browser; a race takes them from G.wearOpt when it starts (flow.js newRace).
 const $ = id => document.getElementById(id);
 const TOGGLES = [
   ['grooves', 'Grooves', 'the road surface sinks into its ruts'],
@@ -11,6 +11,11 @@ const TOGGLES = [
   ['rain', 'Rain makes it worse', 'a wet stage digs faster, and its worn gravel line turns to mud'],
   ['puddles', 'Puddles', 'water lying in deep ruts on a wet stage'],
   ['aiLines', 'AI drives the ruts', 'on gravel and snow too, not only in bogs'],
+  ['shine', 'Wet shine', 'roads gleam in the rain'],
+  ['spray', 'Tyre spray', 'cars throw up a mist on a wet road'],
+  ['drying', 'Drying line', 'on wet tarmac the line dries out and grips again'],
+  ['drops', 'Raindrops', 'drops splashing on the road'],
+  ['standing', 'Standing water', 'along the edges and in dips: you aquaplane through it'],
 ];
 export function wireWear() {
   const saved = loadWear(), o = G.wearOpt = { ...WEAR_OPT };
@@ -19,7 +24,7 @@ export function wireWear() {
   const show = () => {
     $('wear-opts').innerHTML = TOGGLES.map(([k, name, about]) => `<label><input type="checkbox" data-k="${k}"${o[k] ? ' checked' : ''}> ${name} <small>${about}</small></label>`).join('');
     for (const k of ['depth', 'rate']) { $('wear-' + k).value = o[k]; $('wear-' + k + '-v').textContent = o[k].toFixed(1) + '×'; }
-    const changed = Object.keys(WEAR_OPT).some(k => o[k] !== WEAR_OPT[k]); btn.textContent = changed ? 'Track wear: custom' : 'Track wear';
+    const changed = Object.keys(WEAR_OPT).some(k => o[k] !== WEAR_OPT[k]); btn.textContent = changed ? 'Weather & wear: custom' : 'Weather & wear';
   };
   const set = (k, v) => { o[k] = v; saveWear(o); show(); };
   btn.addEventListener('click', () => { panel.hidden = !panel.hidden; btn.setAttribute('aria-expanded', String(!panel.hidden)); });

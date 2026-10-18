@@ -6,6 +6,7 @@ import { vehicleThumb } from '../render/thumbs.js';
 import { $ } from './dom.js';
 import { STAGES } from '../data/stages/index.js';
 import { saveStageVehicles, saveVehicle } from './storage.js';
+import { bestCarsFor } from './tracks.js';
 
 // The garage: pick your vehicle (data/vehicles.js). A card per vehicle with its picture, what it's like and five
 // stat bars against the standard car. The pick is remembered for the selected stage (G.stageCars, by stage name) and
@@ -19,11 +20,8 @@ export function statsHTML(v) {
   const s = v.veh || STD;
   return BARS.map(([n, f]) => `<div class="gs"><span>${n}</span><i><b style="width:${pct(n, f(s))}%"></b></i></div>`).join('');
 }
-// how well a vehicle suits a stage, from its stats: loose surfaces (and dirt shortcuts) want off-road grip
-const loose = st => st.surface !== 'tarmac';
-const suit = (v, st) => { const s = v.veh || STD; return loose(st) ? s.off * 0.55 + s.grip * 0.25 + s.accel * 0.2 : s.top * 0.45 + s.grip * 0.35 + s.accel * 0.2; };
-/** The vehicles that suit stage i best (top three by suit). */
-export function suited(i) { const st = STAGES[i]; return VEHICLES.slice().sort((a, b) => suit(b, st) - suit(a, st)).slice(0, 3).map(v => v.id); }
+/** The vehicles that suit stage i best: the three quickest on its surface (measured ratings; ui/tracks.js). */
+export function suited(i) { return bestCarsFor(STAGES[i]).map(v => v.id); }
 /** Show vehicle id as the current pick (menu button, garage cards) without saving anything. */
 export function showVehicle(id) {
   const v = vehicleById(id); G.vehicle = v.id;

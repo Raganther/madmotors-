@@ -156,6 +156,13 @@ function overBridge(P) {
 }
 export function updateCamera(dt, snap) {
   if (!G.world) return;
+  if (G.titleCam && G.state === 'menu') {   // the title screen's shot (ui/title.js): a placed cinematic camera, no see-through
+    const T = G.titleCam; G.persp = true; G.perspWas = false;
+    pcamera.fov = T.fov || 40; pcamera.position.set(...T.pos); pcamera.lookAt(...T.look); pcamera.updateProjectionMatrix();
+    camT.set(...T.look); CUT.r.value = 0; CUT.r2.value = 0;
+    camDir.copy(pcamera.position).sub(camT).normalize(); G.camDir = [camDir.x, camDir.y, camDir.z]; CUT.dir.value.copy(camDir);
+    followSun(); return;
+  }
   updateCut(dt, snap);
   let tx, ty, tz, sp = 0;
   if (G.state === 'menu' || !race) {
