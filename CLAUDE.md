@@ -2,6 +2,8 @@
 
 Top-down racer, three.js r128, plain JS modules, Vite. Read README.md for the layout and how to add stages/features.
 The agreed plan for upcoming work is docs/ROADMAP.md (foundations F0-F6, then the game layer G1-G6); keep its status table current.
+Track design has its own vision document, docs/TRACK_DESIGN.md: its pillars, theme bank and destruction patterns guide every
+new or reworked track, and a track's page there is agreed with the user before it's built.
 
 ## Commands
 - `npm run check`: lint + tests (golden included) + a production build. Run before every commit; must pass.
