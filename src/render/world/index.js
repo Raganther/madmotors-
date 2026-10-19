@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { clearWaterMap } from '../water.js';
 import { elementHook } from '../elements/index.js';
 import { G } from '../../game.js';
 import { buildTrack } from '../../core/track/build.js';
@@ -51,7 +52,7 @@ export function buildWorld(idx) {
   addDressing(group, tr, terr, stage);                         // ground cover and roadside furniture (looks only)
   if (tr.arena) { /* a derby arena: no start line to mark */ } else if (tr.loopN) addGantry(group, tr, terr, tr.startIdx, 'START / FINISH');
   else { addGantry(group, tr, terr, tr.startIdx, 'START'); addGantry(group, tr, terr, tr.finishIdx, 'FINISH'); }
-  elementHook('build', group, tr, terr, stage);                 // bridges, river, railways, town, gallery, tunnel, arches
+  clearWaterMap(); elementHook('build', group, tr, terr, stage);                 // bridges, river, railways, town, gallery, tunnel, arches
   addSigns(group, tr, terr);
   G.world = { idx, stage, tr, terr, group, cover: coverMap(tr), W: { tr, terr, surf: stage.surface, armco: !!stage.armco, traffic: stage.traffic } };
   clearSkids(); clearTrails();

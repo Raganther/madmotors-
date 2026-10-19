@@ -5,7 +5,7 @@ import { WEAR } from '../../core/features/wear.js';
 import { HALF } from '../../core/constants.js';
 import { canvasTex, flat } from '../geometry.js';
 import { withCutaway } from '../materials.js';
-import { waterGrid, waterMaterial } from '../water.js';
+import { waterGrid, waterMaterial, markWater } from '../water.js';
 import { withRuts, wuvOf } from '../ruts.js';
 import { wavesOn } from '../waves.js';
 import { race } from '../../ui/flow.js';
@@ -123,6 +123,7 @@ export function addMud(group, tr, terr, stage) {
       pdep.push(1.4, -0.06, -0.06);   // render/water.js depth: deep in the middle, the rim just dry, so the shore sits a little inside it
     }
     pools.push({ x: cx, z: cz, y: yc, r: p.r * 1.35 });
+    for (let u = -p.r; u <= p.r; u += 0.7) for (let v = -p.r; v <= p.r; v += 0.7) if (u * u + v * v < p.r * p.r * 0.6) markWater(cx + tr.tx[p.i] * u * 1.6 + tr.rx[p.i] * v, cz + tr.tz[p.i] * u * 1.6 + tr.rz[p.i] * v, yc);
   }
   if (ppos.length) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(ppos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(puv, 2)); g.setAttribute('depth', new THREE.Float32BufferAttribute(pdep, 1)); g.computeVertexNormals();
@@ -145,8 +146,13 @@ export function addMud(group, tr, terr, stage) {
     const corner = (t, c) => {
       const i = tr.nb0(a, t - EXT), out = t < EXT ? EXT - t : t >= EXT + n ? t - EXT - n + 1 : 0, o = OFF[c];   // out: samples past the splash's ends
       const along = out ? Math.max(0, (out + 2.5 * wob(o, t)) / 5) : 0, side = Math.max(0, (Math.abs(o) - splashReach(tr, i, o) - 0.5) / 3);
-      const [x, , z] = P(i, o, 0), road = Math.abs(o) <= HALF, g = road ? tr.H[i] : terr.at(x, z);
+      const [x, , z] = P(i, o, 0), road = Math.abs(o) <= HALF;
       const lv = splashLevelOf(tr, i) ?? tr.H[i] + SPLASH_UP, y = lv - 1.4 * Math.min(1, along + side);   // level water (the splash's lowest road + SPLASH_UP)
+      // the road as the water sees it: crowned and a little uneven, so where the road climbs out of the water the
+      // shore across it curves and wanders instead of running straight from edge to edge; and where the bank beside it
+      // is dry, the last few metres lift too, so the road's edge isn't the shore either: the water ends in a tongue
+      const sg = Math.sign(o) || 1, [bx, , bz] = P(i, sg * (HALF + 1.5), 0), dryBank = Math.min(1, Math.max(0, (terr.at(bx, bz) - y) / 0.3));
+      const g = road ? tr.H[i] + 0.1 * (1 - (o / HALF) ** 2) + 0.06 * wob(t * 0.9, o * 1.3) + dryBank * Math.max(0, Math.abs(o) - (HALF - 3 + 1.6 * wob(t * 1.3, sg * 7))) * 0.35 : terr.at(x, z);
       return [x, y, z, !road && g < lv - 0.3 - SPLASH_DEEP ? y + 1 : g];   // ground below the pool's bed: a drop, dry (not water hanging over it)
     };
     const m = waterGrid(rowsN, OFF.length, corner, water); if (m) group.add(m);

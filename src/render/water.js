@@ -44,12 +44,23 @@ export function waterMaterial({ color = 0x3E7DAE, deep = null, alpha = 0.9, froz
       diffuseColor.rgb = mix(diffuseColor.rgb, ${v3(FOAM)}, foam * 0.75);
       diffuseColor.a = max(${alpha.toFixed(2)} * mix(0.38, 1.0, smoothstep(0.05, 1.6, dep)) * smoothstep(0.0, 0.1, lap), foam * 0.8);`));
   };
+  mat.userData.frozen = frozen;   // ice: no waves, so not on the water map
   mat.customProgramCacheKey = () => key() + 'depth3' + (frozen ? 'f' : '') + alpha + D.getHex() + '/' + foamK + '/' + scale + (X.key || '');
   return mat;
 }
+// Where the water lies: the surface height over each 1 m cell that's under water, from every sheet built (and the
+// bog puddles, markWater), so render/waves.js knows a car is in water wherever it is: a pool on the grass, a moat, a
+// puddle, not just a ford on the road. Rebuilt with each world (render/world buildWorld clears it).
+const wmap = new Map(), cellOf = (x, z) => Math.floor(x) * 100003 + Math.floor(z);
+export function clearWaterMap() { wmap.clear(); }
+/** Mark water at height y over (x, z). */
+export function markWater(x, z, y) { const k = cellOf(x, z), v = wmap.get(k); if (v === undefined || y > v) wmap.set(k, y); }
+/** The water surface over (x, z), or null where it's dry. */
+export function waterLevelAt(x, z) { const v = wmap.get(cellOf(x, z)); return v === undefined ? null : v; }
 /** A water sheet from a grid of R rows x C columns: corner(r, c) -> [x, y, z, ground] (ground: the height of the land
- *  or road under that corner). Cells that are dry at all four corners are left out; the rest fade by depth. */
-export function waterGrid(R, C, corner, mat, uvScale = 8) {
+ *  or road under that corner). Cells that are dry at all four corners are left out; the rest fade by depth. toWorld:
+ *  maps a corner to world space when the sheet goes in a moved group (waterPool), for the water map. */
+export function waterGrid(R, C, corner, mat, uvScale = 8, toWorld = null) {
   const pos = new Float32Array(R * C * 3), uv = new Float32Array(R * C * 2), dep = new Float32Array(R * C), idx = [];
   for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
     const [x, y, z, g] = corner(r, c), k = r * C + c;
@@ -58,7 +69,11 @@ export function waterGrid(R, C, corner, mat, uvScale = 8) {
   for (let r = 0; r < R - 1; r++) for (let c = 0; c < C - 1; c++) {
     const a = r * C + c, b = a + 1, d = a + C, e = d + 1;
     if (dep[a] <= 0 && dep[b] <= 0 && dep[d] <= 0 && dep[e] <= 0) continue;
-    idx.push(a, d, b, b, d, e);
+    idx.push(a, d, b, b, d, e); if (mat.userData.frozen) continue;
+    for (const q of [[a], [b], [d], [e], [a, b, d, e]]) {   // the corners and the middle, where they're under water
+      if (q.reduce((t, j) => t + dep[j], 0) / q.length <= 0.08) continue;
+      const P = [0, 1, 2].map(n => q.reduce((t, j) => t + pos[j * 3 + n], 0) / q.length), W = toWorld ? toWorld(P) : P; markWater(W[0], W[2], W[1]);
+    }
   }
   if (!idx.length) return null;
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setAttribute('depth', new THREE.BufferAttribute(dep, 1)); g.setIndex(idx);
@@ -75,6 +90,6 @@ export function waterPool(root, terr, [x0, x1, z0, z1], y, mat, step = 1.5) {
   const m = waterGrid(R, C, (r, c) => {
     const x = x0 + (x1 - x0) * c / (C - 1), z = z0 + (z1 - z0) * r / (R - 1); v.set(x, y, z); root.localToWorld(v);
     return [x, y, z, y - (v.y - terr.at(v.x, v.z))];   // the ground, in root's frame
-  }, mat);
+  }, mat, 8, P => { v.set(P[0], P[1], P[2]); root.localToWorld(v); return [v.x, v.y, v.z]; });
   if (m) root.add(m); return m;
 }

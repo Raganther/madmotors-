@@ -3,6 +3,7 @@ import { camT } from './camera.js';
 import { quality } from './renderer.js';
 import { race } from '../ui/flow.js';
 import { G } from '../game.js';
+import { waterLevelAt } from './water.js';
 
 // Water that answers the cars (render/water.js reads it): a wave grid N x N cells of CELL m that follows the camera,
 // run as a simple wave equation. Each wheel in the water pushes the surface down where it is (more the faster it
@@ -39,10 +40,11 @@ function push(x, z, amt, r = 1) {   // press the surface down round (x, z): a li
     const k = J * N + I; h[k] = Math.max(-RANGE, h[k] - amt * (1 - d / (r + 1)));
   }
 }
-// is car c in water (a splash, standing water, an open-country stream, a river)?
+// is car c in water (a splash on the road or the pool beside it, standing water, a puddle, a moat, a stream, a river)?
 function wet(c, W) {
   if (!c.onGround) return false;
   if (c.surface === 'ford' || c.aqua > 0.1) return true;
+  const y = waterLevelAt(c.x, c.z); if (y !== null && c.y < y) return true;     // anywhere render/water.js put water
   const rv = W.tr.river; return !!(rv && !rv.frozen && c.y < rv.level + 0.35);
 }
 export function updateWaves(dt) {
