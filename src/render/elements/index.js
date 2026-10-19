@@ -40,6 +40,7 @@ import { addArena } from './arena.js';
 import { addStructures, newStructuresRace, updateStructures } from './structures.js';
 import { addCrumbles, newCrumbleRace, updateCrumbles } from './crumble.js';
 import { addAmbient, updateAmbient } from './ambient.js';
+import { clearWaves, updateWaves } from '../waves.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
 const river = { name: 'river', build(group, tr, terr) { addRiver(group, tr, terr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
@@ -101,5 +102,7 @@ const ambient = { name: 'ambient', build(group, tr, terr, stage) { addAmbient(gr
 const structures = { name: 'structures', build(group, tr, terr) { addStructures(group, tr, terr); }, newRace() { newStructuresRace(); }, update(dt) { updateStructures(dt); } };   // destructible buildings (stage.buildings)
 const crumble = { name: 'crumble', build(group, tr) { addCrumbles(group, tr); }, newRace() { newCrumbleRace(); }, update() { updateCrumbles(); } };   // timber bridges that wear through
 
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather, ambient, structures, crumble];
+// the water's waves (render/waves.js): the cars stir every water surface
+const waves = { name: 'waves', newRace() { clearWaves(); }, update(dt) { updateWaves(dt); } };
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather, ambient, structures, crumble, waves];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

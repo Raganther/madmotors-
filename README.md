@@ -104,7 +104,10 @@ ground is higher). So the ground makes the shoreline: shape the terrain (a river
 follows it. Standing water is always level: a splash's water is flat at its lowest road + `SPLASH_UP` (`splashLevelOf`;
 on a splash laid on a slope only the low end is wet, and only there is it a ford for the cars), rain only leaves water
 along the edges where the road is near level or at the bottom of a hollow, and puddles in ruts and bogs only form on
-the flat. `npm run water-audit` lists every stage's water and anything on a slope; tests/water.test.js keeps it so. A water splash scoops a pool into the ground either side of the road (`splashBed` in core/elements/mud.js,
+the flat. `npm run water-audit` lists every stage's water and anything on a slope; tests/water.test.js keeps it so. The water answers the cars: `render/waves.js` runs a wave grid (0.5 m cells, 64 m across)
+round the camera; every wheel in water ploughs it (a trough, a bow wave, a wake), driving in drops a surge that runs out
+to the shore, and the water material lifts its surface by it, moves its shoreline with it (up the bank on a crest, back
+in a trough) and froths where it's churned. Looks only; off on Graphics: Low. A water splash scoops a pool into the ground either side of the road (`splashBed` in core/elements/mud.js,
 so a car off the road drops into it); new water anywhere should use `waterGrid` / `waterMaterial`, never a flat plane
 with its own edges.
 

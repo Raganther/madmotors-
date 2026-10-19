@@ -7,6 +7,7 @@ import { canvasTex, flat } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { waterGrid, waterMaterial } from '../water.js';
 import { withRuts, wuvOf } from '../ruts.js';
+import { wavesOn } from '../waves.js';
 import { race } from '../../ui/flow.js';
 
 // Mud visuals ('mud' element): bogs get a churned brown layer over the road with glossy puddles; a water splash gets
@@ -80,7 +81,7 @@ function waterAt(c) {
 export function updateMud(dt) {
   if (ripple) ripple.offset.x -= dt * 0.12;
   for (const r of rips) { if (r.t >= RIP_LIFE) continue; r.t += dt; const k = Math.min(1, r.t / RIP_LIFE), e = 1 - Math.pow(1 - k, 2.2); r.m.scale.setScalar(0.3 + e * r.size); r.m.material.opacity = 0.45 * (1 - k) * (1 - k); if (k >= 1) r.m.visible = false; }
-  if (rips.length && race && wtr) for (const c of race.cars.concat(race.traffic || [])) {
+  if (rips.length && race && wtr && !wavesOn()) for (const c of race.cars.concat(race.traffic || [])) {   // (with the waves running the water itself ripples: render/waves.js)
     const sp = Math.hypot(c.vx, c.vz); if (!c.onGround || sp < 1.5) continue;
     const y = waterAt(c); if (y === null) { wet.delete(c); continue; }
     const acc = (wet.get(c) || 0) + sp * dt; if (acc < 2.2) { wet.set(c, acc); continue; }

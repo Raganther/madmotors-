@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { withCutaway } from './materials.js';
+import { WAVE, WAVE_GLSL } from './waves.js';
 
 // Water, every open surface of it (rivers, the sea, water splashes, open-country streams): a sheet that knows how deep
 // it is over the ground at each corner (`depth`, metres), and a material that draws it by that depth. Clear and pale
@@ -17,18 +18,25 @@ export function waterMaterial({ color = 0x3E7DAE, deep = null, alpha = 0.9, froz
   const v3 = c => `vec3(${c.r.toFixed(3)}, ${c.g.toFixed(3)}, ${c.b.toFixed(3)})`;
   mat.onBeforeCompile = sh => {
     base(sh);
-    sh.vertexShader = 'attribute float depth;\nvarying float vDepth;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vDepth = depth;');
-    sh.fragmentShader = 'varying float vDepth;\n' + sh.fragmentShader.replace('#include <color_fragment>', frozen ? `#include <color_fragment>
+    if (!frozen) Object.assign(sh.uniforms, WAVE);
+    sh.vertexShader = 'attribute float depth;\nvarying float vDepth;\n' + (frozen ? '' : WAVE_GLSL) + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vDepth = depth;' + (frozen ? '' : `
+  transformed.y += waveAt((modelMatrix * vec4(position, 1.0)).xz);   // the cars' waves lift and drop the surface (render/waves.js)`));
+    sh.fragmentShader = 'varying float vDepth;\n' + (frozen ? '' : WAVE_GLSL) + sh.fragmentShader.replace('#include <color_fragment>', frozen ? `#include <color_fragment>
       if (vDepth <= 0.0) discard;` : `#include <color_fragment>
-      if (vDepth <= 0.0) discard;
+      // the cars' waves (render/waves.js): the water rides up the bank on a crest and draws back in a trough, the
+      // churned water froths, and the slopes of the waves catch the light
+      float wh = waveAt(vCutW.xz), wgx = waveAt(vCutW.xz + vec2(0.5, 0.0)) - waveAt(vCutW.xz - vec2(0.5, 0.0)), wgz = waveAt(vCutW.xz + vec2(0.0, 0.5)) - waveAt(vCutW.xz - vec2(0.0, 0.5));
+      if (vDepth + wh * 1.6 <= 0.0) discard;
       // the shore wobbles a little with time (the water lapping), foam rides just inside it
-      float lap = vDepth + 0.035 * sin(vCutW.x * 0.9 + vCutW.z * 0.7 + uTime * 1.8) * sin(vCutW.z * 1.3 - uTime * 1.1);
-      float foam = smoothstep(0.0, 0.05, lap) * (1.0 - smoothstep(0.07, 0.2, lap));
+      float lap = vDepth + wh * 1.6 + 0.035 * sin(vCutW.x * 0.9 + vCutW.z * 0.7 + uTime * 1.8) * sin(vCutW.z * 1.3 - uTime * 1.1);
+      float churn = smoothstep(0.03, 0.12, abs(wh) + 0.5 * length(vec2(wgx, wgz)));
+      float foam = max(smoothstep(0.0, 0.05, lap) * (1.0 - smoothstep(0.07 + churn * 0.15, 0.2 + churn * 0.35, lap)), churn * 0.3);
+      diffuseColor.rgb *= clamp(1.0 + (wgx * 0.9 - wgz * 0.6) * 6.0, 0.55, 1.5);   // crests lit, troughs in shade
       diffuseColor.rgb = mix(diffuseColor.rgb * 1.12, ${v3(D)}, smoothstep(0.25, 2.2, vDepth));
       diffuseColor.rgb = mix(diffuseColor.rgb, ${v3(FOAM)}, foam * 0.75);
       diffuseColor.a = max(${alpha.toFixed(2)} * mix(0.38, 1.0, smoothstep(0.05, 1.6, vDepth)) * smoothstep(0.0, 0.1, lap), foam * 0.8);`);
   };
-  mat.customProgramCacheKey = () => key() + 'depth' + (frozen ? 'f' : '') + alpha + D.getHex();
+  mat.customProgramCacheKey = () => key() + 'depth2' + (frozen ? 'f' : '') + alpha + D.getHex();
   return mat;
 }
 /** A water sheet from a grid of R rows x C columns: corner(r, c) -> [x, y, z, ground] (ground: the height of the land
