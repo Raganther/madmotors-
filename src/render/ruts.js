@@ -76,19 +76,12 @@ export function addRuts(group, tr, stage, rd) {
     for (let c = 0; c < C - 1; c++) idx.push(b + c, b + C + c, b + c + 1, b + c + 1, b + C + c, b + C + c + 1);
   }
   if (!idx.length) return;
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('wuv', new THREE.Float32BufferAttribute(wuv, 4)); g.setIndex(idx); g.computeVertexNormals();
-  const mat = new THREE.MeshLambertMaterial({ color: 0x3C4A50, emissive: 0x0C1216, transparent: true, depthWrite: false, side: THREE.DoubleSide });
-  mat.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, U);
-    sh.vertexShader = 'attribute vec4 wuv;\nvarying vec2 vWuv;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWuv = wuv.xy;');
-    sh.fragmentShader = 'uniform sampler2D uRut;\nvarying vec2 vWuv;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
-      float al = vWuv.y * ${tr.NB.toFixed(1)}, dip = 0.5 + 0.5 * sin(al * 0.31) * sin(al * 0.117 + 1.7);   // water gathers in the dips: patches every 10-20 m
-      float dpt = -${RUT.PUDDLE.toFixed(3)} - 0.07 * (1.0 - dip) - (texture2D(uRut, vWuv).r * 255.0 - 128.0) / 127.0 * ${RANGE.toFixed(2)};
-      if (dpt <= 0.0) discard;
-      diffuseColor.rgb = mix(diffuseColor.rgb * 1.15, diffuseColor.rgb * 0.6, smoothstep(0.0, 0.06, dpt));   // brown-grey at the edge, dark in the middle
-      diffuseColor.a = smoothstep(0.0, 0.025, dpt) * 0.72;`);
-  };
-  mat.customProgramCacheKey = () => 'puddles' + tr.NB;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('wuv', new THREE.Float32BufferAttribute(wuv, 4)); g.setAttribute('depth', new THREE.Float32BufferAttribute(new Float32Array(pos.length / 3), 1)); g.setIndex(idx); g.computeVertexNormals();
+  // the shared water (render/water.js), its depth read off the ruts under it; a few cm of water shaded as if deeper
+  const mat = waterMaterial({ color: 0x46545A, deep: 0x1E2629, alpha: 0.75, foam: 0.3, scale: 30, extra: {
+    uniforms: U, key: 'rut' + tr.NB, vert: 'attribute vec4 wuv;\nvarying vec2 vWuv;\n', vmain: '\n  vWuv = wuv.xy;', frag: 'uniform sampler2D uRut;\nvarying vec2 vWuv;\n',
+    fmain: `float al = vWuv.y * ${tr.NB.toFixed(1)}, dip = 0.5 + 0.5 * sin(al * 0.31) * sin(al * 0.117 + 1.7);   // water gathers in the dips: patches every 10-20 m
+      dep += -${RUT.PUDDLE.toFixed(3)} - 0.07 * (1.0 - dip) - (texture2D(uRut, vWuv).r * 255.0 - 128.0) / 127.0 * ${RANGE.toFixed(2)};` } });
   const m = new THREE.Mesh(g, mat); m.renderOrder = 1; m.visible = false; group.add(m); vis.puddles = m;
 }
 export function newRutsRace() { if (!vis) return; vis.data.fill(128); vis.tex.needsUpdate = true; vis.seen = -1; }

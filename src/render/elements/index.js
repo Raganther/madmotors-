@@ -74,7 +74,7 @@ const rockfall = { name: 'rockfall', init: initRockVis, update(dt, now, fxDt) { 
 const hazards = { name: 'hazards', init: initHazardVis, update(dt, now) { updateHazardVis(dt, now); } };
 const falls = { name: 'falls', build(group, tr, terr) { addFalls(group, tr, terr); }, update(dt, now) { updateFalls(dt, now); } };
 
-const drawbridge = { name: 'drawbridge', build(group, tr) { addDrawbridges(group, tr); }, update(dt, now) { updateDrawbridges(dt, now); } };
+const drawbridge = { name: 'drawbridge', build(group, tr, terr) { addDrawbridges(group, tr, terr); }, update(dt, now) { updateDrawbridges(dt, now); } };
 
 const mill = { name: 'mill', build(group, tr, terr) { addMill(group, tr, terr); } };
 
@@ -100,7 +100,7 @@ const weather = { name: 'weather', build(group, tr, terr, stage) { addWeather(gr
 const ambient = { name: 'ambient', build(group, tr, terr, stage) { addAmbient(group, terr, stage); }, update(dt, now) { updateAmbient(dt, now); } };   // a TV helicopter and birds (looks only)
 
 const structures = { name: 'structures', build(group, tr, terr) { addStructures(group, tr, terr); }, newRace() { newStructuresRace(); }, update(dt) { updateStructures(dt); } };   // destructible buildings (stage.buildings)
-const crumble = { name: 'crumble', build(group, tr) { addCrumbles(group, tr); }, newRace() { newCrumbleRace(); }, update() { updateCrumbles(); } };   // timber bridges that wear through
+const crumble = { name: 'crumble', build(group, tr, terr) { addCrumbles(group, tr, terr); }, newRace() { newCrumbleRace(); }, update() { updateCrumbles(); } };   // timber bridges that wear through
 
 // the water's waves (render/waves.js): the cars stir every water surface
 const waves = { name: 'waves', newRace() { clearWaves(); }, update(dt) { updateWaves(dt); } };

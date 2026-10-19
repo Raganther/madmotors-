@@ -97,7 +97,8 @@ weapons on a figure of eight over its own stone bridge). They set `soft: true`, 
 walls on tight bends, so a mistake costs a second. The four downhill runs moved up to Club as the Downhill Classic
 cup. A stage's `river` can take a `color` (a lighter tint for a pond or the sea).
 
-All open water (rivers, the sea, ponds, water splashes, open-country streams) is drawn by `src/render/water.js`: a sheet
+All water (rivers, the sea, ponds, water splashes, open-country streams, the moats and canals under drawbridges and
+timber bridges, standing rain water, and the puddles in bogs and ruts) is drawn by `src/render/water.js`: a sheet
 that knows its depth over the ground at every corner, and a material that draws it by that depth (clear and pale in the
 shallows so the land slips away under it, a lapping line of foam at the edge, dark where it's deep, nothing where the
 ground is higher). So the ground makes the shoreline: shape the terrain (a river's bed, a splash's pool) and the water
@@ -108,8 +109,9 @@ the flat. `npm run water-audit` lists every stage's water and anything on a slop
 round the camera; every wheel in water ploughs it (a trough, a bow wave, a wake), driving in drops a surge that runs out
 to the shore, and the water material lifts its surface by it, moves its shoreline with it (up the bank on a crest, back
 in a trough) and froths where it's churned. Looks only; off on Graphics: Low. A water splash scoops a pool into the ground either side of the road (`splashBed` in core/elements/mud.js,
-so a car off the road drops into it); new water anywhere should use `waterGrid` / `waterMaterial`, never a flat plane
-with its own edges.
+so a car off the road drops into it); new water anywhere should use `waterGrid` / `waterMaterial` (`waterPool` for
+level water filling a cut under a piece of road), never a flat plane with its own edges. Shallow water whose bed moves
+(the rut puddles) passes `scale` and an `extra` depth term read from its own texture; `foam` sets how white the shore is.
 
 **Derby** (stages 23-26: Scrapyard Bowl, Mud Pit, The Stadium, and the Banger Oval): `src/core/modes/derby.js`, the
 mode `createRace(W, defs, { mode: 'derby' })`. No laps, no finish line: a wrecked car is out for good (a shell to drive

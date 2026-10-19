@@ -107,10 +107,10 @@ export function addMud(group, tr, terr, stage) {
   }
   const road = new THREE.Color(stage.colors.road);
   bogs = mudRuns(tr).map(([a, b]) => bogMesh(group, tr, a, b, road));
-  // puddles: ragged pools lying level on the flat parts of the bogs
-  // in the same moving water as the splashes, darker where it's deeper in the middle
+  // puddles: ragged pools lying level on the flat parts of the bogs, in the shared water (render/water.js): a soft
+  // muddy shore, darker where it's deeper in the middle, and the cars' waves
   pools = []; wet = new Map(); wtr = tr; makeRipples(group);
-  const ppos = [], puv = [], pcol = [], deep = new THREE.Color(0x2A4254), rim = new THREE.Color(0x56707E), K = 14;
+  const ppos = [], puv = [], pdep = [], K = 14;
   for (const p of puddles) {
     if (Math.abs(tr.H[tr.nb0(p.i, 5)] - tr.H[tr.nb0(p.i, -5)]) / 10 > 0.03) continue;   // water doesn't stand on a slope: only on the flat bits of a bog
     const [cx, , cz] = P(p.i, p.lat, 0), yc = tr.H[p.i] + 0.2, pt = k => {   // over the bog's churned surface (up to 0.19 m up), and level
@@ -120,13 +120,13 @@ export function addMud(group, tr, terr, stage) {
     for (let k = 0; k < K; k++) {
       const a = pt(k), b = pt(k + 1);
       ppos.push(cx, yc, cz, ...b, ...a); puv.push(cx / 8, cz / 8, b[0] / 8, b[2] / 8, a[0] / 8, a[2] / 8);
-      pcol.push(deep.r, deep.g, deep.b, rim.r, rim.g, rim.b, rim.r, rim.g, rim.b);
+      pdep.push(1.4, -0.06, -0.06);   // render/water.js depth: deep in the middle, the rim just dry, so the shore sits a little inside it
     }
     pools.push({ x: cx, z: cz, y: yc, r: p.r * 1.35 });
   }
   if (ppos.length) {
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(ppos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(puv, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(pcol, 3)); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, map: rippleTex(), emissive: 0x0E1A24, transparent: true, opacity: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), false, { cut: false, cloud: true, water: true }));
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(ppos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(puv, 2)); g.setAttribute('depth', new THREE.Float32BufferAttribute(pdep, 1)); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, waterMaterial({ color: 0x4E6674, deep: 0x26394A, alpha: 0.92, foam: 0.35, map: rippleTex() }));
     m.renderOrder = 1; group.add(m);
   }
   // water splashes: a level sheet of water per run (core elements/mud.js splashLevelOf: the lowest road under it +
