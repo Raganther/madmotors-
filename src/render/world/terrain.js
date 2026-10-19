@@ -17,7 +17,8 @@ export function makeTerrainMesh(terr, tr, stage) {
     const dz = (h[Math.min(rows - 1, r + 1) * cols + c] - h[Math.max(0, r - 1) * cols + c]) / (2 * S);
     const nv = tr.noise.fbm(x * 0.03 + 40, z * 0.03, 3) * 0.5 + 0.5;
     t.copy(cA).lerp(cB, clamp(nv * 1.5 - 0.25, 0, 1));
-    const steep = smoothstep(0.5, 0.95, Math.hypot(dx, dz));
+    const slope = Math.hypot(dx, dz), steep = smoothstep(0.5, 0.95, slope);
+    t.lerp(cD, 0.22 * smoothstep(0.22, 0.5, slope) * (1 - steep));        // banks a little earthy before they turn to rock
     t.lerp(cR, steep);
     if (stage.alpine) {
       const al = stage.alpine;
@@ -31,6 +32,9 @@ export function makeTerrainMesh(terr, tr, stage) {
     let up = 0, down = 0;
     for (let rr = -2; rr <= 2; rr++) for (let cc = -2; cc <= 2; cc++) { const hh = h[clamp(r + rr, 0, rows - 1) * cols + clamp(c + cc, 0, cols - 1)] - y; if (hh > up) up = hh; if (-hh > down) down = -hh; }
     t.multiplyScalar(1 - 0.32 * smoothstep(2.5, 12, up) * (1 - steep * 0.5) + 0.12 * smoothstep(2.5, 10, down) * (1 - steep));
+    // and the small shapes: a hollow or a gully a shade darker (less sky reaches into it), a crest or a hump a shade lighter
+    let ring = 0; for (const [rr, cc] of [[-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [-1, 1], [1, -1], [1, 1]]) ring += h[clamp(r + rr, 0, rows - 1) * cols + clamp(c + cc, 0, cols - 1)];
+    t.multiplyScalar(1 - clamp((ring / 8 - y) * 0.07, -0.07, 0.12));
     const d = dist[i]; if (d < HALF + 5) t.lerp(cD, 1 - smoothstep(HALF + 2, HALF + 5, d));
     t.offsetHSL(0, 0, (rnd() - 0.5) * 0.035);
     col[i * 3] = t.r; col[i * 3 + 1] = t.g; col[i * 3 + 2] = t.b;
@@ -42,13 +46,17 @@ export function makeTerrainMesh(terr, tr, stage) {
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
-  // normals half way between per-face (the faceted look) and smooth (light rolls across the slopes instead of breaking
-  // at every triangle): the ground stays low-poly but loses the crinkled-paper look up close
+  // normals between per-face (the faceted look) and smooth (light rolls across the slopes instead of breaking at every
+  // triangle): the ground stays low-poly but loses the crinkled-paper look up close
   g.computeVertexNormals(); const fg = g.toNonIndexed(); g.dispose();
   if (terr.holes) { const p = fg.attributes.position.array; terr.holes.forEach((v, q) => { if (v) for (let j = q * 18 + 1; j < q * 18 + 18; j += 3) p[j] = Math.min(p[j], terr.holeY[q]); }); }   // tunnel mouths (core terrain.js)
   const sn = fg.attributes.normal.array.slice(); fg.computeVertexNormals(); const nn = fg.attributes.normal.array;
-  for (let i = 0; i < nn.length; i += 3) { const x = nn[i] * 0.45 + sn[i] * 0.55, y = nn[i + 1] * 0.45 + sn[i + 1] * 0.55, z = nn[i + 2] * 0.45 + sn[i + 2] * 0.55, l = Math.hypot(x, y, z) || 1; nn[i] = x / l; nn[i + 1] = y / l; nn[i + 2] = z / l; }
-  const mesh = chunkMesh(fg, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true }), true, { cloud: true, grain: 0.1, strata: stage.strata || 3.4 }), 60, true);   // every stage's cliffs get rock bands (mesas set their own)
+  // lit per pixel (Phong with no shine) except on Graphics: Low, so the light rolls smoothly over a hill instead of
+  // stepping from corner to corner of each triangle; then the normals can lean further to smooth (a hint of facet stays)
+  const perPixel = quality !== 'low', F = perPixel ? 0.25 : 0.45;
+  for (let i = 0; i < nn.length; i += 3) { const x = nn[i] * F + sn[i] * (1 - F), y = nn[i + 1] * F + sn[i + 1] * (1 - F), z = nn[i + 2] * F + sn[i + 2] * (1 - F), l = Math.hypot(x, y, z) || 1; nn[i] = x / l; nn[i + 1] = y / l; nn[i + 2] = z / l; }
+  const mat = perPixel ? new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0x000000, shininess: 1 }) : new THREE.MeshLambertMaterial({ vertexColors: true });
+  const mesh = chunkMesh(fg, withCutaway(mat, true, { cloud: true, grain: 0.1, strata: stage.strata || 3.4 }), 60, true);   // every stage's cliffs get rock bands (mesas set their own)
   // cliffs and banks throw shadows on the ground below them (the rest of the height cue from the top-down cameras); not on
   // Graphics: Low (applyQuality flips it)
   // only chunks with real relief in them: flat ground can't shade anything, and every caster is drawn again for the sun

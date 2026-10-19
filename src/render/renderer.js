@@ -31,6 +31,8 @@ export function applyQuality() {
   if (Math.abs(renderer.getPixelRatio() - pr) > 0.01) renderer.setPixelRatio(pr);
   if (sun.shadow.mapSize.x !== Q.shadow) { sun.shadow.mapSize.set(Q.shadow, Q.shadow); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
   FX.grain.value = quality === 'low' ? 0 : 1;                                        // surface detail off on Low
+  const st = quality === 'low' ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;          // soft-edged shadows, but on Low
+  if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; renderer.shadowMap.needsUpdate = true; }
   scene.traverse(o => { if (o.userData.terrain) o.castShadow = quality !== 'low'; });   // terrain shadows off on Low
   const b = $('gfx-btn'); if (b) b.textContent = 'Graphics: ' + Q.label;
 }

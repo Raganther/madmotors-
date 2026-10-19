@@ -29,8 +29,9 @@ import { blastStructures, solidAt as wallAt } from './structures.js';
 // rubble about. A missile that flies into a building or a breakable goes off there.
 //   mortar   a shell lobbed high up the road: it lands MORTAR_FLIGHT s later where the car ahead will be (or MORTAR_AHEAD
 //            m up the road), with a ring on the road showing where; the blast throws, slows and dents everyone within
-//            MORTAR_R m and leaves a crater in the road. Craters (missiles that miss leave small ones too) stay for the
-//            rest of the race: a car driving into one is jolted up, scrubbed and knocked off its line.
+//            MORTAR_R m and leaves a crater in the road. Craters (missiles that miss leave small ones too) are real holes
+//            (features/dents.js; deeper in a jump's ramp) and stay for CRATER_LIFE s: a car driving into one drops in,
+//            is jolted up over the lip, scrubbed and knocked off its line.
 // Crates are placed for everyone, not just the leader: each racer gets one offered 60-100 m up the road on its own
 // timer (quicker the further back it is), and a crate nobody can reach any more is cleared away.
 // Door bash (Road Rash with doors), always there: one button, the door on the side with a car beside you swings open;
@@ -59,7 +60,7 @@ export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_
   CRUSH_V: 7.5, CRUSH_R: 7, CRUSH_DMG: 6.5, CRUSH_SCRUB: 0.6,
   JINGLE_T: 2.5, JINGLE_R: 22, JINGLE_DUTY: 0.33,
   MORTAR_R: 5.5, MORTAR_FLIGHT: 1.7, MORTAR_RANGE: 130, MORTAR_AHEAD: 60, MORTAR_DMG: 4, MORTAR_POP: 5, MORTAR_PUSH: 7, MORTAR_SCRUB: 0.55, SHELLS: 1, SHELL_GAP: 0.3,
-  CRATER_R: 3.1, CRATER_LIFE: 50, CRATER_MAX: 14, CRATER_HOP: 2.6, CRATER_SCRUB: 0.92, CRATER_SPIN: 1.2, CRATER_KICK: 2.2, FIZZLE_CRATER: 1.7,
+  CRATER_R: 3.1, CRATER_DEEP: 0.15, CRATER_JUMP: 1.5, CRATER_LIFE: 120, CRATER_MAX: 14, CRATER_HOP: 1.6, CRATER_SCRUB: 0.92, CRATER_SPIN: 1.2, CRATER_KICK: 2.2, FIZZLE_CRATER: 1.7,
   FLARE_COOL: 20, SHIELD_COOL: 18, SHIELD_ON: 1, MAGNET: 2.4, SIG_ODDS: 1.5,
   MINE_ARM: 0.8, MINE_FWD: 0.5, MINE_UP: 3.4, MINE_BOUNCE: 0.4, MINE_GRIP: 3.5, MINE_TRIG: 3, MINE_BLAST: 5, MINE_DMG: 6.5, MINE_POP: 6.5, MINE_SLOW: 0.42, MINE_LIFE: 40,
   BLAST_MISSILE: [5, 48], BLAST_MINE: [5, 40], BLAST_MORTAR: [6, 50], BLAST_PULSE: 26, BLAST_CRUSH: 36 };   // scenery blasts: [radius m, power (as a car's impact)]
@@ -410,10 +411,14 @@ function aimShell(R, W, c, q, n) {
   const lat = clamp(T ? onRoad(tr, T) : onRoad(tr, c), -HALF + 1, HALF - 1);
   return { s, lat, tgt: t, x0: c.x, y0: c.y + 1.6, z0: c.z };
 }
+// a crater: a real hole in the ground (features/dents.js: groundAt rides it), deeper in the face of a jump (it blows a
+// chunk out of the ramp); not in a deck or a tunnel floor. surf: what it's dug in, for its looks (render/craters.js)
 function addCrater(R, W, s, lat, r) {
-  const tr = W.tr, i = Math.round(s); if (i < 1 || i >= tr.xs.length - 2 || tr.tunnel[i] || (tr.bridge && tr.bridge[i]) || tr.jump[i]) return;   // not on a deck or a ramp
-  const p = roadPos(tr, s, lat, 0), C = R.wpn.craters;
-  C.push({ id: R.wpn.next++, s, lat, x: p.x, y: p.y, z: p.z, r, t: 0, in: [] }); if (C.length > WPN.CRATER_MAX) C.shift();
+  const tr = W.tr, i = Math.round(s); if (i < 1 || i >= tr.xs.length - 2 || tr.tunnel[i] || (tr.bridge && tr.bridge[i])) return;
+  const b = tr.bi(i); if (['gap', 'drawbridge', 'crumble', 'ferry'].some(e => tr[e] && tr[e][b])) return;   // nothing to dig: a drop, a deck, a barge
+  const p = roadPos(tr, s, lat, 0), C = R.wpn.craters, m = tr.mud && tr.mud[b];
+  const surf = m === 1 ? 'mud' : m === 2 ? 'splash' : tr.ice && tr.ice[b] ? 'ice' : tr.dirt && tr.dirt[b] ? 'gravel' : W.surf;
+  C.push({ id: R.wpn.next++, s, lat, x: p.x, y: p.y, z: p.z, r, dep: r * WPN.CRATER_DEEP * (tr.jump[i] ? WPN.CRATER_JUMP : 1), jump: !!tr.jump[i], surf, t: 0, in: [] }); if (C.length > WPN.CRATER_MAX) C.shift();
 }
 function shells(R, W, dt) {
   const S = R.wpn, tr = W.tr;
@@ -619,7 +624,7 @@ function aiWeapons(R, W, dt) {
 export const feature = {
   name: 'weapons',
   init(R, W) {
-    R.missiles = []; if (W) W.craters = null; if (!R.weapons) return;
+    R.missiles = []; if (W) W.craters = W.dents = null; if (!R.weapons) return;
     R.wpn = { rng: mulberry32(R.cars.length * 104729 + 3), next: 0, crates: [], bullets: [], slicks: [], hooks: [], cement: [], strips: [], shells: [], craters: [], mines: [], drums: [] };
     R.cars.forEach((c, k) => {
       const load = c.def.wpn || null;   // levels and gear (data/weapons.js); the signature weapon comes with the vehicle
@@ -636,6 +641,7 @@ export const feature = {
       if (inp.door) { if (racing && !(w.doorCool > 0) && live(c)) swingDoor(R, c, doorSide(R, c)); inp.door = 0; }
     }
     if (racing) { locking(R, dt); crates(R, W, dt); aiWeapons(R, W, dt); }
+    W.dents = R.wpn.craters;                                                    // the holes the cars ride (track/query.js groundAt)
     W.craters = R.wpn.craters.concat(R.wpn.shells.filter(sh => !(sh.wait > 0) && sh.t > WPN.MORTAR_FLIGHT * 0.3));   // what the AI steers round (sim/ai.js): craters, and where shells are coming down
     flyMissiles(R, W, dt); shells(R, W, dt); guns(R, W, dt); drums(R, W, dt); slicks(R, W, dt); hooks(R, W, dt); signatures(R, W, dt); mines(R, W, dt); doors(R, dt);
   }

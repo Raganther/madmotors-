@@ -79,5 +79,7 @@ export const WAVE_GLSL = `uniform sampler2D uWave; uniform vec3 uWaveO; uniform 
 float waveAt(vec2 p) { vec2 uv = (p - uWaveO.xy) / uWaveO.z; float edge = smoothstep(0.0, 0.08, uv.x) * smoothstep(1.0, 0.92, uv.x) * smoothstep(0.0, 0.08, uv.y) * smoothstep(1.0, 0.92, uv.y);
   return uWaveOn * edge * (texture2D(uWave, uv).r * 255.0 - 128.0) / 127.0 * ${RANGE.toFixed(2)}; }
 `;
+/** A blast in the water (render/weapons.js): a big dent all at once, a surge that runs out to the shore. */
+export function pushWave(x, z, amt, r) { if (!h || !WAVE.uWaveOn.value) return; follow(); push(x, z, amt, r); quiet = 0; }
 /** Are the waves running (so the old ripple rings can stand down)? */
 export const wavesOn = () => WAVE.uWaveOn.value > 0;

@@ -30,8 +30,13 @@ first: holding one, keep the car ahead in your sights and corner brackets close 
 level 2) until they flash red: fired locked it homes in on that car, fired early it flies straight down the road
 (`lockedOn`; the target hears the lock and gets a warning). The **mortar** lobs a shell high onto where the car ahead
 will be (a red ring on the road shows where it's coming down, so it can be dodged); the blast throws everyone near
-and leaves a **crater** in the road (missiles that miss leave small ones) that jolts, scrubs and knocks aside any car
-driving into it for the rest of the race, and the AI steers round craters and rings (`W.craters`, `sim/ai.js`). Nuances (render only): tyres print the road for a while out of oil (black), wet cement (grey) and
+and leaves a **crater** in the road (missiles that miss leave small ones): a real hole (`core/features/dents.js`, which
+`groundAt` adds to the ground; deeper in the face of a jump, which loses a chunk) that a car drops into and is jolted,
+scrubbed and knocked aside by, for `CRATER_LIFE` s; the AI steers round craters and rings (`W.craters`, `sim/ai.js`).
+`render/craters.js` draws each one as a bowl that follows the ground (pulled towards the camera along the line of sight,
+so it wins over the road and terrain it's dug into from any camera), a spray of thrown-out ground and chunks of what it
+was dug in (broken tarmac, stones, sand, snow, ice, mud); the blast throws up the same, and in water it's a column of
+spray and a surge of waves (`render/waves.js` `pushWave`) with the hole left under the water. Nuances (render only): tyres print the road for a while out of oil (black), wet cement (grey) and
 water (dark), `render/effects/trails.js`; an oiled or cemented car is coated (`dirt.js` `coat`), oil and water drip off
 it, the water cannon rinses the muck off, a car hit by a missile, shell or mine trails smoke, a stinger leaves a rim
 sparking, and mines tumble end over end and wobble as they settle. Blasts reach the scenery: a missile that hits or runs out, a mine, a mortar
