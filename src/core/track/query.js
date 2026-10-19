@@ -5,7 +5,7 @@ import { ferryDeckAt } from '../features/ferry.js';
 import { drawDeckAt } from '../features/drawbridge.js';
 import { crumbleDeckAt } from '../features/crumble.js';
 import { rutGround } from '../features/wear.js';
-import { dentAt, heapAt } from '../features/dents.js';
+import { dentAt } from '../features/dents.js';
 
 export function project(tr, x, z, hint, back, fwd) {
   if (tr.nx) return projectG(tr, x, z, hint, back, fwd);
@@ -38,7 +38,7 @@ export function groundAt(W, s, lat, x, z) {
   if (tr.drawbridge && tr.drawbridge[tr.bi(bi)]) { const d = drawDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // a leaf, or the mill race
   if (tr.crumble && tr.crumble[tr.bi(bi)]) { const d = crumbleDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // a plank, or a hole into the water
   if (tr.ferry && tr.ferry[tr.bi(bi)]) { const d = ferryDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // the barge deck, or the water
-  const g = ground(W, s, lat, x, z, al, bi) + (W.heaps && W.heaps.length ? heapAt(W.heaps, x, z) : 0);   // and the rubble of fallen buildings on it
+  const g = ground(W, s, lat, x, z, al, bi);
   return W.dents && W.dents.length ? g + dentAt(W.dents, x, z) : g;   // the craters blown in it (features/dents.js)
 }
 function ground(W, s, lat, x, z, al, bi) {

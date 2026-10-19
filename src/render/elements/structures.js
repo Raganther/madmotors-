@@ -3,8 +3,7 @@ import { G } from '../../game.js';
 import { FURNITURE, MATERIALS, STRUCT } from '../../data/structures.js';
 import { buildingsOf, inFootprint } from '../../core/elements/structures.js';
 import { CELL, layoutBuilding } from '../../core/kit/building.js';
-import { heapOf } from '../../core/features/dents.js';
-import { flat, mergeAll } from '../geometry.js';
+import { flat } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { quality } from '../renderer.js';
 import { spawnProp } from '../effects/props.js';
@@ -27,8 +26,8 @@ import { race } from '../../ui/flow.js';
 //     switched on by render/camera.js through structureCover) instead of lifting away.
 // The towns' houses and barns (the world kit) are drawn here too (buildingsOf), not by render/elements/kit.js.
 const WIN = 0x34485A, DOORS = [0x5B3A29, 0x2E4A6B, 0x7A2E2E, 0x2F5D3A], ROOM_FLOOR = { living: 0x8A6440, kitchen: 0xD8D2C4, bedroom: 0x9A8A9E, shop: 0xC8C2B4, shed: 0x7A6A58, stall: 0x8A7A64, barn: 0xB89A5A, warehouse: 0x9A978F, chapel: 0xA8A090 };
-const MATC = { brick: 0, timber: 1, stone: 2, concrete: 3 }, CAP = { walls: 16000, open: 6000, bits: 3200 };
-let blds = [], wallVis = [], mesh = {}, bitN = 0, terrRef = null, groupRef = null, mounds = [], dirtyAll = true;
+const MATC = { brick: 0, timber: 1, stone: 2, concrete: 3 }, CAP = { walls: 16000, open: 6000, bits: 1600 };
+let blds = [], wallVis = [], mesh = {}, bitN = 0, terrRef = null, dirtyAll = true, lumpTags = null;
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color(), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const setI = (m, j, x, y, z, ry, sx, sy, sz, rx = 0, rz = 0) => { _e.set(rx, ry, rz, 'YXZ'); _q.setFromEuler(_e); _p.set(x, y, z); _s.set(sx, sy, sz); _m.compose(_p, _q, _s); m.setMatrixAt(j, _m); };
 const hash = (a, b) => { const h = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return h - Math.floor(h); };
@@ -62,7 +61,7 @@ function wallMaterial() {
   return mat;
 }
 export function addStructures(group, tr, terr) {
-  blds = []; wallVis = []; mounds = []; bitN = 0; terrRef = terr; groupRef = group; mesh = {}; dirtyAll = true;
+  blds = []; wallVis = []; bitN = 0; terrRef = terr; mesh = {}; dirtyAll = true;
   const S = buildingsOf(tr, terr); if (!S) return;
   const RF = { gable: [], flat: [], chimney: [], slab: [], floor: [] }, FU = [];
   for (const o of S) {
@@ -106,7 +105,7 @@ export function addStructures(group, tr, terr) {
   mesh.slab = fill(inst(cbox.clone(), L(), RF.slab.length, true, true), RF.slab);
   mesh.furn = inst(cbox.clone(), L(), FU.length, true, false); mesh.furn.userData.list = FU;
   mesh.bits = inst(flat(new THREE.DodecahedronGeometry(0.5, 0)), L(), CAP.bits, true, false);
-  mesh.lumps = inst(mergeAll([new THREE.BoxGeometry(1.3, 0.5, 0.8).translate(0, -0.1, 0), new THREE.BoxGeometry(0.7, 0.45, 0.6).rotateY(0.5).translate(0.25, 0.35, 0.1), new THREE.BoxGeometry(0.6, 0.35, 0.5).rotateZ(0.4).translate(-0.4, 0.3, -0.15)].map(flat)), L(), STRUCT.LUMP.MAX, true, false);   // a lump of brickwork: a few bricks still mortared together
+  mesh.lumps = inst(flat(new THREE.BoxGeometry(1, 1, 1)), L(), STRUCT.LUMP.MAX, true, false); lumpTags = new Float64Array(STRUCT.LUMP.MAX).fill(-2);   // the rubble: a box per chunk or slab, scaled to it
   for (const B of blds) for (const V of B.bays) V.state = 'up';
   // drawn whole before any race: every wall as laid out, the furniture where it stands
   for (const V of wallVis) { const n = V.w.type.length, hp = new Float32Array(n), mx = new Float32Array(n).fill(1); for (let i = 0; i < n; i++) hp[i] = V.w.type[i] === CELL.VOID ? 0 : 1; Object.assign(V, wallRects(V, hp, mx)); }
@@ -140,9 +139,9 @@ export function newStructuresRace() {
   if (!mesh.walls) return;
   for (const V of wallVis) { V.ver = -1; V.shown = null; }
   dirtyAll = true;
-  for (const m of mounds) { groupRef.remove(m); m.geometry.dispose(); } mounds = [];
+  if (lumpTags) lumpTags.fill(-2);
   for (let j = 0; j < CAP.bits; j++) mesh.bits.setMatrixAt(j, ZERO); bitN = 0; mesh.bits.instanceMatrix.needsUpdate = true;
-  for (const B of blds) { B.heaped = false; } for (const B of blds) for (const V of B.bays) { if (V.state !== 'up') bayAt(V, 0, 0, 0, 1); V.state = 'up'; V.t0 = 0; }
+  for (const B of blds) for (const V of B.bays) { if (V.state !== 'up') bayAt(V, 0, 0, 0, 1); V.state = 'up'; V.t0 = 0; }
   for (const B of blds) for (const V of B.furn) V.last = '';
 }
 // ---------- walls ----------
@@ -206,42 +205,9 @@ function scatter(x, z, yaw, a, b, n, color, tall, yAt = null, alt = null) {
   m.instanceMatrix.needsUpdate = true; m.instanceColor.needsUpdate = true;
 }
 // a heap where a bay (or the whole building) fell: a low jagged mound of rubble and bits of roof and wall
-// a heap where a bay (or the whole building) came down: the same pile the cars ride over (core features/dents.js
-// heapOf, on the ground), in the rubble's colours, with broken wall chunks resting all over it
-function mound(o, y, h) {
-  const tx = Math.cos(h.f), tz = -Math.sin(h.f), nx = Math.sin(h.f), nz = Math.cos(h.f), NA = 18, NB = 14, base = new THREE.Color(MATERIALS[o.mat].rubble), wall = new THREE.Color(o.wall);
-  const at = (x, z) => terrRef.at(x, z) + heapOf(h, x, z), pos = [], col = [];
-  const P = (i, j) => { const a = (i / NA - 0.5) * h.w * 1.1, b = (j / NB - 0.5) * h.d * 1.1, x = h.x + tx * a + nx * b, z = h.z + tz * a + nz * b; return [x, at(x, z), z, heapOf(h, x, z)]; };
-  for (let i = 0; i < NA; i++) for (let j = 0; j < NB; j++) {
-    const q = [P(i, j), P(i + 1, j), P(i, j + 1), P(i + 1, j + 1)];
-    for (const t of [[0, 2, 1], [1, 2, 3]]) {
-      if (t.every(k => q[k][3] <= 0.01)) continue;                                   // bare ground: the terrain shows
-      for (const k of t) { pos.push(q[k][0], q[k][1] + 0.02, q[k][2]); _c.copy(base).lerp(wall, 0.25 * Math.abs(Math.sin(q[k][0] * 3.1 + q[k][2] * 1.7))).multiplyScalar(0.8 + 0.3 * Math.abs(Math.sin(q[k][0] * 1.3 - q[k][2] * 2.1))); col.push(_c.r, _c.g, _c.b); }
-    }
-  }
-  if (pos.length) {
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
-    // (wound which way? the pile faces up)
-    if (g.attributes.normal.getY(0) < 0) { for (let k = 0; k < pos.length; k += 9) for (let q = 0; q < 3; q++) { const t = pos[k + 3 + q]; pos[k + 3 + q] = pos[k + 6 + q]; pos[k + 6 + q] = t; } g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); }
-    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })); m.castShadow = m.receiveShadow = true; groupRef.add(m); mounds.push(m);
-  }
-  scatter(h.x, h.z, Math.atan2(Math.cos(o.f), -Math.sin(o.f)), h.w / 2, h.d / 2, 30 + o.floors * 16, MATERIALS[o.mat].rubble, 1.3, (x, z) => at(x, z), o.wall);
-}
 // ---------- roofs and upper floors, bay by bay ----------
 function bayAt(V, drop, tx, tz, sc) {
   for (const [kind, j, it] of V.parts) { const m = mesh[kind]; if (sc <= 0.001) m.setMatrixAt(j, ZERO); else setI(m, j, it.x, it.y - drop, it.z, it.ry, it.sx * sc, it.sy * sc, it.sz * sc, tx, tz); m.instanceMatrix.needsUpdate = true; }
-}
-// the bay is down: its roof lands as broken slabs, its floors as a heap, in a cloud of dust
-function bayLanded(B, V, o) {
-  bayAt(V, 0, 0, 0, 0);
-  const near = race && Math.hypot(V.parts[0][2].x - race.player.x, V.parts[0][2].z - race.player.z) < 70;
-  for (const [kind, , it] of V.parts) {
-    if (kind === 'chimney' || !near) continue;
-    for (let k = 0; k < (kind === 'slab' ? 2 : 4); k++) {
-      _q.setFromEuler(_e.set((Math.random() - 0.5) * 1.2, it.ry + Math.random() * 0.4, (Math.random() - 0.5) * 1.2));
-      spawnProp('box', _p.set(it.x + (Math.random() - 0.5) * it.sx * 0.6, B.y + 1.2 + k * 0.3, it.z + (Math.random() - 0.5) * it.sz * 0.6), _q, [it.sx * 0.35, 0.18, it.sz * 0.45], it.color, (Math.random() - 0.5) * 4, 2 + Math.random() * 2, (Math.random() - 0.5) * 4, 2 + Math.random() * 3, 'wood');
-    }
-  }
 }
 /** Should the see-through window open round the player: inside a standing building, or behind one from the camera? */
 export function structureCover(P, dir) {
@@ -289,19 +255,12 @@ export function updateStructures(dt) {
       const cb = o.bays[k]; if (!cb) return;
       if (cb.fallen && V.state === 'up') {
         V.state = 'falling'; V.t0 = race.time; V.tx = (Math.random() - 0.5) * 0.7; V.tz = (Math.random() - 0.5) * 0.5;
-        const h = S.heaps.find(q => q.bld === o.id && q.bay === k); if (h) mound(o, B.y, h);
         const near = Math.hypot(o.x - P.x, o.z - P.z) < 70, dust = new THREE.Color(MATERIALS[o.mat].rubble).lerp(new THREE.Color(0xE0DAD0), 0.55).getHex(), it = V.parts[0][2];
         for (let j = 0; j < 3 + o.floors; j++) smoke(it.x + (Math.random() - 0.5) * 3, B.y + 1 + j * 0.6, it.z + (Math.random() - 0.5) * 3, 4 + o.floors, dust, 2.2, 1.3);
         if (near) { shockwave(it.x, B.y + 0.3, it.z, Math.max(o.d, 4) * 0.8, 0xE8E0D2); G.shake = Math.min(1.6, G.shake + 0.4 + o.floors * 0.1); }
       }
-      if (V.state === 'falling') {
-        const e = Math.min(1, (race.time - V.t0) / 0.5), drop = (o.floors * STRUCT.FLOOR) * e * e;
-        bayAt(V, drop, V.tx * e, V.tz * e, 1);
-        if (e >= 1) { V.state = 'down'; bayLanded(B, V, o); }
-      }
+      if (V.state === 'falling') { V.state = 'down'; bayAt(V, 0, 0, 0, 0); }   // its floors and roof fall as the core's slabs (the rubble below)
     });
-    // the whole building down: one low heap over the footprint (under the bays' own), with its rubble round it
-    if (o.collapsed && !B.heaped) { B.heaped = true; const h = S.heaps.find(q => q.bld === o.id && q.bay === -1); if (h) mound(o, B.y - 0.15, h); }
     // furniture: where the core has it (only the ones that moved), gone when buried
     B.furn.forEach((V, k) => {
       const f = S.furn[o.furn[k]]; if (!f) return;
@@ -309,8 +268,17 @@ export function updateStructures(dt) {
       placeFurniture(V, f);
     });
   });
-  // the thrown lumps
+  // the rubble (core features/structures.js lumps): chunks of wall and slabs of floor and roof, each its own size and
+  // colour, tumbling while they fall and lying flat once down; only the ones that moved are written
   const Lm = S.lumps, lm = mesh.lumps;
-  for (let j = 0; j < STRUCT.LUMP.MAX; j++) { const q = Lm[j]; if (!q) { lm.setMatrixAt(j, ZERO); continue; } setI(lm, j, q.x, q.y, q.z, q.a, q.r * 1.1, q.r * 1.1, q.r * 1.1, q.a * 0.3, 0); lm.setColorAt(j, _c.set(q.color)); }
-  lm.instanceMatrix.needsUpdate = true; lm.instanceColor.needsUpdate = true;
+  let wrote = false;
+  for (let j = 0; j < STRUCT.LUMP.MAX; j++) {
+    const q = Lm[j], tag = q ? q.id * 1e6 + Math.round(q.x * 50) + Math.round(q.z * 50) * 7 + Math.round(q.y * 50) * 13 + Math.round(q.a * 10) * 17 : -1;
+    if (lumpTags[j] === tag) continue; lumpTags[j] = tag; wrote = true;
+    if (!q) { lm.setMatrixAt(j, ZERO); continue; }
+    const down = q.vy === 0 && q.vx * q.vx + q.vz * q.vz < 0.04, tilt = (hash(q.id, 1) - 0.5) * 0.12;
+    setI(lm, j, q.x, q.y, q.z, q.ry + (down ? tilt : q.a * 0.2), q.sx, q.sy, q.sz, down ? Math.PI / 2 + tilt : q.a, down ? tilt : 0);
+    lm.setColorAt(j, _c.set(q.color).multiplyScalar(0.85 + 0.25 * hash(q.id, 2)));
+  }
+  if (wrote) { lm.instanceMatrix.needsUpdate = true; lm.instanceColor.needsUpdate = true; }
 }

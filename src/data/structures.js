@@ -14,10 +14,10 @@
 //     the end wall for an end bay, the bottom BAY_ROWS rows) are left, when the front or the back under it is down to
 //     BAY_SIDE (nothing hangs off one wall), or when its neighbours are down and it has less than BAY_ALONE (nothing
 //     juts out on its own); an end bay takes its end wall's upper storeys. All the bays down and the building is gone.
-//   - Rubble: knocked-out brickwork throws lumps the car's way (one per LUMP_CELLS cells), a hole leaves a strip and a
-//     fallen bay a heap (HEAP_TOP m high a storey, a real pile the cars ride over: features/dents.js heapOf); they all
-//     drag at the wheels a little (STRIP_DRAG, HEAP_DRAG). A building that comes down
-//     leaves up to LUMP.COLLAPSE smaller lumps strewn over its footprint; lumps stay for the race, shoved about by the cars.
+//   - Rubble: every cell that goes becomes rubble that stays for the race (LUMP.LIFE): chunks of the wall a few cells
+//     square in its colour, falling from where they were (thrown the car's way when a car knocked them out), and a
+//     fallen bay's floors and roof come down as slabs; the cars shove them about. A hole also leaves a strip and a
+//     fallen bay a heap; they drag at the wheels a little (STRIP_DRAG, HEAP_DRAG). 
 //   - Furniture (FURNITURE) is loose: a car shoves it about and loses a little speed for it (FURN_SLOW), out of
 //     the holes too.
 // Upper floors make the walls stronger (FLOOR_HP per floor over one). Inner walls are lighter (INNER_HP).
@@ -25,8 +25,8 @@ export const STRUCT = {
   CW: 0.5, CH: 0.5, THICK: 0.45, INNER: 0.16, FLOOR: 3, FLOOR_HP: 0.12, INNER_HP: 0.35, WINDOW_HP: 0.35, DOOR_HP: 0.5,
   HOLE_W: 2.2, BAND: 4, BREAK: 0.75, CRACK: 0.55, RAG: 0.45, KEEP: 0.55, KEEP_MIN: 0.3,
   BAY: 3.2, BAY_FALL: 0.4, BAY_SIDE: 0.15, BAY_ALONE: 0.8, BAY_REACH: 1.6, BAY_ROWS: 6,
-  LUMP_CELLS: 8, STRIP: 1.2, HEAP_DRAG: 0.45, HEAP_TOP: 0.75, STRIP_DRAG: 0.5, FURN_SLOW: 0.35, FURN_FRIC: 4.5,
-  LUMP: { R: 0.5, MASS: 1.0, FRIC: 2.6, LIFE: 900, MAX: 180, COLLAPSE: 26 }   // thrown lumps: radius, mass, friction, life (s: the race), most at once, most a collapse leaves
+  STRIP: 1.2, HEAP_DRAG: 0.45, STRIP_DRAG: 0.5, FURN_SLOW: 0.35, FURN_FRIC: 4.5,
+  LUMP: { MASS: 1.0, FRIC: 2.6, LIFE: 900, MAX: 2400 }   // rubble: mass scale, friction, life (s: the race), most at once
 };
 /** How tall a hole car c knocks (rows of cells): taller and heavier vehicles more. */
 export const rowsHit = mass => Math.max(2, Math.min(6, Math.ceil((1.1 + 0.5 * (mass - 1)) / STRUCT.CH)));
