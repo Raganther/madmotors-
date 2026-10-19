@@ -38,7 +38,7 @@ function gableGeo() {
 // the walls' shader: bricks, planks, stone or concrete drawn in metres along the wall (aOff: where the box starts
 // along it and up it, and the material), so the pattern runs on across boxes and a hole cuts through the courses
 function wallMaterial() {
-  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff }); withCutaway(mat, false);
+  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff }); withCutaway(mat, false, { building: true });
   const cut = mat.onBeforeCompile;
   mat.onBeforeCompile = sh => {
     cut(sh);
@@ -92,7 +92,7 @@ export function addStructures(group, tr, terr) {
     blds.push(B);
   }
   const ibox = flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), cbox = flat(new THREE.BoxGeometry(1, 1, 1));
-  const inst = (geo, mat, n, cast, cut) => { const m = new THREE.InstancedMesh(geo, mat, Math.max(1, n)); if (cut) withCutaway(m.material, false); m.castShadow = cast; m.receiveShadow = true; m.frustumCulled = false; for (let j = 0; j < Math.max(1, n); j++) { m.setMatrixAt(j, ZERO); m.setColorAt(j, _c.set(0xffffff)); } group.add(m); return m; };
+  const inst = (geo, mat, n, cast, cut) => { const m = new THREE.InstancedMesh(geo, mat, Math.max(1, n)); if (cut) withCutaway(m.material, false, { building: true }); m.castShadow = cast; m.receiveShadow = true; m.frustumCulled = false; for (let j = 0; j < Math.max(1, n); j++) { m.setMatrixAt(j, ZERO); m.setColorAt(j, _c.set(0xffffff)); } group.add(m); return m; };
   const fill = (m, list) => { list.forEach((it, j) => { setI(m, j, it.x, it.y, it.z, it.ry, it.sx, it.sy, it.sz); m.setColorAt(j, _c.set(it.color)); }); m.userData.list = list; m.instanceMatrix.needsUpdate = true; m.instanceColor.needsUpdate = true; return m; };
   const L = () => new THREE.MeshLambertMaterial({ color: 0xffffff });
   mesh.walls = inst(ibox.clone(), wallMaterial(), CAP.walls, true, false);
@@ -141,7 +141,7 @@ export function newStructuresRace() {
   dirtyAll = true;
   for (const m of mounds) { groupRef.remove(m); m.geometry.dispose(); } mounds = [];
   for (let j = 0; j < CAP.bits; j++) mesh.bits.setMatrixAt(j, ZERO); bitN = 0; mesh.bits.instanceMatrix.needsUpdate = true;
-  for (const B of blds) for (const V of B.bays) { if (V.state !== 'up') bayAt(V, 0, 0, 0, 1); V.state = 'up'; V.t0 = 0; }
+  for (const B of blds) { B.heaped = false; } for (const B of blds) for (const V of B.bays) { if (V.state !== 'up') bayAt(V, 0, 0, 0, 1); V.state = 'up'; V.t0 = 0; }
   for (const B of blds) for (const V of B.furn) V.last = '';
 }
 // ---------- walls ----------
@@ -285,6 +285,8 @@ export function updateStructures(dt) {
         if (e >= 1) { V.state = 'down'; bayLanded(B, V, o); }
       }
     });
+    // the whole building down: one low heap over the footprint (under the bays' own), with its rubble round it
+    if (o.collapsed && !B.heaped) { B.heaped = true; const h = S.heaps.find(q => q.bld === o.id && q.bay === -1); if (h) mound(o, B.y - 0.15, h); }
     // furniture: where the core has it (only the ones that moved), gone when buried
     B.furn.forEach((V, k) => {
       const f = S.furn[o.furn[k]]; if (!f) return;

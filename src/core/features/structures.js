@@ -75,8 +75,8 @@ function aftermath(R, o, w, n, c0, c1, r0, dx, dz, sp, by) {
   }
   checkBays(R, o, by);
 }
-function addLump(S, x, y, z, vx, vy, vz, color, t) {
-  S.lumps.push({ id: S.lumpN++, x, y, z, vx, vy, vz, a: 0, spin: (vx - vz) * 0.3, born: t, hint: -1, color, r: L.R });
+function addLump(S, x, y, z, vx, vy, vz, color, t, r = L.R, m = L.MASS) {
+  S.lumps.push({ id: S.lumpN++, x, y, z, vx, vy, vz, a: 0, spin: (vx - vz) * 0.3, born: t, hint: -1, color, r, m });
   if (S.lumps.length > L.MAX) { let k = S.lumps.findIndex(q => Math.hypot(q.vx, q.vz) < 0.5); if (k < 0) k = 0; S.lumps.splice(k, 1); }   // the oldest at rest makes room
 }
 // ---------- bays: the roof and upper floors, a slice at a time ----------
@@ -107,8 +107,15 @@ function fallBay(R, o, b, by) {
 /** The last bay is down: whatever still stands goes, and the footprint is one heap. */
 function collapse(R, o, by) {
   const S = R.st; o.collapsed = true; o.by = by; o.t = R.time;
-  for (const id of o.walls) { const w = S.walls[id]; let n = 0; for (let i = 0; i < w.hp.length; i++) if (breakCell(o, w, i, by)) n++; if (n) w.ver++; }
+  let all = 0; for (const id of o.walls) { const w = S.walls[id]; let n = 0; for (let i = 0; i < w.hp.length; i++) if (breakCell(o, w, i, by)) n++; if (n) w.ver++; all += n; }
   S.heaps.push({ bld: o.id, bay: -1, x: o.x, z: o.z, f: o.f, w: o.w + 1, d: o.d + 1, y: o.y });
+  // what stood comes down as rubble that stays: chunks across the footprint and a little past it, light enough to plough
+  // through and shove about (the same lumps a hole throws, smaller), for the rest of the race
+  const { nx, nz, tx, tz } = frameOf(o), M = MATERIALS[o.mat], hh = q => { const v = Math.sin(q * 12.9898 + o.id * 78.233) * 43758.5453; return v - Math.floor(v); };
+  for (let k = 0, n = Math.max(8, Math.min(L.COLLAPSE, Math.round(all / (STRUCT.LUMP_CELLS * 2)))); k < n; k++) {
+    const u = (hh(k * 3) - 0.5) * (o.w + 1.5), v = (hh(k * 3 + 1) - 0.5) * (o.d + 1.5), out = 1 + 2 * hh(k * 3 + 2), x = o.x + tx * u + nx * v, z = o.z + tz * u + nz * v;
+    addLump(S, x, o.y + 1 + o.floors * 1.2 * hh(k + 7), z, (tx * u + nx * v) / (o.w / 2) * out, 1.5, (tz * u + nz * v) / (o.w / 2) * out, k % 3 ? M.rubble : M.color, R.time, L.R * (0.55 + 0.35 * hh(k + 11)), L.MASS * 0.35);
+  }
   for (const k of o.furn) S.furn[k].buried = S.furn[k].buried || inFootprint(o, S.furn[k].x, S.furn[k].z);
   if (by >= 0) R.cars[by].events.push({ t: 'collapse', bld: o.id, type: o.type, x: o.x, y: o.y, z: o.z, floors: o.floors });
 }
@@ -280,7 +287,7 @@ export function structureStep(R, W, dt) {
       if (c.ghost > 0) continue;
       const dx = q.x - c.x, dz = q.z - c.z, rr = q.r + c.hw; if (dx * dx + dz * dz > rr * rr || Math.abs(c.y - q.y) > 1.5) continue;
       const d = Math.hypot(dx, dz), nx = dx / (d || 1), nz = dz / (d || 1), rel = (c.vx - q.vx) * nx + (c.vz - q.vz) * nz; if (rel <= 0) continue;
-      const m = massOf(c), share = m / (m + L.MASS);
+      const m = massOf(c), share = m / (m + (q.m || L.MASS));
       q.vx += nx * rel * share * 1.6; q.vz += nz * rel * share * 1.6; q.spin += rel * 0.5; if (q.vy === 0) q.vy = 0.01;
       c.vx -= nx * rel * (1 - share) * 0.5; c.vz -= nz * rel * (1 - share) * 0.5; c.spin += (nx * c.vz - nz * c.vx > 0 ? 1 : -1) * rel * 0.02;
       q.x = c.x + nx * rr; q.z = c.z + nz * rr;

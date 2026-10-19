@@ -226,18 +226,18 @@ export function stepCar(c, dt, W, racing) {
   c.progress = tr.progOf(pr.s);
   gateStep(c, W);                                                                    // a stage with gates: take them in order
   if (c.onGround && (al < HALF - 0.5 || openHere)) c.lastGood = pr.i;
-  const spd = Math.hypot(c.vx, c.vz), raid = !!tr.gates;
+  const spd = Math.hypot(c.vx, c.vz), raid = !!tr.gates, arena = !!(tr.arena && inArena(tr.arena, c.x, c.z));   // a derby arena's floor: all of it is fair game, not just its ring of road
   // open country: remember where it was last going well (on the ground, moving, nothing hit lately) to reset it there
   if (openHere && c.onGround && spd > 6 && !c.wallContact && !(c.hitT < 1.5)) { if ((c.safeT = (c.safeT || 0) - dt) <= 0) { c.safeT = 0.5; c.safe = { x: c.x, z: c.z, yaw: Math.atan2(c.vx, c.vz), i: pr.i, d: pr.dist }; } }
   else if (!openHere && al < HALF) c.safe = null;
-  if (pr.dist > (raid ? 140 : 24)) c.offT += dt * (spd > 8 && pr.dist < 70 ? 0.3 : 1); else c.offT = 0;   // a moving car gets time to cut across to the next bit of road; with gates, only lost cars
+  if (pr.dist > (raid ? 140 : 24) && !arena) c.offT += dt * (spd > 8 && pr.dist < 70 ? 0.3 : 1); else c.offT = 0;   // a moving car gets time to cut across to the next bit of road; with gates, only lost cars
   if (racing && !c.finished && spd < 1.2) c.stuckT += dt; else c.stuckT = 0;
   if (c.isPlayer && racing && !c.finished && !openHere) {
     const along = c.vx * tr.tx[pr.i] + c.vz * tr.tz[pr.i];
     if (along < -4) c.wrongT += dt; else c.wrongT = 0;
   }
   if (c.wallContact && spd < 3 && (c.inp.throttle > 0 || c.inp.brake > 0)) c.wallStuck = (c.wallStuck || 0) + dt; else c.wallStuck = 0;
-  if (c.wallStuck > 0.6) {
+  if (c.wallStuck > 0.6 && !arena) {   // (in an arena there's no road to put it back on: it backs out itself)
     const i = pr.i, side2 = pr.lat >= 0 ? 1 : -1, fwd = (Math.sin(c.yaw) * tr.tx[i] + Math.cos(c.yaw) * tr.tz[i]) >= -0.2 ? 1 : -1;
     c.x -= tr.rx[i] * side2 * 1.0; c.z -= tr.rz[i] * side2 * 1.0;
     c.yaw = Math.atan2(tr.tx[i] * fwd, tr.tz[i] * fwd); c.vx = tr.tx[i] * fwd * 6; c.vz = tr.tz[i] * fwd * 6; c.wallStuck = 0;

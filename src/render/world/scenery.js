@@ -95,12 +95,12 @@ export function addScenery(group, tr, terr, stage) {
   else add(SH.bush(), LV({ sway: 2.2 }), bushes, {});   // too low to throw a shadow worth drawing
   if (houseB) {
     // a Blender house is modelled at meta.size (w, wall height, d) and scaled to its plot; walls and roof share the transform
-    const [W0, H0, D0] = houseB.meta.size, LH = o => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), false, Object.assign({ cloud: true }, o));
+    const [W0, H0, D0] = houseB.meta.size, LH = o => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), false, Object.assign({ cloud: true, building: true }, o));
     const hs = houseW.map((w, j) => ({ ...w, k: j, sx: w.sx / W0, sy: (w.h + 0.4) / H0, sz: w.sz / D0, rcolor: houseR[j].color }));
     each(houseB, hs, (v, l) => { addInstanced(group, houseB.geo('walls' + v), LH(), l, { cast: true, receive: true }); addInstanced(group, houseB.geo('roof' + v), LH(), l.map(h => ({ ...h, color: h.rcolor })), { cast: true }); });
   } else {
-    addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), L(), houseW, { cast: true, receive: true });
-    addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), L(), houseR, { cast: true });
+    addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), L({ building: true }), houseW, { cast: true, receive: true });
+    addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), L({ building: true }), houseR, { cast: true });
   }
   G.fans = fans;
   const fanB = B('fan');

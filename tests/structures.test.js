@@ -32,9 +32,11 @@ describe('destructible buildings', () => {
   it('a building on the road without road: true is caught when the track is built', () => {
     expect(() => M.buildTrack({ ...S, buildings: [{ type: 'house', at: 40, lat: 0 }] })).toThrow(/stands on the road/);
   });
-  it('weight decides: the kart cracks a house, the coupe gets into the front room, the mixer goes out the back', () => {
-    const k = ram('kart', 60); expect(k.ev.wallbreak || 0).toBe(0); expect(k.ev.crack).toBeGreaterThan(0);
-    const c = ram('coupe', 100); expect(c.ev.wallbreak).toBeGreaterThan(0); expect(M.inFootprint(c.o, c.P.x, c.P.z)).toBe(true);
+  it('weight and speed decide: a kart nudging a house cracks it, the kart at speed gets stuck inside, the coupe drives right through, the mixer too', () => {
+    const k = ram('kart', 12, { back: 6, secs: 1.5 }); expect(k.ev.wallbreak || 0).toBe(0); expect(k.ev.crack).toBeGreaterThan(0);
+    const k2 = ram('kart', 60); expect(k2.ev.wallbreak).toBeGreaterThan(0); expect(M.inFootprint(k2.o, k2.P.x, k2.P.z)).toBe(true);
+    const c = ram('coupe', 60), along = (c.P.x - c.o.x) * Math.sin(c.o.f) + (c.P.z - c.o.z) * Math.cos(c.o.f);
+    expect(c.ev.wallbreak).toBeGreaterThan(0); expect(along).toBeLessThan(-c.o.d / 2); expect(Math.hypot(c.P.vx, c.P.vz)).toBeGreaterThan(5);   // out the back, still going
     const m = ram('mixer', 80); expect(m.ev.wallbreak).toBeGreaterThanOrEqual(2); expect(M.inFootprint(m.o, m.P.x, m.P.z, 1)).toBe(false);
     expect(Math.hypot(m.P.vx, m.P.vz)).toBeGreaterThan(8);
   });
@@ -48,8 +50,8 @@ describe('destructible buildings', () => {
     expect(height(mid)).toBeGreaterThanOrEqual(height(edge));                      // higher in the middle: an arch, not a box
   });
   it('cracks add up: a light car battering the same wall gets through in the end', () => {
-    let r = ram('coupe', 60, { secs: 1.5 }); const first = r.ev.wallbreak || 0;
-    for (let k = 0; k < 6 && !r.R.st.walls.some(w => w.bld === r.o.id && w.by.some(b => b >= 0)); k++) r = ram('coupe', 60, { R: r.R, secs: 1.5 });
+    let r = ram('kart', 12, { back: 6, secs: 1.5 }); const first = r.ev.wallbreak || 0;
+    for (let k = 0; k < 8 && !r.R.st.walls.some(w => w.bld === r.o.id && w.by.some(b => b >= 0)); k++) r = ram('kart', 12, { R: r.R, back: 6, secs: 1.5 });
     expect(first).toBe(0); expect(r.R.st.walls.some(w => w.bld === r.o.id && w.by.some(b => b >= 0))).toBe(true);
   });
   it('furniture is shoved out of the way, and kept in by the walls that still stand', () => {

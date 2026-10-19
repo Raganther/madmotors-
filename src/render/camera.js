@@ -4,7 +4,7 @@ import { clamp, wrapAngle } from '../core/math.js';
 import { sdLeader } from '../core/modes/showdown.js';
 import { CAM_DIR as CORE_CAM_DIR, WALL } from '../core/constants.js';
 import { camera, pcamera, sun } from './renderer.js';
-import { CUT } from './materials.js';
+import { CUT, SEE_THROUGH_BUILDINGS } from './materials.js';
 import { houseBoxes } from './elements/town.js';
 import { structureCover } from './elements/structures.js';
 import { inFootprint } from '../core/elements/structures.js';
@@ -118,7 +118,7 @@ const CUT_R = 20;
 function updateCut(dt, snap) {
   if (!race || G.state === 'menu') { CUT.r.value = CUT.r2.value = 0; return; }
   const P = race.player; CUT.car.value.set(P.x, P.y, P.z);
-  const covered = G.world.cover[G.world.tr.bi(P.pr.i)], hill = !covered && hidden(P), bld = !covered && !hill && structureCover(P, CUT.dir.value), want = covered || hill || overBridge(P) || behindHouse(P) || bld ? CUT_R : 0;
+  const covered = G.world.cover[G.world.tr.bi(P.pr.i)], hill = !covered && hidden(P), bld = SEE_THROUGH_BUILDINGS && !covered && !hill && (structureCover(P, CUT.dir.value) || behindHouse(P)), want = covered || hill || overBridge(P) || bld ? CUT_R : 0;   // (buildings: materials.js SEE_THROUGH_BUILDINGS)
   CUT.r.value += (want - CUT.r.value) * (snap ? 1 : Math.min(1, dt * 6));
   if (hill) CUT.lift.value = 0.5; else if (bld) CUT.lift.value = 2.6; else if (CUT.r.value < 0.5) CUT.lift.value = 1.4;   // a hillside in the way sits low: cut closer to the car's height; in a building, above the ground floor's walls
   // the road ahead: a hillside between the camera and where the player is about to drive opens its own window there

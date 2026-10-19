@@ -22,10 +22,13 @@ export function makeCloudTex() {
   const t = canvasTex(N, N, (g2) => { const img = g2.createImageData(N, N); for (let i = 0; i < N * N; i++) { const v = clamp((data[i] - 0.5) * 3.2 + 0.5, 0, 1) * 255; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; } g2.putImageData(img, 0, 0); });
   t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
 }
+// Buildings (opts.building: destructible structures, town and roadside houses) don't turn see-through over the player
+// for now: it hid the bricks and the hole a car smashes through them. true brings it back.
+export const SEE_THROUGH_BUILDINGS = false;
 // opts: cut (see-through window over the player, default on), cloud (drifting cloud shadows), sway (foliage in the wind),
 // grain (0..1: fine surface detail in world space, two scales of the tileable noise, so ground and road aren't flat colour)
 export function withCutaway(mat, solidInside, opts = {}) {
-  const cut = opts.cut !== false, cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water, grain = opts.grain || 0, strata = opts.strata || 0;
+  const cut = opts.cut !== false && !(opts.building && !SEE_THROUGH_BUILDINGS), cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water, grain = opts.grain || 0, strata = opts.strata || 0;
   if (solidInside) mat.side = THREE.DoubleSide;
   mat.onBeforeCompile = sh => {
     sh.uniforms.uCutCar = CUT.car; sh.uniforms.uCutDir = CUT.dir; sh.uniforms.uCutR = CUT.r; sh.uniforms.uCutLift = CUT.lift; sh.uniforms.uCutAhead = CUT.ahead; sh.uniforms.uCutR2 = CUT.r2;

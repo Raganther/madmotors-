@@ -23,7 +23,7 @@ export function collideObstacles(c, W, dt) {
     const nx = d > 1e-3 ? dx / d : Math.sin(c.yaw + Math.PI), nz = d > 1e-3 ? dz / d : Math.cos(c.yaw + Math.PI), vn = -(c.vx * nx + c.vz * nz);
     if (o.soft) {
       if (!c.inBush || c.inBush !== k) { c.inBush = k; c.events.push({ t: 'bush', k, v: Math.hypot(c.vx, c.vz), x: o.x, z: o.z }); }
-      const f = Math.max(0, 1 - 1.4 * dt); c.vx *= f; c.vz *= f;
+      const f = Math.max(0, 1 - 0.6 * dt); c.vx *= f; c.vz *= f;   // a brush past, not a wall: the flow matters more
       continue;
     }
     c.x += nx * (min - d); c.z += nz * (min - d);

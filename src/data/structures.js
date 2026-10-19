@@ -13,7 +13,8 @@
 //     than BAY_FALL of the wall cells holding it up (the front and back walls under it and BAY_REACH m either side,
 //     the end wall for an end bay, the bottom BAY_ROWS rows) are left. All the bays down and the building is gone.
 //   - Rubble: knocked-out brickwork throws lumps the car's way (one per LUMP_CELLS cells), a hole leaves a strip and a
-//     fallen bay a heap; they all drag at the wheels a little (STRIP_DRAG, HEAP_DRAG).
+//     fallen bay a heap; they all drag at the wheels a little (STRIP_DRAG, HEAP_DRAG). A building that comes down
+//     leaves up to LUMP.COLLAPSE smaller lumps strewn over its footprint; lumps stay for the race, shoved about by the cars.
 //   - Furniture (FURNITURE) is loose: a car shoves it about and loses a little speed for it (FURN_SLOW), out of
 //     the holes too.
 // Upper floors make the walls stronger (FLOOR_HP per floor over one). Inner walls are lighter (INNER_HP).
@@ -22,15 +23,15 @@ export const STRUCT = {
   HOLE_W: 2.2, BAND: 4, BREAK: 0.75, CRACK: 0.55, RAG: 0.45, KEEP: 0.55, KEEP_MIN: 0.3,
   BAY: 3.2, BAY_FALL: 0.4, BAY_REACH: 1.6, BAY_ROWS: 6,
   LUMP_CELLS: 8, STRIP: 1.2, HEAP_DRAG: 0.9, STRIP_DRAG: 0.5, FURN_SLOW: 0.35, FURN_FRIC: 4.5,
-  LUMP: { R: 0.5, MASS: 1.0, FRIC: 2.6, LIFE: 120, MAX: 90 }   // thrown lumps: radius, mass, friction, life (s), most at once
+  LUMP: { R: 0.5, MASS: 1.0, FRIC: 2.6, LIFE: 900, MAX: 180, COLLAPSE: 26 }   // thrown lumps: radius, mass, friction, life (s: the race), most at once, most a collapse leaves
 };
 /** How tall a hole car c knocks (rows of cells): taller and heavier vehicles more. */
 export const rowsHit = mass => Math.max(2, Math.min(6, Math.ceil((1.1 + 0.5 * (mass - 1)) / STRUCT.CH)));
 export const MATERIALS = {
-  timber: { name: 'Timber', hp: 11, minMass: 0, color: 0x9A7148, rubble: 0x7E6040, sound: 'wood' },
-  brick: { name: 'Brick', hp: 22, minMass: 0, color: 0xB0664A, rubble: 0x8E5A44, sound: 'metal' },
-  stone: { name: 'Stone', hp: 30, minMass: 0.9, color: 0xA8A090, rubble: 0x8C857A, sound: 'metal' },
-  concrete: { name: 'Concrete', hp: 40, minMass: 1.4, color: 0xB9B6AE, rubble: 0x9A978F, sound: 'metal' },
+  timber: { name: 'Timber', hp: 6, minMass: 0, color: 0x9A7148, rubble: 0x7E6040, sound: 'wood' },
+  brick: { name: 'Brick', hp: 12, minMass: 0, color: 0xB0664A, rubble: 0x8E5A44, sound: 'metal' },
+  stone: { name: 'Stone', hp: 18, minMass: 0.8, color: 0xA8A090, rubble: 0x8C857A, sound: 'metal' },
+  concrete: { name: 'Concrete', hp: 28, minMass: 1.4, color: 0xB9B6AE, rubble: 0x9A978F, sound: 'metal' },
 };
 // Building types: footprint w (along its front) x d, floors, material, the look (wall colours, roof). `open`: a front
 // with no wall (a market stall, a car port): you can drive in.
