@@ -251,7 +251,7 @@ export function stepCar(c, dt, W, racing) {
   // boost pads
   if (tr.boostPad && c.onGround && al < HALF && tr.boostPad[tr.bi(pr.i)]) { if (!(c.boost > 0.3)) c.events.push({ t: 'boostpad' }); c.boost = Math.max(c.boost, BOOST_PAD); }
   if (c.offT > 0.6 && !c.destroyed) respawn(c, W);   // a smashed road car stays where it lands
-  else if (!c.isPlayer && !c.traffic && c.stuckT > 2.5) respawn(c, W);
-  else if (!c.isPlayer && racing && !raid && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road (with gates, off the road is fair game)
+  else if (!c.isPlayer && !c.traffic && c.stuckT > 2.5 && !arena) respawn(c, W);   // (in an arena the derby AI backs out itself)
+  else if (!c.isPlayer && racing && !raid && !arena && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road (with gates, off the road is fair game)
   if (pr.i >= tr.NM - 6 && pr.i < tr.NM) { c.vx *= 1 - 4 * dt; c.vz *= 1 - 4 * dt; }
 }

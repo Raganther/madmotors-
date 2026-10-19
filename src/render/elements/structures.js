@@ -3,6 +3,7 @@ import { G } from '../../game.js';
 import { FURNITURE, MATERIALS, STRUCT } from '../../data/structures.js';
 import { buildingsOf, inFootprint } from '../../core/elements/structures.js';
 import { CELL, layoutBuilding } from '../../core/kit/building.js';
+import { heapOf } from '../../core/features/dents.js';
 import { flat, mergeAll } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { quality } from '../renderer.js';
@@ -26,7 +27,7 @@ import { race } from '../../ui/flow.js';
 //     switched on by render/camera.js through structureCover) instead of lifting away.
 // The towns' houses and barns (the world kit) are drawn here too (buildingsOf), not by render/elements/kit.js.
 const WIN = 0x34485A, DOORS = [0x5B3A29, 0x2E4A6B, 0x7A2E2E, 0x2F5D3A], ROOM_FLOOR = { living: 0x8A6440, kitchen: 0xD8D2C4, bedroom: 0x9A8A9E, shop: 0xC8C2B4, shed: 0x7A6A58, stall: 0x8A7A64, barn: 0xB89A5A, warehouse: 0x9A978F, chapel: 0xA8A090 };
-const MATC = { brick: 0, timber: 1, stone: 2, concrete: 3 }, CAP = { walls: 16000, open: 6000, bits: 1600 };
+const MATC = { brick: 0, timber: 1, stone: 2, concrete: 3 }, CAP = { walls: 16000, open: 6000, bits: 3200 };
 let blds = [], wallVis = [], mesh = {}, bitN = 0, terrRef = null, groupRef = null, mounds = [], dirtyAll = true;
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color(), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const setI = (m, j, x, y, z, ry, sx, sy, sz, rx = 0, rz = 0) => { _e.set(rx, ry, rz, 'YXZ'); _q.setFromEuler(_e); _p.set(x, y, z); _s.set(sx, sy, sz); _m.compose(_p, _q, _s); m.setMatrixAt(j, _m); };
@@ -195,22 +196,36 @@ function throwBrick(V, c, r, dx, dz, v, near) {
   debris(x, y, z, dx * sp * 0.8 + (Math.random() - 0.5) * 3, up + 1, dz * sp * 0.8 + (Math.random() - 0.5) * 3, M.rubble, 0.12, 0.08, 0.12, 1.2 + Math.random(), 0);
 }
 // rubble bits scattered over a rectangle (x, z, yaw; half-sizes a along yaw, b across), n of them, up to `tall` high
-function scatter(x, z, yaw, a, b, n, color, tall) {
-  const ca = Math.sin(yaw), sa = Math.cos(yaw), base = new THREE.Color(color), m = mesh.bits;
+function scatter(x, z, yaw, a, b, n, color, tall, yAt = null, alt = null) {
+  const ca = Math.sin(yaw), sa = Math.cos(yaw), base = new THREE.Color(color), other = alt === null ? null : new THREE.Color(alt), m = mesh.bits;
   for (let k = 0; k < n; k++) {
     const u = (Math.random() * 2 - 1) * a, v = (Math.random() * 2 - 1) * b, px = x + ca * u + sa * v, pz = z + sa * u - ca * v, s = 0.2 + Math.random() * 0.45 * tall;
-    const j = bitN++ % CAP.bits; setI(m, j, px, terrRef.at(px, pz) + s * 0.25, pz, Math.random() * 6, s * (1 + Math.random()), s * 0.7, s * (0.8 + Math.random()), Math.random(), Math.random());
-    m.setColorAt(j, _c.copy(base).multiplyScalar(0.75 + Math.random() * 0.4));
+    const j = bitN++ % CAP.bits; setI(m, j, px, (yAt ? yAt(px, pz) : terrRef.at(px, pz)) + s * 0.25, pz, Math.random() * 6, s * (1 + Math.random()), s * 0.7, s * (0.8 + Math.random()), Math.random(), Math.random());
+    m.setColorAt(j, _c.copy(other && k % 3 === 0 ? other : base).multiplyScalar(0.75 + Math.random() * 0.4));   // bits of painted wall among the rubble
   }
   m.instanceMatrix.needsUpdate = true; m.instanceColor.needsUpdate = true;
 }
 // a heap where a bay (or the whole building) fell: a low jagged mound of rubble and bits of roof and wall
+// a heap where a bay (or the whole building) came down: the same pile the cars ride over (core features/dents.js
+// heapOf, on the ground), in the rubble's colours, with broken wall chunks resting all over it
 function mound(o, y, h) {
-  const g = new THREE.PlaneGeometry(h.d, h.w, 8, 6).rotateX(-Math.PI / 2), pos = g.attributes.position, top = 0.4 + o.floors * 0.3;
-  for (let i = 0; i < pos.count; i++) { const u = pos.getX(i) / (h.d / 2), v = pos.getZ(i) / (h.w / 2), e = Math.max(Math.abs(u), Math.abs(v)); pos.setY(i, Math.max(0, 1 - e * e) * top * (0.5 + Math.random() * 0.7)); }
-  const m = new THREE.Mesh(flat(g), new THREE.MeshLambertMaterial({ color: new THREE.Color(MATERIALS[o.mat].rubble).lerp(new THREE.Color(o.wall), 0.3) }));
-  m.position.set(h.x, y + 0.02, h.z); m.rotation.y = Math.atan2(Math.cos(o.f), -Math.sin(o.f)); m.castShadow = m.receiveShadow = true; groupRef.add(m); mounds.push(m);
-  scatter(h.x, h.z, Math.atan2(Math.cos(o.f), -Math.sin(o.f)), h.w / 2, h.d / 2, 14 + o.floors * 6, MATERIALS[o.mat].rubble, 1.2);
+  const tx = Math.cos(h.f), tz = -Math.sin(h.f), nx = Math.sin(h.f), nz = Math.cos(h.f), NA = 18, NB = 14, base = new THREE.Color(MATERIALS[o.mat].rubble), wall = new THREE.Color(o.wall);
+  const at = (x, z) => terrRef.at(x, z) + heapOf(h, x, z), pos = [], col = [];
+  const P = (i, j) => { const a = (i / NA - 0.5) * h.w * 1.1, b = (j / NB - 0.5) * h.d * 1.1, x = h.x + tx * a + nx * b, z = h.z + tz * a + nz * b; return [x, at(x, z), z, heapOf(h, x, z)]; };
+  for (let i = 0; i < NA; i++) for (let j = 0; j < NB; j++) {
+    const q = [P(i, j), P(i + 1, j), P(i, j + 1), P(i + 1, j + 1)];
+    for (const t of [[0, 2, 1], [1, 2, 3]]) {
+      if (t.every(k => q[k][3] <= 0.01)) continue;                                   // bare ground: the terrain shows
+      for (const k of t) { pos.push(q[k][0], q[k][1] + 0.02, q[k][2]); _c.copy(base).lerp(wall, 0.25 * Math.abs(Math.sin(q[k][0] * 3.1 + q[k][2] * 1.7))).multiplyScalar(0.8 + 0.3 * Math.abs(Math.sin(q[k][0] * 1.3 - q[k][2] * 2.1))); col.push(_c.r, _c.g, _c.b); }
+    }
+  }
+  if (pos.length) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+    // (wound which way? the pile faces up)
+    if (g.attributes.normal.getY(0) < 0) { for (let k = 0; k < pos.length; k += 9) for (let q = 0; q < 3; q++) { const t = pos[k + 3 + q]; pos[k + 3 + q] = pos[k + 6 + q]; pos[k + 6 + q] = t; } g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); }
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })); m.castShadow = m.receiveShadow = true; groupRef.add(m); mounds.push(m);
+  }
+  scatter(h.x, h.z, Math.atan2(Math.cos(o.f), -Math.sin(o.f)), h.w / 2, h.d / 2, 30 + o.floors * 16, MATERIALS[o.mat].rubble, 1.3, (x, z) => at(x, z), o.wall);
 }
 // ---------- roofs and upper floors, bay by bay ----------
 function bayAt(V, drop, tx, tz, sc) {

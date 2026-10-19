@@ -23,7 +23,7 @@ const GRID = 16, key = (a, b) => a * 100003 + b, L = STRUCT.LUMP;
 const hash = (a, b, c) => { const h = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719) * 43758.5453; return h - Math.floor(h); };
 function addGrid(G, o, k) { const r = Math.ceil(Math.max(o.hl, o.hw) / GRID); for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) { const g = key(Math.floor(o.x / GRID) + a, Math.floor(o.z / GRID) + b); let l = G.get(g); if (!l) G.set(g, l = []); l.push(k); } }
 export function initStructures(R, W) {
-  const S0 = buildingsOf(W.tr, W.terr); if (!S0) { R.st = null; return; }   // the stage's buildings and the towns' houses and barns
+  if (W) W.heaps = null; const S0 = buildingsOf(W.tr, W.terr); if (!S0) { R.st = null; return; }   // the stage's buildings and the towns' houses and barns
   const terr = W.terr, at = (x, z) => terr ? terr.at(x, z) : W.tr.H[W.tr.nearest(x, z).i];
   const blds = [], walls = [], furn = [];
   for (const o0 of S0) {
@@ -83,10 +83,23 @@ function addLump(S, x, y, z, vx, vy, vz, color, t, r = L.R, m = L.MASS) {
 function checkBays(R, o, by) {
   if (o.collapsed) return;
   const S = R.st;
-  for (const b of o.bays) {
-    if (b.fallen) continue; let up = 0, all = 0;
-    for (const [id, c0, c1] of b.sup) { const w = S.walls[id]; for (let c = c0; c <= c1; c++) for (let r = 0; r < Math.min(STRUCT.BAY_ROWS, w.rows); r++) { const i = r * w.cols + c; if (w.type[i] === CELL.VOID) continue; all++; if (w.hp[i] > 0) up++; } }
-    if (all && up / all < STRUCT.BAY_FALL) fallBay(R, o, b, by);
+  // nothing hangs in the air: a bay comes down when too little of the wall under it stands (BAY_FALL), when either
+  // long wall under it is mostly gone (a floor can't hang off one side: BAY_SIDE), or when it would stick out over
+  // fallen bays next to it without most of its walls (BAY_ALONE); one falling can bring the next down, so check again
+  for (let again = true; again && !o.collapsed;) {
+    again = false;
+    o.bays.forEach((b, q) => {
+      if (b.fallen || o.collapsed) return; let up = 0, all = 0, weak = false, end = 1;
+      for (const [id, c0, c1] of b.sup) {
+        const w = S.walls[id]; let u = 0, a = 0;
+        for (let c = c0; c <= c1; c++) for (let r = 0; r < Math.min(STRUCT.BAY_ROWS, w.rows); r++) { const i = r * w.cols + c; if (w.type[i] === CELL.VOID) continue; a++; if (w.hp[i] > 0) u++; }
+        up += u; all += a; if (a && (w.side === 0 || w.side === 2) && u / a < STRUCT.BAY_SIDE) weak = true;
+        if (a && (w.side === 1 || w.side === 3)) end = u / a;                       // an end bay's end wall
+      }
+      // held at each end by a standing neighbour, or (an end bay) by its end wall while most of it stands
+      const prev = o.bays[q - 1], next = o.bays[q + 1], held = n => n ? !n.fallen : end >= 0.5, alone = !held(prev) && !held(next);
+      if (all && (up / all < STRUCT.BAY_FALL || weak || (alone && up / all < STRUCT.BAY_ALONE))) { fallBay(R, o, b, by); again = true; }
+    });
   }
 }
 const frameOf = o => ({ nx: Math.sin(o.f), nz: Math.cos(o.f), tx: Math.cos(o.f), tz: -Math.sin(o.f) });
@@ -95,8 +108,10 @@ function fallBay(R, o, b, by) {
   const S = R.st, M = MATERIALS[o.mat], { nx, nz, tx, tz } = frameOf(o), fr = Math.round(STRUCT.FLOOR / STRUCT.CH);
   b.fallen = true; b.t = R.time; b.by = by;
   const vm = (b.v0 + b.v1) / 2, hx = o.x + tx * vm, hz = o.z + tz * vm;
-  S.heaps.push({ bld: o.id, bay: b.k, x: hx, z: hz, f: o.f, w: b.v1 - b.v0 + 0.6, d: o.d + 0.8, y: o.y });
+  S.heaps.push({ bld: o.id, bay: b.k, x: hx, z: hz, f: o.f, w: b.v1 - b.v0 + 1.4, d: o.d + 1.2, y: o.y, top: STRUCT.HEAP_TOP * (0.7 + 0.3 * o.floors) });
   // the walls over this bay above the ground floor fall with it
+  const endSide = b.k === 0 ? 3 : b.k === o.bays.length - 1 ? 1 : -1;   // an end bay takes its end wall's upper storeys (the gable) with it
+  for (const id of o.walls) { const w = S.walls[id]; if (w.kind === 'outer' && w.side === endSide) { let n = 0; for (let i = fr * w.cols; i < w.hp.length; i++) if (breakCell(o, w, i, by)) n++; if (n) { w.ver++; } } }
   for (const id of o.walls) { const w = S.walls[id]; if (w.kind !== 'outer' || w.side % 2) continue; let n = 0; for (let c = 0; c < w.cols; c++) { const p = cellPos(w, c, 0), v = (p.x - o.x) * tx + (p.z - o.z) * tz; if (v < b.v0 || v > b.v1) continue; for (let r = fr; r < w.rows; r++) if (breakCell(o, w, r * w.cols + c, by)) n++; } if (n) { n += settle(o, w, by); w.ver++; } }
   for (const id of o.walls) { const w = S.walls[id]; if (w.kind !== 'inner') continue; let n = 0; for (let c = 0; c < w.cols; c++) { const p = cellPos(w, c, 0), v = (p.x - o.x) * tx + (p.z - o.z) * tz; if (v < b.v0 || v > b.v1) continue; for (let r = 0; r < w.rows; r++) if (breakCell(o, w, r * w.cols + c, by)) n++; } if (n) w.ver++; }
   for (const k of o.furn) { const f = S.furn[k]; const v = (f.x - o.x) * tx + (f.z - o.z) * tz; if (inFootprint(o, f.x, f.z) && v >= b.v0 && v <= b.v1) f.buried = true; }
@@ -108,7 +123,7 @@ function fallBay(R, o, b, by) {
 function collapse(R, o, by) {
   const S = R.st; o.collapsed = true; o.by = by; o.t = R.time;
   let all = 0; for (const id of o.walls) { const w = S.walls[id]; let n = 0; for (let i = 0; i < w.hp.length; i++) if (breakCell(o, w, i, by)) n++; if (n) w.ver++; all += n; }
-  S.heaps.push({ bld: o.id, bay: -1, x: o.x, z: o.z, f: o.f, w: o.w + 1, d: o.d + 1, y: o.y });
+  S.heaps.push({ bld: o.id, bay: -1, x: o.x, z: o.z, f: o.f, w: o.w + 2, d: o.d + 2, y: o.y, top: STRUCT.HEAP_TOP * 0.6 });
   // what stood comes down as rubble that stays: chunks across the footprint and a little past it, light enough to plough
   // through and shove about (the same lumps a hole throws, smaller), for the rest of the race
   const { nx, nz, tx, tz } = frameOf(o), M = MATERIALS[o.mat], hh = q => { const v = Math.sin(q * 12.9898 + o.id * 78.233) * 43758.5453; return v - Math.floor(v); };
@@ -254,7 +269,7 @@ function stepFurniture(R, W, dt, cars) {
   }
 }
 export function structureStep(R, W, dt) {
-  const S = W.st = R.st; if (!S) return;                                          // the AI checks a building across a branch (sim/ai.js)
+  const S = W.st = R.st; W.heaps = S ? S.heaps : null; if (!S) return;          // the AI checks a building across a branch (sim/ai.js); groundAt rides the heaps
   const tr = W.tr, cars = R.cars.concat(R.traffic || [], R.parked || []);
   for (const c of cars) {
     if (c.ghost > 0) continue;
