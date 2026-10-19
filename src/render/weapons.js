@@ -326,8 +326,9 @@ export function mineBlast(e) {
 export function mortarBlast(e) {
   const r = e.r || WPN.MORTAR_R, K = blastKind(e.x, e.z), P = G.world ? craterPalette(K.kind, G.world.stage) : null, hex = c => c.getHex();
   const bits = P ? [hex(P.lip), hex(P.floor), ...P.chunk.map(hex)] : [0x6E5A44, 0x3A342E], pick = () => bits[(Math.random() * bits.length) | 0];
+  if (e.wet != null && !K.wet) { K.wet = true; K.lv = e.wet; }   // a splash (the sim knows its level)
   if (K.wet) {   // into water: no fireball to speak of, a column and a crown of spray, a surge out to the shore, the hole left under it
-    const y = K.lv; flash(e.x, y + 1.5, e.z, r * 1.4, 0xFFF4E0, 0.3); pushWave(e.x, e.z, 0.4, 9);
+    const y = K.lv; pushWave(e.x, e.z, 0.4, 9);
     shockwave(e.x, y + 0.1, e.z, r * 2.2, 0xE8F4FF); shockwave(e.x, y + 0.15, e.z, r * 1.3, 0xBFD8E8);
     for (let k = 0; k < 70; k++) { const a = Math.random() * Math.PI * 2, s = Math.random() < 0.4 ? Math.random() * 2 : 3 + Math.random() * 7; emit(e.x + Math.cos(a) * 0.6, y + 0.2, e.z + Math.sin(a) * 0.6, Math.cos(a) * s, 6 + Math.random() * (s < 2 ? 18 : 9), Math.sin(a) * s, 0.9 + Math.random() * 0.8, 0.3 + Math.random() * 0.5, Math.random() < 0.7 ? 0xEAF4FF : 0xA8C8DA, -11, 'solid'); }
     for (let k = 0; k < 8; k++) smoke(e.x + (Math.random() - 0.5) * r, y + 1 + Math.random() * 3, e.z + (Math.random() - 0.5) * r, 4 + Math.random() * 3, 0xE8EEF2, 1.4 + Math.random(), 1.5);

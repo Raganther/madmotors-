@@ -6,6 +6,7 @@ import { HALF } from '../core/constants.js';
 import { withCutaway } from './materials.js';
 import { waterLevelAt } from './water.js';
 import { scene } from './renderer.js';
+import { splashLevelOf } from '../core/elements/mud.js';
 
 // Craters (core/features/dents.js is their shape; features/weapons.js makes them): each one a bowl that follows the
 // ground it's blown in, whatever its slope or camber (on a ramp too), a spray of thrown-out ground round it fading
@@ -20,10 +21,11 @@ const sandy = h => { const c = C(h); return c.r > c.g && c.g > c.b && c.r - c.b 
  *  whether it's under water. */
 export function kindAt(W, stage, x, z, i, surf) {
   const tr = W.tr, b = tr.bi(Math.max(0, Math.min(tr.N - 1, i)));
-  let k = surf || ((tr.mud && tr.mud[b] === 1) ? 'mud' : tr.ice && tr.ice[b] ? 'ice' : tr.dirt && tr.dirt[b] ? 'gravel' : W.surf);
+  let k = (surf !== 'splash' && surf) || ((tr.mud && tr.mud[b] === 1) ? 'mud' : tr.ice && tr.ice[b] ? 'ice' : tr.dirt && tr.dirt[b] ? 'gravel' : W.surf);
   if (k === 'splash') k = W.surf;
   if (k === 'gravel' && sandy(stage.colors.grassA)) k = 'sand';
-  const lv = waterLevelAt(x, z), gy = tr.H[Math.max(0, Math.min(tr.N - 1, i))];
+  const j = Math.max(0, Math.min(tr.N - 1, i)), gy = tr.H[j], sl = tr.mud && tr.mud[b] === 2 ? splashLevelOf(tr, j) : null;
+  let lv = waterLevelAt(x, z); if (sl !== null && (lv === null || sl > lv)) lv = sl;   // a splash's own level, or any water drawn there
   return { kind: k, wet: lv !== null && lv > gy + 0.05, lv };
 }
 /** The road sample nearest (x, z): a search, for a blast that only knows where it is. */

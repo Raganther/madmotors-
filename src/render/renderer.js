@@ -153,7 +153,7 @@ export function initRenderer() {
   hemi = new THREE.HemisphereLight(0xE8F4FF, 0x6B7A4A, 0.62); scene.add(hemi);
   sun = new THREE.DirectionalLight(0xFFF1DC, 0.9); sun.castShadow = true;
   sun.shadow.mapSize.set(1536, 1536); const sc = sun.shadow.camera; sc.left = -75; sc.right = 75; sc.top = 75; sc.bottom = -75; sc.near = 1; sc.far = 260;
-  sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04; scene.add(sun); scene.add(sun.target);
+  sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.1; scene.add(sun); scene.add(sun.target);   // normalBias: any lower and slopes shade themselves in fine stripes (shadow acne)
   addEventListener('resize', () => renderer.setSize(innerWidth, innerHeight));
   FX.cloud.value = makeCloudTex();
   applyQuality();

@@ -4,6 +4,7 @@ import { damageCar } from '../sim/damage.js';
 import { SIGNATURES, WEAPONS, levelOf } from '../../data/weapons.js';
 import { BREAKABLES } from '../../data/breakables.js';
 import { blastStructures, solidAt as wallAt } from './structures.js';
+import { splashLevelOf } from '../elements/mud.js';
 
 // ---------- weapons (menu: Weapons on/off; R.weapons) ----------
 // Weapon crates lie on the road; drive through one with nothing in hand and you get a weapon, which one depending on
@@ -60,7 +61,7 @@ export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_
   CRUSH_V: 7.5, CRUSH_R: 7, CRUSH_DMG: 6.5, CRUSH_SCRUB: 0.6,
   JINGLE_T: 2.5, JINGLE_R: 22, JINGLE_DUTY: 0.33,
   MORTAR_R: 5.5, MORTAR_FLIGHT: 1.7, MORTAR_RANGE: 130, MORTAR_AHEAD: 60, MORTAR_DMG: 4, MORTAR_POP: 5, MORTAR_PUSH: 7, MORTAR_SCRUB: 0.55, SHELLS: 1, SHELL_GAP: 0.3,
-  CRATER_R: 3.1, CRATER_DEEP: 0.15, CRATER_JUMP: 1.5, CRATER_LIFE: 120, CRATER_MAX: 14, CRATER_HOP: 1.6, CRATER_SCRUB: 0.92, CRATER_SPIN: 1.2, CRATER_KICK: 2.2, FIZZLE_CRATER: 1.7,
+  CRATER_R: 3.1, CRATER_DEEP: 0.15, CRATER_JUMP: 1.5, CRATER_LIFE: 60, CRATER_MAX: 14, CRATER_HOP: 1.3, CRATER_SCRUB: 0.96, CRATER_SPIN: 0.8, CRATER_KICK: 1.5, FIZZLE_CRATER: 1.7,
   FLARE_COOL: 20, SHIELD_COOL: 18, SHIELD_ON: 1, MAGNET: 2.4, SIG_ODDS: 1.5,
   MINE_ARM: 0.8, MINE_FWD: 0.5, MINE_UP: 3.4, MINE_BOUNCE: 0.4, MINE_GRIP: 3.5, MINE_TRIG: 3, MINE_BLAST: 5, MINE_DMG: 6.5, MINE_POP: 6.5, MINE_SLOW: 0.42, MINE_LIFE: 40,
   BLAST_MISSILE: [5, 48], BLAST_MINE: [5, 40], BLAST_MORTAR: [6, 50], BLAST_PULSE: 26, BLAST_CRUSH: 36 };   // scenery blasts: [radius m, power (as a car's impact)]
@@ -434,7 +435,8 @@ function shells(R, W, dt) {
       o.spin += (S.rng() - 0.5) * 2 * WPN.SPIN * f; o.stallT = Math.max(o.stallT || 0, WPN.STALL * f); o.boost = 0;
       damageCar(o, p.x, p.z, 4 + WPN.MORTAR_DMG * f, 1, 0, 0); o.events.push({ t: 'mortar-hit', from: sh.from, x: o.x, y: o.y, z: o.z, me: j === sh.from });
     });
-    R.cars[sh.from].events.push({ t: 'mortar-blast', x: p.x, y: p.y, z: p.z, r: sh.r }); ignite(R, W, p.x, p.z, sh.r);
+    const i = Math.round(sh.s), lv = tr.mud && tr.mud[tr.bi(i)] === 2 ? splashLevelOf(tr, i) : null, wet = lv !== null && tr.H[i] < lv - 0.05;   // into a water splash: no fire
+    R.cars[sh.from].events.push({ t: 'mortar-blast', x: p.x, y: p.y, z: p.z, r: sh.r, wet: wet ? lv : null }); if (!wet) ignite(R, W, p.x, p.z, sh.r);
     blastScenery(R, p.x, p.z, WPN.BLAST_MORTAR[0] * sh.r / WPN.MORTAR_R, WPN.BLAST_MORTAR[1], sh.from);
     addCrater(R, W, sh.s, sh.lat, WPN.CRATER_R * sh.r / WPN.MORTAR_R);
     return false;
