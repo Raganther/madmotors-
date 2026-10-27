@@ -7,10 +7,11 @@ import { hitBarrier, wallAt, wallPos } from './barriers.js';
 import { collideObstacles } from './obstacles.js';
 import { carWear, damageCar } from './damage.js';
 import { BOOST_PAD } from '../elements/boost.js';
-import { wornSurf } from '../features/wear.js';
+import { wornSurf, WEATHER } from '../features/wear.js';
 import { groundAt, project, roadH } from '../track/query.js';
 import { gateStep } from '../features/gates.js';
 import { OPEN, onTrail } from '../elements/open.js';
+import { splashLevelOf } from '../elements/mud.js';
 
 export function computeGrad(c, W) {
   const tr = W.tr, pr = c.pr, i = pr.i, e = 0.8;
@@ -96,7 +97,7 @@ export function stepCar(c, dt, W, racing) {
   let pr = c.pr;
   const al0 = Math.abs(pr.lat), side0 = pr.lat >= 0 ? 1 : -1, wallSide0 = wallAt(W, pr.i, side0);
   c.surface = (al0 < HALF + 0.4 || (wallSide0 && al0 < wallPos(W, pr.i, side0) + 1.2)) ? W.surf : 'grass';
-  if (tr.mud && al0 < HALF + 1.5) { const m = tr.mud[tr.bi(pr.i)]; if (m) c.surface = m === 2 ? 'ford' : 'mud'; }   // a bog or a water splash
+  if (tr.mud && al0 < HALF + 1.5) { const m = tr.mud[tr.bi(pr.i)]; if (m === 1) c.surface = 'mud'; else if (m === 2 && tr.H[pr.i] < splashLevelOf(tr, pr.i) - 0.05) c.surface = 'ford'; }   // a bog, or a water splash where the road is under its (level) water
   if (tr.ice && al0 < HALF + 0.4 && tr.ice[tr.bi(pr.i)]) c.surface = 'ice';      // an ice patch
   if (tr.dirt && c.surface === W.surf && tr.dirt[tr.bi(pr.i)]) c.surface = 'gravel';   // a dirt track (off-road shortcuts)
   const open = tr.open ? tr.open[tr.bi(pr.i)] : 0;                                  // open country (elements/open.js): no road here
@@ -112,11 +113,11 @@ export function stepCar(c, dt, W, racing) {
     if (inp.brake > 0) { if (vf > 0.5) a -= inp.brake * PHYS.BRAKE; else if (vf > -12) a -= inp.brake * PHYS.REVERSE; }
     if (c.boost > 0) a += PHYS.BOOST;
     if (c.draft > 0) a += c.draft * PHYS.DRAFT;                        // slipstream: tucked in behind another racer
-    a -= PHYS.DRAG * vf * Math.abs(vf) / (V ? V.top * V.top : 1) + S.drag * vf * (V && rough ? 2 - V.off : 1);
+    a -= PHYS.DRAG * vf * Math.abs(vf) / (V ? V.top * V.top : 1) + S.drag * vf * (V && rough ? 2 - V.off : 1) + (c.aqua ? WEATHER.AQUA_DRAG * c.aqua * vf : 0);
     vf += a * dt;
     if (inp.throttle <= 0 && inp.brake <= 0 && Math.abs(vf) < 1) vf *= Math.max(0, 1 - 3 * dt);
     const hb = inp.handbrake > 0 && Math.abs(vf) > 6;
-    const slick = (c.oilT > 0 ? 0.22 : 1) * (tr.wet && !LOOSE[c.surface] ? 1 - WET.GRIP * tr.wet : 1);   // an oil slick: the tyres barely hold; a wet road (elements/weather.js): less
+    const slick = (c.oilT > 0 ? 0.22 : 1) * (tr.wet && !LOOSE[c.surface] ? 1 - WET.GRIP * tr.wet * (1 - (c.dry || 0) * WEATHER.DRY_GRIP) : 1) * (c.aqua ? 1 - WEATHER.AQUA * c.aqua : 1);   // a drying line gives grip back; standing water takes it (features/wear.js)   // an oil slick: the tyres barely hold; a wet road (elements/weather.js): less
     const vg = V ? V.grip * (rough ? Math.sqrt(V.off) : 1) : 1;
     const latMax = (hb ? PHYS.HB_LAT : S.latMax) * (0.8 + 0.2 * mod) * slick * vg;
     const grip = (hb ? 1.4 : S.grip) * slick * vg;
@@ -225,18 +226,18 @@ export function stepCar(c, dt, W, racing) {
   c.progress = tr.progOf(pr.s);
   gateStep(c, W);                                                                    // a stage with gates: take them in order
   if (c.onGround && (al < HALF - 0.5 || openHere)) c.lastGood = pr.i;
-  const spd = Math.hypot(c.vx, c.vz), raid = !!tr.gates;
+  const spd = Math.hypot(c.vx, c.vz), raid = !!tr.gates, arena = !!(tr.arena && inArena(tr.arena, c.x, c.z));   // a derby arena's floor: all of it is fair game, not just its ring of road
   // open country: remember where it was last going well (on the ground, moving, nothing hit lately) to reset it there
   if (openHere && c.onGround && spd > 6 && !c.wallContact && !(c.hitT < 1.5)) { if ((c.safeT = (c.safeT || 0) - dt) <= 0) { c.safeT = 0.5; c.safe = { x: c.x, z: c.z, yaw: Math.atan2(c.vx, c.vz), i: pr.i, d: pr.dist }; } }
   else if (!openHere && al < HALF) c.safe = null;
-  if (pr.dist > (raid ? 140 : 24)) c.offT += dt * (spd > 8 && pr.dist < 70 ? 0.3 : 1); else c.offT = 0;   // a moving car gets time to cut across to the next bit of road; with gates, only lost cars
+  if (pr.dist > (raid ? 140 : 24) && !arena) c.offT += dt * (spd > 8 && pr.dist < 70 ? 0.3 : 1); else c.offT = 0;   // a moving car gets time to cut across to the next bit of road; with gates, only lost cars
   if (racing && !c.finished && spd < 1.2) c.stuckT += dt; else c.stuckT = 0;
   if (c.isPlayer && racing && !c.finished && !openHere) {
     const along = c.vx * tr.tx[pr.i] + c.vz * tr.tz[pr.i];
     if (along < -4) c.wrongT += dt; else c.wrongT = 0;
   }
   if (c.wallContact && spd < 3 && (c.inp.throttle > 0 || c.inp.brake > 0)) c.wallStuck = (c.wallStuck || 0) + dt; else c.wallStuck = 0;
-  if (c.wallStuck > 0.6) {
+  if (c.wallStuck > 0.6 && !arena) {   // (in an arena there's no road to put it back on: it backs out itself)
     const i = pr.i, side2 = pr.lat >= 0 ? 1 : -1, fwd = (Math.sin(c.yaw) * tr.tx[i] + Math.cos(c.yaw) * tr.tz[i]) >= -0.2 ? 1 : -1;
     c.x -= tr.rx[i] * side2 * 1.0; c.z -= tr.rz[i] * side2 * 1.0;
     c.yaw = Math.atan2(tr.tx[i] * fwd, tr.tz[i] * fwd); c.vx = tr.tx[i] * fwd * 6; c.vz = tr.tz[i] * fwd * 6; c.wallStuck = 0;
@@ -250,7 +251,7 @@ export function stepCar(c, dt, W, racing) {
   // boost pads
   if (tr.boostPad && c.onGround && al < HALF && tr.boostPad[tr.bi(pr.i)]) { if (!(c.boost > 0.3)) c.events.push({ t: 'boostpad' }); c.boost = Math.max(c.boost, BOOST_PAD); }
   if (c.offT > 0.6 && !c.destroyed) respawn(c, W);   // a smashed road car stays where it lands
-  else if (!c.isPlayer && !c.traffic && c.stuckT > 2.5) respawn(c, W);
-  else if (!c.isPlayer && racing && !raid && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road (with gates, off the road is fair game)
+  else if (!c.isPlayer && !c.traffic && c.stuckT > 2.5 && !arena) respawn(c, W);   // (in an arena the derby AI backs out itself)
+  else if (!c.isPlayer && racing && !raid && !arena && (c.strandT = al > WALL + 1.5 ? (c.strandT || 0) + dt : 0) > 2.5) respawn(c, W);   // AI stranded off-road (with gates, off the road is fair game)
   if (pr.i >= tr.NM - 6 && pr.i < tr.NM) { c.vx *= 1 - 4 * dt; c.vz *= 1 - 4 * dt; }
 }

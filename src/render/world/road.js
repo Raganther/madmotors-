@@ -4,21 +4,36 @@ import { clamp, lerp } from '../../core/math.js';
 import { chunkMesh } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { bridgeMat } from '../elements/bridge.js';
+import { NO_WUV, wetShine, withRuts, wuvOf } from '../ruts.js';
+import { rowDepths, WEAR_OPT } from '../../core/features/wear.js';
 
 export const ROAD_STRIPS = [-HALF + 1.1, -3.7, -2.3, -1.2, 1.2, 2.3, 3.7, HALF - 1.1];
 export function makeRoadMesh(tr, stage) {
   const C = stage.colors, N = tr.loopN || tr.N, loop = !!tr.loopN;
-  const mainPos = [], mainCol = [], brPos = [], brCol = [];
-  let pos = mainPos, col = mainCol;
+  const mainPos = [], mainCol = [], mainW = [], brPos = [], brCol = [], brW = [];
+  let pos = mainPos, col = mainCol, wv = mainW;
+  // where the road can rut (core features/wear.js), its surface is cut finer (RUT_STEP across) and every vertex on it
+  // carries wuv, so it sinks into the ruts as they're dug (render/ruts.js)
+  const rd = rowDepths({ tr, surf: stage.surface }, { ...WEAR_OPT, rain: true }).rd, RUT_STEP = 0.5;
+  const ruts = i => rd[tr.bi(i)] > 0, wuvAt = (i, o) => Math.abs(o) <= HALF + 0.01 && ruts(i) ? wuvOf(tr, tr.bi(i), o, tr.rx[i], tr.rz[i]) : NO_WUV;
   const road = new THREE.Color(C.road), dirt = new THREE.Color(C.dirt).multiplyScalar(0.85), skirt = new THREE.Color(C.dirt).multiplyScalar(0.68);
   const dirtRoad = new THREE.Color(C.dirtRoad || C.dirt).multiplyScalar(0.95), isDirt = i => tr.dirt && tr.dirt[tr.bi(i)];
   const concrete = new THREE.Color(0xB9BBC0), red = new THREE.Color(0xD8352A), white = new THREE.Color(0xF4F4F0), yel = new THREE.Color(0xFFC72C), blk = new THREE.Color(0x262626), tmp = new THREE.Color();
   const mnL = new Float32Array(N);
   for (let i = 0; i < N; i++) { let m = 1e9; for (let j = i - 3; j <= i + 3; j++) { const jj = loop ? (j + N) % N : clamp(j, 0, N - 1); m = Math.min(m, tr.H[jj]); } mnL[i] = m; }
   const O = [-HALF - 3, -HALF - 2, -HALF, -HALF + 1.1, HALF - 1.1, HALF, HALF + 2, HALF + 3];
-  const quad = (ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, c) => {
+  const quad = (ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, c, W = null) => {   // W: the corners' wuv [a, b, c, d]
     pos.push(ax, ay, az, cx, cy, cz, bx, by, bz, bx, by, bz, cx, cy, cz, dx, dy, dz);
     for (let q = 0; q < 6; q++) col.push(c.r, c.g, c.b);
+    if (W) wv.push(...W[0], ...W[2], ...W[1], ...W[1], ...W[2], ...W[3]); else for (let q = 0; q < 6; q++) wv.push(...NO_WUV);
+  };
+  // a strip from offset oa to ob between samples i and j at heights ya(ii), yb(ii): in pieces RUT_STEP wide where it ruts
+  const strip = (i, j, oa, ob, ya, yb, c) => {
+    const n = ruts(i) || ruts(j) ? Math.max(1, Math.ceil((ob - oa) / RUT_STEP - 0.01)) : 1;
+    for (let q = 0; q < n; q++) {
+      const o0 = oa + (ob - oa) * q / n, o1 = oa + (ob - oa) * (q + 1) / n, y0 = ii => lerp(ya(ii), yb(ii), q / n), y1 = ii => lerp(ya(ii), yb(ii), (q + 1) / n);
+      quad(...P(i, o0, y0(i)), ...P(i, o1, y1(i)), ...P(j, o0, y0(j)), ...P(j, o1, y1(j)), c, [wuvAt(i, o0), wuvAt(i, o1), wuvAt(j, o0), wuvAt(j, o1)]);
+    }
   };
   let up = 0;                                                                             // branches sit a hair higher where they overlap the main road
   const P = (i, o, y) => [tr.xs[i] + tr.rx[i] * o, y + up, tr.zs[i] + tr.rz[i] * o];
@@ -28,7 +43,7 @@ export function makeRoadMesh(tr, stage) {
     const onBridge = tr.bridge[i] || tr.bridge[j];
     if (tr.voidMask && (tr.voidMask[tr.bi(i)] || tr.voidMask[tr.bi(j)])) return;          // a gap or ferry crossing: no road at all
     if (tr.open && tr.open[tr.bi(i)] && tr.open[tr.bi(j)]) return;                      // open country (elements/open.js): no road
-    pos = onBridge ? brPos : mainPos; col = onBridge ? brCol : mainCol;
+    pos = onBridge ? brPos : mainPos; col = onBridge ? brCol : mainCol; wv = onBridge ? brW : mainW;
     for (let s = 0; s < 7; s++) {
       const oa = O[s], ob = O[s + 1];
       const yf = (ii, k) => {
@@ -53,14 +68,14 @@ export function makeRoadMesh(tr, stage) {
           let k = base * (q === 1 || q === 5 ? (dirtHere ? 0.82 : 0.9) : q === 3 ? (dirtHere ? 1.08 : 1.02) : 1);
           const pn = tr.noise.n2(i * 0.045 + q * 0.7, 9.1 + q * 0.3); if (pn > 0.62) k *= tr.surface === 'tarmac' ? 0.86 : 1.08;
           tmp.copy(surf).multiplyScalar(k);
-          const qa = P(i, pa, tr.H[i] + 0.05), qb = P(i, pb, tr.H[i] + 0.05), qc = P(j, pa, tr.H[j] + 0.05), qd = P(j, pb, tr.H[j] + 0.05);
-          quad(...qa, ...qb, ...qc, ...qd, tmp);
+          strip(i, j, pa, pb, ii => tr.H[ii] + 0.05, ii => tr.H[ii] + 0.05, tmp);
         }
         continue;
       }
       // quad corners: a=(i,oa) b=(i,ob) c=(j,oa) d=(j,ob) ; orient so normal faces up
+      if (Math.abs(oa) <= HALF + 0.01 && Math.abs(ob) <= HALF + 0.01) { strip(i, j, oa, ob, ii => yf(ii, s), ii => yf(ii, s + 1), c); continue; }   // the kerbs: on the road, so they rut with it
       const a = P(i, oa, yf(i, s)), b = P(i, ob, yf(i, s + 1)), cc = P(j, oa, yf(j, s)), d = P(j, ob, yf(j, s + 1));
-      quad(...a, ...b, ...cc, ...d, c);
+      quad(...a, ...b, ...cc, ...d, c, [wuvAt(i, oa), wuvAt(i, ob), wuvAt(j, oa), wuvAt(j, ob)]);
     }
     if (tr.surface === 'tarmac' && !isDirt(i) && !tr.jump[i] && i % 6 < 3 && i > 40 && (loop || i < tr.finishIdx - 4)) {
       const a = P(i, -0.18, tr.H[i] + 0.07), b = P(i, 0.18, tr.H[i] + 0.07), cc = P(j, -0.18, tr.H[j] + 0.07), d = P(j, 0.18, tr.H[j] + 0.07);
@@ -73,18 +88,20 @@ export function makeRoadMesh(tr, stage) {
   up = 0.03; for (const a of tr.alts) for (let q = 0; q <= a.n; q++) if (!(onMain(a.u + q) && onMain(a.u + q + 1))) seg(a.u + q, a.u + q + 1);
   up = 0;
   // checkered start and finish lines
-  pos = mainPos; col = mainCol;
+  pos = mainPos; col = mainCol; wv = mainW;
   for (const li of (loop ? [tr.startIdx] : [tr.startIdx, tr.finishIdx])) {
     for (let row = 0; row < 2; row++) for (let q = 0; q < 12; q++) {
       const o0 = -HALF + q * (2 * HALF / 12), o1 = o0 + 2 * HALF / 12, s0 = li + row * 0.8, s1 = s0 + 0.8;
       const i0 = Math.floor(s0), f0 = s0 - i0, i1 = Math.floor(s1), f1 = s1 - i1;
       const pt = (ii, f, o) => { const x = lerp(tr.xs[ii], tr.xs[ii + 1], f) + tr.rx[ii] * o, z = lerp(tr.zs[ii], tr.zs[ii + 1], f) + tr.rz[ii] * o; return [x, lerp(tr.H[ii], tr.H[ii + 1], f) + 0.08, z]; };
-      quad(...pt(i0, f0, o0), ...pt(i0, f0, o1), ...pt(i1, f1, o0), ...pt(i1, f1, o1), (q + row) % 2 ? white : blk);
+      quad(...pt(i0, f0, o0), ...pt(i0, f0, o1), ...pt(i1, f1, o0), ...pt(i1, f1, o1), (q + row) % 2 ? white : blk, [wuvAt(i0, o0), wuvAt(i0, o1), wuvAt(i1, o0), wuvAt(i1, o1)]);
     }
   }
-  const mk = (P, C, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m; };
-  const mainM = mk(mainPos, mainCol, withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), false, { cut: false, cloud: true, grain: tr.surface === 'tarmac' ? 0.07 : 0.12 })), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
-  const bridge = brPos.length ? mk(brPos, brCol, bridgeMat({ vertexColors: true, side: THREE.DoubleSide })) : null;
+  const mk = (P, C, Wv, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setAttribute('wuv', new THREE.Float32BufferAttribute(Wv, 4)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m; };
+  // in the rain the road gleams: a shiny material (render/ruts.js wetShine turns it up and down with the Shine option)
+  const roadMat = stage.wet > 0 ? wetShine(new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide }), tr.surface === 'tarmac' ? 1 : 0.45) : new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  const mainM = mk(mainPos, mainCol, mainW, withRuts(withCutaway(roadMat, false, { cut: false, cloud: true, grain: tr.surface === 'tarmac' ? 0.07 : 0.12 }))), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
+  const bridge = brPos.length ? mk(brPos, brCol, brW, bridgeMat({ vertexColors: true, side: THREE.DoubleSide })) : null;
   if (bridge) bridge.castShadow = true;
   return { main, bridge };
 }

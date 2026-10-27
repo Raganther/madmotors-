@@ -40,9 +40,10 @@ import { addArena } from './arena.js';
 import { addStructures, newStructuresRace, updateStructures } from './structures.js';
 import { addCrumbles, newCrumbleRace, updateCrumbles } from './crumble.js';
 import { addAmbient, updateAmbient } from './ambient.js';
+import { clearWaves, updateWaves } from '../waves.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
-const river = { name: 'river', build(group, tr) { addRiver(group, tr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
+const river = { name: 'river', build(group, tr, terr) { addRiver(group, tr, terr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
 const railways = {
   name: 'rails',
   build(group, tr) { addRails(group, tr); addCrossings(group, tr); },
@@ -73,7 +74,7 @@ const rockfall = { name: 'rockfall', init: initRockVis, update(dt, now, fxDt) { 
 const hazards = { name: 'hazards', init: initHazardVis, update(dt, now) { updateHazardVis(dt, now); } };
 const falls = { name: 'falls', build(group, tr, terr) { addFalls(group, tr, terr); }, update(dt, now) { updateFalls(dt, now); } };
 
-const drawbridge = { name: 'drawbridge', build(group, tr) { addDrawbridges(group, tr); }, update(dt, now) { updateDrawbridges(dt, now); } };
+const drawbridge = { name: 'drawbridge', build(group, tr, terr) { addDrawbridges(group, tr, terr); }, update(dt, now) { updateDrawbridges(dt, now); } };
 
 const mill = { name: 'mill', build(group, tr, terr) { addMill(group, tr, terr); } };
 
@@ -99,7 +100,9 @@ const weather = { name: 'weather', build(group, tr, terr, stage) { addWeather(gr
 const ambient = { name: 'ambient', build(group, tr, terr, stage) { addAmbient(group, terr, stage); }, update(dt, now) { updateAmbient(dt, now); } };   // a TV helicopter and birds (looks only)
 
 const structures = { name: 'structures', build(group, tr, terr) { addStructures(group, tr, terr); }, newRace() { newStructuresRace(); }, update(dt) { updateStructures(dt); } };   // destructible buildings (stage.buildings)
-const crumble = { name: 'crumble', build(group, tr) { addCrumbles(group, tr); }, newRace() { newCrumbleRace(); }, update() { updateCrumbles(); } };   // timber bridges that wear through
+const crumble = { name: 'crumble', build(group, tr, terr) { addCrumbles(group, tr, terr); }, newRace() { newCrumbleRace(); }, update() { updateCrumbles(); } };   // timber bridges that wear through
 
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather, ambient, structures, crumble];
+// the water's waves (render/waves.js): the cars stir every water surface
+const waves = { name: 'waves', newRace() { clearWaves(); }, update(dt) { updateWaves(dt); } };
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather, ambient, structures, crumble, waves];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

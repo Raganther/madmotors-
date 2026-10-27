@@ -30,8 +30,13 @@ first: holding one, keep the car ahead in your sights and corner brackets close 
 level 2) until they flash red: fired locked it homes in on that car, fired early it flies straight down the road
 (`lockedOn`; the target hears the lock and gets a warning). The **mortar** lobs a shell high onto where the car ahead
 will be (a red ring on the road shows where it's coming down, so it can be dodged); the blast throws everyone near
-and leaves a **crater** in the road (missiles that miss leave small ones) that jolts, scrubs and knocks aside any car
-driving into it for the rest of the race, and the AI steers round craters and rings (`W.craters`, `sim/ai.js`). Nuances (render only): tyres print the road for a while out of oil (black), wet cement (grey) and
+and leaves a **crater** in the road (missiles that miss leave small ones): a real hole (`core/features/dents.js`, which
+`groundAt` adds to the ground; deeper in the face of a jump, which loses a chunk) that a car drops into and is jolted,
+scrubbed and knocked aside by, for `CRATER_LIFE` s; the AI steers round craters and rings (`W.craters`, `sim/ai.js`).
+`render/craters.js` draws each one as a bowl that follows the ground (pulled towards the camera along the line of sight,
+so it wins over the road and terrain it's dug into from any camera), a spray of thrown-out ground and chunks of what it
+was dug in (broken tarmac, stones, sand, snow, ice, mud); the blast throws up the same, and in water it's a column of
+spray and a surge of waves (`render/waves.js` `pushWave`) with the hole left under the water. Nuances (render only): tyres print the road for a while out of oil (black), wet cement (grey) and
 water (dark), `render/effects/trails.js`; an oiled or cemented car is coated (`dirt.js` `coat`), oil and water drip off
 it, the water cannon rinses the muck off, a car hit by a missile, shell or mine trails smoke, a stinger leaves a rim
 sparking, and mines tumble end over end and wobble as they settle. Blasts reach the scenery: a missile that hits or runs out, a mine, a mortar
@@ -96,6 +101,22 @@ laps for the Rookie Cup, each teaching one thing (steering and braking, the drif
 weapons on a figure of eight over its own stone bridge). They set `soft: true`, which puts hay bales instead of tyre
 walls on tight bends, so a mistake costs a second. The four downhill runs moved up to Club as the Downhill Classic
 cup. A stage's `river` can take a `color` (a lighter tint for a pond or the sea).
+
+All water (rivers, the sea, ponds, water splashes, open-country streams, the moats and canals under drawbridges and
+timber bridges, standing rain water, and the puddles in bogs and ruts) is drawn by `src/render/water.js`: a sheet
+that knows its depth over the ground at every corner, and a material that draws it by that depth (clear and pale in the
+shallows so the land slips away under it, a lapping line of foam at the edge, dark where it's deep, nothing where the
+ground is higher). So the ground makes the shoreline: shape the terrain (a river's bed, a splash's pool) and the water
+follows it. Standing water is always level: a splash's water is flat at its lowest road + `SPLASH_UP` (`splashLevelOf`;
+on a splash laid on a slope only the low end is wet, and only there is it a ford for the cars), rain only leaves water
+along the edges where the road is near level or at the bottom of a hollow, and puddles in ruts and bogs only form on
+the flat. `npm run water-audit` lists every stage's water and anything on a slope; tests/water.test.js keeps it so. The water answers the cars: `render/waves.js` runs a wave grid (0.5 m cells, 64 m across)
+round the camera; every wheel in water ploughs it (a trough, a bow wave, a wake), driving in drops a surge that runs out
+to the shore, and the water material lifts its surface by it, moves its shoreline with it (up the bank on a crest, back
+in a trough) and froths where it's churned. Looks only; off on Graphics: Low. A water splash scoops a pool into the ground either side of the road (`splashBed` in core/elements/mud.js,
+so a car off the road drops into it); new water anywhere should use `waterGrid` / `waterMaterial` (`waterPool` for
+level water filling a cut under a piece of road), never a flat plane with its own edges. Shallow water whose bed moves
+(the rut puddles) passes `scale` and an `extra` depth term read from its own texture; `foam` sets how white the shore is.
 
 **Derby** (stages 23-26: Scrapyard Bowl, Mud Pit, The Stadium, and the Banger Oval): `src/core/modes/derby.js`, the
 mode `createRace(W, defs, { mode: 'derby' })`. No laps, no finish line: a wrecked car is out for good (a shell to drive
@@ -316,7 +337,7 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | falls | `falls` | scenery waterfall arcing over the road off a cliff on the far side |
 | drawbridge | `drawbridge: <s>` | a bascule bridge that rises every so often: jump it while it's low, wait while it's up (cycle in `features/drawbridge.js`) |
 | mill | `mill`, `logs` | sawmill shed and log stacks; log piles along the road (scenery) |
-| mud | `mud: true`, `mud: 'water'` | a mud bog or a water splash: less grip, more drag, spray from the wheels. Bogs rut as the race goes on: the ruts are firmer but tug at the wheels; cars leaving a bog lay a mud trail (`features/wear.js`) |
+| mud | `mud: true`, `mud: 'water'` | a mud bog or a water splash (a pool scooped out either side of the road): less grip, more drag, spray from the wheels. Bogs rut as the race goes on: the ruts are firmer but tug at the wheels; cars leaving a bog lay a mud trail (`features/wear.js`) |
 | whoops | `whoops: <m>` | a run of rolling bumps |
 | yump | `yump: <m>` | a natural dirt crest jump (no painted ramp); `kick` is the painted one |
 | dirt | `dirt: true` | a loose dirt track (gravel grip, no kerbs) on any stage; on a branch it's an off-road shortcut |
@@ -349,6 +370,19 @@ fresh tyre tracks where it actually is (curved scuffs when drifting) on gravel, 
 pass; on tarmac, skid marks do that job. `render/elements/wear.js`
 draws it over the road; the bogs draw their own ruts. A new surface gets its wear from `WEAR.DIG` and its worn-in
 grip from the `FIRM` table there.
+
+The ruts also have depth, dug lap by lap (a second, slower grid, `W.wear.d`; `RUT` in wear.js): fully dug, about
+24 cm in a bog, 7.5 cm on gravel and dirt tracks, 6 cm on snow; tarmac, water splashes, ice, bridges and open country
+don't rut. They pile spoil up beside them in a ridge. The cars ride in them (`rutGround`, through `groundAt`: the
+height under the two wheel tracks, so a car sinks when both are in and rolls when one is), they pull a car toward
+their bottom and scrub it crossing them, and the AI drives in them on gravel and snow as well as in bogs. On a wet
+stage (`wet`) everything digs faster, gravel softens to dig deeper (up to ~18 cm), a dug-in gravel line turns to mud
+(slower), and water lies in the deepest parts. Drawing them: `render/ruts.js` puts the heights in a small texture and
+the road's driving surface (cut every 0.5 m where it can rut), the wear overlay and the bogs all sink by it in their
+vertex shaders, normals tilted so the rut walls catch the light; the puddles are a sheet that reads the same texture.
+Every part can be switched off, and depth and rate scaled, from the menu's **Track wear** panel (`ui/wear.js`,
+`WEAR_OPT`; a race takes them as `opts.wear`, from the next race). On Bogwood Rally in the Rain the whole package
+costs the field about 8% over three laps (3-4 s of it the rain's mud, the rest the ruts' feel); dry gravel and snow 1-2%.
 
 ### Branches (the road splits and joins again)
 
@@ -467,6 +501,16 @@ each a mesh on a hinge, with a dark tub inside the shell for the hole a missing 
 flap when open, tear off as real pieces, swing for a door bash, and go with everything else when a car is wrecked
 (it's stripped to the shell). Vehicles with no closed shell are listed in `NO_PANELS`. No per-car work: a new car
 gets panels if its body is one painted box (or Blender part).
+
+What the panels open onto is drawn too, sized from the shell, standing on the floor of its hollow and kept under each
+lid's lowest point. The engine goes where the car carries it (`ENGINE` in data/anatomy.js, by model: front by
+default, `mid` behind the seats, `rear` over the back axle): a V engine (radiator and hoses up front; a silencer across
+the tail when it's mid-mounted), or a flat engine with its cooling fan for a rear engine or a bay too shallow for the
+V. The other lid opens on a front boot (radiator, spare, fuel tank) or a luggage bay (carpet, spare, toolbox, jack).
+Behind the doors: two seats, the dash and the wheel (`OPEN_COCKPIT` lists bodies that draw their own seats). The tub
+is cut open under the lids and the doors so all of it shows. `npm run bays [ids] [--shots dir]` (tools/bayprobe.mjs)
+lists each car's panels and what each lid opens on, both providers, and saves pictures; the e2e fails a car with
+panels but no engine.
 
 ### Upgrade parts
 
@@ -642,8 +686,8 @@ Quadra S1 (an 80s box-flared rally coupe) and Sarthe 40 (a 60s Le Mans racer). T
 their Classic bodies share a `shell` helper (underbody, painted shell, raked glasshouse, roof, number). Showrooms:
 Rookie sells Stallion, Wasp, Clubman, Bandit, Judge and Pleiades (the first three can start a career); Club the
 Nightbrute, Quadra, Barra, Strato, Swabia and Asp; Pro the Sarthe, Cyclone, Turin and Toro; Legend the Taurus and Rosso.
-A wedge's nose is too shallow for the engine bay: `render/anatomy.js` sizes it to the bonnet's lowest point and leaves
-a bare front boot when there's no room.
+The mid-engined ones (Sarthe, Strato, Turin, Toro, Taurus, Rosso) and the rear-engined Swabia are in `ENGINE`
+(data/anatomy.js): their engine is under the engine cover, a front boot under the bonnet.
 
 ## Blender assets (the asset lab)
 

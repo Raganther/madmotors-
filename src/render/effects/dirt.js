@@ -49,12 +49,28 @@ export function addDirt(v, panels, wheels = []) {
   for (const w of wheels) w.traverse(m => { if (m.isMesh && !m.userData.dirt) { const o = new THREE.Mesh(m.geometry, wmat); o.userData.dirt = true; o.renderOrder = 1; o.scale.setScalar(1.01); m.add(o); } });
   v.dirt = { amt: 0, mat, wmat, col: new THREE.Color(0xB49A74), tmp: new THREE.Color() };
 }
-/** Something thrown over the car (an oil drum bursting on it, wet cement): the body takes that colour, at least `amt` of it. */
-export function coat(v, hex, amt) { const D = v && v.dirt; if (!D) return; D.col.setHex(hex); D.amt = Math.min(1, Math.max(D.amt, amt)); if (amt > 0.6) texOf(D, heavyTex()); show(D); }
-/** A soaking (the water cannon): it rinses most of the muck off. */
-export function rinse(v, k = 0.4) { const D = v && v.dirt; if (!D) return; D.amt *= k; if (D.amt < 0.3) texOf(D, dirtTex()); show(D); }
+/** Something thrown over the car (an oil slick, a drum bursting on it, wet cement, soot): the body takes that colour,
+ *  at least `amt` of it, then it wears off over `wear` s (it runs off, the wind and the road take it) back to the
+ *  muck that was under it. The muck keeps building up underneath meanwhile. */
+export function coat(v, hex, amt, wear = 9) {
+  const D = v && v.dirt; if (!D) return;
+  if (!D.under) D.under = { col: D.col.clone(), amt: D.amt };
+  D.coat = { col: new THREE.Color(hex), amt: Math.min(1, Math.max(D.coat ? D.coat.amt * D.coatK : 0, D.under.amt, amt)), t: 0, T: wear };
+  if (amt > 0.6) texOf(D, heavyTex());
+  wearCoat(D, 0);
+}
+// the coat stays full for the first third of its time, then fades to the muck under it
+function wearCoat(D, dt) {
+  const C = D.coat; C.t += dt;
+  const k = D.coatK = 1 - Math.min(1, Math.max(0, (C.t - C.T / 3) / (C.T * 2 / 3)));
+  D.col.copy(D.under.col).lerp(C.col, k); D.amt = D.under.amt + (C.amt - D.under.amt) * k;
+  if (k <= 0) { D.coat = D.under = null; if (D.amt < 0.6) texOf(D, dirtTex()); }
+  show(D);
+}
+/** A soaking (the water cannon): it rinses most of the muck off, and any coat with it. */
+export function rinse(v, k = 0.4) { const D = v && v.dirt; if (!D) return; if (D.coat) { D.col.copy(D.under.col); D.amt = D.under.amt; D.coat = D.under = null; } D.amt *= k; if (D.amt < 0.3) texOf(D, dirtTex()); show(D); }
 const texOf = (D, t) => { if (D.mat.map === t) return; D.mat.map = t; D.wmat.map = t; D.mat.needsUpdate = D.wmat.needsUpdate = true; };
-export function resetDirt(v) { if (v.dirt) { texOf(v.dirt, dirtTex()); v.dirt.amt = 0; v.dirt.mat.opacity = 0; v.dirt.wmat.opacity = 0; v.dirt.mat.visible = v.dirt.wmat.visible = false; } }
+export function resetDirt(v) { if (v.dirt) { texOf(v.dirt, dirtTex()); v.dirt.coat = v.dirt.under = null; v.dirt.amt = 0; v.dirt.mat.opacity = 0; v.dirt.wmat.opacity = 0; v.dirt.mat.visible = v.dirt.wmat.visible = false; } }
 // the body shows the muck at its level; the wheels, which sit in it, at three times that, caked paler than the rubber
 function show(D) { D.mat.color.copy(D.col); D.mat.opacity = Math.min(0.95, D.amt * 1.3); D.wmat.color.copy(D.col).multiplyScalar(1.45); D.wmat.opacity = Math.min(0.97, D.amt * 3); D.mat.visible = D.mat.opacity > 0.01; D.wmat.visible = D.wmat.opacity > 0.01; }   /* caked mud dries paler than the tyre under it */
 // following a car through a bog: its rooster tail lands on you
@@ -69,12 +85,17 @@ function inSpray(c) {
 }
 export function updateDirt(c, v, dt) {
   const D = v.dirt; if (!D) return;
-  if (inSpray(c)) { D.amt = Math.min(1, D.amt + 0.35 * dt); D.col.lerp(D.tmp.setHex(MUCK.mud.col), Math.min(1, dt * 2)); show(D); }
-  if (!c.onGround) return;
-  const M = MUCK[fxSurf(c)] || MUCK.tarmac, sp = Math.hypot(c.vx, c.vz); if (sp < 2) return;
-  const add = M.rate * dt * Math.min(1.5, sp / 20);
-  if (add > 0 && M.col !== null) D.col.lerp(D.tmp.setHex(M.col), Math.min(1, add / (D.amt + add) * 1.5));
-  if (c.surface === 'ford') D.amt = Math.max(Math.min(D.amt, 0.35), D.amt + add);   // the splash rinses off the worst of it
-  else D.amt = Math.min(1, Math.max(0, D.amt + add));
-  show(D);
+  const M0 = D.under || D;                                                         // under a coat, the muck builds up beneath it
+  if (inSpray(c)) { M0.amt = Math.min(1, M0.amt + 0.35 * dt); M0.col.lerp(D.tmp.setHex(MUCK.mud.col), Math.min(1, dt * 2)); }
+  if (c.onGround) {
+    const M = MUCK[fxSurf(c)] || MUCK.tarmac, sp = Math.hypot(c.vx, c.vz);
+    if (sp >= 2) {
+      const add = M.rate * dt * Math.min(1.5, sp / 20);
+      if (add > 0 && M.col !== null) M0.col.lerp(D.tmp.setHex(M.col), Math.min(1, add / (M0.amt + add) * 1.5));
+      if (c.surface === 'ford') M0.amt = Math.max(Math.min(M0.amt, 0.35), M0.amt + add);   // the splash rinses off the worst of it
+      else M0.amt = Math.min(1, Math.max(0, M0.amt + add));
+    }
+  }
+  if (D.coat) wearCoat(D, c.surface === 'ford' ? dt * 4 : dt);                     // a splash washes a coat off fast
+  else show(D);
 }

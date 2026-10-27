@@ -4,7 +4,7 @@ import { AudioSys } from '../../audio/audio.js';
 import { HALF, WALL } from '../../core/constants.js';
 import { DRAW } from '../../core/elements/drawbridge.js';
 import { flat } from '../geometry.js';
-import { withCutaway } from '../materials.js';
+import { waterMaterial, waterPool } from '../water.js';
 import { race } from '../../ui/flow.js';
 
 // Drawbridge visuals: the mill race under it, stone abutments, the two steel leaves (asphalt deck, red girders,
@@ -13,14 +13,14 @@ import { race } from '../../ui/flow.js';
 const L = c => new THREE.MeshLambertMaterial({ color: c });
 const box = (w, h, d, m, x, y, z, parent) => { const b = new THREE.Mesh(flat(new THREE.BoxGeometry(w, h, d)), m); b.position.set(x, y, z); b.castShadow = true; b.receiveShadow = true; parent.add(b); return b; };
 let vis = [], bellT = 0;
-export function addDrawbridges(group, tr) {
+export function addDrawbridges(group, tr, terr) {
   vis = [];
   const deck = L(0x4A4E56), girder = L(0xB8392C), stone = L(0x8F8A80), white = L(0xF2F2EE), yel = L(0xFFC72C), blk = L(0x262626), dark = L(0x2B2F3A);
-  const water = withCutaway(new THREE.MeshLambertMaterial({ color: 0x3E7DAE }), false, { cut: false, cloud: true, water: true });
+  const water = waterMaterial({ color: 0x3E7DAE });
   for (const d of tr.drawbridges || []) {
     const len = d.b - d.a, half = len / 2, mid = d.a + half, i = Math.round(mid);
     const root = new THREE.Group(); root.position.set(tr.xs[i] + tr.tx[i] * (mid - i), d.h, tr.zs[i] + tr.tz[i] * (mid - i)); root.rotation.y = tr.th[d.a]; group.add(root);
-    const pond = new THREE.Mesh(new THREE.PlaneGeometry(90, len + 2).rotateX(-Math.PI / 2), water); pond.position.y = -6.5; pond.receiveShadow = true; root.add(pond);
+    waterPool(root, terr, [-120, 120, -half - 8, half + 8], -6.5, water);   // the mill race: level water filling the cut, its banks the shore
     for (const s of [-1, 1]) box(2 * WALL + 3, 7, 3, stone, 0, -3.6, s * (half + 1.4), root);   // abutments
     const leaves = [-1, 1].map(s => {                                                   // s = -1 the near leaf, hinged at the near bank
       const pivot = new THREE.Group(); pivot.position.set(0, 0, s * half); root.add(pivot);

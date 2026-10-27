@@ -3,7 +3,7 @@ import { G } from '../../game.js';
 import { HALF, WALL } from '../../core/constants.js';
 import { CRUMBLE } from '../../core/elements/crumble.js';
 import { flat } from '../geometry.js';
-import { withCutaway } from '../materials.js';
+import { waterMaterial, waterPool } from '../water.js';
 import { spawnProp } from '../effects/props.js';
 import { emit } from '../effects/particles.js';
 
@@ -16,14 +16,14 @@ let vis = [];
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color(), _a = new THREE.Color(PLANK), _b = new THREE.Color(WORN), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const L = c => new THREE.MeshLambertMaterial({ color: c });
 const box = (w, h, d, m, x, y, z, parent, rx = 0) => { const b = new THREE.Mesh(flat(new THREE.BoxGeometry(w, h, d)), m); b.position.set(x, y, z); b.rotation.x = rx; b.castShadow = true; b.receiveShadow = true; parent.add(b); return b; };
-export function addCrumbles(group, tr) {
+export function addCrumbles(group, tr, terr) {
   vis = [];
   const beam = L(0x5E4630), post = L(0x4A3826), rail = L(0x8A6A48);
-  const water = withCutaway(new THREE.MeshLambertMaterial({ color: 0x3E6E8E }), false, { cut: false, cloud: true, water: true });
+  const water = waterMaterial({ color: 0x3E6E8E });
   for (const d of tr.crumbles || []) {
     const len = d.b - d.a, i = d.a, root = new THREE.Group(), slope = (d.h1 - d.h0) / len;
     root.position.set(tr.xs[i], d.h0, tr.zs[i]); root.rotation.y = tr.th[i]; group.add(root);   // local z runs along the span from its start, x across
-    const pond = new THREE.Mesh(new THREE.PlaneGeometry(90, len + 6).rotateX(-Math.PI / 2), water); pond.position.set(0, -6.5, len / 2); pond.receiveShadow = true; root.add(pond);
+    waterPool(root, terr, [-120, 120, -10, len + 10], -6.5, water);   // the water below: level, filling the cut, its banks the shore
     const along = new THREE.Group(); along.rotation.x = -Math.atan(slope); root.add(along);
     // stringers under the deck (they stay when the planks go), pilings every 6 m with cross-bracing, a railing each side
     for (const x of [-HALF, -HALF / 3, HALF / 3, HALF]) box(0.3, 0.45, len, beam, x, -0.4, len / 2, along);

@@ -15,3 +15,9 @@ export const SPILL = 0.6;
 // Vehicles whose body has no closed shell to cut (open wheels, a frame, a drum): they dent and shed parts the old way.
 // The e2e run checks every other vehicle gets its panels with both providers.
 export const NO_PANELS = ['formula', 'hotrod', 'kart', 'rover', 'sidecar', 'mixer'];
+// Where each body carries its engine (render/anatomy.js puts it under that lid): front (the default), mid (behind the
+// seats, under the engine cover) or rear (out over the back axle, a flat engine). The other lid opens on a front boot
+// or a luggage bay. Keyed by model.
+export const ENGINE = { wedge: 'mid', sarthe: 'mid', strato: 'mid', turin: 'mid', toro: 'mid', taurus: 'mid', rosso: 'mid', swabia: 'rear' };
+// Bodies with panels but an open cockpit that draws its own seats: no fitted interior behind their doors.
+export const OPEN_COCKPIT = ['buggy', 'tuktuk', 'asp', 'roadster'];

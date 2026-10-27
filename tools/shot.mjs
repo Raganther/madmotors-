@@ -39,7 +39,7 @@ if (ws) {
   await browser.close(); process.exit(errs.length ? 1 : 0);
 }
 if (garage) {
-  await page.click('#veh-btn');
+  await page.evaluate(() => window.__dr.menu.show('quick')); await page.click('#veh-btn');   // (the vehicle button is on Quick Race: ui/menu.js)
   await page.waitForFunction(() => [...document.querySelectorAll('#garage-grid img')].every(i => i.complete && i.naturalWidth), null, { timeout: 120000 });
   for (const end of ['top', 'bottom']) {
     await page.evaluate(e => { const g = document.getElementById('garage-grid'); g.scrollTop = e === 'top' ? 0 : g.scrollHeight; }, end);

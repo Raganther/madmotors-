@@ -2,6 +2,8 @@
 
 Top-down racer, three.js r128, plain JS modules, Vite. Read README.md for the layout and how to add stages/features.
 The agreed plan for upcoming work is docs/ROADMAP.md (foundations F0-F6, then the game layer G1-G6); keep its status table current.
+Track design has its own vision document, docs/TRACK_DESIGN.md: its pillars, theme bank and destruction patterns guide every
+new or reworked track, and a track's page there is agreed with the user before it's built.
 
 ## Commands
 - `npm run check`: lint + tests (golden included) + a production build. Run before every commit; must pass.
@@ -20,6 +22,8 @@ The agreed plan for upcoming work is docs/ROADMAP.md (foundations F0-F6, then th
 - `npm run bench -- <n>`: render benchmark (SwiftShader here, so only compare against a previous run). `MODELS=classic|blender` (also for `shot`) sets the Models setting: price Blender assets against Classic with `RIVALS=13`.
 - Car families (`src/data/families.js`): a new car from a shared chassis is a data entry; both providers draw it (README "A car in a family", `/new-vehicle`).
 - `npm run assets [ids]`: build the Blender assets headless (installs `bpy` if missing; ~1 min per car) → `src/assets/gen/` (commit it) and previews in `blender/out/`. Look at them: `npm run labshot -- <ids>` (Blender beside Classic), and the Asset Lab (`?lab`, `npm run lab`; published on its own at https://claude.ai/artifact/YbX3XQF3kMha8K6a6GgdMj, whose db also holds `assetNotes`).
+- `npm run bays -- [ids] [--shots dir]`: what each car's bonnet, boot and doors open onto (engine, front boot, luggage, seats), both providers; `--shots` saves them open, stripped, and from above. Look after any body change.
+- `npm run water-audit -- [stage]`: where water stands on every stage and whether it's level (splashes, rain puddles, bog puddles); tests/water.test.js keeps it so. Run after touching splashes, rain water or a stage with them.
 - Headless Chromium lives at /opt/pw-browsers (don't `playwright install`); pass `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`.
 
 ## Notes from the user

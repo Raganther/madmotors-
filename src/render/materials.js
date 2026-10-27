@@ -22,10 +22,13 @@ export function makeCloudTex() {
   const t = canvasTex(N, N, (g2) => { const img = g2.createImageData(N, N); for (let i = 0; i < N * N; i++) { const v = clamp((data[i] - 0.5) * 3.2 + 0.5, 0, 1) * 255; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; } g2.putImageData(img, 0, 0); });
   t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
 }
+// Buildings (opts.building: destructible structures, town and roadside houses) don't turn see-through over the player
+// for now: it hid the bricks and the hole a car smashes through them. true brings it back.
+export const SEE_THROUGH_BUILDINGS = false;
 // opts: cut (see-through window over the player, default on), cloud (drifting cloud shadows), sway (foliage in the wind),
 // grain (0..1: fine surface detail in world space, two scales of the tileable noise, so ground and road aren't flat colour)
 export function withCutaway(mat, solidInside, opts = {}) {
-  const cut = opts.cut !== false, cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water, grain = opts.grain || 0, strata = opts.strata || 0;
+  const cut = opts.cut !== false && !(opts.building && !SEE_THROUGH_BUILDINGS), cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water, grain = opts.grain || 0, strata = opts.strata || 0;
   if (solidInside) mat.side = THREE.DoubleSide;
   mat.onBeforeCompile = sh => {
     sh.uniforms.uCutCar = CUT.car; sh.uniforms.uCutDir = CUT.dir; sh.uniforms.uCutR = CUT.r; sh.uniforms.uCutLift = CUT.lift; sh.uniforms.uCutAhead = CUT.ahead; sh.uniforms.uCutR2 = CUT.r2;
@@ -73,9 +76,14 @@ export function withCutaway(mat, solidInside, opts = {}) {
       #include <fog_fragment>`);
     if (grain) fs = fs.replace('#include <color_fragment>', `#include <color_fragment>
       if (uGrain > 0.0) {
-        // mostly the fine scale, a hint of the broad one, contrast softened: speckle, not stains
-        float gr = texture2D(uCloud, vCutW.xz / 4.1).r * 0.25 + texture2D(uCloud, vCutW.xz / 0.8 + 0.37).r * 0.75;
-        diffuseColor.rgb *= 1.0 + ${grain.toFixed(3)} * uGrain * clamp((gr - 0.5) * 1.1, -0.5, 0.5);
+        // three scales of the tileable noise, each turned a different way and at odd sizes, so no repeat lines up with
+        // another or with the screen (one fine scale on the world's axes read as diagonal stripes from the camera):
+        // broad patches (like grass growing thicker here and thinner there), a middle mottle, a soft fine speckle
+        vec2 gp = vCutW.xz;
+        float gr = texture2D(uCloud, mat2(0.940, 0.342, -0.342, 0.940) * gp / 31.0).r * 0.45
+                 + texture2D(uCloud, mat2(0.616, -0.788, 0.788, 0.616) * gp / 6.7 + 0.21).r * 0.35
+                 + texture2D(uCloud, mat2(-0.208, 0.978, -0.978, -0.208) * gp / 1.9 + 0.37).r * 0.2;
+        diffuseColor.rgb *= 1.0 + ${grain.toFixed(3)} * uGrain * clamp((gr - 0.5) * 1.3, -0.5, 0.5);
       }`);
     // cliff faces: rock bands every `strata` metres of height (wavering a little), a dark seam between bands and streaks
     // running down the face, drawn per pixel so they stay crisp however coarse the terrain grid; flat ground is untouched

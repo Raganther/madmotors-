@@ -54,7 +54,7 @@ export function initStructures(R, W) {
 }
 // ---------- the walls' cells ----------
 const gone = (w, c, r) => c < 0 || c >= w.cols ? false : r < 0 ? false : w.hp[r * w.cols + c] <= 0;   // off the ends: the corner holds it
-function breakCell(o, w, i, by) { if (w.hp[i] <= 0) return false; w.hp[i] = 0; w.by[i] = by; if (w.kind === 'outer' && w.type[i] !== CELL.VOID) o.down++; return true; }
+function breakCell(o, w, i, by) { if (w.hp[i] <= 0) return false; w.hp[i] = 0; w.by[i] = by; if (w.type[i] !== CELL.VOID && w.type[i] !== CELL.WINDOW) (w.fresh || (w.fresh = [])).push(i); if (w.kind === 'outer' && w.type[i] !== CELL.VOID) o.down++; return true; }
 /** Brickwork over a hole that has lost what's under it and both sides below falls in. Returns how many cells went. */
 function settle(o, w, by) {
   let n = 0;
@@ -68,39 +68,82 @@ function settle(o, w, by) {
 export const cellPos = (w, c, r) => { const t = (c + 0.5) / w.cols; return { x: w.ax + (w.bx - w.ax) * t, y: w.y + (r + 0.5) * STRUCT.CH, z: w.az + (w.bz - w.az) * t }; };
 // after cells go: rubble lumps the way they were pushed, the building's bays checked
 function aftermath(R, o, w, n, c0, c1, r0, dx, dz, sp, by) {
-  const S = R.st, M = MATERIALS[o.mat]; w.ver++;
-  for (let k = 0; k < Math.max(1, Math.round(n / STRUCT.LUMP_CELLS)); k++) {
-    const p = cellPos(w, Math.round(c0 + (c1 - c0) * (k + 0.5) / Math.max(1, Math.round(n / STRUCT.LUMP_CELLS))), r0 + 1), v = Math.max(3, sp * (0.4 + 0.15 * (k % 3)));
-    addLump(S, p.x, p.y, p.z, dx * v + Math.sin(w.yaw) * (k % 2 ? 1 : -1), 2.5 + (k % 3), dz * v + Math.cos(w.yaw) * (k % 2 ? 1 : -1), M.rubble, R.time);
-  }
+  w.ver++; w.push = { dx, dz, sp, t: R.time };                                       // the brickwork knocked out flies the car's way (flushRubble)
   checkBays(R, o, by);
 }
-function addLump(S, x, y, z, vx, vy, vz, color, t) {
-  S.lumps.push({ id: S.lumpN++, x, y, z, vx, vy, vz, a: 0, spin: (vx - vz) * 0.3, born: t, hint: -1, color, r: L.R });
+// a piece of rubble: a chunk of the wall (sx along it, sy up it, sz thick, turned ry) or a slab of floor or roof; it
+// falls from where it was, lands lying flat (hy: half its thickness) and stays, shoved about by the cars
+function addLump(S, x, y, z, vx, vy, vz, color, t, sx, sy, sz, ry, m) {
+  S.lumps.push({ id: S.lumpN++, x, y, z, vx, vy, vz, a: 0, spin: (vx - vz) * 0.3 + 1.5, born: t, hint: -1, color, sx, sy, sz, ry, r: 0.4 * Math.max(sx, sy), hy: sz / 2 + (S.lumpN % 4) * 0.03, m });
   if (S.lumps.length > L.MAX) { let k = S.lumps.findIndex(q => Math.hypot(q.vx, q.vz) < 0.5); if (k < 0) k = 0; S.lumps.splice(k, 1); }   // the oldest at rest makes room
+}
+const hh = (a, b) => { const v = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return v - Math.floor(v); };   // (deterministic scatter)
+/** The cells knocked out since last time become the rubble: chunks of the wall a few cells square (bigger when a lot
+ *  came down at once), in its colour, falling from where they were: thrown the car's way if a car just hit it, else
+ *  tipping out from the building. Windows shatter instead (render). */
+function flushRubble(R) {
+  const S = R.st;
+  for (const w of S.walls) {
+    if (!w.fresh || !w.fresh.length) continue;
+    const o = S.blds[w.bld], set = new Set(w.fresh), G = w.fresh.length > 40 ? 4 : 2, push = w.push && R.time - w.push.t < 0.3 ? w.push : null;
+    const color = w.kind === 'outer' ? o.wall : 0xE6DED0, th = w.thick;
+    for (const i of w.fresh) {
+      if (!set.has(i)) continue;
+      const c0 = i % w.cols, r0 = (i / w.cols) | 0; let nc = 1, nr = 1;
+      while (nc < G && set.has(r0 * w.cols + c0 + nc) && c0 + nc < w.cols) nc++;
+      while (nr < G && [...Array(nc).keys()].every(k => set.has((r0 + nr) * w.cols + c0 + k))) nr++;
+      for (let r = 0; r < nr; r++) for (let k = 0; k < nc; k++) set.delete((r0 + r) * w.cols + c0 + k);
+      const p = cellPos(w, c0 + (nc - 1) / 2, r0 + (nr - 1) / 2), q = S.lumpN, h1 = hh(q, w.id), h2 = hh(w.id, q);
+      let vx, vz, vy;
+      if (push) { const v = push.sp * (0.25 + 0.35 * h1); vx = push.dx * v + (h2 - 0.5) * 2; vz = push.dz * v + (h1 - 0.5) * 2; vy = 1 + 2 * h2; }
+      else { const ox = p.x - o.x, oz = p.z - o.z, d = Math.hypot(ox, oz) || 1, v = 0.4 + 1.6 * h1; vx = ox / d * v + (h2 - 0.5); vz = oz / d * v + (h1 - 0.5); vy = 0.3 + h2; }
+      addLump(S, p.x, p.y, p.z, vx, vy, vz, color, R.time, nc * w.cw, nr * STRUCT.CH, th, w.yaw - Math.PI / 2, L.MASS * 0.09 * nc * nr);
+    }
+    w.fresh.length = 0;
+  }
 }
 // ---------- bays: the roof and upper floors, a slice at a time ----------
 function checkBays(R, o, by) {
   if (o.collapsed) return;
   const S = R.st;
-  for (const b of o.bays) {
-    if (b.fallen) continue; let up = 0, all = 0;
-    for (const [id, c0, c1] of b.sup) { const w = S.walls[id]; for (let c = c0; c <= c1; c++) for (let r = 0; r < Math.min(STRUCT.BAY_ROWS, w.rows); r++) { const i = r * w.cols + c; if (w.type[i] === CELL.VOID) continue; all++; if (w.hp[i] > 0) up++; } }
-    if (all && up / all < STRUCT.BAY_FALL) fallBay(R, o, b, by);
+  // nothing hangs in the air: a bay comes down when too little of the wall under it stands (BAY_FALL), when either
+  // long wall under it is mostly gone (a floor can't hang off one side: BAY_SIDE), or when it would stick out over
+  // fallen bays next to it without most of its walls (BAY_ALONE); one falling can bring the next down, so check again
+  for (let again = true; again && !o.collapsed;) {
+    again = false;
+    o.bays.forEach((b, q) => {
+      if (b.fallen || o.collapsed) return; let up = 0, all = 0, weak = false, end = 1;
+      for (const [id, c0, c1] of b.sup) {
+        const w = S.walls[id]; let u = 0, a = 0;
+        for (let c = c0; c <= c1; c++) for (let r = 0; r < Math.min(STRUCT.BAY_ROWS, w.rows); r++) { const i = r * w.cols + c; if (w.type[i] === CELL.VOID) continue; a++; if (w.hp[i] > 0) u++; }
+        up += u; all += a; if (a && (w.side === 0 || w.side === 2) && u / a < STRUCT.BAY_SIDE) weak = true;
+        if (a && (w.side === 1 || w.side === 3)) end = u / a;                       // an end bay's end wall
+      }
+      // held at each end by a standing neighbour, or (an end bay) by its end wall while most of it stands
+      const prev = o.bays[q - 1], next = o.bays[q + 1], held = n => n ? !n.fallen : end >= 0.5, alone = !held(prev) && !held(next);
+      if (all && (up / all < STRUCT.BAY_FALL || weak || (alone && up / all < STRUCT.BAY_ALONE))) { fallBay(R, o, b, by); again = true; }
+    });
   }
 }
 const frameOf = o => ({ nx: Math.sin(o.f), nz: Math.cos(o.f), tx: Math.cos(o.f), tz: -Math.sin(o.f) });
 /** Bay b of building o comes down: its roof and floors fall in, the walls above the ground floor over it go, a heap. */
 function fallBay(R, o, b, by) {
-  const S = R.st, M = MATERIALS[o.mat], { nx, nz, tx, tz } = frameOf(o), fr = Math.round(STRUCT.FLOOR / STRUCT.CH);
+  const S = R.st, { nx, nz, tx, tz } = frameOf(o), fr = Math.round(STRUCT.FLOOR / STRUCT.CH);
   b.fallen = true; b.t = R.time; b.by = by;
   const vm = (b.v0 + b.v1) / 2, hx = o.x + tx * vm, hz = o.z + tz * vm;
   S.heaps.push({ bld: o.id, bay: b.k, x: hx, z: hz, f: o.f, w: b.v1 - b.v0 + 0.6, d: o.d + 0.8, y: o.y });
   // the walls over this bay above the ground floor fall with it
+  const endSide = b.k === 0 ? 3 : b.k === o.bays.length - 1 ? 1 : -1;   // an end bay takes its end wall's upper storeys (the gable) with it
+  for (const id of o.walls) { const w = S.walls[id]; if (w.kind === 'outer' && w.side === endSide) { let n = 0; for (let i = fr * w.cols; i < w.hp.length; i++) if (breakCell(o, w, i, by)) n++; if (n) { w.ver++; } } }
   for (const id of o.walls) { const w = S.walls[id]; if (w.kind !== 'outer' || w.side % 2) continue; let n = 0; for (let c = 0; c < w.cols; c++) { const p = cellPos(w, c, 0), v = (p.x - o.x) * tx + (p.z - o.z) * tz; if (v < b.v0 || v > b.v1) continue; for (let r = fr; r < w.rows; r++) if (breakCell(o, w, r * w.cols + c, by)) n++; } if (n) { n += settle(o, w, by); w.ver++; } }
   for (const id of o.walls) { const w = S.walls[id]; if (w.kind !== 'inner') continue; let n = 0; for (let c = 0; c < w.cols; c++) { const p = cellPos(w, c, 0), v = (p.x - o.x) * tx + (p.z - o.z) * tz; if (v < b.v0 || v > b.v1) continue; for (let r = 0; r < w.rows; r++) if (breakCell(o, w, r * w.cols + c, by)) n++; } if (n) w.ver++; }
   for (const k of o.furn) { const f = S.furn[k]; const v = (f.x - o.x) * tx + (f.z - o.z) * tz; if (inFootprint(o, f.x, f.z) && v >= b.v0 && v <= b.v1) f.buried = true; }
-  for (let k = 0; k < 1 + o.floors; k++) { const s = k % 2 ? 1 : -1, u = s * o.d * 0.45; addLump(S, hx + nx * u, o.y + 3, hz + nz * u, nx * s * (2 + k), 3, nz * s * (2 + k), k % 2 ? M.rubble : 0x5B4A3E, R.time); }
+  // the roof and the upper floors come down as slabs, a quarter of the bay each, the roof's on top
+  const bw = b.v1 - b.v0, roofC = Array.isArray(o.roofC) ? o.roofC[0] : o.roofC || 0x5B4A3E;
+  for (let f = 1; f <= o.floors; f++) for (let k = 0; k < 4; k++) {
+    const su = k % 2 ? 1 : -1, sv = k < 2 ? 1 : -1, q = S.lumpN, top = f === o.floors, x = hx + tx * su * bw / 4 + nx * sv * o.d / 4, z = hz + tz * su * bw / 4 + nz * sv * o.d / 4;
+    addLump(S, x, o.y + f * STRUCT.FLOOR + (top ? 0.6 : 0), z, nx * sv * (0.5 + hh(q, 3)) + tx * su * 0.5, 0.5, nz * sv * (0.5 + hh(q, 7)) + tz * su * 0.5, top ? roofC : 0x9A8A78, R.time, bw / 2 + 0.1, o.d / 2 + 0.1, 0.22, o.f, L.MASS * 0.45);
+  }
   if (by >= 0) R.cars[by].events.push({ t: 'bayfall', bld: o.id, bay: b.k, x: hx, y: o.y, z: hz });
   if (o.bays.every(q => q.fallen)) collapse(R, o, by);
 }
@@ -248,6 +291,7 @@ function stepFurniture(R, W, dt, cars) {
 }
 export function structureStep(R, W, dt) {
   const S = W.st = R.st; if (!S) return;                                          // the AI checks a building across a branch (sim/ai.js)
+  flushRubble(R);                                                                 // what broke last step (cars, blasts, falls) is rubble now
   const tr = W.tr, cars = R.cars.concat(R.traffic || [], R.parked || []);
   for (const c of cars) {
     if (c.ghost > 0) continue;
@@ -265,7 +309,10 @@ export function structureStep(R, W, dt) {
     if (c.onGround && (S.heaps.length || S.strips.length)) { const r = rubbleAt(S, c.x, c.z); if (r) { const f = Math.exp(-dt * (r === 2 ? STRUCT.HEAP_DRAG : STRUCT.STRIP_DRAG)); c.vx *= f; c.vz *= f; c.rubble = r; } else c.rubble = 0; }
   }
   stepFurniture(R, W, dt, cars);
-  // the lumps: fly, land, slide to a stop; shoved by cars, slowing them
+  // the rubble: flies, lands, slides to a stop; shoved by cars, slowing them (most of it lies far from every car: the
+  // cars go in an 8 m grid, and a piece only looks at the cars in its cell and the ones round it)
+  const near = new Map(), CG = 8;
+  cars.forEach((c, j) => { if (c.ghost > 0) return; const cx = Math.floor(c.x / CG), cz = Math.floor(c.z / CG); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const kk = (cx + a) * 100003 + cz + b, l = near.get(kk); if (l) l.push(c); else near.set(kk, [c]); } });
   for (let k = S.lumps.length - 1; k >= 0; k--) {
     const q = S.lumps[k];
     if (R.time - q.born > L.LIFE) { S.lumps.splice(k, 1); continue; }
@@ -273,16 +320,16 @@ export function structureStep(R, W, dt) {
       q.vy -= 30 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; q.a += q.spin * dt;
       if (q.hint < 0) { const n0 = tr.nearest(q.x, q.z); q.hint = n0 ? n0.i : tr.startIdx; }
       const pr = project(tr, q.x, q.z, q.hint, 20, 20); q.hint = pr.i;
-      const g = groundAt(W, pr.s, pr.lat, q.x, q.z) + q.r * 0.6;
+      const g = groundAt(W, pr.s, pr.lat, q.x, q.z) + q.hy;
       if (q.y <= g) { q.y = g; q.vy = Math.abs(q.vy) > 3 ? -q.vy * 0.25 : 0; const f = Math.exp(-dt * L.FRIC); q.vx *= f; q.vz *= f; q.spin *= f; if (q.vx * q.vx + q.vz * q.vz < 0.04) { q.vx = 0; q.vz = 0; } }
     }
-    for (const c of cars) {
-      if (c.ghost > 0) continue;
+    const here = near.get(Math.floor(q.x / CG) * 100003 + Math.floor(q.z / CG)); if (!here) continue;
+    for (const c of here) {
       const dx = q.x - c.x, dz = q.z - c.z, rr = q.r + c.hw; if (dx * dx + dz * dz > rr * rr || Math.abs(c.y - q.y) > 1.5) continue;
       const d = Math.hypot(dx, dz), nx = dx / (d || 1), nz = dz / (d || 1), rel = (c.vx - q.vx) * nx + (c.vz - q.vz) * nz; if (rel <= 0) continue;
-      const m = massOf(c), share = m / (m + L.MASS);
+      const m = massOf(c), share = m / (m + (q.m || L.MASS));
       q.vx += nx * rel * share * 1.6; q.vz += nz * rel * share * 1.6; q.spin += rel * 0.5; if (q.vy === 0) q.vy = 0.01;
-      c.vx -= nx * rel * (1 - share) * 0.5; c.vz -= nz * rel * (1 - share) * 0.5; c.spin += (nx * c.vz - nz * c.vx > 0 ? 1 : -1) * rel * 0.02;
+      c.vx -= nx * rel * (1 - share) * 0.3; c.vz -= nz * rel * (1 - share) * 0.3;   // (rubble is pushed aside: the car ploughs on) c.spin += (nx * c.vz - nz * c.vx > 0 ? 1 : -1) * rel * 0.02;
       q.x = c.x + nx * rr; q.z = c.z + nz * rr;
       if (rel > 7) damageCar(c, q.x, q.z, rel * 0.4, 0.5, -nx, -nz);
     }

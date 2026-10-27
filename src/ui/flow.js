@@ -30,11 +30,12 @@ import { bulletHitFx, crushFx, mineBlast, flaresFx, shieldFx, stingerFx, flash, 
 import { landDust } from '../render/effects/carfx.js';
 import { carVis, setRoster, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
-import { buildWorld, trackOf } from '../render/world/index.js';
+import { buildWorld } from '../render/world/index.js';
 import { elementHook } from '../render/elements/index.js';
 import { $, isTouch } from './dom.js';
 import { fmt, ordinal } from './format.js';
-import { callout, drawProfile } from './hud.js';
+import { callout } from './hud.js';
+import { buildTrackCards, refreshTrackCards } from './tracks.js';
 import { showVehicle } from './garage.js';
 import { leagueResults, resetResultsUI } from './league.js';
 import { careerFormat, careerMode, careerRaceDefs, careerResults } from './career.js';
@@ -53,9 +54,16 @@ export function newRace() {
   if (ws && ws.build) defs = defs.map(d => { if (!d.player) return d; const veh = upgradedVeh(G.vehicle, ws.build); return { ...d, veh, im: veh.im, build: ws.build }; });   // the Workshop's Upgrades tab: the player's car with the parts picked there
   if (lg && lg.round > 0) { const order = standings(lg, defs.map(d => d.name)).map(s => s.name).reverse(); defs = order.map(n => defs.find(d => d.name === n)).filter(Boolean); }   // the championship leader starts at the back
   setRoster(defs);
-  const r = createRace(G.world.W, defs, { mode, weapons: ws ? ws.weapons : cr ? true : G.weapons }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); v.dripT = v.burnT = v.flatT = v.soakT = 0; v.trail = null; resetDirt(v); });   // repaired and washed; a career always races with weapons
+  const r = createRace(G.world.W, defs, { mode, weapons: ws ? ws.weapons : cr ? true : G.weapons, wear: G.wearOpt }); clearProps(); resetBarrierVis(); clearSceneryHits(); carVis.forEach(v => { repairCarVis(v); v.dripT = v.burnT = v.flatT = v.soakT = 0; v.trail = null; resetDirt(v); });   // repaired and washed; a career always races with weapons
   elementHook('newRace', r);
   return r;
+}
+/** The title screen's race (ui/title.js): its own line-up, weapons on, nobody at the wheel. */
+export function titleRace(defs) {
+  setRoster(defs);
+  race = createRace(G.world.W, defs, { mode: 'race', weapons: true, wear: G.wearOpt }); clearProps(); resetBarrierVis(); clearSceneryHits(); clearSkids(); clearTrails(); carVis.forEach(v => { repairCarVis(v); v.dripT = v.burnT = v.flatT = v.soakT = 0; v.trail = null; resetDirt(v); });
+  elementHook('newRace', race); race.autoPlayer = true; race.phase = 'racing';
+  return race;
 }
 // ---------- flow ----------
 const BRK_FX = { crates: 2, fence: 2, gate: 2, hay: 3, concrete: 6, picket: 2, yardgate: 2, bench: 2, hedge: 8, wall: 9, railing: 4, chain: 4, post: 4, bin: 1, postbox: 4 };   // which barrier's debris a broken thing throws (render/effects/impacts.js)
@@ -131,7 +139,7 @@ export function handleEvents() {
         case 'locked-on': if (c.isPlayer) { callout(`${race.cars[e.from].name} has a missile lock on you!`); AudioSys.beep(900, 0.12); } break;
         case 'missile-lock': if (c.isPlayer) { callout(`${race.cars[e.from].name} fired a missile at you!`); AudioSys.beep(1500, 0.1); AudioSys.tone(1200, 0.25, 0.05, 'square', 1.2); } break;
         case 'water-hit': { const v = visOf(c); rinse(v); if (v) { v.soakT = 1.6; v.dripT = 2; v.dripCol = 0xCFE8FF; } } for (let k = 0; k < 10; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.6, 0.5, 0xCFE8FF, -9, 'solid'); if (c.isPlayer) callout('Soaked!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`Hosed ${c.name}!`); break;
-        case 'cement-hit': coat(visOf(c), 0x9A968E, 0.45); if (c.isPlayer) callout('Stuck in cement!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} is in your cement!`); break;
+        case 'cement-hit': coat(visOf(c), 0x9A968E, 0.45, 12); if (c.isPlayer) callout('Stuck in cement!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} is in your cement!`); break;
         case 'stinger-hit': { const v = visOf(c); if (v) { v.flatT = 1.6; v.flatSide = Math.random() < 0.5 ? 1 : -1; } } stingerFx(e); if (c.isPlayer) callout('Stinger! Tyres shredded'); else if (race.cars[e.from] === race.player) callout(`${c.name} hit the stinger!`); break;
         case 'crush': crushFx(e); if (near) G.shake = Math.min(1.4, G.shake + (c.isPlayer ? 0.8 : 0.4)); break;
         case 'crush-hit': if (c.isPlayer) callout('Crushed!'); else if (race.cars[e.from] === race.player) callout(`Crushed ${c.name}!`); break;
@@ -144,11 +152,11 @@ export function handleEvents() {
         case 'mine-boom': mineBlast(e); break;
         case 'mine-hit': { const v = visOf(c); if (v) v.burnT = 2; } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1); callout('Mine!'); } else if (race.cars[e.from] === race.player) callout(`${c.name} hit your mine!`); break;
         case 'oil-fire': flash(e.x, e.y + 1, e.z, (e.r || 3) * 2.4, 0xFFFFFF, 0.4); break;
-        case 'fire-hit': { const v = visOf(c); if (v) v.burnT = 2.5; coat(v, 0x1A1614, 0.5); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.4); callout('Through the fire!'); } else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} drove through the fire!`); break;
+        case 'fire-hit': { const v = visOf(c); if (v) v.burnT = 2.5; coat(v, 0x1A1614, 0.5, 10); } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.4); callout('Through the fire!'); } else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} drove through the fire!`); break;
         case 'mine-bounce': drumBounceFx(e); sparks(e.x, e.y + 0.2, e.z, 5); break;
         case 'drum-bounce': drumBounceFx(e); break;
         case 'drum-burst': drumBurstFx(e); break;
-        case 'drum-hit': { const v = visOf(c); coat(v, 0x08080B, 0.95); if (v) { v.dripT = 4; v.dripCol = 0x0C0C10; } } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.8); callout('Oil drum! Covered in it'); } else if (race.cars[e.from] === race.player) callout(`Oiled ${c.name}!`); break;
+        case 'drum-hit': { const v = visOf(c); coat(v, 0x08080B, 0.95, 14); if (v) { v.dripT = 4; v.dripCol = 0x0C0C10; } } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.8); callout('Oil drum! Covered in it'); } else if (race.cars[e.from] === race.player) callout(`Oiled ${c.name}!`); break;
         case 'mortar-blast': mortarBlast(e); if (near || Math.hypot(race.player.x - e.x, race.player.z - e.z) < 60) { G.shake = Math.min(1.5, G.shake + 0.5); } break;
         case 'mortar-hit': { const v = visOf(c); if (v) v.burnT = 2.2; } if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 0.9); callout(e.me ? 'Caught in your own blast!' : 'Shelled!'); } else if (race.cars[e.from] === race.player) callout(`Shelled ${c.name}!`); break;
         case 'crater-hit': craterHitFx(e); if (c.isPlayer) { G.shake = Math.min(1.3, G.shake + 0.6); if (G.calloutTimer <= 0) callout('Crater!'); } break;
@@ -268,7 +276,7 @@ export let pendingBuild = null;
 export function selectStage(i, cb) {
   selected = i; G.stageSel = i;
   const v = G.stageCars[STAGES[i].name] || G.defaultVehicle; if (v !== G.vehicle) showVehicle(v);   // the car picked for this stage
-  document.querySelectorAll('.stage').forEach((b, k) => b.setAttribute('aria-pressed', k === i ? 'true' : 'false'));
+  refreshTrackCards();
   $('race-btn').textContent = MODE_BTN[G.mode] + STAGES[i].name;
   if (G.world && G.world.idx === i && !G.forceBuild) { cb && cb(); return; }
   G.forceBuild = false;
@@ -281,7 +289,7 @@ export function selectStage(i, cb) {
   }, 40);
 }
 export function startRace(idx) {
-  AudioSys.init(); AudioSys.music(null); AudioSys.musicPause(false);
+  AudioSys.init(); AudioSys.music(null); AudioSys.musicPause(false); G.title = false; G.titleCam = null;   // (the title's scene stops)
   selectStage(idx, () => {
     $('reset-btn').hidden = false; race = newRace(); clearSkids(); clearTrails(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0; G.tally = G.career ? newTally(race.cars.length) : null; G.tallyFmt = G.career ? careerFormat() : null;
     G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; G.sdTick = 0; $('edge').className = '';
@@ -296,6 +304,7 @@ export function toMenu() {
   const cr = G.career; G.league = null; G.career = null; G.tally = null; G.tallyFmt = null;
   if (G.editDrive && G.onEditorBack) { G.onEditorBack(); }   // leaving a test drive goes back to the track editor
   G.state = 'menu'; $('hud').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('touch').hidden = true; $('menu').hidden = false; $('countdown').hidden = true;
+  if (G.onMenuScreen) G.onMenuScreen(cr || G.workshop ? 'main' : 'quick');   // back to Quick Race, or the main menu under a career or the Workshop (ui/menu.js)
   race = newRace(); clearSkids(); clearTrails(); AudioSys.update(null, 'off'); AudioSys.musicPause(false); AudioSys.music('menu'); updateCamera(0, true); $('race-btn').focus();
   if (cr && G.onCareerMenu) G.onCareerMenu(cr);   // leaving a career race goes back to the career screen
   else if (G.workshop && G.onWorkshopMenu) G.onWorkshopMenu();   // and a Workshop tab to the Workshop
@@ -304,9 +313,7 @@ export function togglePause() {
   if (G.state === 'countdown' || G.state === 'racing') { if (resultsShown) return; pausedFrom = G.state; G.state = 'paused'; $('pause').hidden = false; AudioSys.update(null, 'off'); AudioSys.musicPause(true); $('resume-btn').focus(); }
   else if (G.state === 'paused') { G.state = pausedFrom; $('pause').hidden = true; G.lastT = performance.now() / 1000; AudioSys.musicPause(false); }
 }
-export function refreshBest() {
-  STAGES.forEach((s, i) => { const el = $('best-' + i), v = G.stageCars[s.name]; if (el) el.textContent = (best[i] ? 'Best ' + fmt(best[i]) : 'Not raced yet') + (v ? ' · ' + vehicleById(v).name : ''); });
-}
+export function refreshBest() { refreshTrackCards(); }
 const MODE_BTN = { race: 'Race ', showdown: 'Showdown: ', deuce: 'Deuce: ', tiebreak: 'Tiebreak: ' };
 export const MODE_NAME = { showdown: 'Showdown', deuce: 'Deuce', tiebreak: 'Tiebreak', derby: 'Derby' };
 const MODE_DESC = {
@@ -330,18 +337,7 @@ export function setRivals(n) {
   if (G.mode === 'race') $('mode-desc').textContent = MODE_DESC.race();
   $('rivals-n').textContent = String(G.rivals); $('rivals-less').disabled = G.rivals <= 1; $('rivals-more').disabled = G.rivals >= MAX_RIVALS;
 }
-export function buildStageList() {
-  const ol = $('stage-list'); ol.innerHTML = '';
-  STAGES.forEach((s, i) => {
-    const li = document.createElement('li'), b = document.createElement('button');
-    b.className = 'stage'; b.type = 'button'; b.setAttribute('aria-pressed', 'false');
-    b.innerHTML = `<span class="st-num">${i + 1}</span><span class="st-text"><span class="st-name">${s.name}</span><span class="st-meta">${s.laps ? `Circuit, ${s.laps} laps` : s.surface === 'gravel' ? 'Gravel' : 'Tarmac'}. ${s.blurb}</span><span class="st-best" id="best-${i}"></span></span><canvas class="st-prof" aria-hidden="true"></canvas>`;
-    b.addEventListener('click', () => selectStage(i));
-    li.appendChild(b); ol.appendChild(li);
-  });
-  refreshBest();
-  requestAnimationFrame(() => document.querySelectorAll('.st-prof').forEach((cv, i) => drawProfile(cv, trackOf(i), null, 2)));
-}
+export function buildStageList() { buildTrackCards(i => selectStage(i)); }   // Quick Race's track cards (ui/tracks.js)
 // Physics runs at a fixed 120 Hz; cars are drawn between the last two physics states so motion stays smooth at any refresh rate.
 G.renderAlpha = 1;
 export function savePrev() { for (const list of [race.cars, race.traffic, race.parked]) for (const c of list) { c.px = c.x; c.py = c.y; c.pz = c.z; c.pyaw = c.yaw; } }

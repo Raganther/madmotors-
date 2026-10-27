@@ -8,6 +8,8 @@ import { canvasTex, mergeAll } from './geometry.js';
 import { HALF } from '../core/constants.js';
 import { scene } from './renderer.js';
 import { race } from '../ui/flow.js';
+import { syncCraters, blastKind, craterPalette, surfaceY, pulled, nearestSample } from './craters.js';
+import { pushWave } from './waves.js';
 
 // Weapons visuals (core/features/weapons.js): weapon crates on the road, missiles in flight, tracer rounds, oil
 // slicks, the harpoon and its line, blasts and puffs. The weapon mounts that rise out of the cars' roofs are
@@ -15,7 +17,7 @@ import { race } from '../ui/flow.js';
 const L = c => new THREE.MeshLambertMaterial({ color: c }), B = c => new THREE.MeshBasicMaterial({ color: c });
 const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); return b; };
 const cyl = (r, l, m, x = 0, y = 0, z = 0) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 10).rotateX(Math.PI / 2), m); c.position.set(x, y, z); return c; };
-let laserPool = [], drumPool = [], minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, reticle = null, shellPool = [], markPool = [], craterPool = [], scorches = [], later = [], sci = 0, fi = 0, si = 0, di = 0;
+let laserPool = [], drumPool = [], minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, reticle = null, shellPool = [], markPool = [], scorches = [], later = [], sci = 0, fi = 0, si = 0, di = 0;
 const MAXB = 80, _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _y = new THREE.Vector3(0, 1, 0);
 export function initWeaponVis() {
   const white = L(0xF2F2EE), red = L(0xD8203A);
@@ -54,7 +56,9 @@ export function initWeaponVis() {
   }
   // scorch marks: where a missile or a blast hit, a black smudge on the road that fades over half a minute
   const scTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 1, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(10,8,6,0.85)'); gr.addColorStop(0.5, 'rgba(25,20,16,0.55)'); gr.addColorStop(1, 'rgba(30,26,22,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); for (let k = 0; k < 9; k++) { const a = k / 9 * 6.28; g.strokeStyle = 'rgba(12,10,8,0.5)'; g.lineWidth = 2; g.beginPath(); g.moveTo(w / 2, h / 2); g.lineTo(w / 2 + Math.cos(a) * w * 0.48, h / 2 + Math.sin(a) * h * 0.48); g.stroke(); } });
-  scorches = []; for (let k = 0; k < 20; k++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: scTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 })); m.renderOrder = 2; m.visible = false; scene.add(m); scorches.push({ m, t: 99 }); }
+  // (a grid laid on the ground where it lands, so it follows a slope or a camber instead of cutting through it)
+  const scMat = () => pulled(new THREE.MeshBasicMaterial({ map: scTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }), 'scorch');
+  scorches = []; for (let k = 0; k < 20; k++) { const g = new THREE.PlaneGeometry(1, 1, 8, 8).rotateX(-Math.PI / 2); g.setAttribute('pull', new THREE.Float32BufferAttribute(new Float32Array(81).fill(0.05), 1)); const m = new THREE.Mesh(g, scMat()); m.renderOrder = 2; m.visible = false; m.frustumCulled = false; scene.add(m); scorches.push({ m, t: 99 }); }
   // tracer rounds: stretched glowing bars, all in one instanced mesh
   // thin hot streaks (a round's travel in a frame or so), glowing yellow-orange so they aren't road paint; over kerbs and walls
   tracerMat = new THREE.MeshBasicMaterial({ color: 0xFFB84A, depthTest: false, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -153,22 +157,6 @@ export function initWeaponVis() {
     mark.children.forEach(m => { m.renderOrder = 9; }); mark.fill = fill; mark.visible = false; scene.add(mark);
     shellPool.push({ g, id: -1 }); markPool.push(mark);
   }
-  // craters: a scorched bowl in the road (a dark decal, cracks running out) inside a rim of broken road and dirt
-  const crTex = canvasTex(128, 128, (g, w, h) => {
-    const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(18,15,12,0.98)'); gr.addColorStop(0.45, 'rgba(42,34,27,0.95)'); gr.addColorStop(0.72, 'rgba(70,58,44,0.8)'); gr.addColorStop(1, 'rgba(40,34,28,0)');
-    g.fillStyle = gr; g.fillRect(0, 0, w, h);
-    g.strokeStyle = 'rgba(15,12,10,0.8)'; g.lineWidth = 2; for (let k = 0; k < 11; k++) { const a = k / 11 * Math.PI * 2 + Math.sin(k * 7) * 0.3; g.beginPath(); g.moveTo(w / 2 + Math.cos(a) * w * 0.3, h / 2 + Math.sin(a) * h * 0.3); g.lineTo(w / 2 + Math.cos(a + 0.12) * w * 0.42, h / 2 + Math.sin(a + 0.12) * h * 0.42); g.lineTo(w / 2 + Math.cos(a - 0.05) * w * 0.49, h / 2 + Math.sin(a - 0.05) * h * 0.49); g.stroke(); }
-    for (let k = 0; k < 40; k++) { const a = Math.random() * Math.PI * 2, r = w * (0.2 + Math.random() * 0.28); g.fillStyle = Math.random() < 0.5 ? 'rgba(90,84,76,0.9)' : 'rgba(30,26,22,0.9)'; g.fillRect(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, 2 + Math.random() * 3, 2 + Math.random() * 3); }
-  });
-  const rimG = new THREE.TorusGeometry(1, 0.2, 5, 18).rotateX(Math.PI / 2).scale(1, 0.55, 1), lumps = [];
-  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2 + 0.3; lumps.push(new THREE.DodecahedronGeometry(0.16 + (k % 3) * 0.05, 0).translate(Math.cos(a) * 1.15, 0.06, Math.sin(a) * 1.15)); }
-  const lumpG = mergeAll(lumps);
-  craterPool = [];
-  for (let k = 0; k < 16; k++) {
-    const g = new THREE.Group(), dec = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: crTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
-    dec.renderOrder = 2; g.add(dec); const rim = new THREE.Mesh(rimG, L(0x4E4438)); rim.receiveShadow = true; g.add(rim); const lu = new THREE.Mesh(lumpG, L(0x6A625A)); lu.castShadow = true; g.add(lu);
-    g.visible = false; scene.add(g); craterPool.push(g);
-  }
 }
 const glowTex = () => G.glowTex || (G.glowTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }));
 /** A glowing flash that swells and fades: fireballs, muzzle flashes, hits. */
@@ -192,10 +180,11 @@ export function updateWeaponVis(dt, now) {
   const tr = G.world && G.world.tr, R = race, S = R && R.wpn, on = tr && G.state !== 'menu';
   if (targetRing) targetRing.visible = false;
   if (reticle) reticle.visible = false;
-  for (const p of shellPool) p.g.visible = false; for (const m of markPool) m.visible = false; for (const g of craterPool) g.visible = false;
+  for (const p of shellPool) p.g.visible = false; for (const m of markPool) m.visible = false;
   for (const p of missiles) p.g.visible = false; for (const c of crates) c.g.visible = false; for (const m of slickPool) m.visible = false; for (const m of cementPool) m.visible = false; for (const m of jetPool) m.visible = false; for (const m of stripPool) m.visible = false; for (const m of minePool) m.g.visible = false; for (const d of drumPool) d.g.visible = false; for (const h of hookPool) { h.g.visible = false; h.line.visible = false; }
   if (tracers) tracers.count = 0;
   for (const l of laserPool) l.beam.visible = l.dot.visible = false;
+  syncCraters(on ? R : null);                                          // the craters (render/craters.js)
   if (!on || !R) return;
   const P = R.player, pw = P && P.wpn;
   if (reticle && pw && pw.item === 'missile' && pw.lockTgt >= 0 && R.cars[pw.lockTgt]) {
@@ -230,10 +219,6 @@ export function updateWeaponVis(dt, now) {
     const [x, y, z] = at(u), [x2, y2, z2] = at(Math.min(1, u + 0.02)), p = shellPool[j];
     p.g.visible = true; p.g.position.set(x, y, z); p.g.lookAt(x2 + (x2 - x) * 10, y2 + (y2 - y) * 10, z2 + (z2 - z) * 10);
     if (G.state === 'racing' && (p.puffT = (p.puffT || 0) - dt) <= 0) { p.puffT = 0.04; smoke(x, y, z, 1.1, 0xD8D8D0, 0.7, 0.2); }
-  });
-  (S.craters || []).forEach((k, j) => {
-    const g = craterPool[j % craterPool.length], f = Math.min(1, k.t * 12); g.visible = true;
-    g.position.set(k.x, k.y + 0.05, k.z); g.rotation.y = k.id * 2.3; g.scale.set(k.r * f, k.r * (0.7 + 0.3 * f), k.r * f);
   });
   S.crates.forEach((k, j) => { const c = crates[j % crates.length]; place(c.g, tr, k.s, k.lat, 1.3 + Math.sin(now * 2.5 + k.id) * 0.2); c.g.visible = true; c.b.rotation.set(now * 0.9 + k.id, now * 1.3, 0); c.r.material.opacity = 0.3 + 0.2 * Math.sin(now * 4 + k.id); });
   let nb = 0;
@@ -305,7 +290,12 @@ export function updateWeaponVis(dt, now) {
 }
 /** A missile hitting a car: fireball, smoke, sparks and bits, a shock ring. */
 /** A scorch mark on the ground at (x, y, z), r metres across, fading over half a minute. */
-export function scorch(x, y, z, r) { const k = scorches[sci]; sci = (sci + 1) % scorches.length; if (!k) return; k.m.position.set(x, y + 0.06, z); k.m.scale.set(r, 1, r); k.m.rotation.y = Math.random() * 6.28; k.m.visible = true; k.t = 0; }
+export function scorch(x, y, z, r) {
+  const k = scorches[sci]; sci = (sci + 1) % scorches.length; if (!k) return;
+  const W = G.world && G.world.W, P = k.m.geometry.attributes.position, a = Math.random() * 6.28, ca = Math.cos(a) * r, sa = Math.sin(a) * r, hint = W ? nearestSample(W.tr, x, z) : 0;
+  for (let v = 0; v < 81; v++) { const u = (v % 9) / 8 - 0.5, w = Math.floor(v / 9) / 8 - 0.5, px = x + u * ca - w * sa, pz = z + u * sa + w * ca; P.setXYZ(v, px, W ? surfaceY(W, px, pz, hint) : y, pz); }
+  P.needsUpdate = true; k.m.geometry.computeBoundingSphere(); k.m.visible = true; k.t = 0;
+}
 /** A fireball that keeps billowing: a few more flashes and puffs over the next quarter second, rising. */
 function billow(x, y, z, size) { for (let q = 1; q <= 4; q++) later.push({ t: q * 0.06, fn: () => { flash(x + (Math.random() - 0.5) * size * 0.4, y + q * size * 0.12, z + (Math.random() - 0.5) * size * 0.4, size * (0.9 - q * 0.12), q < 3 ? 0xFFFFFF : 0xFFC080, 0.5); smoke(x, y + q * size * 0.15, z, size * 0.5, 0x3A3632, 2.2, 2.5); } }); }
 export function missileBlast(e) {
@@ -334,13 +324,26 @@ export function mineBlast(e) {
 }
 /** A mortar shell landing: a fireball, a column of dirt and broken road thrown up, a ring of dust rolling out. */
 export function mortarBlast(e) {
-  const r = e.r || WPN.MORTAR_R;
+  const r = e.r || WPN.MORTAR_R, K = blastKind(e.x, e.z), P = G.world ? craterPalette(K.kind, G.world.stage) : null, hex = c => c.getHex();
+  const bits = P ? [hex(P.lip), hex(P.floor), ...P.chunk.map(hex)] : [0x6E5A44, 0x3A342E], pick = () => bits[(Math.random() * bits.length) | 0];
+  if (e.wet != null && !K.wet) { K.wet = true; K.lv = e.wet; }   // a splash (the sim knows its level)
+  if (K.wet) {   // into water: no fireball to speak of, a column and a crown of spray, a surge out to the shore, the hole left under it
+    const y = K.lv; pushWave(e.x, e.z, 0.4, 9);
+    shockwave(e.x, y + 0.1, e.z, r * 2.2, 0xE8F4FF); shockwave(e.x, y + 0.15, e.z, r * 1.3, 0xBFD8E8);
+    for (let k = 0; k < 70; k++) { const a = Math.random() * Math.PI * 2, s = Math.random() < 0.4 ? Math.random() * 2 : 3 + Math.random() * 7; emit(e.x + Math.cos(a) * 0.6, y + 0.2, e.z + Math.sin(a) * 0.6, Math.cos(a) * s, 6 + Math.random() * (s < 2 ? 18 : 9), Math.sin(a) * s, 0.9 + Math.random() * 0.8, 0.3 + Math.random() * 0.5, Math.random() < 0.7 ? 0xEAF4FF : 0xA8C8DA, -11, 'solid'); }
+    for (let k = 0; k < 8; k++) smoke(e.x + (Math.random() - 0.5) * r, y + 1 + Math.random() * 3, e.z + (Math.random() - 0.5) * r, 4 + Math.random() * 3, 0xE8EEF2, 1.4 + Math.random(), 1.5);
+    for (let k = 0; k < 10; k++) emit(e.x, y + 0.3, e.z, (Math.random() - 0.5) * 8, 8 + Math.random() * 8, (Math.random() - 0.5) * 8, 1, 0.3, pick(), -9, 'solid');   // mud from the bottom
+    return;
+  }
   billow(e.x, e.y + 1.5, e.z, r * 1.8); scorch(e.x, e.y, e.z, r * 2.2);
-  shockwave(e.x, e.y + 0.2, e.z, r * 1.7, 0xFF8A3A); shockwave(e.x, e.y + 0.4, e.z, r * 1.1, 0xC9A26A); flash(e.x, e.y + 2, e.z, r * 2.6, 0xFFFFFF, 0.55); flash(e.x, e.y + 4, e.z, r * 1.5, 0xFFE0A0, 0.9);
-  for (let k = 0; k < 9; k++) smoke(e.x + (Math.random() - 0.5) * r, e.y + 1 + Math.random() * 3, e.z + (Math.random() - 0.5) * r, 4 + Math.random() * 4, k < 4 ? 0x5E4E40 : 0x3E3A36, 2 + Math.random(), 2.5 + Math.random() * 2);
-  for (let k = 0; k < 26; k++) { const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 6; emit(e.x, e.y + 0.3, e.z, Math.cos(a) * s, 8 + Math.random() * 10, Math.sin(a) * s, 0.8 + Math.random() * 0.6, 0.35 + Math.random() * 0.3, Math.random() < 0.6 ? 0x6E5A44 : 0x3A342E, -9, 'solid'); }
+  shockwave(e.x, e.y + 0.2, e.z, r * 1.7, 0xFF8A3A); shockwave(e.x, e.y + 0.4, e.z, r * 1.1, P ? hex(P.lip) : 0xC9A26A); flash(e.x, e.y + 2, e.z, r * 2.6, 0xFFFFFF, 0.55); flash(e.x, e.y + 4, e.z, r * 1.5, 0xFFE0A0, 0.9);
+  // the smoke and the ground thrown up are what it was dug in: dust and soil, a cloud of sand, a burst of snow, slop
+  const dust = K.kind === 'snow' || K.kind === 'ice' ? 0xF2F6FA : K.kind === 'sand' ? (P ? hex(P.lip) : 0xD8B47A) : K.kind === 'mud' ? 0x4A3A2A : 0x5E4E40;
+  for (let k = 0; k < 9; k++) smoke(e.x + (Math.random() - 0.5) * r, e.y + 1 + Math.random() * 3, e.z + (Math.random() - 0.5) * r, 4 + Math.random() * 4, k < 4 ? dust : 0x3E3A36, 2 + Math.random(), 2.5 + Math.random() * 2);
+  const fine = K.kind === 'sand' || K.kind === 'snow' ? 2 : 1;
+  for (let k = 0; k < 26 * fine; k++) { const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 6; emit(e.x, e.y + 0.3, e.z, Math.cos(a) * s, 8 + Math.random() * 10, Math.sin(a) * s, 0.8 + Math.random() * 0.6, (0.35 + Math.random() * 0.3) / fine, pick(), -9, 'solid'); }
   for (let k = 0; k < 16; k++) { const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 8; emit(e.x, e.y + 1, e.z, Math.cos(a) * s, 3 + Math.random() * 6, Math.sin(a) * s, 0.4 + Math.random() * 0.4, 1.4 + Math.random(), Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -2); }
-  for (let k = 0; k < 12; k++) debris(e.x, e.y + 0.3, e.z, (Math.random() - 0.5) * 14, 6 + Math.random() * 8, (Math.random() - 0.5) * 14, k % 2 ? 0x55514C : 0x6E5A44, 0.3 + Math.random() * 0.3, 0.12, 0.3 + Math.random() * 0.2, 1.8);
+  if (K.kind !== 'sand') for (let k = 0; k < 12; k++) debris(e.x, e.y + 0.3, e.z, (Math.random() - 0.5) * 14, 6 + Math.random() * 8, (Math.random() - 0.5) * 14, pick(), 0.3 + Math.random() * 0.3, K.kind === 'tarmac' ? 0.1 : 0.2, 0.3 + Math.random() * 0.2, 1.8);
 }
 /** The mortar firing: a flash and a puff of smoke out of the tube on the roof. */
 export function mortarLaunchFx(c) { flash(c.x, c.y + 2.6, c.z, 3, 0xFFE0A0, 0.2); for (let k = 0; k < 5; k++) smoke(c.x + (Math.random() - 0.5), c.y + 2.6, c.z + (Math.random() - 0.5), 1.6, 0xE0DED8, 1, 3); }

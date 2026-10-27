@@ -39,6 +39,7 @@ G.tally = null;         // the player's big airs, drift boosts, weapon hits, wre
 G.onCareerMenu = null;  // called when a career race is left for the menu (the career screen comes back)
 G.workshop = null;      // the Workshop tab being driven, { tab, rivals, weapons, onEvent } (ui/workshop.js), or null
 G.onWorkshopMenu = null; // called when a Workshop tab is left for the menu (the Workshop hub comes back)
+G.wearOpt = null;       // track wear options for the next race (menu: Track wear; ui/wear.js, core features/wear.js WEAR_OPT)
 G.weapons = true;       // missiles and door bashing (menu: Weapons on/off; core/features/weapons.js)
 G.rivals = 3;           // how many AI cars a Race has (menu; data/cars.js MAX_RIVALS). Showdown always has three
 G.camDir = null;        // where the camera looks from, [x, y, z] (set each frame by the camera)

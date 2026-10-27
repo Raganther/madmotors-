@@ -4,6 +4,8 @@ import { wallAt, wallPos } from '../sim/barriers.js';
 import { ferryDeckAt } from '../features/ferry.js';
 import { drawDeckAt } from '../features/drawbridge.js';
 import { crumbleDeckAt } from '../features/crumble.js';
+import { rutGround } from '../features/wear.js';
+import { dentAt } from '../features/dents.js';
 
 export function project(tr, x, z, hint, back, fwd) {
   if (tr.nx) return projectG(tr, x, z, hint, back, fwd);
@@ -32,13 +34,17 @@ export function groundAt(W, s, lat, x, z) {
   const bi = s < 0 ? 0 : s > tr.N - 2 ? tr.N - 2 : s | 0;
   if (tr.bridge[bi] || tr.tunnel[bi]) return al < WALL + 1.2 ? roadH(tr, s) : W.terr.at(x, z);
   if (tr.gap && tr.gap[tr.bi(bi)]) return W.terr.at(x, z);            // a gap: nothing but the drop
-  if (tr.open && tr.open[tr.bi(bi)]) return W.terr.at(x, z);          // open country: the ground itself
+  if (tr.open && tr.open[tr.bi(bi)]) return W.terr.at(x, z) + (W.dents && W.dents.length ? dentAt(W.dents, x, z) : 0);   // open country: the ground itself (and its craters)
   if (tr.drawbridge && tr.drawbridge[tr.bi(bi)]) { const d = drawDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // a leaf, or the mill race
   if (tr.crumble && tr.crumble[tr.bi(bi)]) { const d = crumbleDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // a plank, or a hole into the water
   if (tr.ferry && tr.ferry[tr.bi(bi)]) { const d = ferryDeckAt(W, s, lat); return d !== null ? d : W.terr.at(x, z); }   // the barge deck, or the water
+  const g = ground(W, s, lat, x, z, al, bi);
+  return W.dents && W.dents.length ? g + dentAt(W.dents, x, z) : g;   // the craters blown in it (features/dents.js)
+}
+function ground(W, s, lat, x, z, al, bi) {
   const side = lat >= 0 ? 1 : -1, hasWall = wallAt(W, bi, side) && al < wallPos(W, bi, side) + 1.2;
   if (al >= HALF + 2 && !hasWall) return W.terr.at(x, z);
   const rh = roadH(W.tr, s);
-  if (al <= HALF || hasWall) return rh;
+  if (al <= HALF || hasWall) return al <= HALF ? rh + rutGround(W, s, lat) : rh;   // in the ruts (features/wear.js), where they have feel
   return lerp(rh, W.terr.at(x, z), (al - HALF) / 2);
 }

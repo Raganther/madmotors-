@@ -1,17 +1,24 @@
 import * as THREE from 'three';
+import { G } from '../../game.js';
 import { radialTex } from '../geometry.js';
 import { camT } from '../camera.js';
 import { quality } from '../renderer.js';
 import { carVis } from '../vehicles.js';
+import { race } from '../../ui/flow.js';
+import { HALF } from '../../core/constants.js';
 
 // Weather and time of day (core/elements/weather.js; the versions in data/versions.js). Rain: streaks falling
 // slantwise through a box that follows the camera target (like snowfall; off on Graphics: Low). Night: a pool of
 // headlight on the road ahead of every racer and a red glow behind, added to each car's root and only shown at night.
 const BOX = { x: 110, y: 40, z: 110 }, MAX = 1400, DROP = 1.3;
 let rain = null, off = null, night = false, poolM = null, tailM = null;
+// raindrops landing on the road round you: small rings that spread and fade, recycled from a pool (rate by `rain`)
+const DROPS = 90, DROP_LIFE = 0.32; let drops = [], dropK = 0, dropAcc = 0, dropAmt = 0;
 export function addWeather(group, stage) {
   rain = null; night = !!stage.night;
-  const amt = stage.rain || 0; if (!amt) return;
+  const amt = stage.rain || 0; drops = []; dropAmt = amt; if (!amt) return;
+  const dm = new THREE.MeshBasicMaterial({ color: 0xE6EEF6, transparent: true, opacity: 0, depthWrite: false });
+  for (let k = 0; k < DROPS; k++) { const m = new THREE.Mesh(new THREE.RingGeometry(0.07, 0.12, 10).rotateX(-Math.PI / 2), dm.clone()); m.visible = false; m.renderOrder = 2; group.add(m); drops.push({ m, t: DROP_LIFE }); }
   const n = Math.round(MAX * Math.min(1, amt)), p = new Float32Array(n * 6); off = new Float32Array(n * 4);
   let s = 77; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
   for (let k = 0; k < n; k++) { off[k * 4] = r() * BOX.x; off[k * 4 + 1] = r() * BOX.y; off[k * 4 + 2] = r() * BOX.z; off[k * 4 + 3] = r(); }
@@ -33,6 +40,7 @@ export function updateWeather(dt, now) {
   for (const v of carVis) { if (night && !v.night) v.night = pools(v); if (v.night) v.night.visible = night; }
   if (!rain) return;
   rain.visible = quality !== 'low'; if (!rain.visible) return;
+  updateDrops(dt);
   const p = rain.geometry.attributes.position.array, n = p.length / 6;
   for (let k = 0; k < n; k++) {
     const ph = off[k * 4 + 3], fall = now * (26 + ph * 10);                        // fast, each drop its own speed
@@ -40,4 +48,14 @@ export function updateWeather(dt, now) {
     p[k * 6] = x; p[k * 6 + 1] = y; p[k * 6 + 2] = z; p[k * 6 + 3] = x - DROP * 0.18; p[k * 6 + 4] = y + DROP; p[k * 6 + 5] = z;
   }
   rain.geometry.attributes.position.needsUpdate = true;
+}
+
+function updateDrops(dt) {
+  for (const d of drops) { if (d.t >= DROP_LIFE) continue; d.t += dt; const k = Math.min(1, d.t / DROP_LIFE); d.m.scale.setScalar(1 + k * 2.4); d.m.material.opacity = 0.55 * (1 - k); if (k >= 1) d.m.visible = false; }
+  const W = G.world && G.world.W, P = race && race.player; if (!drops.length || !W || !P || !P.pr || (W.wear && W.wear.opt && !W.wear.opt.drops)) return;
+  const tr = W.tr, N = tr.loopN || tr.N; dropAcc += dt * 260 * dropAmt;
+  while (dropAcc > 1) {
+    dropAcc--; const i = tr.loopN ? (P.pr.i + Math.floor(Math.random() * 46) - 12 + N) % N : Math.max(0, Math.min(tr.N - 1, P.pr.i + Math.floor(Math.random() * 46) - 12)), o = (Math.random() * 2 - 1) * (HALF + 0.5);
+    const d = drops[dropK]; dropK = (dropK + 1) % DROPS; d.t = 0; d.m.visible = true; d.m.position.set(tr.xs[i] + tr.rx[i] * o, tr.H[i] + 0.1, tr.zs[i] + tr.rz[i] * o);
+  }
 }

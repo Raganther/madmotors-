@@ -4,6 +4,10 @@ description: Design and build a new Downhill Rush stage/track (a new circuit or 
 argument-hint: <theme and what should happen on it>
 ---
 
+Start from docs/TRACK_DESIGN.md: the pillars (a place, three signature moments, rhythm, choices, a lap that changes,
+readable from above), the theme bank and the destruction patterns. A new track gets its page there (the template in
+section 5), agreed with the user, before any code.
+
 # New stage
 
 A stage is **data**: one file in `src/data/stages/` that picks a road shape, a look and a list of track elements.

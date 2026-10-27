@@ -3,6 +3,7 @@ import { G } from '../../game.js';
 import { GATE, OPEN, TRAIL } from '../../core/elements/open.js';
 import { canvasTex } from '../geometry.js';
 import { withCutaway } from '../materials.js';
+import { waterGrid, waterMaterial } from '../water.js';
 import { race } from '../../ui/flow.js';
 import { kitPack, vcMat } from '../assets/scenery.js';
 import { playLoop } from '../assets/index.js';
@@ -65,17 +66,16 @@ export function addOpen(group, tr, terr, stage) {
       m.receiveShadow = true; group.add(m);
     }
   }
-  // streams: a band of moving water across the leg, its banks the ground rising out of it either side
+  // streams: a band of moving water across the leg, its banks the ground rising out of it either side (render/water.js
+  // fades it out where the land comes up through it, so it ends where the stream bed does)
   if (tr.open) {
-    const N = tr.loopN || tr.N, pos = [], idx = [], W = 80;
+    const N = tr.loopN || tr.N, W = 80, mat = waterMaterial({ color: 0x4F8DBA, alpha: 0.78 });
     for (let i = 0; i < N; i++) {
-      if (tr.open[tr.bi(i)] !== OPEN.stream) continue;
-      for (const k of [i - 2, i + 3]) { const b = pos.length / 3; for (const o of [-W, W]) pos.push(tr.xs[k] + tr.rx[k] * o, tr.H[i] - 0.35, tr.zs[k] + tr.rz[k] * o); if (k === i + 3) idx.push(b - 2, b, b - 1, b - 1, b, b + 1); }
-    }
-    if (pos.length) {
-      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
-      const m = new THREE.Mesh(g, withCutaway(new THREE.MeshLambertMaterial({ color: 0x4F8DBA, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }), false, { cut: false, cloud: true, water: true }));
-      m.renderOrder = 1; group.add(m);
+      if (tr.open[tr.bi(i)] !== OPEN.stream || tr.open[tr.bi(i - 1 < 0 ? N - 1 : i - 1)] === OPEN.stream) continue;
+      let n = 0; while (n < 40 && tr.open[tr.bi((i + n) % N)] === OPEN.stream) n++;
+      const y = tr.H[i] - 0.35, C = Math.ceil(2 * W / 2.5) + 1, R = n + 10;
+      const m = waterGrid(R, C, (r, c) => { const k = (i - 5 + r + N) % N, o = -W + c * 2 * W / (C - 1), x = tr.xs[k] + tr.rx[k] * o, z = tr.zs[k] + tr.rz[k] * o; return [x, y, z, terr.at(x, z)]; }, mat);
+      if (m) group.add(m);
     }
   }
 }

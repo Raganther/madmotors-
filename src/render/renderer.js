@@ -19,7 +19,11 @@ export let autoPost = !isTouchDevice(), quality = 'auto', dynPR = Math.min(devic
 try { const q = localStorage.getItem('downhill-rush-quality'); if (QUALITY[q]) quality = q; } catch (e) { }
 // after the graphics were lost (out of GPU memory, most often on a tablet): this session runs a step lighter (Medium: no
 // post effects and their buffers, a smaller shadow map); the saved setting is untouched
-try { if (sessionStorage.getItem('dr-recovered')) { sessionStorage.removeItem('dr-recovered'); if (quality === 'auto' || quality === 'high') quality = 'medium'; } } catch (e) { }
+// after the graphics were lost (out of GPU memory, most often on a tablet): this session starts light (Low: a small
+// shadow map, no post effects) and in safe mode (no 3D scene behind the title: ui/title.js), so nothing heavy runs
+// before the player picks something; the saved setting is untouched
+export let safeBoot = false;
+try { if (sessionStorage.getItem('dr-recovered')) { sessionStorage.removeItem('dr-recovered'); quality = 'low'; safeBoot = true; } } catch (e) { }
 setGfx(quality);
 export function applyQuality() {
   const Q = QUALITY[quality], dpr = devicePixelRatio || 1;
@@ -27,6 +31,8 @@ export function applyQuality() {
   if (Math.abs(renderer.getPixelRatio() - pr) > 0.01) renderer.setPixelRatio(pr);
   if (sun.shadow.mapSize.x !== Q.shadow) { sun.shadow.mapSize.set(Q.shadow, Q.shadow); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
   FX.grain.value = quality === 'low' ? 0 : 1;                                        // surface detail off on Low
+  const st = quality === 'low' ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;          // soft-edged shadows, but on Low
+  if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; renderer.shadowMap.needsUpdate = true; }
   scene.traverse(o => { if (o.userData.terrain) o.castShadow = quality !== 'low'; });   // terrain shadows off on Low
   const b = $('gfx-btn'); if (b) b.textContent = 'Graphics: ' + Q.label;
 }
@@ -118,7 +124,19 @@ export function createGLContext() {
   throw new Error('your browser blocked WebGL' + (reason ? ' (' + reason + ')' : '') + '. Quit the browser completely, reopen it, and check that hardware acceleration is on.');
 }
 /** Start again after the graphics were lost: a reload (the stage, car and settings are kept by the menu). */
-export function recoverGraphics() { if (recovering) return; recovering = true; try { sessionStorage.setItem('dr-recovered', '1'); } catch (_) { /* private mode */ } location.reload(); }
+// Never a reload loop: a browser that loses the graphics again and again blocks WebGL for the page until it's quit. A
+// second loss within LOSS_WINDOW stops and asks instead (the button reloads in safe mode).
+const LOSS_WINDOW = 180000;
+export function recoverGraphics() {
+  if (recovering) return; recovering = true;
+  let last = 0; try { last = +sessionStorage.getItem('dr-lost-at') || 0; sessionStorage.setItem('dr-lost-at', String(Date.now())); sessionStorage.setItem('dr-recovered', '1'); } catch (_) { /* private mode */ }
+  if (last && Date.now() - last < LOSS_WINDOW) {
+    const el = $('loading'); el.hidden = false; el.classList.add('err');
+    $('loading-text').innerHTML = 'The graphics keep resetting (this device is running out of graphics memory). <button id="gfx-retry" class="cta" type="button">Try again, lighter</button>';
+    $('gfx-retry').addEventListener('click', () => location.reload()); return;
+  }
+  location.reload();
+}
 let recovering = false;
 export function initRenderer() {
   const gl = createGLContext();
@@ -135,7 +153,7 @@ export function initRenderer() {
   hemi = new THREE.HemisphereLight(0xE8F4FF, 0x6B7A4A, 0.62); scene.add(hemi);
   sun = new THREE.DirectionalLight(0xFFF1DC, 0.9); sun.castShadow = true;
   sun.shadow.mapSize.set(1536, 1536); const sc = sun.shadow.camera; sc.left = -75; sc.right = 75; sc.top = 75; sc.bottom = -75; sc.near = 1; sc.far = 260;
-  sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04; scene.add(sun); scene.add(sun.target);
+  sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.1; scene.add(sun); scene.add(sun.target);   // normalBias: any lower and slopes shade themselves in fine stripes (shadow acne)
   addEventListener('resize', () => renderer.setSize(innerWidth, innerHeight));
   FX.cloud.value = makeCloudTex();
   applyQuality();

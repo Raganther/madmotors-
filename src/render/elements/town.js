@@ -109,15 +109,15 @@ export function addTown(group, tr, terr, stage) {
     }
   }
   delete stage._church;
-  const box = () => flat(new THREE.BoxGeometry(1, 1, 1)), Lm = () => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, { cloud: true });
+  const box = () => flat(new THREE.BoxGeometry(1, 1, 1)), Lm = () => withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, { cloud: true, building: true });
   addInstanced(group, flat(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)), Lm(), walls, { cast: true, receive: true });
-  addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff })), bands, {});
+  addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, { building: true }), bands, {});
   addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), Lm(), roofs, { cast: true });
   addInstanced(group, gableGeo(), Lm(), gables, { cast: true });
   addInstanced(group, flat(new THREE.ConeGeometry(0.7071, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0)), Lm(), spires, { cast: true });
-  addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff })), awnings, { cast: true });
-  addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x0B0F14 })), windows, {});
-  addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff })), [...sills, ...doors], {});
+  addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, { building: true }), awnings, { cast: true });
+  addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x0B0F14 }), false, { building: true }), windows, {});
+  addInstanced(group, box(), withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, { building: true }), [...sills, ...doors], {});
   addInstanced(group, box(), Lm(), chimneys, { cast: true });
   addInstanced(group, flat(new THREE.CylinderGeometry(0.16, 0.2, 1.1, 6)), new THREE.MeshLambertMaterial({ color: 0xffffff }), bollards, { cast: true });
   const LK = kitPack('lamp');

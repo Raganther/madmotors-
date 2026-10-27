@@ -15,10 +15,24 @@ const page = await browser.newPage({ viewport: { width: 960, height: 540 } }); p
 const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push(m.text()); });
+// the menu has screens (ui/menu.js: title, main, quick): a click on a menu button first brings up the screen it's on
+const SCREEN_OF = { 'veh-btn': 'quick', 'race-btn': 'quick', 'mode-btn': 'quick', 'league-btn': 'main', 'career-btn': 'main', 'quick-btn': 'main', 'editor-btn': 'main', 'terrain-btn': 'main', 'sketch-btn': 'main', 'notes-btn': 'main', 'lab-btn': 'main', 'mute-btn': 'main', 'wear-btn': 'main' };
+const click0 = page.click.bind(page);
+page.click = async (sel, o) => {
+  const m = /^[#.]([\w-]+)/.exec(sel), want = m && SCREEN_OF[m[1]];
+  if (want) await page.evaluate(([w, q]) => { const d = window.__dr, el = document.querySelector(q); if (el && !el.offsetParent && d.G.screen !== w) d.menu.show(w); }, [want, sel]);   // (not on screen yet)
+  return click0(sel, o);
+};
 await page.goto('file://' + file);
-await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
+await page.waitForFunction(() => window.__dr && window.__dr.G.world && window.__dr.G.title && window.__dr.race, null, { timeout: 60000 });
+await page.waitForTimeout(1500); await page.screenshot({ path: path.join(outDir, 'title.png') });   // the title's action scene (ui/title.js)
+{ const ok = await page.evaluate(() => { const d = window.__dr, r = d.race; return !!(r && r.cars.length >= 4 && d.G.titleCam && !document.getElementById('title-screen').hidden); }); if (!ok) errors.push('title: no action scene behind the title'); }
+await click0('#start-btn', { force: true }); await page.waitForSelector('#main-menu:not([hidden])'); await page.screenshot({ path: path.join(outDir, 'main-menu.png') });
+await click0('#quick-btn'); await page.waitForSelector('#quick-menu:not([hidden])');
+await page.waitForFunction(() => [...document.querySelectorAll('.tcard canvas')].filter(c => c.width > 0).length >= 10, null, { timeout: 60000 }).catch(() => errors.push('quick race: the track outlines were not drawn'));
+{ const g = await page.evaluate(() => ({ groups: document.querySelectorAll('.tg-h').length, cards: document.querySelectorAll('.tcard').length, suit: document.getElementById('veh-suit').textContent })); console.log(`quick race: ${g.cards} track cards in ${g.groups} groups; ${g.suit}`); if (g.groups < 5 || g.cards < 30 || !g.suit) errors.push('quick race: track cards or car fit missing'); }
 await page.screenshot({ path: path.join(outDir, 'menu.png') });
-const n = await page.evaluate(() => window.__dr.core.STAGES.length);
+const n = process.env.E2E_STAGES ? +process.env.E2E_STAGES : await page.evaluate(() => window.__dr.core.STAGES.length);   // E2E_STAGES=2: a quick run over the rest of the checks
 for (let i = 0; i < n; i++) {
   await page.evaluate(i => window.__dr.flow.startRace(i), i);
   await page.waitForFunction(i => window.__dr.G.world && window.__dr.G.world.idx === i && window.__dr.race, i, { timeout: 30000 });
@@ -75,7 +89,7 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await page.click('#garage-done'); await page.evaluate(() => window.__dr.flow.toMenu());
   const pick = async (i, id) => { await page.evaluate(i => window.__dr.flow.selectStage(i), i); await page.click('#veh-btn'); await page.click(`.g-card[data-id="${id}"]`); await page.click('#garage-done'); };
   await pick(2, 'rover'); await pick(3, 'kart');
-  const back = await page.evaluate(() => { window.__dr.flow.selectStage(2); const a = window.__dr.G.vehicle; window.__dr.flow.selectStage(3); return [a, window.__dr.G.vehicle, document.getElementById('best-2').textContent]; });
+  const back = await page.evaluate(() => { window.__dr.flow.selectStage(2); const a = window.__dr.G.vehicle; window.__dr.flow.selectStage(3); const s2 = window.__dr.core.STAGES[2], card = document.querySelector(`.tcard[data-base="${s2.base || s2.name}"] .tc-fit`); return [a, window.__dr.G.vehicle, card ? card.textContent : '']; });   // its Quick Race card names the car picked for it
   if (back[0] !== 'rover' || back[1] !== 'kart' || !/Rover|rover/i.test(back[2])) errors.push('car per stage: ' + JSON.stringify(back));
   console.log(`car per stage: stage 3 ${back[0]}, stage 4 ${back[1]} ("${back[2]}")`);
 }
@@ -439,7 +453,7 @@ await page.goto('about:blank');   // park the desktop page so its render loop do
     if (!await lp.$eval('#lab-dent', b => b.hidden)) for (const b of ['#lab-dent', '#lab-bump', '#lab-wing', '#lab-fix']) await lp.click(b);
     const veh = VEHICLES.find(v => v.id === id);   // a car's panels (render/anatomy.js): every one except NO_PANELS, either provider
     if (veh) await lp.evaluate(() => { const b = document.querySelector('#lab-parts [data-s="all"]'); if (/Full/.test(b.textContent)) b.click(); });   // every upgrade part on (render/parts.js)
-    if (veh) { const has = !await lp.$eval('#lab-pan', b => b.hidden); if (has === NO_PANELS.includes(veh.model)) errors.push(`lab: ${id} (${pr}) ${has ? 'has panels but is in NO_PANELS' : 'got no panels'}`); if (has) for (let k = 0; k < 3; k++) await lp.click('#lab-pan'); await lp.click('#lab-fix'); }
+    if (veh) { const has = !await lp.$eval('#lab-pan', b => b.hidden); if (has === NO_PANELS.includes(veh.model)) errors.push(`lab: ${id} (${pr}) ${has ? 'has panels but is in NO_PANELS' : 'got no panels'}`); if (has && !await lp.evaluate(() => Object.values(window.__labCur.v.panels).some(p => p.userData.bay === 'engine'))) errors.push(`lab: ${id} (${pr}) has no engine under its bonnet or boot (render/anatomy.js, data/anatomy.js ENGINE)`); if (has) for (let k = 0; k < 3; k++) await lp.click('#lab-pan'); await lp.click('#lab-fix'); }
     await lp.click('#lab-lod');
   }
   const blender = await lp.evaluate(() => document.querySelectorAll('#lab-list small:not(:empty)').length);
