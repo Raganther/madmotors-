@@ -37,7 +37,9 @@ function flowerGeo() {   // a stem and a little star of petals
 }
 function make(group) {
   const inst = (geo, mat, n, sh) => { const m = new THREE.InstancedMesh(geo, mat, n); m.count = 0; m.frustumCulled = false; m.receiveShadow = true; m.castShadow = sh; group.add(m); return m; };
-  const soft = () => withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), false, { cut: false, cloud: true });
+  // both sides of a blade lit as its front (a back face would be lit as if it faced the ground: black flecks)
+  const soft = () => { const m = withCutaway(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), false, { cut: false, cloud: true }), base = m.onBeforeCompile;
+    m.onBeforeCompile = sh => { base(sh); sh.fragmentShader = sh.fragmentShader.replace(/vLightBack/g, 'vLightFront').replace(/vIndirectBack/g, 'vIndirectFront'); }; const key = m.customProgramCacheKey; m.customProgramCacheKey = () => key() + 'front'; return m; };
   const peb = new THREE.DodecahedronGeometry(0.09, 0); peb.scale(1, 0.55, 1);
   meshes = { tuft: inst(tuftGeo(), soft(), MAX.tuft, false), flower: inst(flowerGeo(), soft(), MAX.flower, false), pebble: inst(peb, withCutaway(new THREE.MeshLambertMaterial({ color: 0xffffff }), false, { cut: false, cloud: true }), MAX.pebble, true) };
 }

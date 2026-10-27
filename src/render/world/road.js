@@ -75,7 +75,13 @@ export function makeRoadMesh(tr, stage) {
         continue;
       }
       // quad corners: a=(i,oa) b=(i,ob) c=(j,oa) d=(j,ob) ; orient so normal faces up
-      if (Math.abs(oa) <= HALF + 0.01 && Math.abs(ob) <= HALF + 0.01) { strip(i, j, oa, ob, ii => yf(ii, s), ii => yf(ii, s + 1), c); continue; }   // the kerbs: on the road, so they rut with it
+      // the kerbs: on the road, so they rut with it; a striped kerb is humped, a crest down its middle, so it reads as a
+      // rounded rumble strip close up (and catches the light along its top)
+      if (Math.abs(oa) <= HALF + 0.01 && Math.abs(ob) <= HALF + 0.01) {
+        if (c === red || c === white) { const om = (oa + ob) / 2, crest = ii => tr.H[ii] + 0.14; strip(i, j, oa, om, ii => yf(ii, s), crest, c); strip(i, j, om, ob, crest, ii => yf(ii, s + 1), c); }
+        else strip(i, j, oa, ob, ii => yf(ii, s), ii => yf(ii, s + 1), c);
+        continue;
+      }
       const a = P(i, oa, yf(i, s)), b = P(i, ob, yf(i, s + 1)), cc = P(j, oa, yf(j, s)), d = P(j, ob, yf(j, s + 1));
       quad(...a, ...b, ...cc, ...d, c, [wuvAt(i, oa), wuvAt(i, ob), wuvAt(j, oa), wuvAt(j, ob)]);
     }
@@ -102,7 +108,7 @@ export function makeRoadMesh(tr, stage) {
   const mk = (P, C, Wv, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setAttribute('wuv', new THREE.Float32BufferAttribute(Wv, 4)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m; };
   // in the rain the road gleams: a shiny material (render/ruts.js wetShine turns it up and down with the Shine option)
   const roadMat = stage.wet > 0 ? wetShine(new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide }), tr.surface === 'tarmac' ? 1 : 0.45) : (quality === 'low' ? new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }) : new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, specular: 0x000000, shininess: 1 }));   // lit per pixel but on Low (no shine: ortho, see /look)
-  const mainM = mk(mainPos, mainCol, mainW, withRuts(withCutaway(roadMat, false, { cut: false, cloud: true, grain: tr.surface === 'tarmac' ? 0.07 : 0.12, detail: roadDetail(stage), detailK: tr.surface === 'tarmac' ? 0.16 : 0.24 }))), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
+  const mainM = mk(mainPos, mainCol, mainW, withRuts(withCutaway(roadMat, false, { cut: false, cloud: true, grain: tr.surface === 'tarmac' ? 0.07 : 0.12, detail: roadDetail(stage), detailK: tr.surface === 'tarmac' ? 0.07 : 0.16, bump: tr.surface === 'tarmac' ? 0.2 : 0.45 }))), main = chunkMesh(mainM.geometry, mainM.material, 60, true);
   const bridge = brPos.length ? mk(brPos, brCol, brW, bridgeMat({ vertexColors: true, side: THREE.DoubleSide })) : null;
   if (bridge) bridge.castShadow = true;
   return { main, bridge };

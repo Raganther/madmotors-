@@ -7,11 +7,11 @@ import * as THREE from 'three';
 // lower sills and the insides of arches sit darker, so the shapes read in depth; and each face is shaded toward its
 // edges with a fine grain (panelTex), so the boxes read as panels rather than flat colour.
 const KIND = {
-  paint: { metalness: 0.15, roughness: 0.6, envMapIntensity: 0.4 },
+  paint: { metalness: 0.15, roughness: 0.6, envMapIntensity: 0.75 },   // (the sky fills the sides the sun doesn't reach: lower and they go near black)
   glass: { metalness: 0.5, roughness: 0.08, envMapIntensity: 0.9 },
   chrome: { metalness: 1.0, roughness: 0.2, envMapIntensity: 1.0 },
   rubber: { metalness: 0.0, roughness: 0.92, envMapIntensity: 0.15 },
-  trim: { metalness: 0.2, roughness: 0.65, envMapIntensity: 0.35 }
+  trim: { metalness: 0.2, roughness: 0.65, envMapIntensity: 0.75 }
 };
 // every face of a body part: darker toward its edges (reads as a bevelled, shaded panel) with a fine grain in the paint
 let panel = null;

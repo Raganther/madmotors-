@@ -62,7 +62,7 @@ export function makeTerrainMesh(terr, tr, stage) {
   const perPixel = quality !== 'low', F = perPixel ? 0.25 : 0.45;
   for (let i = 0; i < nn.length; i += 3) { const x = nn[i] * F + sn[i] * (1 - F), y = nn[i + 1] * F + sn[i + 1] * (1 - F), z = nn[i + 2] * F + sn[i + 2] * (1 - F), l = Math.hypot(x, y, z) || 1; nn[i] = x / l; nn[i + 1] = y / l; nn[i + 2] = z / l; }
   const mat = perPixel ? new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0x000000, shininess: 1 }) : new THREE.MeshLambertMaterial({ vertexColors: true });
-  const mesh = chunkMesh(fg, withCutaway(mat, true, { cloud: true, grain: 0.1, strata: stage.strata || 3.4, detail: groundDetail(stage), detailK: 0.2 }), 60, true);   // every stage's cliffs get rock bands (mesas set their own)
+  const mesh = chunkMesh(fg, withCutaway(mat, true, { cloud: true, grain: 0.1, strata: stage.strata || 3.4, detail: groundDetail(stage), detailK: 0.13, bump: 0.4 }), 60, true);   // every stage's cliffs get rock bands (mesas set their own)
   // cliffs and banks throw shadows on the ground below them (the rest of the height cue from the top-down cameras); not on
   // Graphics: Low (applyQuality flips it)
   // only chunks with real relief in them: flat ground can't shade anything, and every caster is drawn again for the sun
