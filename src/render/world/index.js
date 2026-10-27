@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { clearWaterMap } from '../water.js';
+import { setSky } from '../sky.js';
 import { elementHook } from '../elements/index.js';
 import { G } from '../../game.js';
 import { buildTrack } from '../../core/track/build.js';
@@ -42,7 +43,7 @@ export function buildWorld(idx) {
   const stage = STAGES[idx], tr = trackOf(idx), terr = buildTerrain(tr, stage);
   const group = new THREE.Group(); scene.add(group);
   scene.background.set(stage.colors.sky); scene.fog.color.set(stage.colors.sky);
-  const Lt = stage.light; sun.color.setHex(Lt.sun); sun.intensity = Lt.sunI; hemi.color.setHex(Lt.sky); hemi.groundColor.setHex(Lt.ground); hemi.intensity = Lt.hemiI; FX.cloudAmt.value = Lt.cloud; setGrade(Lt);
+  const Lt = stage.light; sun.color.setHex(Lt.sun); sun.intensity = Lt.sunI; hemi.color.setHex(Lt.sky); hemi.groundColor.setHex(Lt.ground); hemi.intensity = Lt.hemiI; FX.cloudAmt.value = Lt.cloud; setGrade(Lt); setSky(scene, stage);
   const hz = Lt.haze; FX.hazeAmt.value = hz ? hz.amt : 0; if (hz) { FX.hazeCol.value.setHex(hz.color); FX.hazeTop.value = hz.top; FX.hazeRange.value = hz.range; }
   setCarEnvironment(renderer, scene, stage);                          // what the cars' paint and glass reflect
   group.add(makeTerrainMesh(terr, tr, stage));

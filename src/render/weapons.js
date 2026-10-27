@@ -120,7 +120,16 @@ export function initWeaponVis() {
   }
   // fireballs and flashes (additive glow sprites), smoke puffs (soft grey sprites), shockwave domes, and the red ring
   // under a car a missile is homing on
-  const smokeTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+  // a puff of smoke: a few overlapping lumps, each lit from above (lighter at the top, a shade darker underneath), so it
+  // reads as a billow rather than a flat disc; each puff is turned its own way (smoke())
+  const smokeTex = canvasTex(128, 128, (g, w, h) => {
+    const lumps = [[0.5, 0.56, 0.3], [0.34, 0.5, 0.2], [0.66, 0.47, 0.22], [0.47, 0.34, 0.2], [0.6, 0.66, 0.18], [0.36, 0.67, 0.16], [0.56, 0.4, 0.17]];
+    for (const [x, y, r] of lumps) {
+      const cx = x * w, cy = y * h, R = r * w, gr = g.createRadialGradient(cx - R * 0.25, cy - R * 0.35, R * 0.1, cx, cy, R);
+      gr.addColorStop(0, 'rgba(255,255,255,0.75)'); gr.addColorStop(0.55, 'rgba(225,225,225,0.55)'); gr.addColorStop(0.85, 'rgba(190,190,190,0.25)'); gr.addColorStop(1, 'rgba(180,180,180,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, R, 0, 6.3); g.fill();
+    }
+  });
   flashes = []; smokes = []; domes = [];
   // a fireball: white-hot middle, orange body, soft edge; tinted by the flash colour (white = fire)
   const fireTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,252,235,1)'); gr.addColorStop(0.3, 'rgba(255,214,110,1)'); gr.addColorStop(0.62, 'rgba(255,120,30,0.85)'); gr.addColorStop(1, 'rgba(255,60,10,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
@@ -162,7 +171,7 @@ const glowTex = () => G.glowTex || (G.glowTex = canvasTex(64, 64, (g, w, h) => {
 /** A glowing flash that swells and fades: fireballs, muzzle flashes, hits. */
 export function flash(x, y, z, size, color, life = 0.35) { const f = flashes[fi]; fi = (fi + 1) % flashes.length; if (!f) return; f.sp.position.set(x, y, z); f.sp.material.color.set(color); f.t = 0; f.life = life; f.size = size; f.sp.visible = true; }
 /** A soft smoke puff that rises, swells and thins out. */
-export function smoke(x, y, z, size, color, life = 1.6, vy = 1.5) { const f = smokes[si]; si = (si + 1) % smokes.length; if (!f) return; f.sp.position.set(x, y, z); f.sp.material.color.set(color); f.t = 0; f.life = life; f.size = size; f.vy = vy; f.sp.visible = true; }
+export function smoke(x, y, z, size, color, life = 1.6, vy = 1.5) { const f = smokes[si]; si = (si + 1) % smokes.length; if (!f) return; f.sp.position.set(x, y, z); f.sp.material.color.set(color); f.sp.material.rotation = Math.random() * 6.28; f.t = 0; f.life = life; f.size = size; f.vy = vy; f.sp.visible = true; }
 function dome(x, y, z, size, color) { const d = domes[di]; di = (di + 1) % domes.length; if (!d) return; d.m.position.set(x, y, z); d.m.material.color.set(color); d.t = 0; d.size = size; d.m.visible = true; }
 function updateFx(dt) {
   if (later.length) { for (const l of later) l.t -= dt; const due = later.filter(l => l.t <= 0); later = later.filter(l => l.t > 0); due.forEach(l => l.fn()); }   // billowing blasts: their later puffs

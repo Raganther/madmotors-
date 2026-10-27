@@ -15,7 +15,7 @@ mkdirSync('tools/out', { recursive: true });
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1100, height: 620 } }), errs = [];
 page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errs.push(m.text()); else if (m.type() === 'log') console.log('page:', m.text()); });
-await page.exposeFunction('__shot', async name => { const f = `tools/out/scene-${name}.png`; await page.screenshot({ path: f }); console.log(f); });
+await page.exposeFunction('__shot', async name => { const f = `tools/out/scene-${name}.png`; await page.screenshot({ path: f, timeout: 180000 }); console.log(f); });
 await page.goto('file://' + path.resolve((process.env.DIST || 'dist') + '/index.html') + '?' + q);
 await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 await page.evaluate(([i, v, n, cm]) => { const G = window.__dr.G; G.vehicle = G.defaultVehicle = v; G.stageCars = {}; G.rivals = n; G.mode = 'race'; G.camMode = cm; window.__dr.flow.startRace(i); }, [idx, vehicle, rivals, camMode]);

@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import path from 'node:path';
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-const url = 'file://' + path.resolve('dist/index.html');
+const url = 'file://' + path.resolve((process.env.DIST || 'dist') + '/index.html');   // DIST=<dir>: a build elsewhere
 if (process.env.MODELS) await page.addInitScript(m => localStorage.setItem('downhill-rush-models', m), process.env.MODELS);
 await page.goto(url); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 const n = await page.evaluate(() => window.__dr.core.STAGES.length);

@@ -39,6 +39,7 @@ import { addKit, newKitRace, updateKit } from './kit.js';
 import { addArena } from './arena.js';
 import { addStructures, newStructuresRace, updateStructures } from './structures.js';
 import { addCrumbles, newCrumbleRace, updateCrumbles } from './crumble.js';
+import { addClutter, updateClutter } from '../world/clutter.js';
 import { addAmbient, updateAmbient } from './ambient.js';
 import { clearWaves, updateWaves } from '../waves.js';
 
@@ -103,6 +104,7 @@ const structures = { name: 'structures', build(group, tr, terr) { addStructures(
 const crumble = { name: 'crumble', build(group, tr, terr) { addCrumbles(group, tr, terr); }, newRace() { newCrumbleRace(); }, update() { updateCrumbles(); } };   // timber bridges that wear through
 
 // the water's waves (render/waves.js): the cars stir every water surface
+const clutter = { name: 'clutter', build(group, tr, terr, stage) { addClutter(group, tr, terr, stage); }, update() { updateClutter(); } };   // grass, flowers, pebbles round the camera
 const waves = { name: 'waves', newRace() { clearWaves(); }, update(dt) { updateWaves(dt); } };
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather, ambient, structures, crumble, waves];
+export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather, ambient, structures, crumble, waves, clutter];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

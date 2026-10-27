@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { G } from '../game.js';
 import { TAU, clamp, lerp, mulberry32, smoothstep } from '../core/math.js';
 import { canvasTex } from './geometry.js';
+import { detailTex, DETAIL_SCALE } from './detail.js';
 
 export const CUT = { car: { value: new THREE.Vector3() }, dir: { value: new THREE.Vector3(1, 1.3, 1).normalize() }, r: { value: 0 }, lift: { value: 1.4 }, ahead: { value: new THREE.Vector3() }, r2: { value: 0 } };   // lift: only cut what's this far above the car; ahead/r2: a second window on the road ahead
 // world effects shared by the scenery shaders: time for wind and the drifting cloud-shadow texture
@@ -26,9 +27,10 @@ export function makeCloudTex() {
 // for now: it hid the bricks and the hole a car smashes through them. true brings it back.
 export const SEE_THROUGH_BUILDINGS = false;
 // opts: cut (see-through window over the player, default on), cloud (drifting cloud shadows), sway (foliage in the wind),
-// grain (0..1: fine surface detail in world space, two scales of the tileable noise, so ground and road aren't flat colour)
+// grain (0..1: fine surface detail in world space, two scales of the tileable noise, so ground and road aren't flat colour),
+// detail (a kind from render/detail.js: close-up texture and bumps; detailK how strong, bump how much it catches the light)
 export function withCutaway(mat, solidInside, opts = {}) {
-  const cut = opts.cut !== false && !(opts.building && !SEE_THROUGH_BUILDINGS), cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water, grain = opts.grain || 0, strata = opts.strata || 0;
+  const cut = opts.cut !== false && !(opts.building && !SEE_THROUGH_BUILDINGS), cloud = !!opts.cloud, sway = opts.sway || 0, water = !!opts.water, grain = opts.grain || 0, strata = opts.strata || 0, detail = opts.detail || null, detailK = opts.detailK ?? 0.22, bump = opts.bump ?? 0.6;
   if (solidInside) mat.side = THREE.DoubleSide;
   mat.onBeforeCompile = sh => {
     sh.uniforms.uCutCar = CUT.car; sh.uniforms.uCutDir = CUT.dir; sh.uniforms.uCutR = CUT.r; sh.uniforms.uCutLift = CUT.lift; sh.uniforms.uCutAhead = CUT.ahead; sh.uniforms.uCutR2 = CUT.r2;
@@ -74,6 +76,20 @@ export function withCutaway(mat, solidInside, opts = {}) {
       gl_FragColor.rgb += vec3(0.75, 0.85, 0.95) * smoothstep(0.55, 0.95, rp) * 0.22;` : ''}
       gl_FragColor.rgb = mix(gl_FragColor.rgb, uHazeCol, clamp((uHazeTop - vCutW.y) / uHazeRange, 0.0, 1.0) * uHazeAmt);   // valley haze
       #include <fog_fragment>`);
+    // close-up surface detail (render/detail.js): a texture in world space, two scales turned against each other, that
+    // shades the colour up and down; on a surface lit per pixel it bends the normal too, so the grains catch the light
+    if (detail) {
+      sh.uniforms.uDetail = { value: detailTex(detail) };
+      fs = 'uniform sampler2D uDetail;\n' + fs.replace('#include <color_fragment>', `#include <color_fragment>
+        vec2 dtp = vCutW.xz / ${DETAIL_SCALE[detail].toFixed(2)};
+        float detH = texture2D(uDetail, dtp).r * 0.62 + texture2D(uDetail, mat2(0.80, 0.60, -0.60, 0.80) * dtp * 0.41 + 0.37).r * 0.38;
+        diffuseColor.rgb *= 1.0 + ${detailK.toFixed(3)} * uGrain * (detH - 0.5) * 2.0;`).replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        {
+          vec3 dsx = dFdx(-vViewPosition), dsy = dFdy(-vViewPosition), dr1 = cross(dsy, normal), dr2 = cross(normal, dsx);
+          float ddet = dot(dsx, dr1); vec2 ddh = vec2(dFdx(detH), dFdy(detH)) * ${bump.toFixed(3)} * uGrain;
+          normal = normalize(abs(ddet) * normal - sign(ddet) * (ddh.x * dr1 + ddh.y * dr2));
+        }`);
+    }
     if (grain) fs = fs.replace('#include <color_fragment>', `#include <color_fragment>
       if (uGrain > 0.0) {
         // three scales of the tileable noise, each turned a different way and at odd sizes, so no repeat lines up with
@@ -102,8 +118,8 @@ export function withCutaway(mat, solidInside, opts = {}) {
     if (solidInside) fs = fs.replace('#include <color_fragment>', '#include <color_fragment>\n  if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.23, 0.21, 0.19);');
     sh.fragmentShader = fs;
   };
-  if (strata) mat.extensions = { derivatives: true };
-  mat.customProgramCacheKey = () => 'wfx' + (solidInside ? 's' : '') + (cut ? 'c' : '') + (cloud ? 'k' : '') + (water ? 'w' : '') + sway + 'g' + grain + 't' + strata;
+  if (strata || detail) mat.extensions = { derivatives: true };
+  mat.customProgramCacheKey = () => 'wfx' + (solidInside ? 's' : '') + (cut ? 'c' : '') + (cloud ? 'k' : '') + (water ? 'w' : '') + sway + 'g' + grain + 't' + strata + 'd' + detail + detailK + bump;
   return mat;
 }
 export function bannerTex(text) {

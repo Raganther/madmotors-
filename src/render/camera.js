@@ -233,9 +233,16 @@ export function updateCamera(dt, snap) {
   followSun();
 }
 function followSun() {
+  // the shadow map covers what the camera sees and no more, so shadows stay sharp when zoomed in: the overhead view's
+  // footprint on the ground (its height stretched by the slant), or behind the car a square reaching well up the road
+  // ahead of it; in 4 m steps, so a zoom that's easing doesn't make the texels swim
+  const sc = sun.shadow.camera, persp = G.persp, foot = Math.max(camera.right, camera.top / 0.68) * 1.1 + 6;
+  const half = Math.min(80, Math.max(24, Math.ceil((persp ? 58 : foot) / 4) * 4));
+  if (sc.right !== half) { sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.updateProjectionMatrix(); }
+  _v1.copy(camT); if (persp) { _v1.x += camDir.x * -30; _v1.z += camDir.z * -30; }   // (camDir points back at the camera)
   // move the shadow camera in whole shadow-map texels so shadow edges don't crawl as the camera moves
-  const tex = (sun.shadow.camera.right - sun.shadow.camera.left) / sun.shadow.mapSize.x;
-  const a0 = camT.dot(SUN_U), b0 = camT.dot(SUN_V);
-  _v3.copy(camT).addScaledVector(SUN_U, Math.round(a0 / tex) * tex - a0).addScaledVector(SUN_V, Math.round(b0 / tex) * tex - b0);
+  const tex = (sc.right - sc.left) / sun.shadow.mapSize.x;
+  const a0 = _v1.dot(SUN_U), b0 = _v1.dot(SUN_V);
+  _v3.copy(_v1).addScaledVector(SUN_U, Math.round(a0 / tex) * tex - a0).addScaledVector(SUN_V, Math.round(b0 / tex) * tex - b0);
   sun.position.set(_v3.x - 50, _v3.y + 95, _v3.z - 20); sun.target.position.copy(_v3); sun.target.updateMatrixWorld();
 }
