@@ -9,6 +9,10 @@ import { fxSurf } from './carfx.js';
 // latest muck: pale dust, green-brown, dark mud, or snow.
 const MUCK = { gravel: { rate: 0.025, col: 0xB49A74 }, grass: { rate: 0.012, col: 0x6E6A3A }, mud: { rate: 0.4, col: 0x4A3322 }, ford: { rate: -0.3, col: 0x5A4632 }, tarmac: { rate: -0.004, col: null },
   snow: { rate: 0.02, col: 0xEEF3F8 }, powder: { rate: 0.05, col: 0xFFFFFF }, ice: { rate: -0.002, col: null } };   // snow: a crust of white builds up instead
+const GRAVEL = MUCK.gravel.col;
+/** A new stage: gravel dust takes the colour of its own dirt (red on the mesa, pale on the dunes), lifted a little as
+ *  dust is (render/world buildWorld). */
+export function setMuck(stage) { const c = new THREE.Color(stage.colors.dirt || GRAVEL).lerp(new THREE.Color(0xD8CCB8), 0.3); MUCK.gravel.col = stage.colors.dirt ? c.getHex() : GRAVEL; }
 let tex = null, heavy = null;
 function dirtTex() {
   if (tex) return tex;

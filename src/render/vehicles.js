@@ -13,7 +13,7 @@ import { debris } from './effects/debris.js';
 import { glassBits, sparks } from './effects/impacts.js';
 import { emit } from './effects/particles.js';
 import { shockwave } from './effects/rings.js';
-import { _p, _q, _s, disposeGroup, flat, radialTex } from './geometry.js';
+import { _p, _q, _s, disposeGroup, flat, mergeAll, radialTex } from './geometry.js';
 import { getCrackTex } from './materials.js';
 import { bakeAO, carMat } from './carpaint.js';
 import { quality, scene } from './renderer.js';
@@ -36,7 +36,10 @@ export function addCarExtras(v, tails, hw, hl) {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.glowTex, color: 0xFF3A22, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
     sp.scale.set(1.3, 1.3, 1); sp.position.copy(t.position); sp.position.z -= 0.12; sp.visible = false; t.parent.add(sp); return sp;
   });
-  const blob = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2.7, hl * 2.5).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: G.blobTex, color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
+  // a soft shadow under the body, and a darker patch where each tyre meets the road (one mesh, one draw), so the car sits on it
+  const pts = (v.wheels || []).map(w => w.parent && w.parent.position).filter(Boolean);
+  const geo = mergeAll([new THREE.PlaneGeometry(hw * 2.7, hl * 2.5).rotateX(-Math.PI / 2), ...pts.map(p => new THREE.PlaneGeometry(0.8, 1.05).rotateX(-Math.PI / 2).translate(p.x, 0.004, p.z))]);
+  const blob = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: G.blobTex, color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
   blob.position.y = 0.05; blob.renderOrder = 1; v.root.add(blob); v.blob = blob;
 }
 // cars take the shade of trees, bridges and each other, not just cast it (the ground blob and glows stay as they are)

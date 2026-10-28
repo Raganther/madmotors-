@@ -155,7 +155,8 @@ function kit(def, root, body) {
 const TREAD = [5 / 14, 9 / 14];
 // A wheel's geometry, both levels, built once per size and shared (a wheel is a few merged meshes, not a dozen: every
 // mesh is a draw call, twice over with shadows). Far: a faceted tyre (tread blocks merged in) and a hub. Near: a tyre
-// turned from a profile with rounded shoulders, knobbly blocks, a dark rim set into it, and five spokes with a cap.
+// turned from a profile with rounded shoulders, knobbly blocks, a dark rim set into it with a polished lip, five spokes
+// with a cap.
 const wheelCache = new Map(), _wm = new THREE.Matrix4(), _wq = new THREE.Quaternion(), _we = new THREE.Euler(), _wp = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1);
 const placed = (g, y, z, a) => g.applyMatrix4(_wm.compose(_wp.set(0, y, z), _wq.setFromEuler(_we.set(-a, 0, 0)), _one));
 function wheelGeos(r, wd, knobbly) {
@@ -170,8 +171,10 @@ function wheelGeos(r, wd, knobbly) {
   for (let k = 0; k <= 4; k++) { const a = k / 4 * Math.PI / 2; pts.push(new THREE.Vector2(r - q + Math.cos(a) * q, h - q + Math.sin(a) * q)); }
   pts.push(new THREE.Vector2(ri, h));
   W.tyre = bakeAO(new THREE.LatheGeometry(pts, 28).rotateZ(Math.PI / 2), r);
+  // a polished lip round the rim's edge on both faces (merged with the hub: no extra draw)
+  const lip = [-1, 1].map(sd => new THREE.TorusGeometry(ri * 0.97, Math.max(0.012, r * 0.035), 6, 28).rotateY(Math.PI / 2).translate(sd * wd * 0.4, 0, 0));
   W.rim = bakeAO(new THREE.CylinderGeometry(ri, ri, wd * 0.8, 24).rotateZ(Math.PI / 2), r);
-  W.hub = bakeAO(mergeAll([new THREE.CylinderGeometry(r * 0.2, r * 0.2, wd * 0.8 + 0.05, 12).rotateZ(Math.PI / 2),
+  W.hub = bakeAO(mergeAll([...lip, new THREE.CylinderGeometry(r * 0.2, r * 0.2, wd * 0.8 + 0.05, 12).rotateZ(Math.PI / 2),
     ...Array.from({ length: 5 }, (_, k) => { const a = k / 5 * Math.PI * 2; return placed(new THREE.BoxGeometry(wd * 0.8 + 0.03, ri * 0.9, r * 0.1), Math.cos(a) * ri * 0.5, Math.sin(a) * ri * 0.5, a); })]), r);
   W.blocks = knobbly ? bakeAO(mergeAll(Array.from({ length: 14 }, (_, k) => { const a = (k + 0.5) / 14 * Math.PI * 2; return placed(roundBox(wd * 0.86, 0.09, r * 0.2, 0.025), Math.cos(a) * (r + 0.01), Math.sin(a) * (r + 0.01), a); })), r) : null;
   wheelCache.set(key, W); return W;

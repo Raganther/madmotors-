@@ -34,10 +34,15 @@ function pools(v) {
   }
   const g = new THREE.Group(), head = new THREE.Mesh(new THREE.PlaneGeometry(7, 15), poolM), tail = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.4), tailM);
   head.rotation.x = tail.rotation.x = -Math.PI / 2; head.position.set(0, 0.07, 9.5); tail.position.set(0, 0.07, -2.8); head.renderOrder = tail.renderOrder = 2;
-  g.add(head, tail); v.root.add(g); return g;
+  g.add(head, tail); v.root.add(g);
+  // and the lamps themselves glow: a halo on each headlamp, a softer red one on each tail lamp (on their parents, so a
+  // lamp knocked off in a crash takes its halo with it)
+  const halo = (m, col, sc) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.glowTex, color: col, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.85 })); sp.scale.set(sc, sc, 1); sp.position.copy(m.position); sp.position.z += Math.sign(m.position.z) * 0.14; m.parent.add(sp); v.halos.push([sp, m]); };
+  v.halos = []; if (G.glowTex) { for (const m of v.heads || []) halo(m, 0xFFF2D0, 1.1); for (const m of v.tails || []) halo(m, 0xFF2A1A, 0.6); }
+  return g;
 }
 export function updateWeather(dt, now) {
-  for (const v of carVis) { if (night && !v.night) v.night = pools(v); if (v.night) v.night.visible = night; }
+  for (const v of carVis) { if (night && !v.night) v.night = pools(v); if (v.night) v.night.visible = night; if (v.halos) for (const [sp, m] of v.halos) sp.visible = night && m.visible; }
   if (!rain) return;
   rain.visible = quality !== 'low'; if (!rain.visible) return;
   updateDrops(dt);

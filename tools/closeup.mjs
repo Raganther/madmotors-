@@ -5,7 +5,8 @@ import path from 'node:path';
 const out = process.argv[2], veh = process.argv.slice(3);
 const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const p = await b.newPage({ viewport: { width: 900, height: 560 } });
-await p.goto('file://' + path.resolve('dist/index.html')); await p.waitForFunction(() => window.__dr && window.__dr.G.world);
+await p.goto('file://' + path.resolve((process.env.DIST || 'dist') + '/index.html'));   // DIST=<dir>: a build elsewhere
+ await p.waitForFunction(() => window.__dr && window.__dr.G.world);
 for (const v of veh) for (const [ang, tag, dirt] of [[0.55, 'warm', 0], [0.55, 'front', 0], [2.6, 'rear', 0.3]]) {   // the first render of a new race misses the car: warm up
   if (tag === 'warm' && v !== veh[0]) continue;
   await p.evaluate(([v, ang, dirt]) => {
