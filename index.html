@@ -172,7 +172,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .sk-itembtns{display:flex;gap:6px;margin-top:6px} .sk-itembtns .btn{padding:5px 10px;font-size:13px;min-width:0}
 @media (max-width:700px){ .sk-main{flex-direction:column-reverse} .sk-side{width:auto;flex-direction:row;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;border-right:0;border-top:1px solid rgba(255,255,255,.1)} #sk-tools{grid-template-columns:repeat(9,44px)} #sk-cols{grid-template-columns:repeat(10,26px)} #sk-sizes{width:110px;flex:none} .sk-acts{grid-template-columns:repeat(3,64px)} .sk-acts .wide{grid-column:auto} .sk-side>*{flex:none} .sk-item img,.sk-noimg{width:96px;height:72px} }
 #viewer{position:fixed;inset:0;z-index:3;color:#fff;pointer-events:none} #viewer>*{pointer-events:auto} #vw-surf{position:absolute;inset:0;touch-action:none;cursor:grab} #vw-surf:active{cursor:grabbing}
-.vw-bar{position:absolute;left:0;right:0;top:0;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top,0px));background:rgba(28,35,64,.86);font-size:14px}
+.vw-bar{position:absolute;z-index:2;left:0;right:0;top:0;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top,0px));background:rgba(28,35,64,.86);font-size:14px}
 .vw-bar .btn,.vw-bar .cta{padding:6px 11px;font-size:14px;min-width:0} .vw-bar .btn.on{background:var(--yellow);color:var(--ink)} .vw-bar select{background:rgba(0,0,0,.3);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:7px;padding:5px 6px;font:inherit;max-width:46vw}
 #vw-card{position:absolute;right:8px;top:60px;bottom:8px;width:300px;overflow-y:auto;background:rgba(28,35,64,.9);border-radius:12px;padding:10px;box-sizing:border-box;font-size:13px;touch-action:pan-y} #vw-card.shut{display:none}
 #vw-map{display:block;width:100%;height:200px;cursor:pointer;background:rgba(0,0,0,.25);border-radius:8px} #vw-strip{display:block;width:100%;height:56px;margin-top:8px;cursor:pointer;background:rgba(0,0,0,.25);border-radius:6px}
@@ -472,7 +472,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 
 <div id="viewer" hidden>
   <div id="vw-surf"></div>
-  <div class="vw-bar"><span class="ed-title">Track viewer</span><select id="vw-stage" aria-label="Stage"></select>
+  <div id="vw-bar" class="vw-bar"><span class="ed-title">Track viewer</span><select id="vw-stage" aria-label="Stage"></select>
     <button id="vw-fly" class="cta" type="button">&#9654; Fly the lap</button><select id="vw-speed" aria-label="Speed"><option value="0.4">Slow</option><option value="1" selected>Race speed</option><option value="2">Fast</option></select>
     <button id="vw-race" class="btn" type="button">Cars: parked</button><button id="vw-restart" class="btn" type="button">Restart</button><button id="vw-line" class="btn" type="button">Racing line</button><button id="vw-labels" class="btn" type="button">Labels</button>
     <button id="vw-note" class="btn" type="button">Note</button><button id="vw-card-btn" class="btn" type="button">Report</button><span class="ed-btns"><button id="vw-drive" class="btn" type="button">Drive it</button><button id="vw-exit" class="btn" type="button">Exit</button></span></div>

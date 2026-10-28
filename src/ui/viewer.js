@@ -63,7 +63,7 @@ export function initViewer() {
     else if (e.code === 'KeyT') V.pitch = V.pitch > 1.3 ? 0.55 : 1.45;
     else if (e.code === 'Home') fit();
   });
-  addEventListener('resize', () => { V.mapDirty = true; });
+  addEventListener('resize', () => { V.mapDirty = true; V.mapK = null; place(); });
 }
 /** Open the viewer on stage idx (built first if it isn't the one on show). */
 export function openViewer(idx) {
@@ -81,7 +81,7 @@ export function openViewer(idx) {
     const st = STAGES[idx], tr = G.world.tr;
     try { V.R = trackReport(tr, st, G.world.terr); } catch (e) { console.error(e); V.R = null; }
     V.s = V.R ? V.R.i0 : tr.startIdx; V.mapK = null; V.mapDirty = true;
-    makeLabels(); drawCard(); fit(); buttons(); refreshPins();
+    makeLabels(); drawCard(); fit(); buttons(); refreshPins(); place();
   });
 }
 function cleanup() {
@@ -101,6 +101,8 @@ function setRacing(on) {
   R.autoPlayer = true; R.phase = 'racing'; for (const c of R.cars) c.hold = !on;
   buttons();
 }
+// the card starts under the bar, however many lines the bar wraps to (on a phone it sits at the bottom: index.html)
+function place() { if (!$('viewer').hidden && innerWidth > 760) $('vw-card').style.top = $('vw-bar').offsetHeight + 8 + 'px'; else $('vw-card').style.top = ''; }
 function buttons() {
   $('vw-fly').textContent = V.fly ? '❚❚ Stop' : V.racing ? '▶ Ride along' : '▶ Fly the lap';
   $('vw-race').textContent = 'Cars: ' + (V.racing ? 'racing' : 'parked');
