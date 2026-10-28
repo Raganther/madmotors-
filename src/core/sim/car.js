@@ -103,7 +103,7 @@ export function stepCar(c, dt, W, racing) {
   const open = tr.open ? tr.open[tr.bi(pr.i)] : 0;                                  // open country (elements/open.js): no road here
   if (open) c.surface = open === OPEN.stream && al0 < 80 ? 'ford' : onTrail(tr, tr.bi(pr.i), pr.lat) ? 'gravel' : 'grass';   // the dirt trail drives like a gravel road
   if (tr.arena && inArena(tr.arena, c.x, c.z)) { const pit = arenaPit(tr.arena, c.x, c.z); c.surface = pit ? (pit.kind === 'water' ? 'ford' : 'mud') : W.surf; }   // a derby arena's floor is the stage's surface (not the open field round its circuit), but for its pits (elements/arena.js)
-  const S = c.rut > 0 ? wornSurf(c) : SURF[c.surface];                  // worn in: rutted mud, swept gravel
+  const S = c.rut > 0 ? wornSurf(c) : c.surface === 'grass' && W.surf === 'tarmac' && !open ? SURF.turf : SURF[c.surface];   // (grass on a tarmac stage: the run-off)                  // worn in: rutted mud, swept gravel
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), rx = -fz, rz = fx;
   let vf = c.vx * fx + c.vz * fz, vr = c.vx * rx + c.vz * rz;
   if (c.onGround) {

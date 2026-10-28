@@ -7,7 +7,7 @@ import { derbyOrder, health } from '../core/modes/derby.js';
 import { screenOffset } from '../core/sim/view.js';
 import { CP, SD } from '../core/modes/showdown.js';
 import { upgradedVeh } from '../data/career.js';
-import { DEFAULT_RIVALS, MAX_RIVALS, raceDefs } from '../data/cars.js';
+import { DEFAULT_RIVALS, MAX_RIVALS, raceDefs, stageDefs } from '../data/cars.js';
 import { vehicleById } from '../data/vehicles.js';
 import { BREAKABLES } from '../data/breakables.js';
 import { LEAGUE_RIVALS, standings } from '../data/leagues.js';
@@ -41,7 +41,7 @@ import { leagueResults, resetResultsUI } from './league.js';
 import { careerFormat, careerMode, careerRaceDefs, careerResults } from './career.js';
 import { newTally, tallyEvent } from '../data/scoring.js';
 import { FORMATS } from '../data/formats.js';
-import { best, saveBest, saveMode, saveRivals, saveWeapons } from './storage.js';
+import { best, saveBest, saveLineGuide, saveMode, saveRivals, saveWeapons } from './storage.js';
 
 export let race = null, pausedFrom = null, selected = 0;
 G.world = null; G.state = 'menu';
@@ -51,6 +51,7 @@ G.resultsTick = 0; G.hudTick = 0; G.profileTick = 0; G.hintTimer = 0;
 export function newRace() {
   const lg = G.league, cr = G.career, ws = G.workshop, arena = !!G.world.stage.arena, demo = !!G.world.stage.demolition, mode = cr ? careerMode() : demo ? 'demolition' : arena ? 'derby' : lg || ws ? 'race' : G.mode;   // a stage with `demolition` is always one (modes/demolition.js)   // league rounds are Races; a career special may be a Showdown; an arena is always a derby
   let defs = cr ? careerRaceDefs() : raceDefs(vehicleById(G.vehicle), ws ? ws.rivals : lg ? LEAGUE_RIVALS : mode === 'derby' || mode === 'demolition' ? Math.max(5, G.rivals) : mode !== 'race' ? DEFAULT_RIVALS : G.rivals);   // the line-up, with the player's pick
+  if (!cr && !ws && !lg && mode !== 'derby' && mode !== 'demolition') defs = stageDefs(vehicleById(G.vehicle), mode !== 'race' ? DEFAULT_RIVALS : G.rivals, G.world.stage);   // a Quick Race: rivals in cars that suit the track (data/cars.js)
   if (ws && ws.build) defs = defs.map(d => { if (!d.player) return d; const veh = upgradedVeh(G.vehicle, ws.build); return { ...d, veh, im: veh.im, build: ws.build }; });   // the Workshop's Upgrades tab: the player's car with the parts picked there
   if (lg && lg.round > 0) { const order = standings(lg, defs.map(d => d.name)).map(s => s.name).reverse(); defs = order.map(n => defs.find(d => d.name === n)).filter(Boolean); }   // the championship leader starts at the back
   setRoster(defs);
@@ -330,6 +331,8 @@ export function setMode(m) {
   $('rivals').hidden = m !== 'race';
 }
 /** Weapons on or off (menu), for every mode. */
+/** The racing line on the road (render/world/racecraft.js). */
+export function setLineGuide(on) { G.lineGuide = on; saveLineGuide(on); for (const b of document.querySelectorAll('.line-btn')) b.textContent = 'Racing line: ' + (on ? 'On' : 'Off'); }
 export function setWeapons(on) { G.weapons = on; saveWeapons(on); $('wpn-btn').textContent = 'Weapons: ' + (on ? 'On' : 'Off'); }
 /** The Race field size (menu stepper): 1..MAX_RIVALS AI cars. */
 export function setRivals(n) {

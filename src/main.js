@@ -2,7 +2,7 @@ import './debug.js';
 import { updatePieces } from './render/effects/pieces.js';
 import { G } from './game.js';
 import { $, isTouch } from './ui/dom.js';
-import { loadCamera, loadMode, loadRivals, loadSteer, loadVehicle, loadWeapons, loadStageVehicles } from './ui/storage.js';
+import { loadCamera, loadMode, loadRivals, loadSteer, loadVehicle, loadWeapons, loadLineGuide, loadStageVehicles } from './ui/storage.js';
 import { DEFAULT_RIVALS, MAX_RIVALS } from './data/cars.js';
 import { closeGarage, openGarage, showVehicle } from './ui/garage.js';
 import { wireLeagues, leagueNext } from './ui/league.js';
@@ -35,7 +35,7 @@ import { initCars, updateCarVisuals, rebuildCars } from './render/vehicles.js';
 import { elementHook } from './render/elements/index.js';
 import { applyBarrierChanges } from './render/world/barriers.js';
 import { updateFans, updateScenery } from './render/world/scenery.js';
-import { setMode, setRivals, setWeapons, buildStageList, handleEvents, refreshBest, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
+import { setLineGuide, setMode, setRivals, setWeapons, buildStageList, handleEvents, refreshBest, race, resultsShown, savePrev, selectStage, selected, showResults, startRace, toMenu, togglePause, updateResultsTable } from './ui/flow.js';
 import { updateHUD } from './ui/hud.js';
 import { nextCamera, nextZoom, readInput, setCamera, setSteer } from './ui/input.js';
 import { wireWear } from './ui/wear.js';
@@ -94,6 +94,7 @@ export function wireUI() {
   document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('rivals-less').addEventListener('click', () => setRivals(G.rivals - 1)); $('rivals-more').addEventListener('click', () => setRivals(G.rivals + 1));
   $('wpn-btn').addEventListener('click', () => setWeapons(!G.weapons));
+  for (const b of document.querySelectorAll('.line-btn')) b.addEventListener('click', () => setLineGuide(!G.lineGuide));
   $('gfx-btn').addEventListener('click', () => { if (renderer) cycleQuality(); });
   // Models: Blender assets, the Classic ones, or Auto (Classic on Graphics: Low); the cars take it at the next race
   const modelsLabel = () => { $('models-btn').textContent = 'Models: ' + MODEL_LABEL[modelMode]; };
@@ -114,7 +115,7 @@ export async function boot() {
     const sbName = new URLSearchParams(location.search).get('sandbox');
     if (sbName) { if (!SANDBOXES[sbName]) throw new Error(`no sandbox "${sbName}"; try ${Object.keys(SANDBOXES).join(', ')}`); STAGES.push(SANDBOXES[sbName]); }
     if (new URLSearchParams(location.search).has('debug')) toggleOverlay(true);
-    wireUI(); buildStageList(); setMode(loadMode()); setRivals(loadRivals(MAX_RIVALS, DEFAULT_RIVALS)); setWeapons(loadWeapons()); G.vehicle = G.defaultVehicle = loadVehicle(); G.stageCars = loadStageVehicles();
+    wireUI(); buildStageList(); setMode(loadMode()); setRivals(loadRivals(MAX_RIVALS, DEFAULT_RIVALS)); setWeapons(loadWeapons()); setLineGuide(loadLineGuide()); G.vehicle = G.defaultVehicle = loadVehicle(); G.stageCars = loadStageVehicles();
     { const c = loadCamera(); setCamera(c.mode, c.zoom); }
     setSteer(loadSteer()); for (const b of document.querySelectorAll('.steer-btn')) b.hidden = !isTouch;   // steering choice only matters with touch controls
     if (isTouch) { document.documentElement.classList.add('touch'); $('time-block').insertBefore($('speed-block'), $('time-block').querySelector('.hud-btns')); }   // keep the speedo clear of the thumb controls

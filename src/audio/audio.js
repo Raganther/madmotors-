@@ -45,6 +45,11 @@ export const AudioSys = {
       SFX.init(ctx, this.fxBus); Music.init(ctx, this.musBus);
       this.fireL = SFX.loop('fire', 0.8); this.hissL = SFX.loop('hiss', 0.25);
       if (this.wantSong !== undefined) Music.play(this.wantSong);
+      // the browser suspends the sound when the tab hides, another app takes the audio or the phone locks: wake it on
+      // the way back and at the next touch or key, so the music doesn't stay off for the rest of the race
+      const wake = () => { if (ctx.state !== 'running' && !document.hidden) ctx.resume().catch(() => {}); };
+      document.addEventListener('visibilitychange', wake); addEventListener('pointerdown', wake); addEventListener('keydown', wake); addEventListener('focus', wake);
+      ctx.onstatechange = () => { if (ctx.state === 'interrupted' || ctx.state === 'suspended') setTimeout(wake, 300); };
     } catch (e) { this.ctx = null; }
   },
   setv(p, v) { if (this.ctx) p.setTargetAtTime(v, this.ctx.currentTime, 0.05); },

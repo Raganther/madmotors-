@@ -54,6 +54,7 @@ const MENU = { name: 'Menu theme', bpm: 96, key: 0, scale: [0, 2, 3, 5, 7, 8, 10
 // each song's level, so they sit at much the same loudness (measured by an analyser on the music bus)
 const LEVEL = { 'Lo-fi Cruise': 2.6, 'Jazz Hatchback': 2, 'Drum & Bass Overdrive': 1.25, 'Chiptune Rally': 1.2, 'Breakbeat Canyon': 1.2, 'Arcade Turbo': 1.15, 'Metal Mayhem': 0.5, 'Desert Heat': 0.65,
   'Trance Summit': 0.65, 'House Lap': 0.7, 'Big Beat Smash': 0.68, 'Dubstep Demolition': 0.7, 'Garage Punk': 0.8, 'Surf Panic': 0.85, 'Funk Wheels': 0.85, 'Spaghetti Showdown': 0.85 };
+const AHEAD = 0.6;   // seconds of music scheduled ahead (tick)
 const SECTIONS = [['intro', 'A'], ['A', 'A'], ['A2', 'A'], ['B', 'B'], ['A', 'A'], ['break', 'A']];
 const curve = k => { const c = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; c[i] = Math.tanh(x * k) / Math.tanh(k); } return c; };
 
@@ -76,11 +77,11 @@ export const Music = {
     if (!this.ctx) return;
     const song = name === 'menu' ? MENU : name === 'race' ? SONGS[this.idx] : typeof name === 'number' ? SONGS[name] : null, key = song ? song.name : null;
     if (key === this.name) return;
-    this.name = key; clearInterval(this.timer); this.timer = 0;
+    this.name = key; clearInterval(this.timer); this.timer = 0; this.song = null;
     const t = this.ctx.currentTime, g = this.bus.gain; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + 0.35);
     if (this.crackle) { const c = this.crackle; setTimeout(() => { try { c.stop(); } catch (e) { /* stopped */ } }, 400); this.crackle = null; }
     if (!song) return;
-    setTimeout(() => { if (this.name === key) this.start(song); }, 380);
+    setTimeout(() => { if (this.name === key) this.start(song); }, Math.max(380, AHEAD * 1000 + 60));   // after the old song's notes already scheduled (AHEAD) have played out under the fade
   },
   start(song) {
     const ctx = this.ctx, rnd = mulberry32([...song.name].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 17));
@@ -96,8 +97,10 @@ export const Music = {
   pause(on) { if (this.ctx) this.muffle.frequency.setTargetAtTime(on ? 600 : 20000, this.ctx.currentTime, 0.15); },
   tick() {
     const ctx = this.ctx, song = this.song; if (!song) return;
-    if (this.next < ctx.currentTime - 0.2) this.next = ctx.currentTime + 0.05;   // the tab was asleep: pick up from now, don't pile notes up
-    while (this.next < ctx.currentTime + 0.18) {
+    // notes are scheduled AHEAD s ahead, so a busy moment on the page (a big crash, loading, a slow phone) doesn't leave a
+    // gap; only after a real sleep (a background tab) does it pick up from now instead of piling the missed notes up
+    if (this.next < ctx.currentTime - 1) this.next = ctx.currentTime + 0.05;
+    while (this.next < ctx.currentTime + AHEAD) {
       const odd = this.step % 2 === 1, t = this.next + (odd ? (song.swing || 0) * this.st : 0);
       this.note(t);
       this.next += this.st; this.step++;

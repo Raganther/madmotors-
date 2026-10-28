@@ -13,6 +13,9 @@ export const CAM_KEY = 'downhill-rush-camera';
 export function loadCamera() { try { return JSON.parse(localStorage.getItem(CAM_KEY) || '{}') || {}; } catch (e) { return {}; } }
 export function saveCamera(c) { try { localStorage.setItem(CAM_KEY, JSON.stringify(c)); } catch (e) { } }
 export const WPN_KEY = 'downhill-rush-weapons';
+const LINE_KEY = 'downhill-rush-line';
+export function loadLineGuide() { try { return localStorage.getItem(LINE_KEY) === 'on'; } catch (e) { return false; } }
+export function saveLineGuide(on) { try { localStorage.setItem(LINE_KEY, on ? 'on' : 'off'); } catch (e) { } }
 export function loadWeapons() { try { return localStorage.getItem(WPN_KEY) !== 'off'; } catch (e) { return true; } }
 export function saveWeapons(on) { try { localStorage.setItem(WPN_KEY, on ? 'on' : 'off'); } catch (e) { } }
 export const WEAR_KEY = 'downhill-rush-wear';   // the menu's Track wear options (core features/wear.js WEAR_OPT)

@@ -45,12 +45,31 @@ function make(group) {
 }
 /** A new world: its clutter (render/elements build). */
 export function addClutter(group, tr, t, stage) {
-  meshes = null; last = null; terr = t; kind = groundDetail(stage); rock.set(stage.colors.rock || 0x8E8C84);
+  meshes = null; last = null; cells.clear(); terr = t; kind = groundDetail(stage); rock.set(stage.colors.rock || 0x8E8C84);
   make(group);
 }
 const roadDist = (x, z) => { const c = Math.round((x - terr.x0) / terr.S), r = Math.round((z - terr.z0) / terr.S); return c < 0 || r < 0 || c >= terr.cols || r >= terr.rows ? 1e9 : terr.dist[r * terr.cols + c]; };
 function slopeAt(x, z) { const a = terr.at(x + 0.8, z) - terr.at(x - 0.8, z), b = terr.at(x, z + 0.8) - terr.at(x, z - 0.8); return Math.hypot(a, b) / 1.6; }
-/** Each frame: lay out the clutter round where the camera looks (only when it has moved a cell's worth). */
+// what stands in one CELL m square: worked out once (the ground's height, slope, the road, water, its colour) and kept,
+// so moving the camera only gathers cells already known: [what, x, y, z, h, r, g, b] per item
+const cells = new Map(), PER = { grass: { tuft: 26, flower: 3, pebble: 4 }, sand: { tuft: 5, flower: 0, pebble: 6 }, snow: { tuft: 0, flower: 0, pebble: 4 } };
+function cellOf(a, b) {
+  const key = a * 100003 + b; let L = cells.get(key); if (L) return L; L = [];
+  const per = PER[kind] || PER.grass;
+  for (const what of ['tuft', 'flower', 'pebble']) for (let k = 0; k < per[what]; k++) {
+    const x = (a + hash(a, b, k * 3 + what.length)) * CELL, z = (b + hash(b, a, k * 7 + what.length)) * CELL;
+    if (roadDist(x, z) < HALF + 1.2 || slopeAt(x, z) > 0.9) continue;
+    const y = terr.at(x, z), lv = waterLevelAt(x, z); if (lv !== null && lv > y - 0.02) continue;
+    const h = hash(a + k, b - k, 9);
+    if (what === 'flower') _c.setHSL([0.13, 0.0, 0.75, 0.95][(h * 4) | 0], 0.75, (h * 4 | 0) === 1 ? 0.95 : 0.65);
+    else if (what === 'pebble') _c.copy(rock).multiplyScalar(0.75 + 0.5 * hash(a, k, b));
+    else { if (!groundColAt(x, z, _g)) _g.set(0x6E9E4B); _c.copy(_g).multiplyScalar(kind === 'sand' ? 1.1 : 0.95 + 0.25 * h); }
+    L.push([what, x, y, z, h, _c.r, _c.g, _c.b]);
+  }
+  if (cells.size > 4000) cells.clear();   // (a long stage: forget the far cells now and then)
+  cells.set(key, L); return L;
+}
+/** Each frame: lay out the clutter round where the camera looks (only when it has moved a couple of metres). */
 export function updateClutter() {
   if (!meshes) return;
   const close = G.persp || G.camZoom === 'close' || G.camZoom === 'near', on = quality !== 'low' && close && G.state !== 'menu' && !!terr;
@@ -59,21 +78,12 @@ export function updateClutter() {
   if (G.persp && G.camDir) { cx -= G.camDir[0] * 22; cz -= G.camDir[2] * 22; }       // behind the car: most of what's seen is up the road
   if (last && Math.hypot(cx - last.x, cz - last.z) < 2.5) return; last = { x: cx, z: cz };
   const n = { tuft: 0, flower: 0, pebble: 0 }, c0 = Math.floor((cx - REACH) / CELL), c1 = Math.floor((cx + REACH) / CELL), r0 = Math.floor((cz - REACH) / CELL), r1 = Math.floor((cz + REACH) / CELL);
-  const per = kind === 'snow' ? { tuft: 0, flower: 0, pebble: 4 } : kind === 'sand' ? { tuft: 5, flower: 0, pebble: 6 } : { tuft: 26, flower: 3, pebble: 4 };
   for (let a = c0; a <= c1; a++) for (let b = r0; b <= r1; b++) {
-    for (const what of ['tuft', 'flower', 'pebble']) for (let k = 0; k < per[what]; k++) {
-      if (n[what] >= MAX[what]) break;
-      const x = (a + hash(a, b, k * 3 + what.length)) * CELL, z = (b + hash(b, a, k * 7 + what.length)) * CELL, d = Math.hypot(x - cx, z - cz); if (d > REACH) continue;
-      if (roadDist(x, z) < HALF + 1.2 || slopeAt(x, z) > 0.9) continue;
-      const y = terr.at(x, z), lv = waterLevelAt(x, z); if (lv !== null && lv > y - 0.02) continue;
-      const fade = Math.min(1, (REACH - d) / 10), h = hash(a + k, b - k, 9), sc = (0.7 + 0.6 * h) * fade * (what === 'pebble' ? 0.8 + h * 1.6 : 1);
-      if (sc < 0.05) continue;
+    for (const [what, x, y, z, h, cr, cg, cb] of cellOf(a, b)) {
+      const d = Math.hypot(x - cx, z - cz); if (d > REACH || n[what] >= MAX[what]) continue;
+      const sc = (0.7 + 0.6 * h) * Math.min(1, (REACH - d) / 10) * (what === 'pebble' ? 0.8 + h * 1.6 : 1); if (sc < 0.05) continue;   // shrinking away towards the edge
       _q.setFromEuler(_e.set(what === 'pebble' ? h * 0.5 : 0, h * 6.28, 0)); _m.compose(_p.set(x, y - (what === 'pebble' ? 0.02 : 0.01), z), _q, _s.set(sc, sc * (what === 'tuft' ? 0.8 + h * 0.6 : 1), sc));
-      const m = meshes[what], j = n[what]++; m.setMatrixAt(j, _m);
-      if (what === 'flower') _c.setHSL([0.13, 0.0, 0.75, 0.95][(h * 4) | 0], 0.75, (h * 4 | 0) === 1 ? 0.95 : 0.65);
-      else if (what === 'pebble') _c.copy(rock).multiplyScalar(0.75 + 0.5 * hash(a, k, b));
-      else { if (!groundColAt(x, z, _g)) _g.set(0x6E9E4B); _c.copy(_g).multiplyScalar(kind === 'sand' ? 1.1 : 0.95 + 0.25 * h); }
-      m.setColorAt(j, _c);
+      const m = meshes[what], j = n[what]++; m.setMatrixAt(j, _m); m.setColorAt(j, _c.setRGB(cr, cg, cb));
     }
   }
   for (const [what, m] of Object.entries(meshes)) { m.count = n[what]; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }

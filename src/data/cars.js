@@ -1,4 +1,5 @@
 import { vehicleById } from './vehicles.js';
+import { paceOf } from './ratings.js';
 
 // ---------- traffic ----------
 // Civilian vehicles: oncoming (driving back up the hill in the other lane) and slow same-way cars to pass.
@@ -80,3 +81,28 @@ export function raceDefs(v, rivals = DEFAULT_RIVALS) {
 }
 // a rival whose vehicle the player took: the standard coupe in a livery of its own
 function coupeOf(d, coupe) { const own = vehicleById(d.vehicle); return { model: coupe.model, color: own.color, accent: own.accent, vehicle: 'coupe' }; }
+
+// ---------- a field that suits the stage ----------
+// Quick Race lines up rivals in cars made for where they're racing: rally cars on a gravel rally, sports and muscle
+// cars on a tarmac circuit, off-roaders off-piste and in the snow (data/vehicles.js groups). Which rivals, out of
+// those, depends on the stage (its seed), so each track has its own field. A field bigger than the cars that suit it
+// is filled up with the next best suited, by measured pace on that surface (data/ratings.js).
+const TARMAC = ['sports', 'muscle'], LOOSE = ['rally', 'offroad'];
+/** The garage groups whose cars belong on stage st. */
+export function suitedGroups(st) {
+  if (/^Off-piste/.test(st.blurb || '')) return ['offroad', 'rally'];
+  if (st.surface === 'snow') return ['rally', 'offroad'];
+  return st.surface === 'tarmac' ? TARMAC : LOOSE;
+}
+/** The line-up for a race on stage st with the player in vehicle v and `rivals` AI cars: rivals from the suited
+ *  groups (not the player's car), the player third in a four-car field, at the back of a bigger one. */
+export function stageDefs(v, rivals, st) {
+  const coupe = CAR_DEFS.find(d => d.player), n = Math.max(1, Math.min(MAX_RIVALS, rivals)), want = suitedGroups(st), surf = st.surface === 'tarmac' ? 'tarmac' : 'loose';
+  const pool = [...CAR_DEFS.filter(d => !d.player).map(d => ({ ...d, vehicle: d.model })), ...MORE_RIVALS].filter(d => d.vehicle !== v.id);
+  let seed = (st.seed || 1) * 7919 % 2147483647 || 1; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+  const fits = pool.filter(d => want.includes(vehicleById(d.vehicle).group)).map(d => [rnd(), d]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+  const rest = pool.filter(d => !fits.includes(d)).sort((a, b) => paceOf(a.vehicle, null, surf) - paceOf(b.vehicle, null, surf));
+  const field = [...fits, ...rest].slice(0, n).map(d => asVehicle(d, vehicleById(d.vehicle))), me = asVehicle(coupe, v);
+  if (n <= 3) field.splice(Math.min(2, field.length), 0, me); else field.push(me);
+  return field;
+}
