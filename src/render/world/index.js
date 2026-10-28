@@ -47,7 +47,7 @@ export function buildWorld(idx) {
   const Lt = stage.light; sun.color.setHex(Lt.sun); sun.intensity = Lt.sunI; hemi.color.setHex(Lt.sky); hemi.groundColor.setHex(Lt.ground); hemi.intensity = Lt.hemiI; FX.cloudAmt.value = Lt.cloud; setGrade(Lt); setSky(scene, stage); setMuck(stage);
   const hz = Lt.haze; FX.hazeAmt.value = hz ? hz.amt : 0; if (hz) { FX.hazeCol.value.setHex(hz.color); FX.hazeTop.value = hz.top; FX.hazeRange.value = hz.range; }
   setCarEnvironment(renderer, scene, stage);                          // what the cars' paint and glass reflect
-  group.add(makeTerrainMesh(terr, tr, stage));
+  const terrainMesh = makeTerrainMesh(terr, tr, stage); group.add(terrainMesh);
   const roads = makeRoadMesh(tr, stage); if (!tr.arena) group.add(roads.main); if (roads.bridge) group.add(roads.bridge);   // an arena's ring of road is only where the cars line up: the floor is the ground
   addBarriers(group, tr, terr, stage);
   G.fanChunks = addScenery(group, tr, terr, stage);
@@ -56,6 +56,6 @@ export function buildWorld(idx) {
   else { addGantry(group, tr, terr, tr.startIdx, 'START'); addGantry(group, tr, terr, tr.finishIdx, 'FINISH'); }
   clearWaterMap(); elementHook('build', group, tr, terr, stage);                 // bridges, river, railways, town, gallery, tunnel, arches
   addSigns(group, tr, terr);
-  G.world = { idx, stage, tr, terr, group, cover: coverMap(tr), W: { tr, terr, surf: stage.surface, armco: !!stage.armco, traffic: stage.traffic } };
+  G.world = { idx, stage, tr, terr, group, terrainMesh, cover: coverMap(tr), W: { tr, terr, surf: stage.surface, armco: !!stage.armco, traffic: stage.traffic } };
   clearSkids(); clearTrails();
 }

@@ -3,6 +3,7 @@ import { TAU, lerp, makeNoise, mulberry32, smoothWrap, smoothstep, wrapAngle } f
 import { railAt } from './rails.js';
 import { groundXZ } from './ground.js';
 import { ELEMENTS, elementPhase } from '../elements/index.js';
+import { sculptRoad } from './edits.js';
 import { branchRoute, plainRoute } from './route.js';
 
 export function loopHeight(t) {
@@ -223,12 +224,14 @@ export function finishLoop(stage, g, seed) {
   (g.alts || []).forEach((a, n) => { for (const k in a.marks) marks[k] = (marks[k] || []).concat(a.marks[k].map(v => shift(v, AL[n].o))); });
   const ctx = { stage, g, N0, NB, w, nb, u0, xs0, zs0, th0, ks0, H0, ch, jump0, wallL0, wallR0, kerbL0, kerbR0, vmax0, startIdx, gorge, marks, alts: AL, nearCrossing: () => false };
   elementPhase('heights', ctx);                                    // level crossings, then jumps and kickers
+  // the Track Studio's sculpting (core/track/edits.js) lifts the road with the land; the ground keeps its own shape (Hb)
+  const Hb = stage.edits && stage.edits.sculpt ? H0.slice() : H0; sculptRoad(stage.edits, xs0, zs0, H0, NB);
   const sbs = NA ? sideBySide(ctx) : null;                          // where a branch runs beside the main road
   const rails = ctx.rails;
   const idwX = [], idwZ = [], idwH = [];
   const hollow = ELEMENTS.filter(e => e.hollow).map(e => ch[e.name]);             // gaps, ferry crossings, drawbridges: nothing under the road
   const void0 = i => bridge0[i] || hollow.some(h => h[i]);                         // decks and hollows don't shape the ground under them
-  for (let i = 0; i < NB; i += 6) if (!void0(i)) { idwX.push(xs0[i]); idwZ.push(zs0[i]); idwH.push(H0[i]); }
+  for (let i = 0; i < NB; i += 6) if (!void0(i)) { idwX.push(xs0[i]); idwZ.push(zs0[i]); idwH.push(Hb[i]); }
   let tunMid = -1; { const ti = []; for (let i = 0; i < N0; i++) if (tunnel0[i]) ti.push(i); if (ti.length) tunMid = ti[Math.floor(ti.length / 2)]; }
   const toAB = (x, z) => [(x - z) / Math.SQRT2, -(x + z) / Math.SQRT2];
   const idw = (x, z) => {
@@ -260,7 +263,7 @@ export function finishLoop(stage, g, seed) {
     const q = nearestT(x, z) || nearestFar(x, z); if (!q) return 0;
     const i = q.i, lat = (x - xs0[i]) * -Math.cos(th0[i]) + (z - zs0[i]) * Math.sin(th0[i]);
     const [prof, ramp] = sideProf(i, lat >= 0 ? 1 : -1);
-    const nearV = H0[i] + prof * smoothstep(HALF + 3, HALF + 3 + ramp, q.d);
+    const nearV = Hb[i] + prof * smoothstep(HALF + 3, HALF + 3 + ramp, q.d);
     // well away from every road, fade to a smooth regional surface: average road height, mountains rising up-screen
     const k = smoothstep(55, 130, q.d), up = -(x + z) * Math.SQRT1_2;
     const regional = k > 0 ? idw(x, z) + Math.max(0, up - 330) * 0.45 + 18 * Math.max(0, noise.fbm(x * 0.005 + 7, z * 0.005 - 3, 3) + 0.2) : 0;

@@ -1,3 +1,4 @@
+import { sculptRoad } from './edits.js';
 import { SURF } from '../constants.js';
 import { autoJumps } from '../elements/jump.js';
 import { plainRoute } from './route.js';
@@ -58,7 +59,7 @@ export function finishTrack(stage, g, seed) {
   const noise = makeNoise(seed);
   const base = (x, z) => -stage.grade * z + 7 * noise.fbm(x * 0.004 + 3.1, z * 0.004 - 1.7, 2);
   const raw = F(); for (let i = 0; i < N; i++) raw[i] = base(xs[i], zs[i]);
-  const H = smoothArr(smoothArr(raw, 18), 18);
+  const H = smoothArr(smoothArr(raw, 18), 18); sculptRoad(stage.edits, xs, zs, H, N);   // the Track Studio's sculpting (core/track/edits.js)
   const finishIdx = N - 75;
 
   // jumps on straight-ish sections

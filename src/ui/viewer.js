@@ -29,7 +29,12 @@ import { enterNotes, exitNotes, placeNote, refreshPins } from './notes.js';
 // The race underneath runs all the time (the hazards move), its cars parked on the grid until Cars: racing lets the AI
 // drive them (the player's car too).
 const V = { T: new THREE.Vector3(), yaw: 0.8, pitch: 0.55, dist: 120, goal: null, fly: false, s: 0, speed: 1, racing: false, labels: true, yawOff: 0, R: null, idx: 0, fog: null, far: 900, mapK: null, mapDirty: true };
-const ptrs = new Map(); let gesture = null, lastTap = null, labels = null;
+const ptrs = new Map(); let gesture = null, lastTap = null, labels = null, hooks = null;
+/** The viewer's state (camera target, angles), for the Track Studio (ui/studio.js). */
+export const viewerState = V;
+/** The Track Studio's hooks: { want(e), down(e), move(e), up(e), cancel(), hover(e), opened(), closed() }; a pointer the
+ *  studio wants (a brush or a placement) goes to it, two fingers and the rest still move the view. */
+export function setEditHooks(h) { hooks = h; }
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const KIND_COL = { air: '#FF8A3A', smash: '#E0402F', moving: '#C86AE8', place: '#4AA8E8', surface: '#B08050', route: '#2FB36B' };
@@ -37,7 +42,7 @@ const KIND_COL = { air: '#FF8A3A', smash: '#E0402F', moving: '#C86AE8', place: '
 export function initViewer() {
   $('viewer-btn').addEventListener('click', () => openViewer(G.stageSel || 0));
   $('vw-exit').addEventListener('click', closeViewer);
-  $('vw-stage').addEventListener('change', e => openViewer(+e.target.value));
+  $('vw-stage').addEventListener('change', e => { const v = e.target.value; if (/^\d+$/.test(v)) openViewer(+v); else if (hooks && hooks.pick) hooks.pick(v); });   // (a draft: ui/studio.js)
   $('vw-fly').addEventListener('click', () => setFly(!V.fly));
   $('vw-speed').addEventListener('change', e => { V.speed = +e.target.value; });
   $('vw-race').addEventListener('click', () => setRacing(!V.racing));
@@ -66,7 +71,7 @@ export function initViewer() {
   addEventListener('resize', () => { V.mapDirty = true; V.mapK = null; place(); });
 }
 /** Open the viewer on stage idx (built first if it isn't the one on show). */
-export function openViewer(idx) {
+export function openViewer(idx, { keep = false } = {}) {   // keep: the camera stays where it was (a rebuild after an edit)
   idx = clamp(idx | 0, 0, STAGES.length - 1);
   if (G.noteMode) exitNotes();
   $('menu').hidden = true; $('editor').hidden = true; $('tb').hidden = true;
@@ -75,21 +80,28 @@ export function openViewer(idx) {
     viewRace(); setRacing(false); G.state = 'viewing'; G.accumulator = 0; AudioSys.update(null, 'off');
     for (const id of ['hud', 'results', 'pause', 'touch', 'countdown', 'menu', 'callout']) $(id).hidden = true;
     $('viewer').hidden = false;
-    $('vw-stage').innerHTML = STAGES.map((s, i) => `<option value="${i}">${i + 1}. ${esc(s.name)}</option>`).join(''); $('vw-stage').value = String(idx);   // (a test drive's stage is added at the end)
+    stageList(idx);
     if (!V.fog) { V.fog = { near: scene.fog.near, far: scene.fog.far }; V.far = pcamera.far; }
     pcamera.far = 4000; pcamera.updateProjectionMatrix();
     const st = STAGES[idx], tr = G.world.tr;
     try { V.R = trackReport(tr, st, G.world.terr); } catch (e) { console.error(e); V.R = null; }
     V.s = V.R ? V.R.i0 : tr.startIdx; V.mapK = null; V.mapDirty = true;
-    makeLabels(); drawCard(); fit(); buttons(); refreshPins(); place();
+    makeLabels(); drawCard(); if (!keep) fit(); buttons(); refreshPins(); place();
+    if (hooks && hooks.opened) hooks.opened(idx);
   });
+}
+// the stage picker: every stage (a test drive's is added at the end), then the Track Studio's drafts (hooks.options)
+function stageList(idx) {
+  const extra = hooks && hooks.options ? hooks.options(idx) : null, skip = extra ? extra.skip : -1;
+  $('vw-stage').innerHTML = STAGES.map((s, i) => i === skip ? '' : `<option value="${i}">${i + 1}. ${esc(s.name)}</option>`).join('') + (extra ? extra.html : '');
+  $('vw-stage').value = extra && extra.value ? extra.value : String(idx);
 }
 function cleanup() {
   if (G.noteMode) exitNotes();
   $('viewer').hidden = true; G.viewCam = null; V.fly = false; V.racing = false;
   if (V.fog) { scene.fog.near = V.fog.near; scene.fog.far = V.fog.far; V.fog = null; pcamera.far = V.far; pcamera.updateProjectionMatrix(); }
   if (labels) { labels.parent && labels.parent.remove(labels); labels = null; }
-  refreshPins();
+  refreshPins(); if (hooks && hooks.closed) hooks.closed();
 }
 export function closeViewer() { cleanup(); toMenu(); }
 function setFly(on) {
@@ -101,8 +113,8 @@ function setRacing(on) {
   R.autoPlayer = true; R.phase = 'racing'; for (const c of R.cars) c.hold = !on;
   buttons();
 }
-// the card starts under the bar, however many lines the bar wraps to (on a phone it sits at the bottom: index.html)
-function place() { if (!$('viewer').hidden && innerWidth > 760) $('vw-card').style.top = $('vw-bar').offsetHeight + 8 + 'px'; else $('vw-card').style.top = ''; }
+// the card (and the studio's panel) start under the bar, however many lines the bar wraps to (on a phone it sits at the bottom: index.html)
+function place() { const t = !$('viewer').hidden && innerWidth > 760 ? $('vw-bar').offsetHeight + 8 + 'px' : ''; $('vw-card').style.top = t; $('st').style.top = t; }
 function buttons() {
   $('vw-fly').textContent = V.fly ? '❚❚ Stop' : V.racing ? '▶ Ride along' : '▶ Fly the lap';
   $('vw-race').textContent = 'Cars: ' + (V.racing ? 'racing' : 'parked');
@@ -173,11 +185,13 @@ function flyTo(cx, cy) { const p = pickGround(cx, cy); if (!p) return; V.fly = f
 // ---------- pointers ----------
 function down(e) {
   e.preventDefault(); $('vw-surf').setPointerCapture(e.pointerId);
-  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now(), b: e.button, sh: e.shiftKey });
-  gesture = null;
+  const p = { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now(), b: e.button, sh: e.shiftKey };
+  if (!ptrs.size && hooks && hooks.want(e)) { p.edit = true; hooks.down(e); } else if (ptrs.size) for (const q of ptrs.values()) if (q.edit) { q.edit = false; hooks.cancel(); }   // a second finger: it's the view that moves
+  ptrs.set(e.pointerId, p); gesture = null;
 }
 function move(e) {
-  const p = ptrs.get(e.pointerId); if (!p) return;
+  const p = ptrs.get(e.pointerId); if (!p) { if (hooks && hooks.hover) hooks.hover(e); return; }
+  if (p.edit) { p.x = e.clientX; p.y = e.clientY; hooks.move(e); return; }
   const dx = e.clientX - p.x, dy = e.clientY - p.y;
   if (ptrs.size >= 2) {
     // two fingers: move with their middle, pinch to zoom
@@ -195,6 +209,7 @@ function move(e) {
 function panPx(dx, dy) { const m = V.dist * 0.0018; V.goal = null; if (V.fly) setFly(false); pan(-dx * m, dy * m / Math.max(0.35, Math.sin(V.pitch))); }
 function up(e) {
   const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId); if (!p) return;
+  if (p.edit) { hooks.up(e); return; }
   if (gesture || ptrs.size) return;
   const now = performance.now(); if (now - p.t > 400) return;
   if (G.noteMode) { placeNote(e.clientX, e.clientY); return; }   // a tap while noting: a note there

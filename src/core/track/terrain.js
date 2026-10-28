@@ -8,6 +8,7 @@ import { layoutTowns } from '../kit/layout.js';
 import { arenaOut, arenaRamps } from '../elements/arena.js';
 import { OPEN } from '../elements/open.js';
 import { splashBed } from '../elements/mud.js';
+import { sculptAt } from './edits.js';
 
 export function riverDist(rv, x, z) {
   let best = 1e9; const P = rv.pts;
@@ -29,7 +30,7 @@ export function buildTerrain(tr, stage) {
   const S = tr.gridS || 3, M = tr.margin || 95, x0 = Math.floor(Math.min(-200, tr.minX - M)), x1 = Math.ceil(Math.max(200, tr.maxX + M)), z0 = Math.floor(tr.minZ - Math.max(90, M)), z1 = Math.ceil(tr.maxZ + Math.max(120, M));
   const cols = Math.floor((x1 - x0) / S) + 1, rows = Math.floor((z1 - z0) / S) + 1;
   const h = new Float32Array(cols * rows), dist = new Float32Array(cols * rows), nearI = new Int32Array(cols * rows);
-  const noise = tr.noise, amp = stage.hillAmp;
+  const noise = tr.noise, amp = stage.hillAmp, SC = stage.edits && stage.edits.sculpt;   // SC: the Track Studio's sculpting (core/track/edits.js)
   for (let r = 0; r < rows; r++) {
     const z = z0 + r * S;
     for (let c = 0; c < cols; c++) {
@@ -39,6 +40,7 @@ export function buildTerrain(tr, stage) {
       const ow = q && tr.openW ? tr.openW[tr.bi(q.i)] : 0;
       const hills = amp * noise.fbm(x * 0.018 + 7.3, z * 0.018 + 2.1, 4) + 1.2 * noise.fbm(x * 0.06 + 1.3, z * 0.06, 2);
       let v = tr.base(x, z) + hills * lerp(smoothstep(HALF + 3, HALF + 30, d), 1, ow);
+      if (SC) v += sculptAt(SC, x, z);
       if (tr.carve) v -= tr.carve * smoothstep(HALF + 8, HALF + 40, d) * (tr.carveW ? tr.carveW(x, z) : 1);
       if (d < (tr.edge || HALF + 15) && ow < 1) {
         let mn = 1e9;

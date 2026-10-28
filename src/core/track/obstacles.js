@@ -3,6 +3,7 @@ import { TAU, mulberry32 } from '../math.js';
 import { GATE, OPEN, TRAIL, onTrail } from '../elements/open.js';
 import { arenaOut } from '../elements/arena.js';
 import { inFootprint } from '../elements/structures.js';
+import { editObstacles } from './edits.js';
 
 // Scenery you can hit: trees, cacti and rocks are solid, bushes are soft (you plough through, they flatten). Placed
 // once per stage from its seed (render/world/scenery.js draws exactly these), and kept in a coarse grid so a car only
@@ -52,6 +53,7 @@ export function placeObstacles(tr, terr, stage) {
     items.push({ kind: OB.BUSH, x, y: terr.at(x, z) + 0.2 * s, z, s, sy: s * 0.7, ry: rnd() * TAU, color: pick(C.round), r: 0.9 * s, soft: true });
   }
   if (tr.open) placeOpen(tr, terr, stage, items, rnd, pick);
+  editObstacles(stage.edits, items, terr, stage, OB);   // the Track Studio's: its own put there, the stage's taken away (core/track/edits.js)
   if (ar) for (let k = items.length - 1; k >= 0; k--) if (arenaOut(ar, items[k].x, items[k].z) < 4) items.splice(k, 1);   // an arena's floor is clear
   if (tr.structures) for (let k = items.length - 1; k >= 0; k--) if (tr.structures.some(o => inFootprint(o, items[k].x, items[k].z, 3))) items.splice(k, 1);   // nor round a building (elements/structures.js)
   const grid = new Map(), key = (cx, cz) => cx * 100003 + cz;

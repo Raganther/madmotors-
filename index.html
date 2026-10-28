@@ -186,6 +186,14 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .vw-views{position:absolute;left:10px;bottom:34px;display:flex;gap:4px} .vw-views button{background:rgba(28,35,64,.9);border:0;border-radius:8px;color:#fff;font-weight:700;padding:7px 11px;min-width:38px}
 .vw-hint{position:absolute;left:10px;bottom:8px;color:#1C2340;font-size:12px;background:rgba(255,255,255,.7);border-radius:6px;padding:2px 6px;max-width:calc(100% - 340px)}
 @media (max-width:760px){ #vw-card{top:auto;left:8px;right:8px;width:auto;height:42vh} .vw-views{bottom:calc(42vh + 18px)} .vw-hint{display:none} .vw-bar{font-size:13px;gap:5px} .vw-bar .btn,.vw-bar .cta{padding:5px 8px;font-size:13px} .vw-bar .ed-title{display:none} }
+#st{position:absolute;left:8px;top:60px;width:236px;max-height:calc(100% - 130px);overflow-y:auto;background:rgba(28,35,64,.92);border-radius:12px;padding:8px;box-sizing:border-box;font-size:13px;display:flex;flex-direction:column;gap:7px;touch-action:pan-y} #st[hidden]{display:none}
+.st-head{display:flex;align-items:center;gap:6px} .st-head b{flex:1;color:var(--yellow);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#st button{border:0;border-radius:7px;background:rgba(255,255,255,.1);color:#fff;font-weight:600;font-size:12px;padding:6px 7px} #st button.on{background:var(--yellow);color:var(--ink)} #st button:disabled{opacity:.35}
+.st-tools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px} .st-brush{display:flex;flex-direction:column;gap:3px} .st-brush label{display:flex;justify-content:space-between;align-items:center;gap:6px} .st-brush input{width:130px} .st-brush[hidden],.st-palette[hidden],.st-sel[hidden],#st-sendform[hidden]{display:none}
+.st-palette{display:grid;grid-template-columns:1fr 1fr;gap:4px} .st-sel{display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:rgba(255,199,44,.12);border-radius:8px;padding:5px} .st-sel b{flex-basis:100%;color:var(--yellow)}
+.st-acts{display:grid;grid-template-columns:1fr 1fr;gap:4px} #st-sendform{display:flex;flex-direction:column;gap:4px} #st-sendform textarea{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:7px;color:#fff;font:inherit;padding:5px}
+#st-status{color:var(--mist);line-height:1.3} #st-status.bad{color:#FF8A7A}
+@media (max-width:760px){ #st{top:auto;bottom:calc(42vh + 60px);left:8px;right:8px;width:auto;max-height:34vh} .st-tools{grid-template-columns:repeat(7,1fr)} .st-tools button{font-size:11px;padding:6px 2px} .st-palette{grid-template-columns:repeat(4,1fr)} }
 #editor,#tb{position:fixed;inset:0;background:#141A30;display:flex;flex-direction:column;z-index:4;color:#fff}
 .ed-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 12px;background:var(--panel);font-size:14px} .ed-title{font-family:var(--display);font-weight:400;color:var(--yellow);font-size:18px}
 .ed-bar label{display:flex;align-items:center;gap:6px} .ed-bar input,.ed-bar select,.ed-f input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:4px 6px;font:inherit} #ed-laps{width:48px} #ed-name{width:150px}
@@ -475,9 +483,19 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   <div id="vw-bar" class="vw-bar"><span class="ed-title">Track viewer</span><select id="vw-stage" aria-label="Stage"></select>
     <button id="vw-fly" class="cta" type="button">&#9654; Fly the lap</button><select id="vw-speed" aria-label="Speed"><option value="0.4">Slow</option><option value="1" selected>Race speed</option><option value="2">Fast</option></select>
     <button id="vw-race" class="btn" type="button">Cars: parked</button><button id="vw-restart" class="btn" type="button">Restart</button><button id="vw-line" class="btn" type="button">Racing line</button><button id="vw-labels" class="btn" type="button">Labels</button>
-    <button id="vw-note" class="btn" type="button">Note</button><button id="vw-card-btn" class="btn" type="button">Report</button><span class="ed-btns"><button id="vw-drive" class="btn" type="button">Drive it</button><button id="vw-exit" class="btn" type="button">Exit</button></span></div>
+    <button id="vw-edit" class="btn" type="button">Edit</button><button id="vw-note" class="btn" type="button">Note</button><button id="vw-card-btn" class="btn" type="button">Report</button><span class="ed-btns"><button id="vw-drive" class="btn" type="button">Drive it</button><button id="vw-exit" class="btn" type="button">Exit</button></span></div>
   <aside id="vw-card"><canvas id="vw-map" aria-label="Map of the lap: tap to go there"></canvas><div id="vw-sum"></div><canvas id="vw-strip" aria-label="The lap: height and speed, tap to go there"></canvas>
     <h4>Design pillars</h4><ul id="vw-pillars"></ul><h4>Moments</h4><ol id="vw-moments"></ol></aside>
+  <div id="st" hidden>
+    <div class="st-head"><b id="st-name"></b><button id="st-rename" type="button">Rename</button></div>
+    <div class="st-tools" role="toolbar" aria-label="Studio tools"><button type="button" data-st="view">&#10021; View</button><button type="button" data-st="raise">&#9650; Raise</button><button type="button" data-st="lower">&#9660; Lower</button><button type="button" data-st="smooth">&#8776; Smooth</button><button type="button" data-st="flatten">&#9644; Flatten</button><button type="button" data-st="place">&#9733; Place</button><button type="button" data-st="erase">&#10006; Erase</button></div>
+    <div id="st-brush" class="st-brush"><label>Size <input id="st-size" type="range" min="4" max="80" step="1"></label><label>Strength <input id="st-power" type="range" min="1" max="10" step="1"></label></div>
+    <div id="st-palette" class="st-palette" hidden></div>
+    <div id="st-sel" class="st-sel" hidden><b id="st-selname"></b><button id="st-rotl" type="button" aria-label="Turn left">&#10226;</button><button id="st-rotr" type="button" aria-label="Turn right">&#10227;</button><button id="st-smaller" type="button" aria-label="Smaller">&minus;</button><button id="st-bigger" type="button" aria-label="Bigger">+</button><button id="st-del" type="button">Delete</button></div>
+    <div class="st-acts"><button id="st-undo" type="button">Undo</button><button id="st-redo" type="button">Redo</button><button id="st-send" type="button">Send to Claude</button><button id="st-delete" type="button">Delete draft</button></div>
+    <div id="st-sendform" hidden><textarea id="st-msg" rows="2" maxlength="2000" placeholder="A message for Claude about this track (optional)"></textarea><button id="st-sendgo" class="cta" type="button">Send</button></div>
+    <small id="st-status"></small>
+  </div>
   <div class="vw-views"><button id="vw-top" type="button">Top</button><button id="vw-low" type="button">Low</button><button id="vw-in" type="button" aria-label="Zoom in">+</button><button id="vw-out" type="button" aria-label="Zoom out">&minus;</button><button id="vw-fit" type="button">Fit</button></div>
   <small class="vw-hint">Drag to turn · right-drag or two fingers to move · wheel or pinch to zoom · double-click to fly there · WASD, Q/E, R/F · Space flies the lap</small>
 </div>
