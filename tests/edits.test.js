@@ -38,3 +38,22 @@ describe('studio edits', () => {
     expect(buildingsOf(tr, t1).some(o => o.type === 'barn' && o.placed)).toBe(true);
   });
 });
+describe('studio road (core/track/path.js)', () => {
+  it('a road redrawn through its own points keeps its line, length and set pieces', async () => {
+    const { pathFromTrack } = await import('../src/core/track/path.js');
+    for (const k of [0, 4, 8, 36]) {   // a downhill run, a generated loop, a gorge circuit, a gorge with a town
+      const st = STAGES[k], tr0 = buildTrack(st), s2 = copy(st, { path: pathFromTrack(tr0) }), tr = buildTrack(s2), N0 = tr0.loopN || tr0.N, N = tr.loopN || tr.N;
+      let off = 0; for (let i = 0; i < N; i += 7) off = Math.max(off, tr0.nearest(tr.xs[i], tr.zs[i]).d);
+      expect(off, st.name).toBeLessThan(3); expect(Math.abs(N - N0) / N0, st.name).toBeLessThan(0.05);
+      const tun = t => Array.from(t.tunnel.slice(0, t.loopN || t.N)).filter(Boolean).length; expect(Math.abs(tun(tr) - tun(tr0)), st.name).toBeLessThan(N0 * 0.02 + 3);
+    }
+  });
+  it('moving a point moves the road there, and its lift raises it', async () => {
+    const { pathFromTrack } = await import('../src/core/track/path.js');
+    const st = STAGES[18], tr0 = buildTrack(st), path = pathFromTrack(tr0), k = Math.floor(path.pts.length / 2), q = path.pts[k];
+    const moved = JSON.parse(JSON.stringify(path)); moved.pts[k] = [q[0] + 25, q[1], 4];
+    const tr = buildTrack(copy(st, { path: moved })), n = tr.nearest(q[0] + 25, q[1]);
+    expect(n.d).toBeLessThan(2); expect(tr0.nearest(q[0] + 25, q[1]).d).toBeGreaterThan(15);
+    expect(tr.H[n.i] - tr0.H[tr0.nearest(q[0], q[1]).i]).toBeGreaterThan(2.5);
+  });
+});

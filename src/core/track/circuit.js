@@ -4,6 +4,7 @@ import { railAt } from './rails.js';
 import { groundXZ } from './ground.js';
 import { ELEMENTS, elementPhase } from '../elements/index.js';
 import { sculptRoad } from './edits.js';
+import { onPath } from './path.js';
 import { branchRoute, plainRoute } from './route.js';
 
 export function loopHeight(t) {
@@ -179,10 +180,10 @@ function goreWalls({ wallL0, wallR0, kerbL0, kerbR0 }, { twin, lat, lists }) {
   }
 }
 export function buildLoop(stage) {
-  if (stage.type === 'gorge') return finishLoop(stage, genCircuit(stage), stage.seed);
-  if (stage.type === 'pass') return finishLoop(stage, genPass(stage), stage.seed);
+  if (stage.type === 'gorge') return finishLoop(stage, onPath(stage, genCircuit(stage)), stage.seed);   // onPath: the Track Studio's road (core/track/path.js)
+  if (stage.type === 'pass') return finishLoop(stage, onPath(stage, genPass(stage)), stage.seed);
   let seed = stage.seed;
-  for (let attempt = 0; attempt < 80; attempt++, seed += 977) { const g = genLoop(stage, seed); if (validLoop(g)) return finishLoop(stage, g, seed); }
+  for (let attempt = 0; attempt < 80; attempt++, seed += 977) { const g = genLoop(stage, seed); if (validLoop(g)) return finishLoop(stage, onPath(stage, g), seed); }
   throw new Error('Circuit generation failed');
 }
 export function finishLoop(stage, g, seed) {
