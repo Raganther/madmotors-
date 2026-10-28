@@ -56,4 +56,14 @@ export const VEHICLES = [
   { id: 'swabia', name: 'Swabia', model: 'swabia', color: 0xF4F4F0, accent: 0xD8203A, veh: { accel: 1.07, top: 1.0, grip: 1.02, off: 0.92, im: 1.12 }, blurb: 'Sports. A 60s rear-engined coupe with a ducktail. Light and lively; the tail likes to lead.' },
   { id: 'rosso', name: 'Rosso 40', model: 'rosso', color: 0xC8102E, accent: 0x141416, veh: { accel: 1.08, top: 1.07, grip: 1.06, off: 0.8, im: 1.05 }, blurb: 'Supercar. An 80s twin-turbo wedge with a wing right across the tail. The fastest road car in the garage.' }
 ];
+// The garage's groups (ui/garage.js): one each, in this order. Sports cars are the tarmac specialists: their handling is
+// `planted` there (core/sim/car.js: the nose turns no faster than the tyres can carry it, and they bite back quicker).
+export const VEHICLE_GROUPS = [
+  ['sports', 'Sports & supercars', 'built for tarmac: planted, precise, quick', ['wedge', 'formula', 'gt', 'roadster', 'pocket', 'sarthe', 'toro', 'taurus', 'swabia', 'rosso']],
+  ['muscle', 'Muscle & road', 'big engines, tail-happy, at home on tarmac', ['coupe', 'hotrod', 'police', 'taxi', 'drift', 'fastback', 'nightbrute', 'wasp', 'bandit', 'barra', 'judge', 'asp']],
+  ['rally', 'Rally', 'quick on gravel and tarmac alike', ['hatch', 'estate', 'clubman', 'quadra', 'strato', 'pleiades', 'cyclone', 'turin']],
+  ['offroad', 'Off-road & bruisers', 'mud, jumps and trading paint', ['buggy', 'monster', 'pickup', 'stockcar', 'van']],
+  ['oddball', 'Oddballs', 'karts, trikes, trucks and stranger things', ['kart', 'tuktuk', 'sidecar', 'hover', 'rover', 'rocket', 'icecream', 'firetruck', 'mixer', 'limo', 'snowcat', 'hearse']],
+];
+for (const [g, , , ids] of VEHICLE_GROUPS) for (const id of ids) { const v = VEHICLES.find(q => q.id === id); v.group = g; if (g === 'sports') v.veh = { ...v.veh, planted: 1 }; }
 export const vehicleById = id => VEHICLES.find(v => v.id === id) || VEHICLES[0];

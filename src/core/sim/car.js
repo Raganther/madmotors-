@@ -120,12 +120,18 @@ export function stepCar(c, dt, W, racing) {
     const slick = (c.oilT > 0 ? 0.22 : 1) * (tr.wet && !LOOSE[c.surface] ? 1 - WET.GRIP * tr.wet * (1 - (c.dry || 0) * WEATHER.DRY_GRIP) : 1) * (c.aqua ? 1 - WEATHER.AQUA * c.aqua : 1);   // a drying line gives grip back; standing water takes it (features/wear.js)   // an oil slick: the tyres barely hold; a wet road (elements/weather.js): less
     const vg = V ? V.grip * (rough ? Math.sqrt(V.off) : 1) : 1;
     const latMax = (hb ? PHYS.HB_LAT : S.latMax) * (0.8 + 0.2 * mod) * slick * vg;
-    const grip = (hb ? 1.4 : S.grip) * slick * vg;
+    const plant = V && V.planted && c.surface === 'tarmac' && !hb;                    // a tarmac car on tarmac: bites back quicker
+    const grip = (hb ? 1.4 : S.grip) * slick * vg * (plant ? PHYS.PLANT_GRIP : 1);
     let dvr = -vr * (1 - Math.exp(-grip * dt)); const lim = latMax * dt; dvr = clamp(dvr, -lim, lim); vr += dvr;
     const loss = (Math.abs(vr) * 0.35 + (hb ? 5 : 0)) * dt;
     if (Math.abs(vf) > loss) vf -= Math.sign(vf) * loss; else vf = 0;
     const sp = Math.abs(vf);
-    const rate = PHYS.STEER * clamp(sp / 5, 0, 1) / (1 + sp / 55) * (hb ? 1.6 : 1);
+    let rate = PHYS.STEER * clamp(sp / 5, 0, 1) / (1 + sp / 55) * (hb ? 1.6 : 1);
+    // on tarmac the nose turns little faster than the tyres can carry the car round (latMax / speed): it holds its line
+    // instead of swinging round and sliding; a tarmac car (data/vehicles.js planted) hardly over-rotates at all.
+    // On loose surfaces, and with the handbrake, it still slides as it always did.
+    // (against the dry road's grip: oil, rain and standing water still take it away under a car turning in)
+    if (c.surface === 'tarmac' && !hb && sp > 8) rate = Math.min(rate, (plant ? PHYS.HOLD_PLANT : PHYS.HOLD) * latMax / (slick || 1) / sp);
     const pull = (c.dmg.r - c.dmg.l) * 0.12 * clamp(sp / 20, 0, 1);   // a bent corner drags the car toward it
     c.yaw -= (inp.steer + pull) * rate * (vf >= 0 ? 1 : -1) * dt;
     c.vx = fx * vf + rx * vr; c.vz = fz * vf + rz * vr;

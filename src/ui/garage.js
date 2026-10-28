@@ -1,14 +1,14 @@
 import { G } from '../game.js';
 import { DISCIPLINES, discsOf } from '../data/disciplines.js';
 import { ratingOf } from '../data/ratings.js';
-import { VEHICLES, vehicleById } from '../data/vehicles.js';
+import { VEHICLE_GROUPS, vehicleById } from '../data/vehicles.js';
 import { vehicleThumb } from '../render/thumbs.js';
 import { $ } from './dom.js';
 import { STAGES } from '../data/stages/index.js';
 import { saveStageVehicles, saveVehicle } from './storage.js';
 import { bestCarsFor } from './tracks.js';
 
-// The garage: pick your vehicle (data/vehicles.js). A card per vehicle with its picture, what it's like and five
+// The garage: pick your vehicle (data/vehicles.js), in its groups (sports, muscle, rally, off-road, oddballs). A card per vehicle with its picture, what it's like and five
 // stat bars against the standard car. The pick is remembered for the selected stage (G.stageCars, by stage name) and
 // as the default for stages with no pick yet, since different vehicles shine on tarmac, gravel and snow.
 const BARS = [['Speed', v => v.top], ['Acceleration', v => v.accel], ['Grip', v => v.grip], ['Off-road', v => v.off], ['Weight', v => 1 / v.im]];
@@ -37,18 +37,26 @@ export function setVehicle(id) {
 }
 let built = false;
 function build() {
-  const grid = $('garage-grid'); built = true;
-  for (const v of VEHICLES) {
+  const root = $('garage-grid'); built = true; const order = [];
+  // in groups (data/vehicles.js VEHICLE_GROUPS): a heading, then its cards
+  for (const [, name, about, ids] of VEHICLE_GROUPS) {
+    const h = document.createElement('h3'); h.className = 'g-group'; h.innerHTML = `${name} <small>${about}</small>`; root.appendChild(h);
+    const grid = document.createElement('div'); grid.className = 'g-grid'; root.appendChild(grid);
+    for (const id of ids) { const v = vehicleById(id); order.push(v); card(grid, v); }
+  }
+  // pictures one at a time so the garage opens straight away
+  const imgs = [...root.querySelectorAll('img')]; let k = 0;
+  const next = () => { if (k >= imgs.length) return; try { imgs[k].src = vehicleThumb(order[k]); } catch (e) { /* leave it blank */ } k++; setTimeout(next, 0); };
+  next();
+}
+function card(grid, v) {
+  {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'g-card'; b.dataset.id = v.id; b.setAttribute('aria-pressed', 'false');
     b.innerHTML = `<img alt="" width="240" height="150"><span class="g-name"></span><span class="g-suits">Suits this stage</span><span class="g-blurb"></span><span class="g-stats">${statsHTML(v)}</span><span class="g-disc">${discLine(v.id)}</span>`;
     b.querySelector('.g-name').textContent = v.name; b.querySelector('.g-blurb').textContent = v.blurb;
     b.addEventListener('click', () => setVehicle(v.id));
     grid.appendChild(b);
   }
-  // pictures one at a time so the garage opens straight away
-  const imgs = [...grid.querySelectorAll('img')]; let k = 0;
-  const next = () => { if (k >= imgs.length) return; try { imgs[k].src = vehicleThumb(VEHICLES[k]); } catch (e) { /* leave it blank */ } k++; setTimeout(next, 0); };
-  next();
 }
 let returnTo = 'veh-btn';
 /** Open the garage for the selected stage; `from` is the button to return focus to. */

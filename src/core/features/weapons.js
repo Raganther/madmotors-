@@ -176,7 +176,7 @@ function lockable(c, o) {
   if (!o || o === c || !live(o)) return false;
   const d = o.progress - c.progress; return d > 2 && d < WPN.RANGE * WPN.LOCK_KEEP && Math.abs(o.y - c.y) < 7 && Math.abs(across(c, o)) < 8 + d * 0.45;
 }
-function locking(R, dt) {
+function locking(R, W, dt) {
   R.cars.forEach((c, k) => {
     const w = c.wpn; if (w.item !== 'missile' || !live(c)) { w.lockTgt = -1; w.lockK = 0; return; }
     if (!lockable(c, R.cars[w.lockTgt])) { const t = missileTarget(R, c); if (t !== w.lockTgt) { w.lockTgt = t; w.lockK = 0; } }   // a new car in the sights starts again
@@ -193,7 +193,7 @@ function use(R, W, c) {
   if (it === 'missile') {
     const t = lockedOn(R, c), turn = wv(c, it, 'TURN'), fire = (tg, lat) => {   // locked: it homes; not yet: straight down the road
       R.missiles.push({ id: R.wpn.next++, from: k, tgt: tg, s: c.progress + 2.5, lat, v: Math.max(WPN.VMIN, sp + WPN.SPEED), t: 0, turn });
-      if (tg >= 0) lock(R, R.cars[tg], k);
+      if (tg >= 0) lock(R, W, R.cars[tg], k);
     };
     if (wv(c, it, 'TWIN')) { const t2 = t >= 0 ? secondTarget(R, c, t) : -1; fire(t, onRoad(tr, c) - 1.2); fire(t2 >= 0 ? t2 : t, onRoad(tr, c) + 1.2); }   // twin: one each at the two cars ahead
     else fire(t, onRoad(tr, c));
@@ -230,9 +230,10 @@ function use(R, W, c) {
   if (--w.uses <= 0) { w.item = null; w.uses = 0; }
 }
 // a missile locking on: flares (gear) draw it off, if they're charged
-function lock(R, T, k) {
+function lock(R, W, T, k) {
   const m = R.missiles[R.missiles.length - 1], w = T.wpn;
-  if (w && w.gear === 'flares' && !(w.flareT > 0)) { w.flareT = WPN.FLARE_COOL; m.tgt = -1; m.decoy = 1; T.events.push({ t: 'flares', x: T.x, y: T.y, z: T.z, from: k }); return; }
+  // drawn off to the side away from the car, and it's lost that car for good (it may still hit another)
+  if (w && w.gear === 'flares' && !(w.flareT > 0)) { w.flareT = WPN.FLARE_COOL; m.spare = m.tgt; m.tgt = -1; m.decoy = m.lat >= onRoad(W.tr, T) ? 1 : -1; T.events.push({ t: 'flares', x: T.x, y: T.y, z: T.z, from: k }); return; }
   T.events.push({ t: 'missile-lock', from: k });
 }
 /** The second car ahead of c (for twin missiles), not `first`. */
@@ -256,10 +257,10 @@ function flyMissiles(R, W, dt) {
     m.t += dt; m.s += m.v * dt;
     const T = m.tgt >= 0 ? R.cars[m.tgt] : null;
     if (T && live(T)) m.lat += clamp(onRoad(tr, T) - m.lat, -(m.turn || WPN.TURN) * dt, (m.turn || WPN.TURN) * dt);   // home in across the road
-    else if (m.decoy) m.lat += WPN.TURN2 * dt * (m.id % 2 ? 1 : -1);                    // after the flares: off the road
+    else if (m.decoy) m.lat += WPN.TURN2 * dt * m.decoy;                                // after the flares: off the road, away from the car it was after
     if (m.t < WPN.ARM) continue;
     for (const c of R.cars) {                                                    // anyone in its path, not only the target
-      if (idx(R, c) === m.from || !live(c)) continue;
+      if (idx(R, c) === m.from || idx(R, c) === m.spare || !live(c)) continue;
       if (Math.abs(c.progress - m.s) < WPN.HIT_S && Math.abs(onRoad(tr, c) - m.lat) < WPN.HIT_LAT + c.hw * 0.5) { hitByMissile(R, W, m, c); m.dead = true; break; }
     }
     if (!m.dead && (m.t > WPN.LIFE || m.s > tr.xs.length - 3 || solidAt(R, ...Object.values(missilePos(tr, m)).slice(0, 3)))) {   // ran out, or flew into something: it goes off there
@@ -642,7 +643,7 @@ export const feature = {
       if (inp.fire) { inp.fire = false; if (racing && w.item && !(w.gunT > 0) && live(c)) use(R, W, c); }
       if (inp.door) { if (racing && !(w.doorCool > 0) && live(c)) swingDoor(R, c, doorSide(R, c)); inp.door = 0; }
     }
-    if (racing) { locking(R, dt); crates(R, W, dt); aiWeapons(R, W, dt); }
+    if (racing) { locking(R, W, dt); crates(R, W, dt); aiWeapons(R, W, dt); }
     W.dents = R.wpn.craters;                                                    // the holes the cars ride (track/query.js groundAt)
     W.craters = R.wpn.craters.concat(R.wpn.shells.filter(sh => !(sh.wait > 0) && sh.t > WPN.MORTAR_FLIGHT * 0.3));   // what the AI steers round (sim/ai.js): craters, and where shells are coming down
     flyMissiles(R, W, dt); shells(R, W, dt); guns(R, W, dt); drums(R, W, dt); slicks(R, W, dt); hooks(R, W, dt); signatures(R, W, dt); mines(R, W, dt); doors(R, dt);

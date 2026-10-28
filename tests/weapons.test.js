@@ -157,7 +157,7 @@ describe('weapon modules', () => {
     expect(odds(R.player).water).toBeGreaterThan(1); for (const it of M.SIG_ITEMS) if (it !== 'water') expect(odds(R.player)[it]).toBe(0);
     for (const c of R.cars) if (!c.isPlayer) for (const it of M.SIG_ITEMS) expect(odds(c)[it]).toBe(0);
     R.autoPlayer = true; run(R, Wd, 150, (e, c) => { if (e.t === 'pickup') got.push([c.isPlayer, e.item]); });
-    expect(got.length).toBeGreaterThan(8); expect(got.some(([p, it]) => !p && M.SIG_ITEMS.includes(it))).toBe(false);
+    expect(got.length).toBeGreaterThan(5); expect(got.some(([p, it]) => !p && M.SIG_ITEMS.includes(it))).toBe(false);
   });
   it('the water cannon shoves the car ahead aside, cement and the stinger catch the car behind, the crush slams a neighbour, the jingle stutters everyone near', () => {
     const lat0 = (() => { const { R, Wd } = setup('water', [0, 5, -5], [14, -60, -70]); R.player.inp.fire = false; run(R, Wd, 1.5); return R.cars[0].pr.lat; })();

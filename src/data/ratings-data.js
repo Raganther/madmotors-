@@ -1,18 +1,18 @@
 // Written by `npm run ratings` (tools/ratings.mjs): measured, do not edit. data/ratings.js reads it.
 export default {
- "key": "734aab3e",
+ "key": "f31decbc",
  "sens": {
   "tarmac": {
-   "accel": -25.98,
-   "top": -39.81,
-   "grip": -4.91,
-   "off": -3.41
+   "accel": -25.59,
+   "top": -39.31,
+   "grip": -6.73,
+   "off": -2.61
   },
   "loose": {
-   "accel": -26.88,
-   "top": -23.08,
-   "grip": -2.43,
-   "off": -29.91
+   "accel": -27.4,
+   "top": -23.26,
+   "grip": -3.74,
+   "off": -29.45
   }
  },
  "cars": {
@@ -22,233 +22,233 @@ export default {
    "tough": 1
   },
   "hatch": {
-   "tarmac": 0.19,
-   "loose": -2.99,
+   "tarmac": 0.35,
+   "loose": -2.9,
    "tough": 0.99
   },
   "wedge": {
-   "tarmac": -1.94,
-   "loose": 0.32,
+   "tarmac": -2.18,
+   "loose": 0.3,
    "tough": 1
   },
   "buggy": {
-   "tarmac": 1.63,
-   "loose": -4.42,
+   "tarmac": 1.77,
+   "loose": -4.77,
    "tough": 0.99
   },
   "monster": {
-   "tarmac": 2.69,
-   "loose": -4.64,
+   "tarmac": 2.79,
+   "loose": -4.85,
    "tough": 1.61
   },
   "formula": {
-   "tarmac": -1.11,
-   "loose": 5.58,
+   "tarmac": -1.64,
+   "loose": 4.98,
    "tough": 0.96
   },
   "rocket": {
-   "tarmac": -0.64,
-   "loose": 3.76,
+   "tarmac": -0.33,
+   "loose": 3.44,
    "tough": 1.01
   },
   "hotrod": {
-   "tarmac": 0.29,
-   "loose": 3.2,
+   "tarmac": 0.64,
+   "loose": 2.75,
    "tough": 1
   },
   "police": {
-   "tarmac": -0.48,
-   "loose": 0.88,
+   "tarmac": -0.38,
+   "loose": 0.66,
    "tough": 1.01
   },
   "kart": {
-   "tarmac": -1.34,
-   "loose": 0.67,
+   "tarmac": -1.59,
+   "loose": 0.52,
    "tough": 0.93
   },
   "tuktuk": {
-   "tarmac": 0.51,
-   "loose": -0.37,
+   "tarmac": 0.64,
+   "loose": -0.46,
    "tough": 0.94
   },
   "icecream": {
-   "tarmac": 1.58,
-   "loose": 1.2,
+   "tarmac": 1.74,
+   "loose": 1.1,
    "tough": 1.28
   },
   "firetruck": {
-   "tarmac": 1.71,
-   "loose": 1.2,
+   "tarmac": 1.76,
+   "loose": 1.1,
    "tough": 1.65
   },
   "rover": {
-   "tarmac": 2.27,
-   "loose": -5.12,
+   "tarmac": 2.14,
+   "loose": -4.68,
    "tough": 1.02
   },
   "hover": {
-   "tarmac": 2.51,
-   "loose": -5.1,
+   "tarmac": 3.2,
+   "loose": -4.71,
    "tough": 0.98
   },
   "snowcat": {
-   "tarmac": 2.94,
-   "loose": -4.91,
+   "tarmac": 2.92,
+   "loose": -4.82,
    "tough": 1.38
   },
   "limo": {
-   "tarmac": -1.63,
-   "loose": 3.08,
+   "tarmac": -1.31,
+   "loose": 2.75,
    "tough": 1.34
   },
   "sidecar": {
-   "tarmac": -0.81,
-   "loose": 1.92,
+   "tarmac": -0.54,
+   "loose": 1.66,
    "tough": 0.95
   },
   "mixer": {
-   "tarmac": 2.09,
+   "tarmac": 2.37,
    "loose": 1.08,
    "tough": 1.77
   },
   "taxi": {
-   "tarmac": -0.17,
-   "loose": 2.34,
+   "tarmac": -0.03,
+   "loose": 1.96,
    "tough": 1
   },
   "estate": {
-   "tarmac": 0.94,
-   "loose": -2.96,
+   "tarmac": 0.91,
+   "loose": -3.11,
    "tough": 1.01
   },
   "pickup": {
-   "tarmac": 2.51,
-   "loose": -3.69,
+   "tarmac": 2.72,
+   "loose": -3.87,
    "tough": 1.19
   },
   "stockcar": {
    "tarmac": 2.4,
-   "loose": 2.12,
+   "loose": 1.97,
    "tough": 1.46
   },
   "gt": {
-   "tarmac": -1.99,
-   "loose": 2.61,
+   "tarmac": -2.42,
+   "loose": 2.59,
    "tough": 1
   },
   "roadster": {
-   "tarmac": -1.22,
-   "loose": 2.38,
+   "tarmac": -1.33,
+   "loose": 2.35,
    "tough": 0.98
   },
   "van": {
-   "tarmac": 2.22,
-   "loose": 1.18,
+   "tarmac": 2.34,
+   "loose": 1.23,
    "tough": 1.44
   },
   "hearse": {
-   "tarmac": -0.9,
-   "loose": 2.52,
+   "tarmac": -0.7,
+   "loose": 2.43,
    "tough": 1.26
   },
   "pocket": {
-   "tarmac": -0.72,
-   "loose": 0.73,
+   "tarmac": -0.81,
+   "loose": 0.5,
    "tough": 0.97
   },
   "drift": {
-   "tarmac": -1.07,
-   "loose": 1.8,
+   "tarmac": -0.87,
+   "loose": 1.54,
    "tough": 1
   },
   "fastback": {
-   "tarmac": -1.09,
-   "loose": 1.12,
+   "tarmac": -1.05,
+   "loose": 0.98,
    "tough": 1
   },
   "nightbrute": {
-   "tarmac": -1.99,
-   "loose": 0.64,
+   "tarmac": -2.08,
+   "loose": 0.44,
    "tough": 1.18
   },
   "wasp": {
-   "tarmac": -0.89,
-   "loose": 1.29,
+   "tarmac": -0.91,
+   "loose": 1.05,
    "tough": 1
   },
   "clubman": {
    "tarmac": 0.42,
-   "loose": -2.94,
+   "loose": -2.97,
    "tough": 0.99
   },
   "quadra": {
-   "tarmac": -0.82,
+   "tarmac": -0.84,
    "loose": -3.39,
    "tough": 1.01
   },
   "sarthe": {
-   "tarmac": -2.63,
-   "loose": 2.59,
+   "tarmac": -2.89,
+   "loose": 2.39,
    "tough": 1
   },
   "bandit": {
-   "tarmac": -0.9,
-   "loose": 1.31,
+   "tarmac": -0.82,
+   "loose": 1.33,
    "tough": 1
   },
   "barra": {
-   "tarmac": -1.59,
-   "loose": 0.94,
+   "tarmac": -1.73,
+   "loose": 0.92,
    "tough": 1.06
   },
   "judge": {
-   "tarmac": -1.09,
-   "loose": 0.89,
+   "tarmac": -0.98,
+   "loose": 0.65,
    "tough": 1.09
   },
   "asp": {
    "tarmac": -1.06,
-   "loose": 2.37,
+   "loose": 2.06,
    "tough": 0.98
   },
   "strato": {
-   "tarmac": -1.49,
-   "loose": -2.69,
+   "tarmac": -1.58,
+   "loose": -2.96,
    "tough": 0.99
   },
   "pleiades": {
-   "tarmac": -0.28,
-   "loose": -2.75,
+   "tarmac": -0.34,
+   "loose": -2.83,
    "tough": 1
   },
   "cyclone": {
-   "tarmac": -1.78,
-   "loose": -4.46,
+   "tarmac": -2.02,
+   "loose": -5,
    "tough": 1
   },
   "turin": {
    "tarmac": -2.11,
-   "loose": -3.78,
+   "loose": -4.16,
    "tough": 1
   },
   "toro": {
-   "tarmac": -2.9,
-   "loose": 1.74,
+   "tarmac": -3.16,
+   "loose": 1.48,
    "tough": 0.99
   },
   "taurus": {
-   "tarmac": -3.79,
-   "loose": 2.17,
+   "tarmac": -4.06,
+   "loose": 2.21,
    "tough": 1
   },
   "swabia": {
-   "tarmac": -1.68,
-   "loose": 0.49,
+   "tarmac": -1.9,
+   "loose": 0.57,
    "tough": 0.98
   },
   "rosso": {
-   "tarmac": -4.03,
-   "loose": 1.79,
+   "tarmac": -4.32,
+   "loose": 1.66,
    "tough": 0.99
   }
  }

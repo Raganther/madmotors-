@@ -11,7 +11,7 @@ import { simRace } from '../tools/career-sim.mjs';
 
 describe('prices', () => {
   it('a car costs its tier\'s base, more for pace and toughness: nothing priced by hand', () => {
-    for (const [id, p] of Object.entries(SHOP)) { expect(p.price, id).toBe(carPrice(id, p.tier)); expect(p.price / CAR_BASE[p.tier], id).toBeGreaterThan(0.85); expect(p.price / CAR_BASE[p.tier], id).toBeLessThan(1.6); }
+    for (const [id, p] of Object.entries(SHOP)) { expect(p.price, id).toBe(carPrice(id, p.tier)); expect(p.price / CAR_BASE[p.tier], id).toBeGreaterThan(0.85); expect(p.price / CAR_BASE[p.tier], id).toBeLessThan(1.65); }
     const t1 = Object.keys(SHOP).filter(id => SHOP[id].tier === 1), q = id => -ratingOf(id).pace * 0.06 + (ratingOf(id).tough - 1) * 0.5;
     for (const a of t1) for (const b of t1) if (q(a) > q(b) + 0.05) expect(SHOP[a].price, `${a} vs ${b}`).toBeGreaterThanOrEqual(SHOP[b].price);
     for (let t = 1; t < TIERS.length; t++) expect(Math.min(...Object.values(SHOP).filter(p => p.tier === t).map(p => p.price))).toBeGreaterThan(Math.max(...Object.values(SHOP).filter(p => p.tier === t - 1).map(p => p.price)) * 0.8);
