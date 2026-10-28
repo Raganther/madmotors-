@@ -134,16 +134,16 @@ function kit(def, root, body) {
       add(new THREE.CylinderGeometry(0.06, 0.06, 0.012, 12).rotateZ(Math.PI / 2), DARK, B.w / 2 + 0.006, p.y + B.h * 0.2, zR + B.d * 0.18);   // fuel cap
     },
     /** Wheels: [x, z, radius, width] each; the front pair steers. knobbly = off-road tread blocks. */
-    wheels(list, { knobbly = false, hub = 0xC9CCD4 } = {}) {
-      const wheels = [], steer = [];
+    wheels(list, { knobbly = false, hub } = {}) {
+      const wheels = [], steer = [], ws = wheelStyle(def), hc = hub !== undefined ? hub : ws.hub, hubM = mat(hc, hc === def.color || hc === def.accent ? 'paint' : 'alloy');
       for (const [x, z, r, wd] of list) {
         const pivot = new THREE.Group(); pivot.position.set(x, r, z); root.add(pivot);
         const spin = new THREE.Group(); pivot.add(spin);
         const far = new THREE.Group(), near = new THREE.Group(); near.visible = false; spin.add(far, near); lod.lo.push(far); lod.hi.push(near);
-        const W = wheelGeos(r, wd, knobbly), t = new THREE.Mesh(W.farTyre, mat(TYRE)); t.castShadow = true; far.add(t);
-        far.add(new THREE.Mesh(W.farHub, mat(hub)));
+        const W = wheelGeos(r, wd, knobbly, ws.style), t = new THREE.Mesh(W.farTyre, mat(TYRE)); t.castShadow = true; far.add(t);
+        far.add(new THREE.Mesh(W.farHub, hubM));
         if (!tyreM) tyreM = new THREE.MeshStandardMaterial({ color: TYRE, vertexColors: true, map: treadTex(TREAD[0], TREAD[1]), bumpMap: treadTex(TREAD[0], TREAD[1]), bumpScale: 0.6, metalness: 0, roughness: 0.92, envMapIntensity: 0.15 });
-        for (const [geo, m] of [[W.tyre, tyreM], [W.blocks, mat(TYRE)], [W.rim, mat(DARK)], [W.hub, mat(hub)]]) if (geo) { const o = new THREE.Mesh(geo, m); o.castShadow = m === tyreM; near.add(o); }
+        for (const [geo, m] of [[W.tyre, tyreM], [W.blocks, mat(TYRE)], [W.rim, mat(DARK)], [W.hub, hubM]]) if (geo) { const o = new THREE.Mesh(geo, m); o.castShadow = m === tyreM; near.add(o); }
         wheels.push(spin); if (z > 0) steer.push(pivot);
       }
       return { wheels, steer, wr: list[0][2] };
@@ -153,14 +153,52 @@ function kit(def, root, body) {
 }
 // the lathe's v for the tread face: points 5 to 9 of 15 (see nearWheel)
 const TREAD = [5 / 14, 9 / 14];
-// A wheel's geometry, both levels, built once per size and shared (a wheel is a few merged meshes, not a dozen: every
-// mesh is a draw call, twice over with shadows). Far: a faceted tyre (tread blocks merged in) and a hub. Near: a tyre
-// turned from a profile with rounded shoulders, knobbly blocks, a dark rim set into it with a polished lip, five spokes
-// with a cap.
+// A wheel's geometry, both levels, built once per size and style and shared (a wheel is a few merged meshes, not a
+// dozen: every mesh is a draw call, twice over with shadows). Far: a faceted tyre (tread blocks merged in) and a hub.
+// Near: a tyre turned from a profile with rounded shoulders, knobbly blocks, a dark rim set into it with a polished lip,
+// and the car's own wheel design (HUBS) in front of it.
 const wheelCache = new Map(), _wm = new THREE.Matrix4(), _wq = new THREE.Quaternion(), _we = new THREE.Euler(), _wp = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1);
 const placed = (g, y, z, a) => g.applyMatrix4(_wm.compose(_wp.set(0, y, z), _wq.setFromEuler(_we.set(-a, 0, 0)), _one));
-function wheelGeos(r, wd, knobbly) {
-  const key = r + ',' + wd + ',' + knobbly; if (wheelCache.has(key)) return wheelCache.get(key);
+// Wheel designs: each the parts in front of the dark rim, all in the hub's colour. ri: the rim's radius, x: how far
+// across the wheel they reach (they show on both faces). spokes(n, ri, x, thick, skew): n bars from the cap to the lip, turned
+// skew off the radius (turbine blades, a crossed mesh, laced wire).
+const spoke = (x, len, t, rad, a, skew = 0) => new THREE.BoxGeometry(x, len, t).rotateX(a + skew).translate(0, Math.cos(a) * rad, Math.sin(a) * rad);
+const ring = (rad, tube, x) => new THREE.TorusGeometry(rad, tube, 6, 28).rotateY(Math.PI / 2).scale(x / tube, 1, 1);
+const cap = (rad, x, n = 12) => new THREE.CylinderGeometry(rad, rad, x, n).rotateZ(Math.PI / 2);
+const HUBS = {
+  five: (r, ri, x) => [cap(r * 0.2, x + 0.05), ...spokes(5, ri, x, r * 0.11)],
+  six: (r, ri, x) => [cap(r * 0.24, x + 0.05), ...spokes(6, ri, x, r * 0.15)],                                 // chunky rally
+  star3: (r, ri, x) => [cap(r * 0.3, x + 0.05), ...spokes(3, ri, x, r * 0.3)],                                // three broad arms
+  multi: (r, ri, x) => [cap(r * 0.18, x + 0.05), ...spokes(10, ri, x, r * 0.05)],                             // ten fine spokes
+  mesh: (r, ri, x) => [cap(r * 0.18, x + 0.05), ring(ri * 0.78, ri * 0.05, x * 0.5), ...spokes(10, ri, x, r * 0.04, 0.38), ...spokes(10, ri, x, r * 0.04, -0.38)],   // crossed, BBS-style
+  turbine: (r, ri, x) => [cap(r * 0.32, x + 0.04, 16), ...spokes(12, ri, x, r * 0.07, 0.55, 0.6)],          // angled blades round a big boss
+  wire: (r, ri, x) => [cap(r * 0.16, x + 0.08, 8), ...spokes(16, ri, x, r * 0.03, 0.3), ...spokes(16, ri, x, r * 0.03, -0.3, 0.5 / 16 * Math.PI * 2)],   // laced, with a spinner
+  disc: (r, ri, x) => [cap(r * 0.36, x + 0.03, 16), ring(ri * 0.8, ri * 0.1, x / 2 + 0.01), ...spokes(8, ri, x, ri * 0.33, 0, 0, 0.62)],   // a steel wheel: a pressed disc, slotted
+  dish: (r, ri, x) => [cap(r * 0.22, x + 0.05), ring(ri * 0.84, ri * 0.13, x / 2 + 0.03), ...spokes(5, ri * 0.75, x, r * 0.09)],   // a deep polished dish
+  moon: (r, ri, x) => [new THREE.SphereGeometry(ri * 0.92, 20, 10).rotateZ(Math.PI / 2).scale((x / 2 + 0.05) / (ri * 0.92), 1, 1), cap(r * 0.12, x + 0.12, 10)],   // a smooth domed cap
+};
+function spokes(n, ri, x, t, skew = 0, phase = 0, len = 0.9) { return Array.from({ length: n }, (_, k) => spoke(x + 0.03, ri * len, t, ri * 0.5, k / n * Math.PI * 2 + phase, skew)); }
+// each car's wheels: a design and a colour that suit it (silver alloys if it isn't listed: a design from its id)
+const SILVER = 0xC9CCD4, WHITE = 0xEDEDE6, GOLD = 0xC9A44C, GUN = 0x5B6068, BRONZE = 0x9C6E3C, BLACK = 0x26282D, RED = 0xC23A2E;
+const WHEELS = {
+  coupe: ['six', SILVER], hatch: ['disc', WHITE], wedge: ['turbine', SILVER], buggy: ['six', SILVER], monster: ['six', SILVER], formula: ['multi', GUN],
+  rocket: ['turbine', GOLD], hotrod: ['moon', CHROME], police: ['disc', BLACK], kart: ['star3', WHITE], tuktuk: ['disc', RED], icecream: ['moon', WHITE],
+  firetruck: ['disc', CHROME], rover: ['wire', CHROME], hover: ['disc', GUN], snowcat: ['disc', GUN], limo: ['multi', CHROME], sidecar: ['wire', CHROME],
+  mixer: ['disc', SILVER], taxi: ['moon', SILVER], estate: ['six', WHITE], pickup: ['six', GUN], stockcar: ['disc', BLACK], gt: ['mesh', SILVER],
+  roadster: ['wire', CHROME], van: ['disc', SILVER], hearse: ['moon', CHROME], pocket: ['multi', GUN], drift: ['mesh', BRONZE], fastback: ['five', SILVER],
+  nightbrute: ['five', GUN], wasp: ['multi', BLACK], clubman: ['multi', WHITE], quadra: ['turbine', WHITE], sarthe: ['wire', CHROME], bandit: ['turbine', GOLD],
+  barra: ['dish', CHROME], judge: ['dish', SILVER], asp: ['five', SILVER], strato: ['five', WHITE], pleiades: ['six', GOLD], cyclone: ['multi', WHITE],
+  turin: ['disc', WHITE], toro: ['star3', GOLD], taurus: ['mesh', GOLD], swabia: ['five', SILVER], rosso: ['star3', SILVER],
+};
+const STYLES = Object.keys(HUBS);
+export function wheelStyle(def) {
+  const id = def.id || def.model || '', w = WHEELS[id] || WHEELS[def.model];
+  if (w) return { style: w[0], hub: w[1] };
+  let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return { style: STYLES[h % STYLES.length], hub: SILVER };
+}
+function wheelGeos(r, wd, knobbly, style = 'five') {
+  const key = r + ',' + wd + ',' + knobbly + ',' + style; if (wheelCache.has(key)) return wheelCache.get(key);
   const W = {};
   const farBlocks = knobbly ? Array.from({ length: 8 }, (_, k) => { const a = (k + 0.5) / 8 * Math.PI * 2; return placed(new THREE.BoxGeometry(wd * 0.9, 0.1, 0.16), Math.cos(a) * r, Math.sin(a) * r, a); }) : [];
   W.farTyre = bakeAO(mergeAll([flat(new THREE.CylinderGeometry(r, r, wd, knobbly ? 8 : 10).rotateZ(Math.PI / 2)), ...farBlocks.map(flat)]), r);
@@ -174,8 +212,7 @@ function wheelGeos(r, wd, knobbly) {
   // a polished lip round the rim's edge on both faces (merged with the hub: no extra draw)
   const lip = [-1, 1].map(sd => new THREE.TorusGeometry(ri * 0.97, Math.max(0.012, r * 0.035), 6, 28).rotateY(Math.PI / 2).translate(sd * wd * 0.4, 0, 0));
   W.rim = bakeAO(new THREE.CylinderGeometry(ri, ri, wd * 0.8, 24).rotateZ(Math.PI / 2), r);
-  W.hub = bakeAO(mergeAll([...lip, new THREE.CylinderGeometry(r * 0.2, r * 0.2, wd * 0.8 + 0.05, 12).rotateZ(Math.PI / 2),
-    ...Array.from({ length: 5 }, (_, k) => { const a = k / 5 * Math.PI * 2; return placed(new THREE.BoxGeometry(wd * 0.8 + 0.03, ri * 0.9, r * 0.1), Math.cos(a) * ri * 0.5, Math.sin(a) * ri * 0.5, a); })]), r);
+  W.hub = bakeAO(mergeAll([...lip, ...(HUBS[style] || HUBS.five)(r, ri, wd * 0.8)]), r);
   W.blocks = knobbly ? bakeAO(mergeAll(Array.from({ length: 14 }, (_, k) => { const a = (k + 0.5) / 14 * Math.PI * 2; return placed(roundBox(wd * 0.86, 0.09, r * 0.2, 0.025), Math.cos(a) * (r + 0.01), Math.sin(a) * (r + 0.01), a); })), r) : null;
   wheelCache.set(key, W); return W;
 }
