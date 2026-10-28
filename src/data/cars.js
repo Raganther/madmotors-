@@ -98,11 +98,13 @@ export function suitedGroups(st) {
  *  groups (not the player's car), the player third in a four-car field, at the back of a bigger one. */
 export function stageDefs(v, rivals, st) {
   const coupe = CAR_DEFS.find(d => d.player), n = Math.max(1, Math.min(MAX_RIVALS, rivals)), want = suitedGroups(st), surf = st.surface === 'tarmac' ? 'tarmac' : 'loose';
-  const pool = [...CAR_DEFS.filter(d => !d.player).map(d => ({ ...d, vehicle: d.model })), ...MORE_RIVALS].filter(d => d.vehicle !== v.id);
+  const all = [...CAR_DEFS.filter(d => !d.player).map(d => ({ ...d, vehicle: d.model })), ...MORE_RIVALS], pool = all.filter(d => d.vehicle !== v.id);
   let seed = (st.seed || 1) * 7919 % 2147483647 || 1; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
   const fits = pool.filter(d => want.includes(vehicleById(d.vehicle).group)).map(d => [rnd(), d]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
   const rest = pool.filter(d => !fits.includes(d)).sort((a, b) => paceOf(a.vehicle, null, surf) - paceOf(b.vehicle, null, surf));
-  const field = [...fits, ...rest].slice(0, n).map(d => asVehicle(d, vehicleById(d.vehicle))), me = asVehicle(coupe, v);
+  // the rival whose car the player took comes last, in a coupe in its own livery (as raceDefs)
+  const took = all.filter(d => d.vehicle === v.id).map(d => ({ ...d, ...coupeOf(d, coupe) }));
+  const field = [...fits, ...rest].map(d => asVehicle(d, vehicleById(d.vehicle))).concat(took).slice(0, n), me = asVehicle(coupe, v);
   if (n <= 3) field.splice(Math.min(2, field.length), 0, me); else field.push(me);
   return field;
 }
