@@ -16,7 +16,7 @@ const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push(m.text()); });
 // the menu has screens (ui/menu.js: title, main, quick): a click on a menu button first brings up the screen it's on
-const SCREEN_OF = { 'veh-btn': 'quick', 'race-btn': 'quick', 'mode-btn': 'quick', 'league-btn': 'main', 'career-btn': 'main', 'quick-btn': 'main', 'editor-btn': 'main', 'terrain-btn': 'main', 'sketch-btn': 'main', 'notes-btn': 'main', 'lab-btn': 'main', 'mute-btn': 'main', 'wear-btn': 'main' };
+const SCREEN_OF = { 'veh-btn': 'quick', 'race-btn': 'quick', 'mode-btn': 'quick', 'league-btn': 'main', 'career-btn': 'main', 'quick-btn': 'main', 'editor-btn': 'main', 'terrain-btn': 'main', 'viewer-btn': 'main', 'sketch-btn': 'main', 'notes-btn': 'main', 'lab-btn': 'main', 'mute-btn': 'main', 'wear-btn': 'main' };
 const click0 = page.click.bind(page);
 page.click = async (sel, o) => {
   const m = /^[#.]([\w-]+)/.exec(sel), want = m && SCREEN_OF[m[1]];
@@ -32,6 +32,13 @@ await click0('#quick-btn'); await page.waitForSelector('#quick-menu:not([hidden]
 await page.waitForFunction(() => [...document.querySelectorAll('.tcard canvas')].filter(c => c.width > 0).length >= 10, null, { timeout: 60000 }).catch(() => errors.push('quick race: the track outlines were not drawn'));
 { const g = await page.evaluate(() => ({ groups: document.querySelectorAll('.tg-h').length, cards: document.querySelectorAll('.tcard').length, suit: document.getElementById('veh-suit').textContent })); console.log(`quick race: ${g.cards} track cards in ${g.groups} groups; ${g.suit}`); if (g.groups < 5 || g.cards < 30 || !g.suit) errors.push('quick race: track cards or car fit missing'); }
 await page.screenshot({ path: path.join(outDir, 'menu.png') });
+// the Track Viewer (ui/viewer.js): opens on the selected stage with its report card, flies the lap, and leaves for the menu
+await page.click('#viewer-btn'); await page.waitForFunction(() => window.__dr.G.state === 'viewing' && window.__dr.G.viewCam, null, { timeout: 60000 });
+await page.click('#vw-fly'); await page.waitForTimeout(1500);
+{ const v = await page.evaluate(() => ({ score: document.querySelector('.vw-score') && document.querySelector('.vw-score').textContent, pillars: document.querySelectorAll('#vw-pillars li').length, moments: document.querySelectorAll('#vw-moments li').length, cam: window.__dr.G.viewCam.pos.map(Math.round) }));
+  console.log(`viewer: score ${v.score}, ${v.pillars} pillars, ${v.moments} moments, camera at ${v.cam}`); if (!v.score || v.pillars < 5) errors.push('viewer: no report card ' + JSON.stringify(v)); }
+await page.screenshot({ path: path.join(outDir, 'viewer.png') });
+await page.click('#vw-exit'); await page.waitForFunction(() => window.__dr.G.state === 'menu' && document.getElementById('viewer').hidden, null, { timeout: 30000 });
 const n = process.env.E2E_STAGES ? +process.env.E2E_STAGES : await page.evaluate(() => window.__dr.core.STAGES.length);   // E2E_STAGES=2: a quick run over the rest of the checks
 for (let i = 0; i < n; i++) {
   await page.evaluate(i => window.__dr.flow.startRace(i), i);

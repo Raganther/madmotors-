@@ -60,6 +60,9 @@ splash, a double jump, a muddy S-bend. The rules it follows:
   Bogwood x3 laps up to 120 s Ravenrock x2; aim for a race of 2-4 minutes), no wrecks or respawns except where the design wants them (a gap), air where the jumps are.
 - `npm run shot -- <n>` (and `npm run shot -- <n> <metres> ...` at each set piece): look at every beat from the
   player's seat. Is it readable at speed? Does it look like the theme? Read the PNGs, don't just generate them.
+- `npm run report -- <n>`: the report card (core/track/report.js, the same one the Track viewer shows). Aim for 6/7;
+  a miss needs a reason (a pure speed bowl has no hairpins on purpose). Its moments list is the lap's beats: no gap
+  of more than 15 s between them. Then look round it in the viewer (`?viewer=<n>`) as the user will.
 - Play-feel sanity: it should be finishable by the AI on every vehicle class that matters (`--vehicle monster`,
   `kart`), and the first 20 s should already show off what the stage is about.
 

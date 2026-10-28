@@ -15,6 +15,7 @@
     "lint": "eslint .",
     "check": "eslint . && vitest run && vite build --logLevel error",
     "layout": "node tools/layout.mjs",
+    "report": "node tools/report.mjs",
     "terrain": "node tools/terrain.mjs",
     "sandbox": "node tools/sandbox.mjs",
     "destruct": "node tools/destruct.mjs",

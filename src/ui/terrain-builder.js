@@ -7,6 +7,7 @@ import { GROUND, LAND_STYLES, autoRoad, blankGround, generateGround, groundAt, g
 import { forgetTrack } from '../render/world/index.js';
 import { $ } from './dom.js';
 import { startRace } from './flow.js';
+import { openViewer } from './viewer.js';
 
 // The Terrain builder (menu: Terrain builder): shape a landscape, then paint a road across it. A piece of ground
 // 800 m square seen in 3D; the brushes Raise, Lower, Smooth and Flatten push its heights about (core/track/ground.js
@@ -52,7 +53,8 @@ export function initTerrainBuilder() {
   $('tb-close').addEventListener('click', closeRoad);
   $('tb-clearroad').addEventListener('click', () => { if (!B.road) return; remember(); B.road = null; roadChanged(); save(); status('Road cleared: the landscape is kept.'); });
   $('tb-clearground').addEventListener('click', () => { if (!confirm('Flatten the whole landscape? (Undo brings it back.)')) return; remember(); B.ground.h.fill(0); groundChanged(true); roadChanged(); save(); status('The ground is flat again.'); });
-  $('tb-drive').addEventListener('click', drive);
+  $('tb-drive').addEventListener('click', () => drive());
+  $('tb-view3d').addEventListener('click', () => drive(true));   // the Track Viewer (ui/viewer.js): fly round it, read its report card
   $('tb-send').addEventListener('click', send);
   for (const [id, f] of [['tb-left', () => { view.yaw -= Math.PI / 8; }], ['tb-right', () => { view.yaw += Math.PI / 8; }], ['tb-top', () => { view.pitch = view.pitch > 1.4 ? 0.75 : 1.5; }],
     ['tb-zoomin', () => { view.dist = Math.max(80, view.dist / 1.3); }], ['tb-zoomout', () => { view.dist = Math.min(1600, view.dist * 1.3); }], ['tb-fit', fitView]]) $(id).addEventListener('click', f);
@@ -377,14 +379,15 @@ function stage() {
   for (const k of ['light', 'colors', 'trees', 'rocks', 'bushes']) if (look[k]) st[k] = clone(look[k]);   // Summit Meadow's look for now
   return st;
 }
-function drive() {
+/** Test drive the track (or, view: look round it in the Track Viewer); leaving comes back here. */
+function drive(view = false) {
   if (!B.road) { status('Paint a road first: pick Road and drag it out on the land.', true); return; }
   if (B.road.gap > 0.6) { status('The road has to make a lap before you can drive it: press Close the loop.', true); return; }
   const st = stage();
   try { buildTrack(st); } catch (err) { status(err.message, true); return; }
   if (EDIT_IDX < 0) { EDIT_IDX = STAGES.length; STAGES.push(st); } else STAGES[EDIT_IDX] = st;
   forgetTrack(EDIT_IDX); G.forceBuild = true; G.editDrive = true; G.onEditorBack = () => openTerrain(true);
-  cancelAnimationFrame(raf); $('tb').hidden = true; release3D(); startRace(EDIT_IDX);
+  cancelAnimationFrame(raf); $('tb').hidden = true; release3D(); view ? openViewer(EDIT_IDX) : startRace(EDIT_IDX);
 }
 async function send() {
   if (!B.road) { status('Paint a road first: pick Road and drag it out on the land.', true); return; }

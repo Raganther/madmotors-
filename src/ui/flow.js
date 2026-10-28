@@ -59,6 +59,8 @@ export function newRace() {
   elementHook('newRace', r);
   return r;
 }
+/** A fresh race on the stage on show, the cars on the grid (the Track Viewer: ui/viewer.js). */
+export function viewRace() { race = newRace(); return race; }
 /** The title screen's race (ui/title.js): its own line-up, weapons on, nobody at the wheel. */
 export function titleRace(defs) {
   setRoster(defs);

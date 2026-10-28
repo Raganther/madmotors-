@@ -647,6 +647,23 @@ pinch zooms; a trackpad's two-finger slide moves the view and its pinch zooms; d
 there; WASD or the arrows move (Shift: faster), Q / E turn, R / F tilt, + / - zoom, 1-9 pick the tools, T top view,
 Home fits, Ctrl+Z undoes; the arrow pad does the moving on a touch screen.
 
+The menu's **Track viewer** (`src/ui/viewer.js`, `?viewer=<n>`) shows a stage as it really is, every building, set
+piece and hazard built and moving, from a free camera: drag turns, right-drag / two fingers / Shift + drag move,
+wheel or pinch zooms, double-click flies there; WASD, Q / E, R / F, + / -, T top view, Home fits, Space flies the lap.
+"Fly the lap" rides the road at the speed a quick car carries there; with "Cars: racing" the AI drives every car
+(yours too) and the camera rides along with yours. Parked, the race still runs with every car held (`c.hold`), so
+trains, ferries and drawbridges keep moving. Beside it is the stage's **report card** (`src/core/track/report.js`
+`trackReport`): lap length and time (the AI's corner speeds, braked for as in sim/ai.js: `speedProfile`, which the
+racing line and braking boards share), how much is flat out, corners by their slowest speed (hairpin < 21 m/s,
+slow < 25, medium < 30, fast), the climb, and the **moments**: every element marker grouped where they sit within
+60 m, each of a kind (air, destruction, moving hazard, landmark, surface, route choice), and a check against the
+design pillars of docs/TRACK_DESIGN.md (three moments of two kinds, nothing quiet for more than 15 s, corner
+variety, 30-80% flat out, a choice, something to smash, something that moves). Moments are numbered on the map,
+on the height-and-speed strip and over the road; tap any to fly there. Note drops a note where you tap (the same
+`notes` as in a race, `camera: 'viewer'`), and every note on the stage stands as a pin while the viewer is open. The
+Track editor and the Terrain builder have "View in 3D" beside Test drive. `npm run report` ranks every stage by its
+card (`npm run report -- <stage>` lists one stage's moments); tests/report.test.js keeps it sane.
+
 The menu's **Sketch pad** (`src/ui/sketch.js`) is for ideas that aren't a track yet: a 1600 x 1200 sheet (grid or
 plain) with a pen that follows Apple Pencil pressure, a marker, an eraser, line, arrow, box, circle and words, ten
 colours, three sizes, undo / redo and pinch zoom (with a Pencil, fingers only move the paper). Strokes are kept as

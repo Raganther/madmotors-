@@ -34,7 +34,7 @@ addEventListener('keydown', e => {
     if (e.code === 'KeyF') race.player.inp.fire = true;
     if (e.code === 'KeyQ' || e.code === 'KeyE') race.player.inp.door = 1;          // the side is picked for you: wherever a car is
   }
-  if (e.code === 'KeyC' && G.state !== 'menu') { setCamera(nextCamera()); callout('Camera: ' + CAM_MODES[G.camMode].name); }   // cycle the camera
+  if (e.code === 'KeyC' && G.state !== 'menu' && G.state !== 'viewing') { setCamera(nextCamera()); callout('Camera: ' + CAM_MODES[G.camMode].name); }   // cycle the camera
   if (e.code === 'Backquote') toggleOverlay();                              // debug overlay (render/overlay.js)
   if (e.code === 'Enter' && G.state === 'menu' && $('loading').hidden && $('league').hidden && $('career').hidden && document.activeElement === document.body) startRace(selected);
 });

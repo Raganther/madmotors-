@@ -3,6 +3,7 @@ import { G } from '../../game.js';
 import { HALF, WALL } from '../../core/constants.js';
 import { canvasTex } from '../geometry.js';
 import { race } from '../../ui/flow.js';
+import { BRAKE, TOP, speedProfile as profile } from '../../core/track/report.js';   // (the same speeds as the Track Viewer's report card)
 
 // Racecraft aids, looks only, worked out from the same corner speeds the AI drives to (track tr.vmax, braking at BRAKE
 // m/s² as in sim/ai.js): the speed you can carry at every metre of the lap (profile), braking boards before the big
@@ -10,16 +11,7 @@ import { race } from '../../ui/flow.js';
 // corner, green where you can go flat out, amber where you lift and red where you have to brake, brighter red the
 // harder; it lights up from your own speed, so it's red when you're arriving too fast. Line: G.lineGuide (menu and
 // pause); the boards are always there on tarmac and gravel stages.
-const BRAKE = 28, TOP = 36;   // m/s² of braking (ai.js: v² = vm² + 56 d), and about a quick car's top speed (m/s)
 let line = null, lineCol = null, prof = null, trRef = null;
-/** The fastest you can be going at each sample and still make every corner ahead. */
-function profile(tr) {
-  const N = tr.N, p = new Float32Array(N), loop = !!tr.loopN, L = tr.loopN || N;
-  for (let i = 0; i < N; i++) p[i] = Math.min(TOP, tr.vmax[i]);
-  // backwards: slow enough before each corner to brake down to it (twice round a loop so it wraps)
-  for (let pass = 0; pass < (loop ? 2 : 1); pass++) for (let i = N - 2; i >= 0; i--) { const j = loop ? (i + 1) % L : i + 1; p[i] = Math.min(p[i], Math.sqrt(p[j] * p[j] + 2 * BRAKE)); }
-  return p;
-}
 function boardTex(text) {
   return canvasTex(128, 96, (g, w, h) => {
     g.fillStyle = '#F4F4F0'; g.fillRect(0, 0, w, h); g.fillStyle = '#C8102E'; g.fillRect(0, 0, w, 10); g.fillRect(0, h - 10, w, 10);

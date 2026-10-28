@@ -47,7 +47,7 @@ export function raceStep(R, dt, W) {
     c.draft = (c.draft || 0) + (want - (c.draft || 0)) * Math.min(1, dt * 4);
   }
   for (const c of R.cars) {
-    if (c.hold) {                                                                     // the Workshop's test cars (nothing else sets it): parked, or held at a speed
+    if (c.hold) {                                                                     // the Workshop's test cars and the Track Viewer's parked ones: parked, or held at a speed
       const sp = Math.hypot(c.vx, c.vz); c.inp.steer = 0; c.inp.handbrake = 0;
       c.inp.throttle = typeof c.hold === 'number' && sp < c.hold ? 1 : 0; c.inp.brake = c.hold === true && c.vf > 0.5 ? 1 : 0;   // (brake at a standstill would reverse)
       if (c.hold === true) c.stuckT = 0;                                              // parked on purpose: never 'stuck' and respawned

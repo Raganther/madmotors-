@@ -171,6 +171,21 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .sk-item img,.sk-noimg{width:150px;height:112px;flex:none;object-fit:contain;background:#fff;border-radius:6px} .sk-item p{margin:4px 0;font-size:14px;color:var(--mist)} .sk-item em{display:block;font-size:14px;color:#7BD88F;margin:4px 0} .sk-item small{color:var(--mist)}
 .sk-itembtns{display:flex;gap:6px;margin-top:6px} .sk-itembtns .btn{padding:5px 10px;font-size:13px;min-width:0}
 @media (max-width:700px){ .sk-main{flex-direction:column-reverse} .sk-side{width:auto;flex-direction:row;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;border-right:0;border-top:1px solid rgba(255,255,255,.1)} #sk-tools{grid-template-columns:repeat(9,44px)} #sk-cols{grid-template-columns:repeat(10,26px)} #sk-sizes{width:110px;flex:none} .sk-acts{grid-template-columns:repeat(3,64px)} .sk-acts .wide{grid-column:auto} .sk-side>*{flex:none} .sk-item img,.sk-noimg{width:96px;height:72px} }
+#viewer{position:fixed;inset:0;z-index:3;color:#fff;pointer-events:none} #viewer>*{pointer-events:auto} #vw-surf{position:absolute;inset:0;touch-action:none;cursor:grab} #vw-surf:active{cursor:grabbing}
+.vw-bar{position:absolute;left:0;right:0;top:0;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top,0px));background:rgba(28,35,64,.86);font-size:14px}
+.vw-bar .btn,.vw-bar .cta{padding:6px 11px;font-size:14px;min-width:0} .vw-bar .btn.on{background:var(--yellow);color:var(--ink)} .vw-bar select{background:rgba(0,0,0,.3);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:7px;padding:5px 6px;font:inherit;max-width:46vw}
+#vw-card{position:absolute;right:8px;top:60px;bottom:8px;width:300px;overflow-y:auto;background:rgba(28,35,64,.9);border-radius:12px;padding:10px;box-sizing:border-box;font-size:13px;touch-action:pan-y} #vw-card.shut{display:none}
+#vw-map{display:block;width:100%;height:200px;cursor:pointer;background:rgba(0,0,0,.25);border-radius:8px} #vw-strip{display:block;width:100%;height:56px;margin-top:8px;cursor:pointer;background:rgba(0,0,0,.25);border-radius:6px}
+#vw-sum{display:flex;gap:10px;align-items:center;margin-top:8px;line-height:1.35;color:var(--mist)} #vw-sum b{color:#fff;font-size:15px}
+.vw-score{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font:400 24px var(--display);color:var(--ink);background:#FF8A7A} .vw-score small{font-size:12px} .vw-score.s2{background:#FFC72C} .vw-score.s3,.vw-score.s4{background:#7BD88F}
+#vw-card h4{margin:12px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mist)}
+#vw-pillars,#vw-moments{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+#vw-pillars li{background:rgba(255,255,255,.05);border-radius:7px;padding:5px 7px} #vw-pillars li.ok b{color:#7BD88F} #vw-pillars li.miss b{color:#FF8A7A} #vw-pillars span{color:var(--mist)} #vw-pillars small{display:block;color:#FFE08A;margin-top:2px} #vw-pillars [data-go]{cursor:pointer}
+#vw-moments li{display:flex;gap:8px;align-items:flex-start;cursor:pointer;border-radius:7px;padding:4px 5px} #vw-moments li:hover{background:rgba(255,255,255,.08)} #vw-moments li.minor{opacity:.65}
+#vw-moments i{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:11px} #vw-moments small{display:block;color:var(--mist)}
+.vw-views{position:absolute;left:10px;bottom:34px;display:flex;gap:4px} .vw-views button{background:rgba(28,35,64,.9);border:0;border-radius:8px;color:#fff;font-weight:700;padding:7px 11px;min-width:38px}
+.vw-hint{position:absolute;left:10px;bottom:8px;color:#1C2340;font-size:12px;background:rgba(255,255,255,.7);border-radius:6px;padding:2px 6px;max-width:calc(100% - 340px)}
+@media (max-width:760px){ #vw-card{top:auto;left:8px;right:8px;width:auto;height:42vh} .vw-views{bottom:calc(42vh + 18px)} .vw-hint{display:none} .vw-bar{font-size:13px;gap:5px} .vw-bar .btn,.vw-bar .cta{padding:5px 8px;font-size:13px} .vw-bar .ed-title{display:none} }
 #editor,#tb{position:fixed;inset:0;background:#141A30;display:flex;flex-direction:column;z-index:4;color:#fff}
 .ed-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 12px;background:var(--panel);font-size:14px} .ed-title{font-family:var(--display);font-weight:400;color:var(--yellow);font-size:18px}
 .ed-bar label{display:flex;align-items:center;gap:6px} .ed-bar input,.ed-bar select,.ed-f input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:7px;padding:4px 6px;font:inherit} #ed-laps{width:48px} #ed-name{width:150px}
@@ -209,7 +224,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 .tb-pick{position:absolute;z-index:3;background:var(--panel);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;width:250px;box-shadow:0 8px 24px rgba(0,0,0,.4)} .tb-pick[hidden]{display:none} .tb-pick button{border:0;border-radius:7px;padding:6px 8px;background:rgba(255,255,255,.08);color:#fff;font-weight:600;font-size:13px;text-align:left} .tb-pick button i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px} .tb-pick .tb-x{grid-column:1/-1;background:rgba(255,138,122,.18);color:#FF8A7A}
 .tb-foot{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--panel)} .tb-foot textarea{flex:1;min-width:200px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font:inherit;font-size:14px;padding:6px} .tb-foot .btn,.tb-foot .cta{padding:7px 12px;font-size:14px;min-width:0}
 @media (max-width:760px){ .ed-main{grid-template-columns:1fr;grid-template-rows:44vh 1fr} .ed-side{border-left:0;border-top:1px solid rgba(255,255,255,.1)} .ed-btns{margin-left:0} #ed-name{width:110px} }
-#note-bar{position:fixed;left:50%;top:calc(var(--top) + 104px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;background:var(--panel);border-radius:14px;padding:8px 12px;max-width:calc(100% - 24px);box-sizing:border-box;font-size:15px}
+#note-bar{position:fixed;z-index:5;left:50%;top:calc(var(--top) + 104px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;background:var(--panel);border-radius:14px;padding:8px 12px;max-width:calc(100% - 24px);box-sizing:border-box;font-size:15px}
 #note-bar small{display:block;color:var(--mist);font-size:12px} #note-bar .btn,#note-bar .cta{padding:8px 14px;font-size:15px;min-width:0}
 #note-form{position:fixed;left:50%;bottom:calc(var(--bot) + 8px);transform:translateX(-50%);width:min(460px,calc(100% - 24px));z-index:5} #note-form b{font-size:15px;color:var(--yellow)}
 #note-text{width:100%;box-sizing:border-box;border-radius:10px;border:2px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:#fff;font:inherit;font-size:16px;padding:8px}
@@ -358,7 +373,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
         <button id="league-btn" class="btn league-btn" type="button">Leagues <small>Race a championship, a car for each round</small></button>
       </div>
       <h3 class="menu-h">Garage &amp; tools</h3>
-      <div class="menu-foot"><button id="lab-btn" class="ghost-btn" type="button">Workshop</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button><button id="terrain-btn" class="ghost-btn" type="button">Terrain builder</button><button id="sketch-btn" class="ghost-btn" type="button">Sketch pad</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button></div>
+      <div class="menu-foot"><button id="lab-btn" class="ghost-btn" type="button">Workshop</button><button id="editor-btn" class="ghost-btn" type="button">Track editor</button><button id="terrain-btn" class="ghost-btn" type="button">Terrain builder</button><button id="viewer-btn" class="ghost-btn" type="button">Track viewer</button><button id="sketch-btn" class="ghost-btn" type="button">Sketch pad</button><button id="notes-btn" class="ghost-btn" type="button">Notes</button></div>
       <h3 class="menu-h">Settings</h3>
       <div class="menu-foot"><button id="mute-btn" class="ghost-btn" type="button" aria-expanded="false">Sound</button><button id="wpn-btn" class="ghost-btn" type="button">Weapons: On</button><button id="line-btn" class="ghost-btn line-btn" type="button">Racing line: Off</button><button id="wear-btn" class="ghost-btn" type="button" aria-expanded="false">Weather &amp; wear</button><button id="gfx-btn" class="ghost-btn" type="button">Graphics: Auto</button><button id="models-btn" class="ghost-btn" type="button">Models: Auto</button><button id="steer-btn" class="ghost-btn steer-btn" type="button" hidden>Steering: Wheel</button><button id="cam-btn" class="ghost-btn cam-btn" type="button">Camera: Classic</button><button id="zoom-btn" class="ghost-btn zoom-btn" type="button">Zoom: Normal</button></div>
     <div id="wear-panel" class="snd-panel" hidden><b>Weather &amp; wear</b> <small>How roads wear in as a race goes on, and what the rain does (from the next race)</small>
@@ -455,13 +470,24 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
   </div>
 </div>
 
+<div id="viewer" hidden>
+  <div id="vw-surf"></div>
+  <div class="vw-bar"><span class="ed-title">Track viewer</span><select id="vw-stage" aria-label="Stage"></select>
+    <button id="vw-fly" class="cta" type="button">&#9654; Fly the lap</button><select id="vw-speed" aria-label="Speed"><option value="0.4">Slow</option><option value="1" selected>Race speed</option><option value="2">Fast</option></select>
+    <button id="vw-race" class="btn" type="button">Cars: parked</button><button id="vw-restart" class="btn" type="button">Restart</button><button id="vw-line" class="btn" type="button">Racing line</button><button id="vw-labels" class="btn" type="button">Labels</button>
+    <button id="vw-note" class="btn" type="button">Note</button><button id="vw-card-btn" class="btn" type="button">Report</button><span class="ed-btns"><button id="vw-drive" class="btn" type="button">Drive it</button><button id="vw-exit" class="btn" type="button">Exit</button></span></div>
+  <aside id="vw-card"><canvas id="vw-map" aria-label="Map of the lap: tap to go there"></canvas><div id="vw-sum"></div><canvas id="vw-strip" aria-label="The lap: height and speed, tap to go there"></canvas>
+    <h4>Design pillars</h4><ul id="vw-pillars"></ul><h4>Moments</h4><ol id="vw-moments"></ol></aside>
+  <div class="vw-views"><button id="vw-top" type="button">Top</button><button id="vw-low" type="button">Low</button><button id="vw-in" type="button" aria-label="Zoom in">+</button><button id="vw-out" type="button" aria-label="Zoom out">&minus;</button><button id="vw-fit" type="button">Fit</button></div>
+  <small class="vw-hint">Drag to turn · right-drag or two fingers to move · wheel or pinch to zoom · double-click to fly there · WASD, Q/E, R/F · Space flies the lap</small>
+</div>
 <div id="tb" hidden>
   <div class="ed-bar">
     <b class="ed-title">Terrain builder</b>
     <label>Name <input id="tb-name" maxlength="40"></label>
     <label>Laps <input id="tb-laps" type="number" min="1" max="9"></label>
     <label>Surface <select id="tb-surface"><option value="tarmac">Tarmac</option><option value="gravel">Gravel</option><option value="snow">Snow</option></select></label>
-    <span class="ed-btns"><button id="tb-close" class="btn" type="button">Close the loop</button><button id="tb-drive" class="cta" type="button">Test drive</button><button id="tb-exit" class="btn" type="button">Exit</button></span>
+    <span class="ed-btns"><button id="tb-close" class="btn" type="button">Close the loop</button><button id="tb-view3d" class="btn" type="button">View in 3D</button><button id="tb-drive" class="cta" type="button">Test drive</button><button id="tb-exit" class="btn" type="button">Exit</button></span>
   </div>
   <div id="tb-status" class="ed-status"></div>
   <div class="tb-main"><canvas id="tb-view"></canvas>
@@ -503,7 +529,7 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
     <label>Laps <input id="ed-laps" type="number" min="1" max="9"></label>
     <label>Surface <select id="ed-surface"><option value="tarmac">Tarmac</option><option value="gravel">Gravel</option><option value="snow">Snow</option></select></label>
     <label class="ed-inline"><input type="checkbox" id="ed-keep" checked> keep shortcuts &amp; railway</label>
-    <span class="ed-btns"><button id="ed-close" class="btn" type="button">Close the loop</button><button id="ed-drive" class="cta" type="button">Test drive</button><button id="ed-exit" class="btn" type="button">Exit</button></span>
+    <span class="ed-btns"><button id="ed-close" class="btn" type="button">Close the loop</button><button id="ed-view3d" class="btn" type="button">View in 3D</button><button id="ed-drive" class="cta" type="button">Test drive</button><button id="ed-exit" class="btn" type="button">Exit</button></span>
   </div>
   <div id="ed-status" class="ed-status"></div>
   <div class="ed-main">

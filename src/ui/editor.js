@@ -6,6 +6,7 @@ import { closeLoop, freeze, fromStroke, sketch } from '../core/track/editing.js'
 import { forgetTrack } from '../render/world/index.js';
 import { $ } from './dom.js';
 import { startRace } from './flow.js';
+import { openViewer } from './viewer.js';
 
 // The track editor (menu: Track editor). Start from one of the circuits (or a plain oval), edit it section by
 // section on a plan of the lap: straights and curves, their heights, the ground either side and the pieces of road
@@ -39,7 +40,8 @@ export function initEditor() {
   $('ed-surface').addEventListener('change', e => { E.stage.surface = e.target.value; save(); });
   $('ed-keep').addEventListener('change', e => { E.keep = e.target.checked; save(); status(); });
   $('ed-close').addEventListener('click', () => { if (!E.stage.segs.length) return; const r = closeLoop(E.stage.segs, E.stage.startHeading || 0); if (r.ok) { remember(); E.stage.segs = r.segs; changed(); } status(r.msg, !r.ok); });
-  $('ed-drive').addEventListener('click', drive);
+  $('ed-drive').addEventListener('click', () => drive());
+  $('ed-view3d').addEventListener('click', () => drive(true));   // the Track Viewer (ui/viewer.js): fly round it, read its report card
   $('ed-send').addEventListener('click', send);
   $('ed-sec').addEventListener('click', onSecClick); $('ed-sec').addEventListener('change', onSecInput);
   $('ed-list').addEventListener('click', e => { const li = e.target.closest('[data-n]'); if (li) select(+li.dataset.n); });
@@ -267,7 +269,8 @@ function status(msg, bad) {
   el.textContent = msg || (open ? `Lap ${len} m · open: the end is ${k.gap.toFixed(0)} m from the start${Math.abs(k.turn - Math.round(k.turn / 360) * 360) > 0.5 ? `, facing ${Math.round(k.turn - Math.round(k.turn / 360) * 360)}° off` : ''}. Close the loop to drive it.` : `Lap ${len} m · closes`);
   el.className = 'ed-status' + (bad || (!msg && open) ? ' bad' : '');
 }
-function drive() {
+/** Test drive the track (or, view: look round it in the Track Viewer); leaving comes back here. */
+function drive(view = false) {
   const k = sk(); if (!E.stage.segs.length) { status('Draw a track first.', true); return; }
   if (k.gap > 0.6) { status('The lap has to close before you can drive it: press Close the loop.', true); return; }
   const st = built(); st.blurb = st.blurb || 'Made in the editor';
@@ -277,7 +280,7 @@ function drive() {
   }
   if (EDIT_IDX < 0) { EDIT_IDX = STAGES.length; STAGES.push(st); } else STAGES[EDIT_IDX] = st;
   forgetTrack(EDIT_IDX); G.forceBuild = true; G.editDrive = true; G.onEditorBack = () => openEditor(true);
-  $('editor').hidden = true; startRace(EDIT_IDX);
+  $('editor').hidden = true; view ? openViewer(EDIT_IDX) : startRace(EDIT_IDX);
 }
 async function send() {
   const k = sk(), msg = $('ed-msg').value.trim();

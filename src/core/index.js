@@ -8,6 +8,7 @@ export * from './track/rails.js';
 export * from './track/terrain.js';
 export * from './track/obstacles.js';
 export * from './track/query.js';
+export * from './track/report.js';
 export * from './sim/barriers.js';
 export * from './sim/obstacles.js';
 export * from './sim/car.js';

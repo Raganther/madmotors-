@@ -21,6 +21,13 @@ water. The tracks themselves haven't had the same attention, and it shows:
   smashing through things.
 - **The themes repeat.** Lots of grass, rock and tarmac. Nothing like Egypt, a jungle, a boardwalk or a dockyard.
 
+**Measured** (`npm run report`, 2026-10-28; the same card is in the Track viewer): of 39 race stages, five meet six
+of the seven measurable pillars (Wrecking Row, Village Hill, Building Site, Old Town GP and its night version) and
+three meet none (Salt Flats and its night version, Sunday Park). The commonest misses: nothing that moves (28
+stages), nothing to smash (26), a quiet stretch of more than 15 s (25), fewer than three moments of two kinds (20)
+and no route choice (19). The mountain stages (Mountain Pass, Mountain Loop, Pine Forest) go 36-61 s with nothing
+but corners.
+
 Games like Micro Machines and the phone "Mini Motors"-style racers work because each track is a *themed playground*:
 a pyramid you drive up the side of, boarded bridges over a jungle river, a pier over the sea. That's the bar.
 
@@ -125,7 +132,24 @@ Black rock, lava, ash.
 More to think about: a frozen lake with ice that cracks; suburbia (gardens, fences, swimming pools); a factory or
 steelworks; an airport (runway sprint, through a hangar); rooftops; a haunted village at night.
 
-## 5. A track's page (the template)
+## 5. How we design tracks together
+
+A loop that's quick to go round, so we can try ideas instead of arguing about them:
+
+1. **Look.** Open the track in the **Track viewer** (menu, or "View in 3D" from the Track editor and the Terrain
+   builder): fly round it, fly the lap at race speed, or let the cars race it and ride along. Its report card sits
+   beside it: lap time, flat-out share, corners, the numbered moments, and the pillars it meets or misses.
+2. **Say.** Tap Note and drop notes on the spots that need changing ("a jump here", "this straight is dull", "a
+   shortcut through this barn"); they land with Claude with a picture of the view. Bigger ideas go on the Sketch pad;
+   a whole new layout in the Track editor or the Terrain builder (Send to Claude).
+3. **Change.** Claude answers each note, changes the track, and checks the card (`npm run report -- <stage>`): the
+   misses it was asked to fix should turn to passes.
+4. **Look again.** The published game has the new version; the notes turn green with Claude's reply.
+
+The card measures what can be measured. Whether a track is a *place*, whether it reads from above and whether it's
+fun are for us to judge in the viewer and by driving it.
+
+## 6. A track's page (the template)
 
 Every new track gets a page in this document, filled in and agreed before we build.
 
@@ -140,9 +164,10 @@ Every new track gets a page in this document, filled in and agreed before we bui
 - **Surfaces and weather:** tarmac, dirt, mud, snow; any rain or night version.
 - **Cars it favours:** which classes and why; where it sits in career tiers.
 - **Sketch:** a plan drawn in the Track editor or the Sketch pad (they land with Claude), or described.
+- **Report card target:** the pillars it must pass (`npm run report`), and the lap time it aims for.
 - **New things to build:** elements, scenery, sounds.
 
-## 6. First candidates
+## 7. First candidates
 
 Three to prototype first, each showing off something different:
 
@@ -156,7 +181,7 @@ Three to prototype first, each showing off something different:
 We could also rework a few existing tracks along these lines (Village Descent could become a town you drive
 *through*; Scrapyard Smash could gain topples and collapses).
 
-## 7. Questions to settle together
+## 8. Questions to settle together
 
 - Which themes excite you most? Rank them, or add your own.
 - How long should a lap be? Shorter and busier (45 s) or longer with more variety (90 s)?

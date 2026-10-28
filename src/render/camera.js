@@ -157,8 +157,9 @@ function overBridge(P) {
 }
 export function updateCamera(dt, snap) {
   if (!G.world) return;
-  if (G.titleCam && G.state === 'menu') {   // the title screen's shot (ui/title.js): a placed cinematic camera, no see-through
-    const T = G.titleCam; G.persp = true; G.perspWas = false;
+  const VC = G.state === 'viewing' && G.viewCam;   // the Track Viewer's free camera (ui/viewer.js)
+  if ((G.titleCam && G.state === 'menu') || VC) {   // the title screen's shot (ui/title.js): a placed cinematic camera, no see-through
+    const T = VC || G.titleCam; G.persp = true; G.perspWas = false;
     pcamera.fov = T.fov || 40; pcamera.position.set(...T.pos); pcamera.lookAt(...T.look); pcamera.updateProjectionMatrix();
     camT.set(...T.look); CUT.r.value = 0; CUT.r2.value = 0;
     camDir.copy(pcamera.position).sub(camT).normalize(); G.camDir = [camDir.x, camDir.y, camDir.z]; CUT.dir.value.copy(camDir);
@@ -238,9 +239,9 @@ function followSun() {
   // footprint on the ground (its height stretched by the slant), or behind the car a square reaching well up the road
   // ahead of it; in 4 m steps, so a zoom that's easing doesn't make the texels swim
   const sc = sun.shadow.camera, persp = G.persp, foot = Math.max(camera.right, camera.top / 0.68) * 1.1 + 6;
-  const half = Math.min(80, Math.max(24, Math.ceil((persp ? 58 : foot) / 4) * 4));
+  const vc = G.state === 'viewing' && G.viewCam, half = vc ? clamp(Math.ceil(vc.shadow / 8) * 8, 40, 240) : Math.min(80, Math.max(24, Math.ceil((persp ? 58 : foot) / 4) * 4));   // (the Track Viewer: as far as it sees, up to a point)
   if (sc.right !== half) { sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.updateProjectionMatrix(); }
-  _v1.copy(camT); if (persp) { _v1.x += camDir.x * -30; _v1.z += camDir.z * -30; }   // (camDir points back at the camera)
+  _v1.copy(camT); if (persp && !vc) { _v1.x += camDir.x * -30; _v1.z += camDir.z * -30; }   // (camDir points back at the camera)
   // move the shadow camera in whole shadow-map texels so shadow edges don't crawl as the camera moves
   const tex = (sc.right - sc.left) / sun.shadow.mapSize.x;
   const a0 = _v1.dot(SUN_U), b0 = _v1.dot(SUN_V);

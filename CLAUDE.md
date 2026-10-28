@@ -9,6 +9,7 @@ new or reworked track, and a track's page there is agreed with the user before i
 - `npm run check`: lint + tests (golden included) + a production build. Run before every commit; must pass.
 - `npm run e2e`: production build + headless browser run of every stage (no console errors allowed).
 - `npm run layout -- <n>` / `npm run terrain -- <n>`: inspect a stage's road plan / terrain before playing it (`sandbox:<name>` works too).
+- `npm run report [-- <n>]`: track report cards (core/track/report.js): every stage ranked against the design pillars, or one stage's moments. The Track Viewer (`?viewer=<n>`, menu Track viewer) shows the same card beside the stage in 3D; check a new or reworked track's card before calling it done.
 - The Workshop (`?workshop`, `?workshop=crash|destruct|weapons|kit|derby|cars|elements`, `npm run shot -- workshop:<tab>`): try cars, crashes, weapons and track elements without a race around them. Each new system gets a tab there (README "The Workshop").
 - `npm run sandbox -- <name|all>`: AI laps of an element sandbox, with what went wrong where. Browser: `?sandbox=<name>&debug`; backquote toggles the debug overlay.
 - `npm run shot -- <n|sandbox:name|garage> [metres ...] [--vehicle id] [--debug]`: screenshots from the player's seat (AI drives to each distance) → tools/out/. Look at them.
@@ -30,7 +31,7 @@ new or reworked track, and a track's page there is agreed with the user before i
 The published game has a Note button (N): the user taps a spot on a track and types what they'd change. Notes land in
 the artifact's database: `ArtifactData` `list` of collection `notes` on the artifact URL (under Rules) (fields: stage, metres from the
 start line, lat, x/y/z, text, camera, status, and `shot`, an asset id: `Artifact` `read` with `path` = that id to see
-their view). Go to the spot with `npm run shot -- "<stage>" <metres>`. Answer each by `update` on `notes/<id>` with
+their view). Go to the spot with `npm run shot -- "<stage>" <metres>` (`camera: 'viewer'` means it was dropped in the Track Viewer: x/y/z is the spot). Answer each by `update` on `notes/<id>` with
 `{ reply: "...", status: "done" }`: the reply shows in the game's Notes list and the pin turns green.
 
 The menu's Track editor lets the user lay out a circuit (an existing gorge stage or a blank oval) and "Send to Claude":

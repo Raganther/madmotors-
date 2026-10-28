@@ -11,6 +11,7 @@ import { initNotes } from './ui/notes.js';
 import { initEditor } from './ui/editor.js';
 import { initTerrainBuilder } from './ui/terrain-builder.js';
 import { initSketch } from './ui/sketch.js';
+import { initViewer, openViewer, viewerStep } from './ui/viewer.js';
 import { openWorkshop, workshopParam } from './ui/workshop.js';
 import { AudioSys } from './audio/audio.js';
 import { showTrack, wireSound } from './ui/sounds.js';
@@ -56,7 +57,8 @@ export function frame(t) {
     $('countdown').hidden = false; $('countdown').textContent = n >= 1 ? n : 'Go!';
     AudioSys.update(race.player, 'rev', race.cars, G.camDir);
     if (G.countdown <= 0.2) { G.state = 'racing'; race.phase = 'racing'; AudioSys.beep(880, 0.3); AudioSys.music('race'); showTrack(AudioSys.track()); G.goTimer = 0.8; G.accumulator = 0; }
-  } else if (G.state === 'menu' && G.title) titleStep(dt);                         // the title's action scene
+  } else if (G.state === 'menu' && G.title) titleStep(dt);
+  else if (G.state === 'viewing') viewerStep(dt);                                   // the Track Viewer (ui/viewer.js)                         // the title's action scene
   else if (G.state === 'racing') {
     if (!race.player.finished) readInput(dt);
     let simDt = dt; if (G.slowmo > 0) { G.slowmo -= dt; simDt = dt * 0.35; }
@@ -101,7 +103,7 @@ export function wireUI() {
   $('models-btn').addEventListener('click', () => { setModelMode(MODEL_MODES[(MODEL_MODES.indexOf(modelMode) + 1) % MODEL_MODES.length]); modelsLabel(); rebuildCars(); });
   modelsLabel();
   for (const b of document.querySelectorAll('.steer-btn')) b.addEventListener('click', () => setSteer(G.steer === 'wheel' ? 'arrows' : 'wheel'));
-  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); wireCareer(); initNotes(); initEditor(); initTerrainBuilder(); initSketch(); $('lab-btn').addEventListener('click', () => openWorkshop()); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
+  $('veh-btn').addEventListener('click', () => openGarage()); wireLeagues(); wireCareer(); initNotes(); initEditor(); initTerrainBuilder(); initSketch(); initViewer(); $('lab-btn').addEventListener('click', () => openWorkshop()); G.onVehicle = refreshBest; $('garage-done').addEventListener('click', closeGarage);
   for (const b of document.querySelectorAll('.cam-btn')) b.addEventListener('click', () => setCamera(nextCamera()));
   for (const b of document.querySelectorAll('.zoom-btn')) b.addEventListener('click', () => setCamera(G.camMode, nextZoom()));
 }
@@ -125,7 +127,9 @@ export async function boot() {
     try { await Promise.race([document.fonts ? document.fonts.load('40px Bungee') : null, new Promise(r => setTimeout(r, 1200))]); } catch (e) { }
     step = 'building the cars'; initCars(); elementHook('init'); showVehicle(G.vehicle); refreshBest();
     step = 'building the first stage';
-    if (sbName || ws) { showScreen('quick'); selectStage(sbName ? STAGES.length - 1 : 0, ws ? () => openWorkshop(ws) : null); }   // ?workshop[=tab]: the Workshop (ui/workshop.js) once the menu's stage is built
+    const vw = new URLSearchParams(location.search).get('viewer');   // ?viewer=<n>: the Track Viewer on stage n (1-based; ui/viewer.js)
+    if (vw !== null) { showScreen('quick'); openViewer(Math.max(0, (parseInt(vw, 10) || 1) - 1)); }
+    else if (sbName || ws) { showScreen('quick'); selectStage(sbName ? STAGES.length - 1 : 0, ws ? () => openWorkshop(ws) : null); }   // ?workshop[=tab]: the Workshop (ui/workshop.js) once the menu's stage is built
     else { if (safeBoot) { $('game').hidden = true; $('loading').hidden = true; } showScreen('title'); }   // the title, its action scene behind it (ui/title.js; just the logo in safe mode, after a graphics reset)
     requestAnimationFrame(frame);
   } catch (e) {

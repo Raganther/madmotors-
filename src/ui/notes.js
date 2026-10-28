@@ -37,15 +37,17 @@ export function initNotes() {
   }
 }
 export function enterNotes(fromPause = false) {
-  if (!race || !G.world || (G.state !== 'racing' && G.state !== 'countdown' && G.state !== 'paused')) return;
-  from = fromPause ? 'pause' : G.state; G.state = 'paused'; G.noteMode = true;
+  if (!race || !G.world || (G.state !== 'racing' && G.state !== 'countdown' && G.state !== 'paused' && G.state !== 'viewing')) return;
+  from = fromPause ? 'pause' : G.state; G.noteMode = true; if (from !== 'viewing') G.state = 'paused';   // (the Track Viewer keeps going: ui/viewer.js)
   $('note-bar').hidden = false; $('note-btn').textContent = 'Done'; refresh();
 }
 export function exitNotes() {
   if (!G.noteMode) return;
   cancelDraft(); G.noteMode = false; $('note-bar').hidden = true; $('note-btn').textContent = 'Note'; setPins([]);
-  if (from === 'pause') $('pause').hidden = false; else { G.state = from || 'racing'; G.lastT = performance.now() / 1000; }
+  if (from === 'pause') $('pause').hidden = false; else if (from === 'viewing') refreshPins(); else { G.state = from || 'racing'; G.lastT = performance.now() / 1000; }
 }
+/** A note at screen position (cx, cy) (the Track Viewer's taps while noting). */
+export function placeNote(cx, cy) { if (G.noteMode && !draft) place(cx, cy); }
 function place(cx, cy) {
   const p = pickGround(cx, cy); if (!p) return;
   const st = stageOfWorld(), tr = G.world.tr;
@@ -55,12 +57,12 @@ function place(cx, cy) {
   $('note-where').textContent = `${st.name}, ${draft.metres} m from the start, ${side}`;
   $('note-text').value = ''; $('note-form').hidden = false; $('note-text').focus();
 }
-function cancelDraft() { draft = null; $('note-form').hidden = true; if (G.noteMode) pinsFor(null); }
+function cancelDraft() { draft = null; $('note-form').hidden = true; if (G.noteMode || G.state === 'viewing') pinsFor(null); }
 async function saveDraft() {
   const text = $('note-text').value.trim(); if (!draft || !text) { $('note-text').focus(); return; }
   const d = draft; draft = null; $('note-form').hidden = true;
   const P = race && race.player, note = { stage: d.stage, stageIdx: d.stageIdx, metres: d.metres, lat: d.lat, x: d.x, y: d.y, z: d.z, text,
-    camera: G.camMode, zoom: G.camZoom, vehicle: G.vehicle, playerMetres: P ? metresOf(G.world.tr, P.pr.i) : null, at: new Date().toISOString(), status: 'open' };
+    camera: G.state === 'viewing' ? 'viewer' : G.camMode, zoom: G.camZoom, vehicle: G.vehicle, playerMetres: P ? metresOf(G.world.tr, P.pr.i) : null, at: new Date().toISOString(), status: 'open' };
   if (!localOnly && db) {
     try {
       if (assets && d.blob) { try { note.shot = (await assets.upload(d.blob, { type: 'image/jpeg' })).id; } catch (e) { /* the note matters more than the picture */ } }
@@ -75,8 +77,10 @@ async function delNote(id) {
 }
 function flash(t) { const el = $('note-toast'); el.textContent = t; el.hidden = false; clearTimeout(flash.t); flash.t = setTimeout(() => { el.hidden = true; }, 2600); }
 function numbered() { const by = {}; return notes.slice().sort((a, b) => (a.at || '').localeCompare(b.at || '')).map(n => ({ ...n, n: (by[n.stage] = (by[n.stage] || 0) + 1) })); }
+/** The note pins for the stage on show: while noting, and all the time in the Track Viewer. */
+export function refreshPins() { if (G.noteMode || G.state === 'viewing') pinsFor(draft); else setPins([]); }
 function pinsFor(extra) {
-  if (!G.noteMode) return;
+  if (!G.noteMode && G.state !== 'viewing') return;
   const st = stageOfWorld(), list = numbered().filter(n => st && n.stage === st.name).map(n => ({ n: n.n, x: n.x, y: n.y, z: n.z, done: !!n.reply || n.status === 'done' }));
   if (extra) list.push({ n: '+', x: extra.x, y: extra.y, z: extra.z, done: false });
   setPins(list);
