@@ -103,7 +103,7 @@ describe('themes', () => {
       const st = STAGES[k], tr0 = buildTrack(st), T = walledTown(tr0, tr0.startIdx + 200);
       expect(T.kit.filter(o => o.k === 'castlewall').length, st.name).toBeGreaterThan(30); expect(T.houses.length, st.name).toBeGreaterThan(5);
       const s2 = copy(st, { kit: T.kit, houses: T.houses, pieces: T.pieces }), tr = buildTrack(s2), t = buildTerrain(tr, s2);
-      for (const o of t.kit.solid.filter(p => p.kind === 'castlewall')) expect(tr.nearest(o.x, o.z).d, st.name).toBeGreaterThan(6);
+      for (const o of t.kit.solid.filter(p => p.kind === 'castlewall')) { const q = tr.nearest(o.x, o.z); expect(!q || q.d > 6, st.name).toBe(true); }   // (null: nowhere near a road)
     }
   });
   it('New track in the Castle theme has its walled town', async () => {
