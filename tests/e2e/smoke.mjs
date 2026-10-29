@@ -295,6 +295,11 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   await page.click('#vw-drive'); const drove = await page.waitForFunction(() => window.__dr.G.editDrive && window.__dr.G.state !== 'viewing' && window.__dr.race, null, { timeout: 60000 }).then(() => true, () => false);
   await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; d.step(2); d.flow.toMenu(); }); await idle();
   const back = await page.evaluate(() => !document.getElementById('st').hidden && window.__dr.G.world.stage.name.startsWith('\u270E'));
+  await page.selectOption('#st-theme', 'castle'); await idle(); await page.click('[data-st=place]'); await page.click('[data-kind="stamp:walledtown"]');
+  const rp = await page.evaluate(() => { const d = window.__dr, cam = d.pcamera, tr = d.G.world.tr; for (let i = 0; i < (tr.loopN || tr.N); i += 5) { const v = new (cam.position.constructor)(tr.xs[i], tr.H[i], tr.zs[i]); v.project(cam); const x = (v.x + 1) / 2 * innerWidth, y = (1 - v.y) / 2 * innerHeight; if (v.z < 1 && x > 300 && x < innerWidth - 100 && y > 150 && y < innerHeight - 100) return [x, y]; } return null; });
+  if (rp) { await page.mouse.click(rp[0], rp[1]); await page.waitForTimeout(900); await idle(); }
+  const castle = await page.evaluate(() => (window.__dr.G.world.stage.edits.kit || []).filter(o => o.k === 'tower').length);
+  if (!rp || castle < 4) errors.push('studio castle: ' + JSON.stringify({ rp, castle })); else console.log(`studio castle: a walled town with ${castle} towers`);
   await page.click('#vw-new'); await page.selectOption('#st-gen-style', 'valley'); await page.click('#st-gen-go');
   await page.waitForFunction(() => window.__dr.G.world.stage.name.startsWith('\u270E New track'), null, { timeout: 120000 }); await idle();
   const gen = await page.evaluate(() => ({ pieces: window.__dr.G.world.stage.edits.pieces.length, score: document.querySelector('.vw-score') && document.querySelector('.vw-score').textContent }));

@@ -35,7 +35,8 @@ their view). Go to the spot with `npm run shot -- "<stage>" <metres>` (`camera: 
 `{ reply: "...", status: "done" }`: the reply shows in the game's Notes list and the pin turns green.
 
 The Track viewer's **Track Studio** (Edit, New track) is where the user edits tracks in 3D: drafts copied from a stage
-or generated, with `stage.edits` (sculpt, path, pieces, props, clears, houses: README "Track Studio"). Send to Claude
+or generated, with `stage.edits` (sculpt, paint, path, pieces, props, clears, houses, kit, streets, theme) and maybe `stage.width`
+(README "Track Studio"). Send to Claude
 puts a version in the artifact's db: `ArtifactData` `list` collection `studio` (one doc per draft: name, base = the
 stage it came from, v, by, note = their message, changes, status "sent"), and `get` `studioVersions/<id>-<v>` for
 the stage itself (`stage`, or `asset`: `Artifact` `read` with `path` = that id). Read the note as the brief, look at

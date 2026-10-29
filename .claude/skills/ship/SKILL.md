@@ -28,7 +28,8 @@ Run from the repo root. Stop and fix at the first failure; never commit red.
 7. **Tell the user** in plain words what changed for them, what was verified (check, e2e, screenshots) and anything
    you didn't verify. Send the screenshots that show the change.
 
-## Traps we've hit
+## Traps
+- `npm run check | grep ...` hides a failure (the pipe's exit is grep's): run it to a log and read its exit code before committing. It let a failing test through once. we've hit
 - Never revert an experiment with `git checkout -- <file>` or `git stash` while other edits are uncommitted: it
   silently takes those too. Undo by editing.
 - Never `pkill -f <pattern>` where the pattern also matches your own command line: it kills your shell, and any

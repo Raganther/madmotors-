@@ -643,10 +643,29 @@ the stage picker. Its tools work on the real track in 3D:
 - **Pieces**: tap the road to put a set piece there (kicker, crest jump, whoops, splash, mud, boost, ice, dirt,
   chicane, crumbling bridge, wrecking balls, rockfall, tunnel, bridge, town, arch, waterfall); tap one to size it, drag
   it along the road. Circuits only.
-- **Place**: trees, bushes, rocks, boulders, cacti and every building type (turn, size, drag, delete); **Erase** takes
-  scenery away.
-- **New track** generates a draft: a landscape in a style, a lap laid on it, an existing stage's look and set pieces a
-  beat every ~9 s, the best of six tries by its report card (`core/track/generate.js`).
+- **Paint**: ground kinds brushed on (meadow, forest floor, dirt, sand, snow, tundra, rock, mud, cobbles, paving; Grass
+  takes paint off): the terrain blends them, and off the road they drive like what they are (`edits.paint`, a 4 m grid).
+- **Streets**: streets, lanes, dirt tracks and footpaths off the race road, drawn as lines (`edits.streets`): on the
+  ground like the towns' lanes, clear of scenery, driven like tarmac or gravel; tap one to line it with houses.
+- **Assets**: an asset brush. Pick a thing or a mix (pine forest, woodland, autumn wood, blossom, rocky ground, desert
+  scrub, village, town, farm, street furniture, castle town) and tap or drag: Count (1 places one where you tap; more
+  scatters that many over the Spread per dab), Size, Variety (size and shade) and Spacing; nothing lands on the road.
+  Trees (pine, tall fir, oak, autumn, blossom), bushes, rocks, boulders, cacti (`edits.props`), every building type
+  (`edits.houses`, facing the nearer of the road and the streets) and street pieces (`edits.kit`: lamps, bins,
+  benches, postboxes, hay, crates, concrete, towers). With Count 1, tap one to turn, size, move or delete it.
+- **Walls**: a line drawn on the ground becomes a run of stone wall, castle wall, hedge or fence (world-kit pieces of up
+  to 5 m, `edits.kit` with a run id): a ring if it ends where it began, a gap where it crosses the road (an arch over
+  the road for stone and castle walls on a circuit), towers along a castle wall. Tap one to delete its run.
+- **Erase** takes scenery away: everything, or only trees, rocks, bushes, your buildings, or street pieces and walls.
+- **Theme** (the panel's picker; core/track/themes.js): Meadow, Forest village, Mountain town, Seaside, Desert, Castle:
+  an existing stage's look (colours, light, scenery) and the theme's mixes first in Assets, its wall in Walls. The
+  Castle pack: castle walls (only the heaviest cars breach them), towers, the keep, the tavern, and the walled town
+  stamp (`walledTown`): curtain walls round the road with gatehouses, towers, a street of houses, stalls and the keep.
+- **Road width** (in the Road tool): `stage.width`, 8-20 m (12 by default). HALF and WALL in core/constants.js are live
+  values (`setRoadWidth`); the track keeps its own (`tr.half`) and buildTerrain, createRace, raceStep and buildWorld
+  put it back (`useTrackWidth`), so building another stage never changes the one being raced.
+- **New track** generates a draft: a landscape in a style, a lap laid on it, a theme's look and set pieces a beat every
+  ~9 s, the best of six tries by its report card (`core/track/generate.js`); the Castle theme adds a walled town.
 - Undo / Redo, Rename, Delete draft, Drive it (comes back to the Studio). A change that won't build is taken back.
 
 Everything is data on the draft, `stage.edits` (so a stage file can carry it too): `sculpt` (a sparse height grid
