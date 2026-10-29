@@ -34,13 +34,14 @@ import { openViewer, setEditHooks, viewerState } from './viewer.js';
 // you let go and the report card follows. Undo / Redo, Test drive (Drive it) comes back here; drafts are kept in this
 // browser and listed under the stage picker; Send to Claude puts one in the shared `tracks` collection (base "studio").
 // Getting about is the viewer's: two fingers, right-drag or the View tool move the camera while a brush is picked.
-const LS = 'downhill-rush-studio', TOOLS = ['view', 'raise', 'lower', 'smooth', 'flatten', 'road', 'pieces', 'place', 'erase'];
+const LS = 'downhill-rush-studio', TOOLS = ['view', 'raise', 'lower', 'smooth', 'flatten', 'road', 'pieces', 'place', 'walls', 'erase'];
 const HINT = { view: 'Move the view: drag, two fingers, wheel', raise: 'Drag to raise the land: under the road it lifts the road (a hump, a jump)', lower: 'Drag to dig the land down: dips, hollows, drops',
   smooth: 'Drag to smooth out bumps and steps', flatten: 'Drag to level the land at the height where you started', place: 'Pick something (or a mix) and tap or drag on the ground: Count paints many at once. With Count 1, tap one of yours to turn, size or delete it, drag it to move it',
   erase: 'Drag over trees, bushes and rocks to take them away',
+  walls: 'Draw a line on the ground for a wall, hedge or fence; end it where you began to close a ring. Where it crosses the road it leaves a gap (a stone wall gets an arch). Tap a wall to delete its run',
   pieces: 'Pick a set piece, then tap the road to put it there; tap one to make it longer or shorter, drag it along the road to move it',
   road: 'Drag a yellow point to move the road; tap the road between points to add one; tap a point to raise, lower or delete it' };
-const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, remote: new Map(), path: null, handles: null, pt: -1, brush: { count: 1, spread: 12, scale: 1, variety: 0.5, spacing: 4 }, eraseF: 'all', piece: 'yump', psel: -1, pdrag: null, pmarks: null };
+const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, remote: new Map(), path: null, handles: null, pt: -1, wallKind: 'wall', wline: null, brush: { count: 1, spread: 12, scale: 1, variety: 0.5, spacing: 4 }, eraseF: 'all', piece: 'yump', psel: -1, pdrag: null, pmarks: null };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const clone = o => JSON.parse(JSON.stringify(o));
 const stage = () => S.draft && S.draft.stage, edits = () => { const st = stage(); return st.edits || (st.edits = {}); };
@@ -63,6 +64,8 @@ export function initStudio() {
   $('st-palette').innerHTML = group('Mixes', Object.keys(MIXES).map(k => 'mix:' + k)) + group('Trees and rocks', Object.keys(PROPS)) + group('Buildings', BUILDING_TYPES) + group('Street', STREET);
   for (const [id, key, f] of [['st-acount', 'count', v => v], ['st-aspread', 'spread', v => v], ['st-asize', 'scale', v => v / 10], ['st-avar', 'variety', v => v / 10], ['st-aspace', 'spacing', v => v]]) $(id).addEventListener('input', e => { S.brush[key] = f(+e.target.value); ui(); });
   $('st-erasef').addEventListener('change', e => { S.eraseF = e.target.value; });
+  $('st-wallkind').innerHTML = Object.entries(KIT_PIECES).filter(([, P]) => P.len).map(([k, P]) => `<option value="${k}">${esc(P.name)}</option>`).join('');
+  $('st-wallkind').addEventListener('change', e => { S.wallKind = e.target.value; });
   $('st-palette').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (b) { S.kind = b.dataset.kind; S.sel = null; ui(); } });
   $('st-size').addEventListener('input', e => { S.size = +e.target.value; });
   $('st-power').addEventListener('input', e => { S.power = +e.target.value / 10; });
@@ -84,7 +87,7 @@ export function initStudio() {
     if (!S.on || $('viewer').hidden || (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))) return;
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
     else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') { e.preventDefault(); redo(); }
-    else if (/^Digit[1-9]$/.test(e.code)) setTool(TOOLS[+e.code.slice(5) - 1]);
+    else if (/^Digit[0-9]$/.test(e.code) && TOOLS[(+e.code.slice(5) + 9) % 10]) setTool(TOOLS[(+e.code.slice(5) + 9) % 10]);
     else if (e.code === 'BracketLeft') { S.size = Math.max(4, S.size / 1.25); ui(); } else if (e.code === 'BracketRight') { S.size = Math.min(80, S.size * 1.25); ui(); }
     else if ((e.code === 'Delete' || e.code === 'Backspace') && S.sel) delSel();
   });
@@ -212,7 +215,7 @@ function ui() {
   if (!on) return;
   document.querySelectorAll('#st [data-st]').forEach(b => b.classList.toggle('on', b.dataset.st === S.tool));
   $('st-brush').hidden = !['raise', 'lower', 'smooth', 'flatten', 'erase'].includes(S.tool); $('st-size').value = String(Math.round(S.size)); $('st-power').value = String(Math.round(S.power * 10));
-  $('st-palette').hidden = $('st-abrush').hidden = S.tool !== 'place'; $('st-erase').hidden = S.tool !== 'erase';
+  $('st-palette').hidden = $('st-abrush').hidden = S.tool !== 'place'; $('st-erase').hidden = S.tool !== 'erase'; $('st-walls').hidden = S.tool !== 'walls';
   { const B = S.brush; $('st-acount').value = B.count; $('st-aspread').value = B.spread; $('st-asize').value = Math.round(B.scale * 10); $('st-avar').value = Math.round(B.variety * 10); $('st-aspace').value = B.spacing;
     $('st-abrush-read').textContent = B.count === 1 ? `One at a time (drag for a row, ${B.spacing} m apart)` : `${B.count} at a time across ${B.spread * 2} m, ${B.spacing} m apart`; } document.querySelectorAll('#st-palette [data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === S.kind));
   const rp = S.tool === 'road' && S.pt >= 0, pp = S.tool === 'pieces' && S.psel >= 0 && !!(edits().pieces || [])[S.psel];
@@ -245,6 +248,7 @@ function down(e) {
   cursorAt(p);
   if (S.tool === 'road') { roadDown(e, p); return; }
   if (S.tool === 'pieces') { pieceDown(p); return; }
+  if (S.tool === 'walls') { const hit = hitTest(p); if (hit && hit.kit && hit.o.run) { S.sel = hit; ui(); status('A wall: Delete takes its whole run away.'); return; } S.sel = null; S.wline = [[p.x, p.z]]; drawWallLine(); return; }
   if (S.tool === 'place') {
     const hit = S.brush.count === 1 ? hitTest(p) : null;
     if (hit) { S.sel = hit; S.drag = { hit, moved: false }; ui(); return; }
@@ -258,6 +262,7 @@ function move(e) {
   cursorAt(p);
   if (S.drag && S.drag.pt !== undefined) { roadMove(p); return; }
   if (S.pdrag) { pieceMove(p); return; }
+  if (S.wline) { const L = S.wline[S.wline.length - 1]; if (Math.hypot(p.x - L[0], p.z - L[1]) >= 2) { S.wline.push([p.x, p.z]); drawWallLine(); } return; }
   if (S.drag) {
     if (!S.drag.moved) { remember(); S.drag.moved = true; }
     S.drag.hit.o.x = Math.round(p.x * 10) / 10; S.drag.hit.o.z = Math.round(p.z * 10) / 10; mark(S.drag.hit.o); return;
@@ -270,14 +275,15 @@ function move(e) {
   S.stroke.last = p;
 }
 function up() {
+  if (S.wline) { const pts = S.wline; S.wline = null; drawWallLine(); buildWall(pts); return; }
   if (S.pdrag) { const m = S.pdrag.moved; S.pdrag = null; if (m) changed(); ui(); return; }
   if (S.drag && S.drag.pt !== undefined) { const m = S.drag.moved; S.drag = null; if (m) changed(); ui(); return; }
   if (S.drag) { const moved = S.drag.moved, h = S.drag.hit; S.drag = null; if (moved) { if (h.house && onRoad(h.o)) { status('That puts it on the road: moved back.', true); undo(); return; } changed(); } ui(); return; }
   if (S.stroke) { const a = S.stroke.asset, n = S.stroke.n; endStroke(); if (a && !n) { S.undo.pop(); return; } if (a) status(`${n === 1 ? KIND_NAME[S.lastKind] || 'One' : n} put down. ${S.brush.count === 1 ? 'Tap one to turn it, size it or delete it.' : 'Undo takes the whole stroke back.'}`); changed(); }
 }
 function endStroke() { clearInterval(S.stroke.held); S.stroke = null; }
-function cancel() { if (S.stroke) { endStroke(); changed(); } if (S.drag) { S.drag = null; changed(); } }
-function hover(e) { if (!S.on || S.tool === 'view' || (S.tool === 'place' && S.brush.count === 1) || S.tool === 'road' || S.tool === 'pieces') { if (S.cursor) S.cursor.visible = false; return; } const p = pickGround(e.clientX, e.clientY); if (p) cursorAt(p); }
+function cancel() { if (S.wline) { S.wline = null; drawWallLine(); } if (S.stroke) { endStroke(); changed(); } if (S.drag) { S.drag = null; changed(); } }
+function hover(e) { if (!S.on || S.tool === 'view' || (S.tool === 'place' && S.brush.count === 1) || S.tool === 'road' || S.tool === 'pieces' || S.tool === 'walls') { if (S.cursor) S.cursor.visible = false; return; } const p = pickGround(e.clientX, e.clientY); if (p) cursorAt(p); }
 // ---------- brushes ----------
 function dab(p) {
   const E = edits(), r = S.size;
@@ -343,8 +349,8 @@ function hitTest(p) {
   return best;
 }
 function turnSel(deg) { if (!S.sel) return; remember(); const o = S.sel.o; if (S.sel.kit) o.yaw = ((o.yaw || 0) + deg + 360) % 360; else if (S.sel.house) { o.f = ((o.f || 0) + deg + 360) % 360; if (onRoad(o)) { undo(); status('Turned that way it would stand on the road.', true); return; } } else o.ry = Math.round(((o.ry || 0) + deg * Math.PI / 180) * 100) / 100; changed(); }
-function sizeSel(k) { if (S.tool === 'road' && S.pt >= 0) { liftPt(k > 1 ? 1 : -1); return; } if (S.tool === 'pieces' && S.psel >= 0) { lenPiece(k > 1 ? 10 : -10); return; } if (S.sel && S.sel.kit) { const P = KIT_PIECES[S.sel.o.k]; if (!P.len) return; remember(); S.sel.o.w = Math.round(Math.max(1, Math.min(30, (S.sel.o.w || 4) * k)) * 10) / 10; changed(); return; } if (!S.sel || S.sel.house) return; remember(); S.sel.o.s = Math.round(Math.max(0.4, Math.min(3, (S.sel.o.s || 1) * k)) * 100) / 100; changed(); }
-function delSel() { if (S.tool === 'road' && S.pt >= 0) { delPt(); return; } if (S.tool === 'pieces' && S.psel >= 0) { remember(); edits().pieces.splice(S.psel, 1); S.psel = -1; changed(); return; } if (!S.sel) return; remember(); const E = edits(), o = S.sel.o; E.props = (E.props || []).filter(x => x !== o); E.houses = (E.houses || []).filter(x => x !== o); E.kit = (E.kit || []).filter(x => x !== o); S.sel = null; changed(); }
+function sizeSel(k) { if (S.tool === 'road' && S.pt >= 0) { liftPt(k > 1 ? 1 : -1); return; } if (S.tool === 'pieces' && S.psel >= 0) { lenPiece(k > 1 ? 10 : -10); return; } if (S.sel && S.sel.kit) { const P = KIT_PIECES[S.sel.o.k]; if (!P.len || S.sel.o.run) return; remember(); S.sel.o.w = Math.round(Math.max(1, Math.min(30, (S.sel.o.w || 4) * k)) * 10) / 10; changed(); return; } if (!S.sel || S.sel.house) return; remember(); S.sel.o.s = Math.round(Math.max(0.4, Math.min(3, (S.sel.o.s || 1) * k)) * 100) / 100; changed(); }
+function delSel() { if (S.tool === 'road' && S.pt >= 0) { delPt(); return; } if (S.tool === 'pieces' && S.psel >= 0) { remember(); edits().pieces.splice(S.psel, 1); S.psel = -1; changed(); return; } if (!S.sel) return; remember(); const E = edits(), o = S.sel.o; E.props = (E.props || []).filter(x => x !== o); E.houses = (E.houses || []).filter(x => x !== o); E.kit = (E.kit || []).filter(x => x !== o && !(o.run && x.run === o.run)); S.sel = null; changed(); }
 // ---------- what's drawn for the studio: the brush ring, and a marker on a change until the rebuild shows it ----------
 function cursorAt(p) {
   if (!S.cursor) {
@@ -457,4 +463,35 @@ function generate() {
     S.drafts.push(d); saveDrafts(); S.undo = []; S.redo = []; $('st-gen').hidden = true;
     S.on = true; openDraft(d); status(`A new track: ${LAND_STYLES[$('st-gen-style').value]} with ${st.edits.pieces.length} set pieces${st.edits.houses.length ? ' and houses to smash' : ''}. Edit away.`);
   }, 30);
+}
+// ---------- walls (a run of the world kit's boundary pieces) ----------
+/** A line drawn on the ground becomes a run of wall: pieces of up to 5 m along it (so a car smashes a piece, not the
+ *  lot), a gap where it crosses the road (and an arch over the road for a stone wall on a circuit), a ring when it ends
+ *  where it began. Each piece carries the run's id, so the run goes as one. */
+function buildWall(raw) {
+  if (raw.length < 2) return;
+  const tr = G.world.tr, E = edits(), first = raw[0], last = raw[raw.length - 1];
+  const pts = raw.slice(); if (raw.length > 4 && Math.hypot(last[0] - first[0], last[1] - first[1]) < 8) pts.push(first);   // a ring
+  // even steps of ~5 m along the line
+  const seq = [pts[0]]; let carry = 0;
+  for (let i = 1; i < pts.length; i++) { const [ax, az] = pts[i - 1], [bx, bz] = pts[i], d = Math.hypot(bx - ax, bz - az); let s0 = 5 - carry; while (s0 <= d) { seq.push([ax + (bx - ax) * s0 / d, az + (bz - az) * s0 / d]); s0 += 5; } carry = d - (s0 - 5); }
+  if (Math.hypot(pts[pts.length - 1][0] - seq[seq.length - 1][0], pts[pts.length - 1][1] - seq[seq.length - 1][1]) > 1) seq.push(pts[pts.length - 1]);
+  const run = 'w' + Date.now().toString(36), add = [], arches = [];
+  for (let i = 1; i < seq.length; i++) {
+    const [ax, az] = seq[i - 1], [bx, bz] = seq[i], mx = (ax + bx) / 2, mz = (az + bz) / 2, w = Math.hypot(bx - ax, bz - az);
+    const near = [[ax, az], [mx, mz], [bx, bz]].map(([x, z]) => tr.nearest(x, z)).filter(Boolean), q = near.reduce((a, b) => (a && a.d < b.d ? a : b), null);
+    if (q && q.d < HALF + 1.5) { if (S.wallKind === 'wall' && tr.loopN) arches.push(tr.bi(q.i)); continue; }   // the road goes through: a gap
+    add.push({ k: S.wallKind, x: Math.round(mx * 10) / 10, z: Math.round(mz * 10) / 10, yaw: Math.round(Math.atan2(bx - ax, bz - az) * 1800 / Math.PI) / 10, w: Math.round(w * 10) / 10, run });
+  }
+  if (!add.length) { status('That line is all road: draw it beside the road (it may cross it).', true); return; }
+  remember(); (E.kit || (E.kit = [])).push(...add);
+  for (const b of arches) if (!(E.pieces || []).some(q => q.k === 'arch' && Math.abs(q.s - b) < 20)) (E.pieces || (E.pieces = [])).push({ s: Math.max(0, b - 5), k: 'arch' });
+  status(`${add.length * 5 > 60 ? 'A long run' : 'A run'} of ${KIT_PIECES[S.wallKind].name.toLowerCase()}, ${Math.round(add.reduce((t, o) => t + o.w, 0))} m${arches.length ? ', with an arch where it crosses the road' : ''}.`);
+  for (const o of add.slice(0, 200)) mark(o); changed();
+}
+function drawWallLine() {
+  if (!S.wmesh) { S.wmesh = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xFFFFFF, depthTest: false })); S.wmesh.renderOrder = 22; scene.add(S.wmesh); }
+  const L = S.wline || [], terr = G.world.terr, pos = [];
+  for (const [x, z] of L) pos.push(x, terr.at(x, z) + 1.2, z);
+  S.wmesh.geometry.dispose(); S.wmesh.geometry = new THREE.BufferGeometry(); S.wmesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); S.wmesh.visible = L.length > 1;
 }
