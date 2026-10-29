@@ -7,7 +7,7 @@ import { camT } from '../camera.js';
 import { groundColAt } from './terrain.js';
 import { groundDetail } from '../detail.js';
 import { waterLevelAt } from '../water.js';
-import { paintAt } from '../../core/track/edits.js';
+import { paintAt, streetAt } from '../../core/track/edits.js';
 
 // Ground clutter round the camera (looks only): grass tufts, the odd flower and pebbles, on the
 // ground off the road within REACH m of where the camera looks, tinted from the ground under them (terrain.js
@@ -17,7 +17,7 @@ import { paintAt } from '../../core/track/edits.js';
 // a few dry tufts.
 const CELL = 6, REACH = 40, MAX = { tuft: 5200, flower: 700, pebble: 1400 };
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color(), _g = new THREE.Color();
-let meshes = null, last = null, kind = 'grass', terr = null, rock = new THREE.Color(), paint = null;
+let meshes = null, last = null, kind = 'grass', terr = null, rock = new THREE.Color(), paint = null, streets = null;
 const hash = (a, b, k) => { const v = Math.sin(a * 127.1 + b * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
 function tuftGeo() {   // five blades in a fan, dark at the root, light at the tip
   const pos = [], col = [];
@@ -46,7 +46,7 @@ function make(group) {
 }
 /** A new world: its clutter (render/elements build). */
 export function addClutter(group, tr, t, stage) {
-  meshes = null; last = null; cells.clear(); terr = t; kind = groundDetail(stage); rock.set(stage.colors.rock || 0x8E8C84); paint = (stage.edits && stage.edits.paint) || null;
+  meshes = null; last = null; cells.clear(); terr = t; kind = groundDetail(stage); rock.set(stage.colors.rock || 0x8E8C84); paint = (stage.edits && stage.edits.paint) || null; streets = tr.streets || null;
   make(group);
 }
 const roadDist = (x, z) => { const c = Math.round((x - terr.x0) / terr.S), r = Math.round((z - terr.z0) / terr.S); return c < 0 || r < 0 || c >= terr.cols || r >= terr.rows ? 1e9 : terr.dist[r * terr.cols + c]; };
@@ -61,6 +61,7 @@ function cellOf(a, b) {
     const x = (a + hash(a, b, k * 3 + what.length)) * CELL, z = (b + hash(b, a, k * 7 + what.length)) * CELL;
     if (roadDist(x, z) < HALF + 1.2 || slopeAt(x, z) > 0.9) continue;
     const y = terr.at(x, z), lv = waterLevelAt(x, z); if (lv !== null && lv > y - 0.02) continue;
+    if (streets && streetAt(streets, x, z)) continue;   // nothing growing on the Studio's streets
     const pk = paint && what !== 'pebble' ? paintAt(paint, x, z) : null; if (pk && pk !== 'meadow' && pk !== 'forest' && !(pk === 'tundra' && hash(a, b, k + 5) < 0.3)) continue;   // no grass on painted snow, sand, rock or mud (core/track/edits.js)
     const h = hash(a + k, b - k, 9);
     if (what === 'flower') _c.setHSL([0.13, 0.0, 0.75, 0.95][(h * 4) | 0], 0.75, (h * 4 | 0) === 1 ? 0.95 : 0.65);

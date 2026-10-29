@@ -10,6 +10,8 @@ import { BUILDINGS, BUILDING_TYPES } from '../../data/structures.js';
 //   clears: [[x, z, r, f], ...]              the stage's own scenery taken away inside these circles: f 'trees', 'rocks',
 //                                           'bushes', 'street' (the towns' fences, walls and furniture) or all of it
 //   paint: { cell, d: { "c,r": kind } }     the ground painted (PAINTS): its colour, and off the road how it drives
+//   streets: [{ k, pts: [[x, z], ...], w }]  streets and paths off the race road (STREETS): drawn on the ground, clear of
+//                                           trees, driven on like tarmac or gravel
 //   kit: [{ k, x, z, yaw, w, style }]        street and boundary pieces (KIT_PIECES): walls, hedges and fences w long,
 //                                           lamps, bins, benches, hay; yaw in degrees along the piece
 //   houses: [{ type, x, z, f }]              buildings put there (data/structures.js types; f: degrees, the way the front
@@ -22,7 +24,23 @@ export const PAINTS = {
   meadow: { name: 'Meadow', col: 0x9DBF5A, surf: null }, forest: { name: 'Forest floor', col: 0x4E5A30, surf: null },
   dirt: { name: 'Dirt', col: null, surf: 'gravel' }, sand: { name: 'Sand', col: 0xD9C08A, surf: 'gravel' }, snow: { name: 'Snow', col: 0xEEF3F7, surf: 'snow' },
   tundra: { name: 'Tundra', col: 0xB4BCA6, surf: 'snow' }, rock: { name: 'Rock', col: null, surf: 'gravel' }, mud: { name: 'Mud', col: 0x5E4630, surf: 'mud' },
+  cobbles: { name: 'Cobbles (a square)', col: 0x8E8A80, surf: 'tarmac' }, paving: { name: 'Paving', col: 0xB9B6AE, surf: 'tarmac' },
 };
+/** Streets and paths the Studio draws off the race road: how wide, what colour, how they drive. */
+export const STREETS = { path: { name: 'Footpath', w: 2.6, col: 0xB59A72, surf: 'gravel' }, lane: { name: 'Lane', w: 5, col: 0x5E6168, surf: 'tarmac' }, street: { name: 'Street', w: 8, col: 0x8A857B, surf: 'tarmac' }, track: { name: 'Dirt track', w: 4.5, col: 0x8F7352, surf: 'gravel' } };
+const STREET_CELL = 1.5;
+/** Each street's segments: [ax, az, bx, bz, half width, kind]. */
+const streetSegs = E => (E && E.streets || []).flatMap(S => { const K = STREETS[S.k] || STREETS.lane, w = (S.w || K.w) / 2, out = []; for (let i = 1; i < S.pts.length; i++) out.push([...S.pts[i - 1], ...S.pts[i], w, S.k]); return out; });
+const segDist = (x, z, [ax, az, bx, bz]) => { const dx = bx - ax, dz = bz - az, L = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L)); return Math.hypot(x - ax - dx * t, z - az - dz * t); };
+/** The streets as a grid of cells (for the cars: core/sim/car.js), or null. */
+export function streetGrid(edits) {
+  const segs = streetSegs(edits); if (!segs.length) return null; const g = new Map();
+  for (const sg of segs) { const [ax, az, bx, bz, w, k] = sg, surf = (STREETS[k] || STREETS.lane).surf;
+    for (let c = Math.floor((Math.min(ax, bx) - w) / STREET_CELL); c <= Math.ceil((Math.max(ax, bx) + w) / STREET_CELL); c++) for (let q = Math.floor((Math.min(az, bz) - w) / STREET_CELL); q <= Math.ceil((Math.max(az, bz) + w) / STREET_CELL); q++) if (segDist(c * STREET_CELL, q * STREET_CELL, sg) <= w) { const key = c * 100003 + q; if (g.get(key) !== 'tarmac') g.set(key, surf); } }
+  return g;
+}
+/** The surface of a street at (x, z), or null. */
+export const streetAt = (g, x, z) => g ? g.get(Math.round(x / STREET_CELL) * 100003 + Math.round(z / STREET_CELL)) || null : null;
 /** The painted kind at world (x, z), or null. */
 export function paintAt(pt, x, z) { if (!pt || !pt.d) return null; const C = pt.cell || SCULPT.CELL; return pt.d[Math.round(x / C) + ',' + Math.round(z / C)] || null; }
 /** Paint (or, kind 'grass', unpaint) the ground in a circle; returns how many cells changed. */
@@ -87,7 +105,9 @@ export function editObstacles(edits, items, terr, stage, OB) {
   if (!edits) return;
   for (const [x, z, r, f] of edits.clears || []) { if (f === 'street') continue; const only = CLEAR[f]; for (let k = items.length - 1; k >= 0; k--) if ((!only || only.includes(items[k].kind)) && Math.hypot(items[k].x - x, items[k].z - z) < r) items.splice(k, 1); }
   const C = stage.colors, rnd = mulberry32(stage.seed * 13 + 77), pick = a => a[Math.floor(rnd() * a.length)];
+  const segs = streetSegs(edits); if (segs.length) for (let k = items.length - 1; k >= 0; k--) if (segs.some(sg => segDist(items[k].x, items[k].z, sg) < sg[4] + 1.2)) items.splice(k, 1);   // the stage's own trees and rocks keep off the streets
   for (const p of edits.props || []) {
+    if (segs.length && segs.some(sg => segDist(p.x, p.z, sg) < sg[4] + 0.8)) continue;   // nor anything put on a street
     const s = p.s || 1, y = terr.at(p.x, p.z), ry = p.ry || 0, x = p.x, z = p.z, shade = c => p.t ? scaleHex(c, 1 + 0.28 * p.t) : c, own = PROP_COL[p.k];
     if (p.k === 'pine' || p.k === 'fir') items.push({ kind: OB.PINE, x, y: y - 0.2, z, s, sy: s * (p.k === 'fir' ? 1.6 : 1.1), ry, color: shade(pick(own || C.pine)), r: 0.3 * s, brush: 0.75 * s });
     else if (p.k === 'tree' || p.k === 'autumn' || p.k === 'blossom') items.push({ kind: OB.ROUND, x, y: y - 0.2, z, s, sy: s, ry, color: shade(pick(own || C.round)), r: 0.32 * s });
@@ -99,13 +119,15 @@ export function editObstacles(edits, items, terr, stage, OB) {
 /** The world kit with the Studio's own pieces on it (and the towns' street pieces it cleared away): kit as
  *  core/kit/layout.js makes it, or an empty one when the stage has no towns. */
 export function editKit(kit, stage, terr) {
-  const E = stage.edits; if (!E || (!(E.kit || []).length && !(E.clears || []).some(c => c[3] === 'street'))) return kit;
+  const E = stage.edits; if (!E || (!(E.kit || []).length && !(E.streets || []).length && !(E.clears || []).some(c => c[3] === 'street'))) return kit;
   const K = kit || { solid: [], ground: [], decor: [], zones: [], pave: [], inZone: () => false };
   for (const [x, z, r, f] of E.clears || []) if (f === 'street') K.solid = K.solid.filter(o => o.kind === 'house' || o.kind === 'barn' || Math.hypot(o.x - x, o.z - z) >= r);
   for (const e of E.kit || []) {
     const P = KIT_PIECES[e.k]; if (!P) throw new Error(`${stage.name}: edits.kit: no piece "${e.k}" (${Object.keys(KIT_PIECES).join(', ')})`);
     K.solid.push({ kind: e.k, x: e.x, z: e.z, y: terr.at(e.x, e.z), yaw: (e.yaw || 0) * Math.PI / 180, w: P.len ? Math.max(0.5, e.w || 4) : P.w, d: P.d, h: P.h, sd: 1, style: e.style || 'village', lamp: e.k === 'post', placed: true });
   }
+  // streets lie on the ground like the towns' lanes (render/elements/kit.js addGround), a piece per segment
+  for (const [ax, az, bx, bz, w, k] of streetSegs(E)) K.ground.push({ kind: 'street', x: (ax + bx) / 2, z: (az + bz) / 2, yaw: Math.atan2(bx - ax, bz - az), w: Math.hypot(bx - ax, bz - az) + w * 0.6, d: w * 2, color: (STREETS[k] || STREETS.lane).col });
   return K;
 }
 /** The stage's placed buildings, appended to the track's own (tr.structures: core/elements/structures.js shapes). */

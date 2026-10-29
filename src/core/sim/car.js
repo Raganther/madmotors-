@@ -1,4 +1,4 @@
-import { PAINTS, paintAt } from '../track/edits.js';
+import { PAINTS, paintAt, streetAt } from '../track/edits.js';
 import { CAR_HL, CAR_HW, HALF, PHYS, SURF, WALL } from '../constants.js';
 import { WET } from '../elements/weather.js';
 import { arenaPit, inArena } from '../elements/arena.js';
@@ -103,6 +103,7 @@ export function stepCar(c, dt, W, racing) {
   if (tr.dirt && c.surface === W.surf && tr.dirt[tr.bi(pr.i)]) c.surface = 'gravel';   // a dirt track (off-road shortcuts)
   const open = tr.open ? tr.open[tr.bi(pr.i)] : 0;                                  // open country (elements/open.js): no road here
   if (open) c.surface = open === OPEN.stream && al0 < 80 ? 'ford' : onTrail(tr, tr.bi(pr.i), pr.lat) ? 'gravel' : 'grass';   // the dirt trail drives like a gravel road
+  if (tr.streets && c.surface === 'grass') { const st = streetAt(tr.streets, c.x, c.z); if (st) c.surface = st; }   // the Track Studio's streets and paths
   if (tr.paint && c.surface === 'grass') { const m = paintAt(tr.paint, c.x, c.z), ps = m && PAINTS[m].surf; if (ps) c.surface = ps; }   // the Track Studio's painted ground (core/track/edits.js): mud, snow, sand...
   if (tr.arena && inArena(tr.arena, c.x, c.z)) { const pit = arenaPit(tr.arena, c.x, c.z); c.surface = pit ? (pit.kind === 'water' ? 'ford' : 'mud') : W.surf; }   // a derby arena's floor is the stage's surface (not the open field round its circuit), but for its pits (elements/arena.js)
   const S = c.rut > 0 ? wornSurf(c) : c.surface === 'grass' && W.surf === 'tarmac' && !open ? SURF.turf : SURF[c.surface];   // (grass on a tarmac stage: the run-off)                  // worn in: rutted mud, swept gravel

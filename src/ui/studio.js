@@ -4,7 +4,7 @@ import { STAGES } from '../data/stages/index.js';
 import { BUILDINGS, BUILDING_TYPES } from '../data/structures.js';
 import { HALF } from '../core/constants.js';
 import { corners } from '../core/elements/structures.js';
-import { KIT_PIECES, PAINTS, PROPS, editsDiff, paintDab, sculptAt, sculptDab } from '../core/track/edits.js';
+import { KIT_PIECES, PAINTS, PROPS, STREETS, editsDiff, paintDab, sculptAt, sculptDab } from '../core/track/edits.js';
 import { pathFromTrack, samplePath } from '../core/track/path.js';
 import { PIECES } from '../core/track/pieces.js';
 import { generateStage } from '../core/track/generate.js';
@@ -35,15 +35,16 @@ import { openViewer, setEditHooks, viewerState } from './viewer.js';
 // you let go and the report card follows. Undo / Redo, Test drive (Drive it) comes back here; drafts are kept in this
 // browser and listed under the stage picker; Send to Claude puts one in the shared `tracks` collection (base "studio").
 // Getting about is the viewer's: two fingers, right-drag or the View tool move the camera while a brush is picked.
-const LS = 'downhill-rush-studio', TOOLS = ['view', 'raise', 'lower', 'smooth', 'flatten', 'paint', 'road', 'pieces', 'place', 'walls', 'erase'];
+const LS = 'downhill-rush-studio', TOOLS = ['view', 'raise', 'lower', 'smooth', 'flatten', 'paint', 'road', 'pieces', 'streets', 'place', 'walls', 'erase'];
 const HINT = { view: 'Move the view: drag, two fingers, wheel', raise: 'Drag to raise the land: under the road it lifts the road (a hump, a jump)', lower: 'Drag to dig the land down: dips, hollows, drops',
   smooth: 'Drag to smooth out bumps and steps', flatten: 'Drag to level the land at the height where you started', place: 'Pick something (or a mix) and tap or drag on the ground: Count paints many at once. With Count 1, tap one of yours to turn, size or delete it, drag it to move it',
   erase: 'Drag over trees, bushes and rocks to take them away',
   paint: 'Pick a ground and brush it on: meadow, forest floor, dirt, sand, snow, tundra, rock, mud (off the road it drives like it: mud bogs you down, snow slides). Grass takes paint off',
+  streets: 'Draw a street, lane, track or footpath off the road (cobbles or paving paint a square). Tap one to line it with houses or delete it',
   walls: 'Draw a line on the ground for a wall, hedge or fence; end it where you began to close a ring. Where it crosses the road it leaves a gap (a stone wall gets an arch). Tap a wall to delete its run',
   pieces: 'Pick a set piece, then tap the road to put it there; tap one to make it longer or shorter, drag it along the road to move it',
   road: 'Drag a yellow point to move the road; tap the road between points to add one; tap a point to raise, lower or delete it' };
-const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, remote: new Map(), path: null, handles: null, pt: -1, paintKind: 'meadow', wallKind: 'wall', wline: null, brush: { count: 1, spread: 12, scale: 1, variety: 0.5, spacing: 4 }, eraseF: 'all', piece: 'yump', psel: -1, pdrag: null, pmarks: null };
+const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, remote: new Map(), path: null, handles: null, pt: -1, paintKind: 'meadow', streetKind: 'street', ssel: -1, wallKind: 'wall', wline: null, brush: { count: 1, spread: 12, scale: 1, variety: 0.5, spacing: 4 }, eraseF: 'all', piece: 'yump', psel: -1, pdrag: null, pmarks: null };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const clone = o => JSON.parse(JSON.stringify(o));
 const stage = () => S.draft && S.draft.stage, edits = () => { const st = stage(); return st.edits || (st.edits = {}); };
@@ -69,6 +70,9 @@ export function initStudio() {
   $('st-erasef').addEventListener('change', e => { S.eraseF = e.target.value; });
   $('st-paints').innerHTML = Object.entries(PAINTS).concat([['grass', { name: 'Grass (no paint)', col: 0x6E9E4B }]]).map(([k, P]) => `<button type="button" data-paint="${k}"><i style="background:#${(P.col || (k === 'dirt' ? 0x8F7352 : 0x8E8C84)).toString(16).padStart(6, '0')}"></i>${esc(P.name)}</button>`).join('');
   $('st-paints').addEventListener('click', e => { const b = e.target.closest('[data-paint]'); if (b) { S.paintKind = b.dataset.paint; ui(); } });
+  $('st-streetkind').innerHTML = Object.entries(STREETS).map(([k, P]) => `<option value="${k}">${esc(P.name)} (${P.w} m)</option>`).join(''); $('st-streetkind').value = 'street';
+  $('st-streetkind').addEventListener('change', e => { S.streetKind = e.target.value; });
+  $('st-line').addEventListener('click', lineStreet); $('st-sdel').addEventListener('click', () => { if (S.ssel < 0) return; remember(); edits().streets.splice(S.ssel, 1); S.ssel = -1; changed(); });
   $('st-wallkind').innerHTML = Object.entries(KIT_PIECES).filter(([, P]) => P.len).map(([k, P]) => `<option value="${k}">${esc(P.name)}</option>`).join('');
   $('st-wallkind').addEventListener('change', e => { S.wallKind = e.target.value; });
   $('st-palette').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (b) { S.kind = b.dataset.kind; S.sel = null; ui(); } });
@@ -214,14 +218,14 @@ function opened(idx) {
 }
 function closed() { if (!S.driving) { G.editDrive = false; G.onEditorBack = null; } if (S.cursor) S.cursor.visible = false; $('st').hidden = true; $('st-claude').hidden = true; if (S.handles) S.handles.clear(); if (S.pmarks) S.pmarks.clear(); }
 // ---------- the panel ----------
-function setTool(t) { S.tool = t; S.sel = null; S.pt = -1; S.psel = -1; ui(); status(t === 'pieces' && !G.world.tr.loopN ? 'Set pieces go on circuits: this is a downhill run.' : HINT[t]); }
+function setTool(t) { S.tool = t; S.sel = null; S.pt = -1; S.psel = -1; S.ssel = -1; ui(); status(t === 'pieces' && !G.world.tr.loopN ? 'Set pieces go on circuits: this is a downhill run.' : HINT[t]); }
 function ui() {
   const on = S.on && !!S.draft; drawHandles(); drawPieces();
   $('st').hidden = !on; $('vw-edit').textContent = on ? 'Done' : 'Edit'; $('vw-edit').classList.toggle('on', on);
   if (!on) return;
   document.querySelectorAll('#st [data-st]').forEach(b => b.classList.toggle('on', b.dataset.st === S.tool));
   $('st-brush').hidden = !['raise', 'lower', 'smooth', 'flatten', 'paint', 'erase'].includes(S.tool); $('st-paints').hidden = S.tool !== 'paint'; document.querySelectorAll('#st-paints [data-paint]').forEach(b => b.classList.toggle('on', b.dataset.paint === S.paintKind)); $('st-size').value = String(Math.round(S.size)); $('st-power').value = String(Math.round(S.power * 10));
-  $('st-palette').hidden = $('st-abrush').hidden = S.tool !== 'place'; $('st-erase').hidden = S.tool !== 'erase'; $('st-walls').hidden = S.tool !== 'walls';
+  $('st-palette').hidden = $('st-abrush').hidden = S.tool !== 'place'; $('st-erase').hidden = S.tool !== 'erase'; $('st-walls').hidden = S.tool !== 'walls'; $('st-streets').hidden = S.tool !== 'streets'; $('st-ssel').hidden = !(S.tool === 'streets' && S.ssel >= 0 && (edits().streets || [])[S.ssel]);
   { const B = S.brush; $('st-acount').value = B.count; $('st-aspread').value = B.spread; $('st-asize').value = Math.round(B.scale * 10); $('st-avar').value = Math.round(B.variety * 10); $('st-aspace').value = B.spacing;
     $('st-abrush-read').textContent = B.count === 1 ? `One at a time (drag for a row, ${B.spacing} m apart)` : `${B.count} at a time across ${B.spread * 2} m, ${B.spacing} m apart`; } document.querySelectorAll('#st-palette [data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === S.kind));
   const rp = S.tool === 'road' && S.pt >= 0, pp = S.tool === 'pieces' && S.psel >= 0 && !!(edits().pieces || [])[S.psel];
@@ -256,6 +260,7 @@ function down(e) {
   cursorAt(p);
   if (S.tool === 'road') { roadDown(e, p); return; }
   if (S.tool === 'pieces') { pieceDown(p); return; }
+  if (S.tool === 'streets') { const j = streetHit(p); if (j >= 0) { S.ssel = j; ui(); status(`${STREETS[edits().streets[j].k].name}: line it with houses, or delete it.`); return; } S.ssel = -1; S.wline = [[p.x, p.z]]; drawWallLine(); return; }
   if (S.tool === 'walls') { const hit = hitTest(p); if (hit && hit.kit && hit.o.run) { S.sel = hit; ui(); status('A wall: Delete takes its whole run away.'); return; } S.sel = null; S.wline = [[p.x, p.z]]; drawWallLine(); return; }
   if (S.tool === 'place') {
     const hit = S.brush.count === 1 ? hitTest(p) : null;
@@ -283,7 +288,7 @@ function move(e) {
   S.stroke.last = p;
 }
 function up() {
-  if (S.wline) { const pts = S.wline; S.wline = null; drawWallLine(); buildWall(pts); return; }
+  if (S.wline) { const pts = S.wline; S.wline = null; drawWallLine(); if (S.tool === 'streets') buildStreet(pts); else buildWall(pts); return; }
   if (S.pdrag) { const m = S.pdrag.moved; S.pdrag = null; if (m) changed(); ui(); return; }
   if (S.drag && S.drag.pt !== undefined) { const m = S.drag.moved; S.drag = null; if (m) changed(); ui(); return; }
   if (S.drag) { const moved = S.drag.moved, h = S.drag.hit; S.drag = null; if (moved) { if (h.house && onRoad(h.o)) { status('That puts it on the road: moved back.', true); undo(); return; } changed(); } ui(); return; }
@@ -291,7 +296,7 @@ function up() {
 }
 function endStroke() { clearInterval(S.stroke.held); S.stroke = null; }
 function cancel() { if (S.wline) { S.wline = null; drawWallLine(); } if (S.stroke) { endStroke(); changed(); } if (S.drag) { S.drag = null; changed(); } }
-function hover(e) { if (!S.on || S.tool === 'view' || (S.tool === 'place' && S.brush.count === 1) || S.tool === 'road' || S.tool === 'pieces' || S.tool === 'walls') { if (S.cursor) S.cursor.visible = false; return; } const p = pickGround(e.clientX, e.clientY); if (p) cursorAt(p); }
+function hover(e) { if (!S.on || S.tool === 'view' || (S.tool === 'place' && S.brush.count === 1) || S.tool === 'road' || S.tool === 'pieces' || S.tool === 'walls' || S.tool === 'streets') { if (S.cursor) S.cursor.visible = false; return; } const p = pickGround(e.clientX, e.clientY); if (p) cursorAt(p); }
 // ---------- brushes ----------
 function dab(p) {
   const E = edits(), r = S.size;
@@ -340,7 +345,7 @@ function assetDab(p, exact) {
     const vary = 1 + (Math.random() * 2 - 1) * 0.35 * B.variety, sp = B.spacing;
     let o = null;
     if (cat === 'house') {
-      const T = BUILDINGS[kind], q = tr.nearest(x, z), f = q ? Math.round(Math.atan2(tr.xs[q.i] - x, tr.zs[q.i] - z) * 180 / Math.PI) : 0;
+      const T = BUILDINGS[kind], f = faceTo(x, z);
       o = { type: kind, x, z, f }; if (onRoad(o)) continue;
       if ((E.houses || []).some(h => Math.hypot(h.x - x, h.z - z) < (Math.max(T.w, T.d) + Math.max(BUILDINGS[h.type].w, BUILDINGS[h.type].d)) / 2 + sp * 0.5)) continue;
       (E.houses || (E.houses = [])).push(o);
@@ -541,4 +546,45 @@ function stampTown(p) {
   (E.kit || (E.kit = [])).push(...T.kit); (E.houses || (E.houses = [])).push(...T.houses); (E.pieces || (E.pieces = [])).push(...T.pieces);
   S.stroke.n += T.kit.length + T.houses.length; S.lastKind = 'stamp:walledtown';
   status(`A walled town: ${T.kit.filter(o => o.k === 'castlewall').length * 5} m of wall, ${T.kit.filter(o => o.k === 'tower').length} towers, ${T.houses.length} buildings${T.pieces.length ? ' and gates over the road' : ''}.`);
+}
+// ---------- streets (core/track/edits.js STREETS) ----------
+const segPt = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], L = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L)); return [a[0] + dx * t, a[1] + dz * t]; };
+/** Which way a building at (x, z) should face: towards the nearer of the race road and the Studio's streets (degrees). */
+function faceTo(x, z) {
+  const tr = G.world.tr, q = tr.nearest(x, z); let best = q ? [tr.xs[q.i], tr.zs[q.i]] : null, bd = q ? q.d : Infinity;
+  for (const S2 of edits().streets || []) for (let i = 1; i < S2.pts.length; i++) { const p = segPt(x, z, S2.pts[i - 1], S2.pts[i]), d = Math.hypot(p[0] - x, p[1] - z); if (d < bd) { bd = d; best = p; } }
+  return best ? Math.round(Math.atan2(best[0] - x, best[1] - z) * 180 / Math.PI) : 0;
+}
+function streetHit(p) { const L = edits().streets || []; for (let j = L.length - 1; j >= 0; j--) { const w = (L[j].w || STREETS[L[j].k].w) / 2 + 1.5; for (let i = 1; i < L[j].pts.length; i++) { const q = segPt(p.x, p.z, L[j].pts[i - 1], L[j].pts[i]); if (Math.hypot(q[0] - p.x, q[1] - p.z) < w) return j; } } return -1; }
+/** A line drawn on the ground as a street: its points every ~4 m. */
+function buildStreet(raw) {
+  if (raw.length < 2) return; const pts = [raw[0]];
+  for (const q of raw) { const L = pts[pts.length - 1]; if (Math.hypot(q[0] - L[0], q[1] - L[1]) >= 4) pts.push(q); }
+  const end = raw[raw.length - 1], L = pts[pts.length - 1]; if (Math.hypot(end[0] - L[0], end[1] - L[1]) > 1) pts.push(end);
+  if (pts.length < 2) { status('Draw it a little longer.', true); return; }
+  remember(); const E = edits(); (E.streets || (E.streets = [])).push({ k: S.streetKind, pts: pts.map(([x, z]) => [Math.round(x * 10) / 10, Math.round(z * 10) / 10]) }); S.ssel = E.streets.length - 1;
+  let len = 0; for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  status(`A ${STREETS[S.streetKind].name.toLowerCase()}, ${Math.round(len)} m. Tap it to line it with houses.`); changed();
+}
+/** Houses both sides of the picked street, facing it, every ~15 m (the theme's mix, or a village). */
+function lineStreet() {
+  const E = edits(), st = (E.streets || [])[S.ssel]; if (!st) return;
+  const T = THEMES[E.theme], mix = MIXES[(T && T.mixes.find(m => ['castle', 'village', 'town'].includes(m))) || 'village'].mix, types = Object.entries(mix).flatMap(([k, w]) => BUILDINGS[k] ? Array(w).fill(k) : []);
+  remember(); const w = (st.w || STREETS[st.k].w) / 2; let n = 0, next = 6, run = 0;   // a house every 15 m along it (each side)
+  for (let i = 1; i < st.pts.length; i++) {
+    const [ax, az] = st.pts[i - 1], [bx, bz] = st.pts[i], L = Math.hypot(bx - ax, bz - az) || 1e-6, tx = (bx - ax) / L, tz = (bz - az) / L;
+    for (; next < run + L; next += 15) {
+      const s = next - run;
+      for (const sd of [-1, 1]) {
+        const type = types[Math.floor(Math.random() * types.length)], B = BUILDINGS[type], off = w + B.d / 2 + 2.5, x = ax + tx * s - tz * sd * off, z = az + tz * s + tx * sd * off;
+        const o = { type, x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, f: Math.round(Math.atan2(-(-tz * sd), -(tx * sd)) * 180 / Math.PI) };
+        const onStreet = st.pts.some((q, k) => k > 0 && (pq => Math.hypot(pq[0] - o.x, pq[1] - o.z))(segPt(o.x, o.z, st.pts[k - 1], q)) < w + Math.min(B.w, B.d) / 2 + 1);   // (the inside of a bend)
+        if (onStreet || onRoad(o) || (E.houses || []).some(h => Math.hypot(h.x - o.x, h.z - o.z) < (Math.max(B.w, B.d) + Math.max(BUILDINGS[h.type].w, BUILDINGS[h.type].d)) / 2)) continue;
+        (E.houses || (E.houses = [])).push(o); mark(o); n++;
+      }
+    }
+    run += L;
+  }
+  if (!n) { S.undo.pop(); status('No room along it for houses (the road, or houses already there).', true); return; }
+  status(`${n} houses along it, facing the street.`); changed();
 }

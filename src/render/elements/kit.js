@@ -94,7 +94,7 @@ function addGround(group, tr, terr, K, stage) {
   }
   for (const g of K.ground) {
     const cs = Math.cos(g.yaw), sn = Math.sin(g.yaw), nu = Math.max(1, Math.round(g.d / 2)), nv = Math.max(1, Math.round(g.w / 2));
-    const up = g.kind === 'garden' ? 0.07 : 0.12, colr = g.kind === 'lane' ? 0x55585E : g.kind === 'garden' ? lawn(g) : g.color;
+    const up = g.kind === 'garden' ? 0.07 : g.kind === 'street' ? 0.1 : 0.12, colr = g.kind === 'lane' ? 0x55585E : g.kind === 'garden' ? lawn(g) : g.color;   // (street: the Track Studio's, core/track/edits.js)
     // lanes: in the frame where w runs along the lane; gardens and drives the same (w along their yaw)
     const P = (a, b) => { const lx = (a - 0.5) * g.d, lz = (b - 0.5) * g.w, x = g.x + lx * cs + lz * sn, z = g.z - lx * sn + lz * cs; return [x, yAt(x, z, up), z]; };
     for (let a = 0; a < nu; a++) for (let b = 0; b < nv; b++) quad([P(a / nu, b / nv), P(a / nu, (b + 1) / nv), P((a + 1) / nu, (b + 1) / nv), P((a + 1) / nu, b / nv)], colr);

@@ -113,3 +113,14 @@ describe('themes', () => {
     expect(() => buildTerrain(buildTrack(JSON.parse(JSON.stringify(st))), st)).not.toThrow();
   });
 });
+describe('studio streets', () => {
+  it('a street clears the trees off it, lies on the ground and drives like tarmac', async () => {
+    const M = await import('../src/core/index.js');
+    const st = STAGES[18], tr0 = buildTrack(st), i = 300, x = tr0.xs[i] + tr0.rx[i] * 25, z = tr0.zs[i] + tr0.rz[i] * 25;
+    const s2 = copy(st, { streets: [{ k: 'street', pts: [[x, z], [x + 30, z + 5], [x + 60, z]] }], props: [{ k: 'pine', x: x + 30, z: z + 5 }] });
+    const tr = buildTrack(s2), t = buildTerrain(tr, s2);
+    expect(M.streetAt(tr.streets, x + 30, z + 5)).toBe('tarmac'); expect(M.streetAt(tr.streets, x + 30, z + 30)).toBe(null);
+    expect(t.obst.items.some(o => Math.hypot(o.x - x - 30, o.z - z - 5) < 3)).toBe(false);
+    expect(t.kit.ground.filter(g => g.kind === 'street').length).toBe(2);
+  });
+});
