@@ -136,15 +136,18 @@ steelworks; an airport (runway sprint, through a hangar); rooftops; a haunted vi
 
 A loop that's quick to go round, so we can try ideas instead of arguing about them:
 
-1. **Look.** Open the track in the **Track viewer** (menu, or "View in 3D" from the Track editor and the Terrain
-   builder): fly round it, fly the lap at race speed, or let the cars race it and ride along. Its report card sits
-   beside it: lap time, flat-out share, corners, the numbered moments, and the pillars it meets or misses.
-2. **Say.** Tap Note and drop notes on the spots that need changing ("a jump here", "this straight is dull", "a
-   shortcut through this barn"); they land with Claude with a picture of the view. Bigger ideas go on the Sketch pad;
-   a whole new layout in the Track editor or the Terrain builder (Send to Claude).
+1. **Look.** Open the track in the **Track viewer**: fly round it, fly the lap at race speed, or let the cars race it
+   and ride along. Its report card sits beside it: lap time, flat-out share, corners, the numbered moments, and the
+   pillars it meets or misses.
+2. **Say or do.** Tap Note and drop notes on the spots that need changing ("a jump here", "this straight is dull", "a
+   shortcut through this barn"); they land with Claude with a picture of the view. Or press **Edit** and change it
+   yourself in the **Track Studio** (raise and lower the land, drag the road, drop set pieces, houses and trees), or
+   start from **New track**; Send to Claude shares the draft as a version. Bigger ideas go on the Sketch pad.
 3. **Change.** Claude answers each note, changes the track, and checks the card (`npm run report -- <stage>`): the
-   misses it was asked to fix should turn to passes.
-4. **Look again.** The published game has the new version; the notes turn green with Claude's reply.
+   misses it was asked to fix should turn to passes. A shared draft gets Claude's own version back, with what changed
+   and why, as a banner in the Studio to take or leave (History keeps every version).
+4. **Look again.** The published game has the new version; the notes turn green with Claude's reply. A draft you're
+   both happy with becomes a real stage.
 
 The card measures what can be measured. Whether a track is a *place*, whether it reads from above and whether it's
 fun are for us to judge in the viewer and by driving it.
@@ -163,7 +166,7 @@ Every new track gets a page in this document, filled in and agreed before we bui
   laps.
 - **Surfaces and weather:** tarmac, dirt, mud, snow; any rain or night version.
 - **Cars it favours:** which classes and why; where it sits in career tiers.
-- **Sketch:** a plan drawn in the Track editor or the Sketch pad (they land with Claude), or described.
+- **Sketch:** a draft in the Track Studio or a drawing on the Sketch pad (they land with Claude), or described.
 - **Report card target:** the pillars it must pass (`npm run report`), and the lap time it aims for.
 - **New things to build:** elements, scenery, sounds.
 

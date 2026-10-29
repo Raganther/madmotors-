@@ -71,3 +71,30 @@ export function editHouses(tr, stage) {
       wall: pick(T.walls), roofC: pick(T.roofC), roof: T.roof, placed: true });
   }
 }
+/** What changed from stage a to stage b (two versions of a draft), in a few words each: [string]. */
+export function editsDiff(a, b) {
+  const A = (a && a.edits) || {}, B = (b && b.edits) || {}, out = [], n = (k, x) => `${x} ${k}${x === 1 ? '' : 's'}`;
+  const da = (A.sculpt && A.sculpt.d) || {}, db = (B.sculpt && B.sculpt.d) || {};
+  let cells = 0; for (const k of new Set([...Object.keys(da), ...Object.keys(db)])) if (Math.abs((da[k] || 0) - (db[k] || 0)) > 0.05) cells++;
+  if (cells) out.push(`reshaped the land (${Math.round(cells * 16)} m²)`);
+  const pa = A.path && A.path.pts, pb = B.path && B.path.pts;
+  if (pb && !pa) out.push(`redrew the road (${n('point', pb.length)})`);
+  else if (pa && !pb) out.push('put the road back as it was');
+  else if (pa && pb) {
+    const moved = pb.filter(q => !pa.some(r => Math.hypot(r[0] - q[0], r[1] - q[1]) < 1 && (r[2] || 0) === (q[2] || 0))).length, d = pb.length - pa.length;
+    if (d > 0) out.push(`added ${n('road point', d)}`); if (d < 0) out.push(`took out ${n('road point', -d)}`);
+    if (moved > Math.max(0, d)) out.push(`moved or lifted ${n('road point', moved - Math.max(0, d))}`);
+  }
+  const list = (L, key) => (L || []).map(key), diff = (la, lb) => [lb.filter(x => !la.includes(x)), la.filter(x => !lb.includes(x))];
+  const [pAdd, pDel] = diff(list(A.pieces, q => `${q.k}@${q.s}/${q.len || ''}`), list(B.pieces, q => `${q.k}@${q.s}/${q.len || ''}`));
+  if (pAdd.length) out.push(`set pieces in or changed: ${[...new Set(pAdd.map(x => x.split('@')[0]))].join(', ')}`); if (pDel.length > pAdd.length) out.push(`took out ${n('set piece', pDel.length - pAdd.length)}`);
+  for (const [key, word] of [['houses', 'building'], ['props', 'tree or rock']]) {
+    const [add, del] = diff(list(A[key], o => JSON.stringify(o)), list(B[key], o => JSON.stringify(o)));
+    if (add.length) out.push(`placed or moved ${n(word, add.length)}`.replace('tree or rocks', 'trees and rocks')); if (del.length > add.length) out.push(`took away ${n(word, del.length - add.length)}`.replace('tree or rocks', 'trees and rocks'));
+  }
+  if ((B.clears || []).length > (A.clears || []).length) out.push('cleared scenery');
+  const rest = s => JSON.stringify({ ...s, edits: undefined, name: undefined });
+  if (a && b && rest(a) !== rest(b)) out.push('changed the track itself (its sections, look or options)');
+  if (a && b && a.name !== b.name) out.push(`renamed it "${String(b.name).replace(/^✎ /, '')}"`);
+  return out;
+}

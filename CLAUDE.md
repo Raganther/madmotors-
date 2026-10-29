@@ -9,7 +9,7 @@ new or reworked track, and a track's page there is agreed with the user before i
 - `npm run check`: lint + tests (golden included) + a production build. Run before every commit; must pass.
 - `npm run e2e`: production build + headless browser run of every stage (no console errors allowed).
 - `npm run layout -- <n>` / `npm run terrain -- <n>`: inspect a stage's road plan / terrain before playing it (`sandbox:<name>` works too).
-- `npm run report [-- <n>]`: track report cards (core/track/report.js): every stage ranked against the design pillars, or one stage's moments. The Track Viewer (`?viewer=<n>`, menu Track viewer) shows the same card beside the stage in 3D; check a new or reworked track's card before calling it done.
+- `npm run report [-- <n>]`: track report cards (core/track/report.js): every stage ranked against the design pillars, or one stage's moments. The Track Viewer (`?viewer=<n>`, menu Track viewer) shows the same card beside the stage in 3D, and its Edit mode is the Track Studio; check a new or reworked track's card before calling it done.
 - The Workshop (`?workshop`, `?workshop=crash|destruct|weapons|kit|derby|cars|elements`, `npm run shot -- workshop:<tab>`): try cars, crashes, weapons and track elements without a race around them. Each new system gets a tab there (README "The Workshop").
 - `npm run sandbox -- <name|all>`: AI laps of an element sandbox, with what went wrong where. Browser: `?sandbox=<name>&debug`; backquote toggles the debug overlay.
 - `npm run shot -- <n|sandbox:name|garage> [metres ...] [--vehicle id] [--debug]`: screenshots from the player's seat (AI drives to each distance) → tools/out/. Look at them.
@@ -34,14 +34,18 @@ start line, lat, x/y/z, text, camera, status, and `shot`, an asset id: `Artifact
 their view). Go to the spot with `npm run shot -- "<stage>" <metres>` (`camera: 'viewer'` means it was dropped in the Track Viewer: x/y/z is the spot). Answer each by `update` on `notes/<id>` with
 `{ reply: "...", status: "done" }`: the reply shows in the game's Notes list and the pin turns green.
 
-The menu's Track editor lets the user lay out a circuit (an existing gorge stage or a blank oval) and "Send to Claude":
-those land in collection `tracks` (name, base, closes, message, `stage` = the stage object with `segs`, `comments` =
-pins the user dropped on the plan `{ n, text, sec, metres, off, a, b }`, `notes` = per-section notes `{ sec, text }`;
-sections are numbered from 1). The user can also draw a track freehand (base "drawn"): it's their design, so follow
-the shape and read every comment and note as the brief for that spot. The Terrain builder sends base "terrain": a painted
-landscape (`stage.ground`, core/track/ground.js) with a road on it; keep both and build on top. Turn one into a real stage with `/new-stage`
-(its segs are already frozen metres; keep them, add the look and the set pieces the comments ask for), then `update`
-`tracks/<id>` with `{ reply, status: "done" }`.
+The Track viewer's **Track Studio** (Edit, New track) is where the user edits tracks in 3D: drafts copied from a stage
+or generated, with `stage.edits` (sculpt, path, pieces, props, clears, houses: README "Track Studio"). Send to Claude
+puts a version in the artifact's db: `ArtifactData` `list` collection `studio` (one doc per draft: name, base = the
+stage it came from, v, by, note = their message, changes, status "sent"), and `get` `studioVersions/<id>-<v>` for
+the stage itself (`stage`, or `asset`: `Artifact` `read` with `path` = that id). Read the note as the brief, look at
+it (`node tools/scene.mjs` or the viewer on a stage file), change the stage (its edits, or anything else), and answer
+with the next version: `set` `studioVersions/<id>-<v+1>` = { draft, v, by: "claude", at, note: what you did and why,
+changes: [short phrases], stage }, then `update` `studio/<id>` with { v, by: "claude", at, note, changes, status:
+"claude" }. It shows in the game as a banner to take. To make it a real stage, `/new-stage` with the draft's stage
+(edits and all) as its file. Older sends from the retired Track editor and Terrain builder are in collection `tracks`
+(base "drawn" / "terrain" / an existing stage: `segs`, `ground`, `comments`, `notes`); answer those with
+`update` `tracks/<id>` `{ reply, status: "done" }`.
 
 The menu's Sketch pad is the user drawing an idea for you (a track, a set piece, anything; not tied to an existing
 stage or size): collection `sketches` (title, message, `shot` = the picture, a PNG asset id: `Artifact` `read` with

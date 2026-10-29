@@ -43,7 +43,7 @@ G.wearOpt = null;       // track wear options for the next race (menu: Track wea
 G.weapons = true;       // missiles and door bashing (menu: Weapons on/off; core/features/weapons.js)
 G.rivals = 3;           // how many AI cars a Race has (menu; data/cars.js MAX_RIVALS). Showdown always has three
 G.camDir = null;        // where the camera looks from, [x, y, z] (set each frame by the camera)
-G.editDrive = false; G.forceBuild = false; G.onEditorBack = null;   // the track editor's test drive (ui/editor.js)
+G.editDrive = false; G.forceBuild = false; G.onEditorBack = null;   // the Track Studio's test drive (ui/studio.js): leaving it comes back there
 G.viewCam = null;      // the Track Viewer's camera, { pos, look, fov, shadow } (ui/viewer.js; G.state 'viewing')
 G.noteMode = false;     // placing notes on the track for Claude (ui/notes.js); the race is frozen meanwhile
 G.persp = false; G.perspWas = false;   // a perspective view (Behind, Follow, Heli, Bonnet, TV) is drawing this frame

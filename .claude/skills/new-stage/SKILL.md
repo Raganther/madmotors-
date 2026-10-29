@@ -26,6 +26,8 @@ splash, a double jump, a muddy S-bend. The rules it follows:
 - Rookie rounds can be gentle, but still need a beat or two per lap (a hump, a splash, a bridge).
 
 ## 1. Design (in chat, briefly, before code)
+- From a Track Studio draft the user shared (db `studio` / `studioVersions`, CLAUDE.md): its stage builds as it is, `edits` and all
+  (core/track/edits.js); keep the edits in the stage file (they're data) rather than re-deriving them by hand.
 - One sentence: what makes it different from the stages we have (`npm run layout` lists them; README table).
 - The run as beats: start, 4-8 set pieces, finish. For each beat name the **existing element** that does it
   (README "Track elements" table: jump, kick, yump, whoops, mud / `mud: 'water'`, bridge, viaduct, tunnel, town,

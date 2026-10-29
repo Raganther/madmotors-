@@ -1,4 +1,5 @@
-// Track editing helpers (the in-game track editor, ui/editor.js): lay a gorge circuit's sections out cheaply, without
+// Track editing helpers (the generated laps of core/track/ground.js autoRoad, which the Track Studio's New track uses):
+// lay a gorge circuit's sections out cheaply, without
 // building the whole track, and close the loop by stretching straights. Sections are the stage format:
 // ['s', length, endHeight, tags] and ['a', radius, degrees (+ = left), endHeight, tags], in screen axes (a = right,
 // b = up-screen) starting at (0, 0) heading `heading`. A straight's length may be { toA } / { toB } (run on until that

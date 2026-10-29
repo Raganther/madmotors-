@@ -297,7 +297,7 @@ export function startRace(idx) {
     $('reset-btn').hidden = false; race = newRace(); clearSkids(); clearTrails(); clearDebris(); clearPieces(); clearSparks(); G.shake = 0; G.slowmo = 0; G.tally = G.career ? newTally(race.cars.length) : null; G.tallyFmt = G.career ? careerFormat() : null;
     G.state = 'countdown'; G.countdown = 3.2; G.lastBeep = 4; G.goTimer = 0; resultsShown = false; newBest = false; G.standingsKey = ''; G.sdKey = ''; G.sdTick = 0; $('edge').className = '';
     $('menu').hidden = true; $('garage').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('hud').hidden = false; $('touch').hidden = !isTouch;
-    $('stage-name').textContent = G.editDrive ? `Test drive: ${STAGES[idx].name}` : `Stage ${idx + 1}: ${STAGES[idx].name}`; $('quit-btn').textContent = G.editDrive ? 'Back to editor' : G.career ? 'Career menu' : 'Choose stage';
+    $('stage-name').textContent = G.editDrive ? `Test drive: ${STAGES[idx].name}` : `Stage ${idx + 1}: ${STAGES[idx].name}`; $('quit-btn').textContent = G.editDrive ? 'Back to the Studio' : G.career ? 'Career menu' : 'Choose stage';
     racesStarted++; G.hintTimer = racesStarted <= 2 ? 7 : 0;
     $('hint').textContent = isTouch ? G.steer === 'wheel' ? 'Point the wheel where to go. Slide Gas down to drift, up to fire' : 'Slide Gas down to drift, up to fire' : 'Hold Space through a corner to drift, then let go for a boost';
     updateCamera(0, true);
@@ -305,7 +305,7 @@ export function startRace(idx) {
 }
 export function toMenu() {
   const cr = G.career; G.league = null; G.career = null; G.tally = null; G.tallyFmt = null;
-  if (G.editDrive && G.onEditorBack) { G.onEditorBack(); }   // leaving a test drive goes back to the track editor
+  if (G.editDrive && G.onEditorBack) { G.onEditorBack(); }   // leaving a test drive goes back to the Track Studio
   G.state = 'menu'; $('hud').hidden = true; $('results').hidden = true; $('pause').hidden = true; $('touch').hidden = true; $('menu').hidden = false; $('countdown').hidden = true;
   if (G.onMenuScreen) G.onMenuScreen(cr || G.workshop ? 'main' : 'quick');   // back to Quick Race, or the main menu under a career or the Workshop (ui/menu.js)
   race = newRace(); clearSkids(); clearTrails(); AudioSys.update(null, 'off'); AudioSys.musicPause(false); AudioSys.music('menu'); updateCamera(0, true); $('race-btn').focus();

@@ -16,7 +16,7 @@ const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error' && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push(m.text()); });
 // the menu has screens (ui/menu.js: title, main, quick): a click on a menu button first brings up the screen it's on
-const SCREEN_OF = { 'veh-btn': 'quick', 'race-btn': 'quick', 'mode-btn': 'quick', 'league-btn': 'main', 'career-btn': 'main', 'quick-btn': 'main', 'editor-btn': 'main', 'terrain-btn': 'main', 'viewer-btn': 'main', 'sketch-btn': 'main', 'notes-btn': 'main', 'lab-btn': 'main', 'mute-btn': 'main', 'wear-btn': 'main' };
+const SCREEN_OF = { 'veh-btn': 'quick', 'race-btn': 'quick', 'mode-btn': 'quick', 'league-btn': 'main', 'career-btn': 'main', 'quick-btn': 'main', 'viewer-btn': 'main', 'sketch-btn': 'main', 'notes-btn': 'main', 'lab-btn': 'main', 'mute-btn': 'main', 'wear-btn': 'main' };
 const click0 = page.click.bind(page);
 page.click = async (sel, o) => {
   const m = /^[#.]([\w-]+)/.exec(sel), want = m && SCREEN_OF[m[1]];
@@ -277,47 +277,31 @@ await page.evaluate(() => window.__dr.flow.setMode('race'));
   console.log(`notes: saved "${got.note && got.note.text}" at ${got.note && got.note.metres} m; after Done: ${after[0]}`);
   await page.evaluate(() => { localStorage.removeItem('downhill-rush-notes'); window.__dr.flow.toMenu(); });
 }
-// track editor: draw a lap freehand on a blank plan (it closes by itself), pin a comment, test drive it, come back
+// Track Studio (ui/studio.js): Edit a copy in the Track viewer, raise the land, place a tree (and undo it), test drive
+// and come back, then New track makes a generated draft with set pieces
 {
-  await page.evaluate(() => localStorage.removeItem('downhill-rush-editor'));
-  await page.click('#editor-btn'); await page.selectOption('#ed-base', 'draw');
-  const box = await page.locator('#ed-map').boundingBox(), cx = box.x + box.width / 2, cy = box.y + box.height / 2, R = Math.min(box.width, box.height) * 0.35;
-  await page.mouse.move(cx + R * 1.3, cy); await page.mouse.down();
-  for (let i = 1; i <= 60; i++) { const t = i / 60 * Math.PI * 2 * 0.96; await page.mouse.move(cx + Math.cos(t) * R * 1.3, cy + Math.sin(t) * R); }
-  await page.mouse.up();
-  const drawn = await page.textContent('#ed-status');
-  await page.click('.ed-tools [data-tool="note"]'); await page.mouse.click(cx, cy); await page.fill('#ed-pintext', 'e2e: a comment'); await page.click('#ed-pinsave');
-  const pins = await page.locator('#ed-pins [data-pin]').count();
-  await page.click('#ed-drive'); const drove = await page.waitForFunction(() => window.__dr.G.editDrive && window.__dr.race, null, { timeout: 30000 }).then(() => true, () => false);
-  await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; d.step(2); d.flow.toMenu(); });
-  const back = await page.evaluate(() => !document.getElementById('editor').hidden);
-  if (!/closes: a lap/.test(drawn) || pins !== 1 || !drove || !back) errors.push('editor drawing: ' + JSON.stringify({ drawn, pins, drove, back }));
-  console.log(`editor: ${drawn} ${pins} comment; test drive ${drove ? 'ran' : 'FAILED'}; back in the editor ${back}`);
-  await page.click('#ed-exit'); await page.evaluate(() => localStorage.removeItem('downhill-rush-editor'));
-}
-// terrain builder: raise a hill, paint a lap across the land (it closes by itself), test drive it on that land, come back
-{
-  await page.evaluate(() => localStorage.removeItem('downhill-rush-terrain'));
-  await page.click('#terrain-btn'); await page.waitForTimeout(500);
-  const box = await page.locator('#tb-view').boundingBox(), cx = box.x + box.width / 2, cy = box.y + box.height / 2;
-  await page.click('#tb [data-tool="raise"]'); await page.mouse.move(cx, cy - 40); await page.mouse.down(); await page.mouse.move(cx + 20, cy - 30, { steps: 4 }); await page.waitForTimeout(2500); await page.mouse.up();
-  const raised = await page.textContent('#tb-status');
-  const rx = Math.min(box.width * 0.22, 260), ry = box.height * 0.2;   // a lap round the middle of the view, whatever its size
-  await page.click('#tb [data-tool="road"]'); await page.mouse.move(cx + rx, cy); await page.mouse.down();
-  for (let i = 1; i <= 60; i++) { const t = i / 60 * Math.PI * 2; await page.mouse.move(cx + Math.cos(t) * rx, cy + Math.sin(t) * ry); }
-  await page.mouse.up();
-  const laid = await page.textContent('#tb-status');
-  await page.click('#tb-drive'); const drove = await page.waitForFunction(() => window.__dr.G.editDrive && window.__dr.race && window.__dr.G.world.stage.ground, null, { timeout: 30000 }).then(() => true, () => false);
-  await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; d.step(2); d.flow.toMenu(); });
-  const back = await page.evaluate(() => !document.getElementById('tb').hidden);
-  if (/to 0 m/.test(raised) || !/closes: a lap/.test(laid) || !drove || !back) errors.push('terrain builder: ' + JSON.stringify({ raised, laid, drove, back }));
-  console.log(`terrain builder: ${raised.split(' ·')[0]}; ${laid}; test drive ${drove ? 'ran' : 'FAILED'}; back in the builder ${back}`);
-  // Generate land and Generate road, then a few keys to move about (no errors, the view moves)
-  await page.selectOption('#tb-landstyle', 'valley'); await page.click('#tb-genland'); await page.click('#tb-genroad'); const gen = await page.textContent('#tb-status');
-  await page.mouse.click(cx, cy); await page.click('#tb [data-tool="view"]'); const shot0 = await page.screenshot(); await page.keyboard.down('KeyD'); await page.waitForTimeout(400); await page.keyboard.up('KeyD'); const moved = !shot0.equals(await page.screenshot());
-  if (!/Laid a \d+ m lap/.test(gen) || !moved) errors.push('terrain generate: ' + JSON.stringify({ gen, moved }));
-  console.log(`terrain generate: ${gen}; keys move the view ${moved}`);
-  await page.click('#tb-exit'); await page.evaluate(() => localStorage.removeItem('downhill-rush-terrain'));
+  await page.evaluate(() => localStorage.removeItem('downhill-rush-studio'));
+  const idle = () => page.waitForFunction(() => window.__dr.G.state === 'viewing' && document.getElementById('loading').hidden, null, { timeout: 120000 });
+  await page.click('#viewer-btn'); await idle(); await page.click('#vw-card-btn');
+  await page.click('#vw-edit'); await page.waitForTimeout(600); await idle();
+  const draft = await page.evaluate(() => window.__dr.G.world.stage.name);
+  const vp = page.viewportSize(), cx = vp.width / 2, cy = vp.height * 0.6;
+  await page.click('[data-st=raise]'); await page.mouse.move(cx, cy); await page.mouse.down(); await page.waitForTimeout(1200); await page.mouse.up(); await page.waitForTimeout(900); await idle();
+  const cells = await page.evaluate(() => Object.keys(((window.__dr.G.world.stage.edits || {}).sculpt || {}).d || {}).length);
+  await page.click('[data-st=place]'); await page.click('[data-kind=pine]'); await page.mouse.click(cx + 120, cy - 60); await page.waitForTimeout(900); await idle();
+  const props = await page.evaluate(() => (window.__dr.G.world.stage.edits.props || []).length);
+  await page.click('#st-undo'); await page.waitForTimeout(500); await idle();
+  const undone = await page.evaluate(() => (window.__dr.G.world.stage.edits.props || []).length);
+  await page.click('#vw-drive'); const drove = await page.waitForFunction(() => window.__dr.G.editDrive && window.__dr.G.state !== 'viewing' && window.__dr.race, null, { timeout: 60000 }).then(() => true, () => false);
+  await page.evaluate(() => { const d = window.__dr; d.G.state = 'racing'; d.race.phase = 'racing'; d.race.autoPlayer = true; d.step(2); d.flow.toMenu(); }); await idle();
+  const back = await page.evaluate(() => !document.getElementById('st').hidden && window.__dr.G.world.stage.name.startsWith('\u270E'));
+  await page.click('#vw-new'); await page.selectOption('#st-gen-style', 'valley'); await page.click('#st-gen-go');
+  await page.waitForFunction(() => window.__dr.G.world.stage.name.startsWith('\u270E New track'), null, { timeout: 120000 }); await idle();
+  const gen = await page.evaluate(() => ({ pieces: window.__dr.G.world.stage.edits.pieces.length, score: document.querySelector('.vw-score') && document.querySelector('.vw-score').textContent }));
+  await page.screenshot({ path: path.join(outDir, 'studio.png') });
+  if (!draft.startsWith('\u270E') || cells < 5 || props !== 1 || undone !== 0 || !drove || !back || gen.pieces < 1) errors.push('studio: ' + JSON.stringify({ draft, cells, props, undone, drove, back, gen }));
+  console.log(`studio: "${draft}", raised ${cells} cells, placed ${props} tree, undone to ${undone}; test drive ${drove ? 'ran' : 'FAILED'}, back in the studio ${back}; New track: ${gen.pieces} set pieces, score ${gen.score}`);
+  await page.click('#vw-exit'); await page.evaluate(() => localStorage.removeItem('downhill-rush-studio'));
 }
 // sketch pad: a pen stroke and a box, undo and redo, send it (no database here: kept on this device), reopen it
 {

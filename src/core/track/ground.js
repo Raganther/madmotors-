@@ -1,7 +1,7 @@
 import { closeLoop, fromStroke, sketch, endH } from './editing.js';
 import { mulberry32 } from '../math.js';
 
-// ---------- painted ground (the Terrain builder, ui/terrain.js) ----------
+// ---------- painted ground (once the Terrain builder's; the Track Studio's New track makes them now) ----------
 // A stage can carry its own landscape: `ground` = { a0, b0, cell, cols, rows, h } is a grid of heights in metres over
 // the plan (a = right, b = up-screen, the sections' axes; a0/b0 the corner of the grid, `cell` metres apart, h row by
 // row along b). With it the ground away from the road is that landscape instead of the generated hills, and the

@@ -4,7 +4,7 @@ import { STAGES } from '../data/stages/index.js';
 import { BUILDINGS, BUILDING_TYPES } from '../data/structures.js';
 import { HALF } from '../core/constants.js';
 import { corners } from '../core/elements/structures.js';
-import { PROPS, sculptAt, sculptDab } from '../core/track/edits.js';
+import { PROPS, editsDiff, sculptAt, sculptDab } from '../core/track/edits.js';
 import { pathFromTrack, samplePath } from '../core/track/path.js';
 import { PIECES } from '../core/track/pieces.js';
 import { LOOKS, generateStage } from '../core/track/generate.js';
@@ -26,6 +26,8 @@ import { openViewer, setEditHooks, viewerState } from './viewer.js';
 //                                     (a kicker, a splash, wrecking balls, a tunnel...), tap one to size it, drag to move
 //   New track                         Generate: a landscape, a lap on it and set pieces to meet the pillars
 //                                     (core/track/generate.js), as a new draft to edit
+// Send to Claude shares the draft as a version (the `studio` collection, below); Claude's own versions come back as a
+// banner (Take it), History lists every version.
 //   Road                              the road's line as yellow points (core/track/path.js): drag one to move the road,
 //                                     tap the road between them for another, tap one to lift or sink the road there
 // Each change is data on the draft (stage.edits: core/track/edits.js), so the stage is rebuilt from it a moment after
@@ -38,7 +40,7 @@ const HINT = { view: 'Move the view: drag, two fingers, wheel', raise: 'Drag to 
   erase: 'Drag over trees, bushes and rocks to take them away',
   pieces: 'Pick a set piece, then tap the road to put it there; tap one to make it longer or shorter, drag it along the road to move it',
   road: 'Drag a yellow point to move the road; tap the road between points to add one; tap a point to raise, lower or delete it' };
-const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, path: null, handles: null, pt: -1, piece: 'yump', psel: -1, pdrag: null, pmarks: null };
+const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, remote: new Map(), path: null, handles: null, pt: -1, piece: 'yump', psel: -1, pdrag: null, pmarks: null };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const clone = o => JSON.parse(JSON.stringify(o));
 const stage = () => S.draft && S.draft.stage, edits = () => { const st = stage(); return st.edits || (st.edits = {}); };
@@ -74,7 +76,13 @@ export function initStudio() {
     else if (e.code === 'BracketLeft') { S.size = Math.max(4, S.size / 1.25); ui(); } else if (e.code === 'BracketRight') { S.size = Math.min(80, S.size * 1.25); ui(); }
     else if ((e.code === 'Delete' || e.code === 'Backspace') && S.sel) delSel();
   });
-  if (window.claude && window.claude.use) window.claude.use('db').then(d => { S.db = d; });
+  if (window.claude && window.claude.use) window.claude.use('db').then(d => {
+    if (!d) return; S.db = d;
+    d.collection('studio').onSnapshot(q => { S.remote = new Map(q.docs.map(x => [x.id, x.data()])); syncRemote(); }, () => { });
+  });
+  $('st-take').addEventListener('click', takeClaude); $('st-leave').addEventListener('click', () => { $('st-claude').hidden = true; });
+  $('st-hist').addEventListener('click', history);
+  $('st-history').addEventListener('click', e => { const b = e.target.closest('[data-ver]'); if (b) openVersion(+b.dataset.ver); });
   setEditHooks({ want, down, move, up, cancel, hover, opened, closed, options, pick });
 }
 // ---------- drafts ----------
@@ -108,28 +116,82 @@ function delDraft() {
   const base = STAGES.findIndex(s => s.name === S.draft.base);
   S.drafts = S.drafts.filter(d => d !== S.draft); saveDrafts(); S.draft = null; leave(); openViewer(Math.max(0, base));
 }
+// ---------- sharing with Claude: the `studio` collection ----------
+// studio/<draft id> = { name, base, v, by: 'you' | 'claude', at, note, changes, status } is the draft's latest version;
+// studioVersions/<id>-<v> = { draft, v, by, at, note, changes, stage | asset } holds each version whole (a stage over
+// ~200 KB goes up as a JSON asset). Send writes the next version; Claude answers with one of its own (by: 'claude'),
+// which shows here as a banner to take or leave; History lists them all. Drafts made on another device turn up too.
+const big = st => JSON.stringify(st).length > 200000;
 async function send() {
-  if (!S.draft) return; const msg = $('st-msg').value.trim();
-  const doc = { name: S.draft.name.replace(/^✎ /, ''), base: 'studio', from: S.draft.base, stage: S.draft.stage, message: msg, at: new Date().toISOString(), status: 'sent' };
-  if (!S.db) { const txt = JSON.stringify(doc); (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => status('Not connected to the shared database here: the track is copied, paste it to Claude.'), () => status('Not connected here: use the published game to send it.', true)); return; }
-  try { await S.db.collection('tracks').doc('t' + Date.now().toString(36)).set(doc); $('st-msg').value = ''; $('st-sendform').hidden = true; status('Sent to Claude. Ask Claude to look at your track.'); }
-  catch (err) { status('Could not send it (' + (err.code || 'error') + '); try again in a moment.', true); }
+  if (!S.draft) return; const d = S.draft, msg = $('st-msg').value.trim();
+  if (!S.db) { const txt = JSON.stringify({ name: d.name, from: d.base, stage: d.stage, message: msg }); (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => status('Not connected to the shared database here: the track is copied, paste it to Claude.'), () => status('Not connected here: use the published game to send it.', true)); return; }
+  const R = S.remote.get(d.id), v = Math.max(d.v || 0, (R && R.v) || 0) + 1, at = new Date().toISOString(), changes = d.shared ? editsDiff(d.shared, d.stage) : ['a new track'];
+  try {
+    const ver = { draft: d.id, v, by: 'you', at, note: msg, changes };
+    if (big(d.stage)) { const a = await window.claude.use('assets'); if (!a) throw { code: 'too big to send here' }; ver.asset = (await a.upload(new Blob([JSON.stringify(d.stage)], { type: 'application/json' }))).id; } else ver.stage = d.stage;
+    await S.db.doc(`studioVersions/${d.id}-${v}`).set(ver);
+    await S.db.doc(`studio/${d.id}`).set({ name: d.name.replace(/^✎ /, ''), base: d.base, v, by: 'you', at, note: msg, changes, status: 'sent' });
+    d.v = v; d.shared = clone(d.stage); delete d.pending; saveDrafts();
+    $('st-msg').value = ''; $('st-sendform').hidden = true; status(`Sent to Claude as version ${v}. Ask Claude to look at it: its answer comes back here.`); ui();
+  } catch (err) { status('Could not send it (' + (err.code || err.message || 'error') + '); try again in a moment.', true); }
+}
+async function versionStage(id, v) {
+  const snap = await S.db.doc(`studioVersions/${id}-${v}`).get(); if (!snap.exists) return null; const x = snap.data();
+  if (x.stage) return x.stage; if (x.asset) { const r = await fetch('/_blob/' + x.asset); return r.ok ? r.json() : null; } return null;
+}
+// what the shared store holds: new drafts come in, Claude's answers wait on theirs
+async function syncRemote() {
+  for (const [id, R] of S.remote) {
+    let d = S.drafts.find(x => x.id === id);
+    if (!d) {   // made or sent from another device, or made by Claude
+      const st = await versionStage(id, R.v).catch(() => null); if (!st) continue;
+      d = { id, name: '✎ ' + R.name, base: R.base, stage: st, at: R.at, v: R.v, shared: clone(st), made: R.by }; st.name = d.name; S.drafts.push(d); saveDrafts();
+      if (R.by === 'claude') status(`Claude made you a track: "${R.name}". It's under My tracks.`);
+    } else if (R.v > (d.v || 0) && R.by === 'claude') d.pending = { v: R.v, note: R.note || '', changes: R.changes || [] };
+  }
+  ui(); claudeBanner();
+}
+function claudeBanner() {
+  const d = S.draft, P = d && viewerState.idx === S.slot && d.pending;
+  $('st-claude').hidden = !P; if (!P) return;
+  $('st-claude-text').textContent = `Claude's version ${P.v}${P.note ? ': ' + P.note : ''}`;
+  $('st-claude-changes').textContent = P.changes.length ? P.changes.join('; ') : '';
+}
+async function takeClaude() {
+  const d = S.draft, P = d && d.pending; if (!P) return;
+  const st = await versionStage(d.id, P.v).catch(() => null); if (!st) { status('Could not fetch Claude\'s version; try again in a moment.', true); return; }
+  d.prev = d.stage; st.name = d.name; d.stage = st; d.v = P.v; d.shared = clone(st); delete d.pending; saveDrafts(); S.undo = []; S.redo = [];
+  openDraft(d, true); status(`Claude's version ${P.v} is in. History has your earlier ones.`);
+}
+async function history() {
+  const d = S.draft, box = $('st-history'); if (!d) return;
+  if (!box.hidden) { box.hidden = true; return; }
+  if (!S.db) { box.hidden = false; box.innerHTML = '<p>History needs the shared database (the published game).</p>'; return; }
+  box.hidden = false; box.innerHTML = '<p>Loading...</p>';
+  try {
+    const q = await S.db.collection('studioVersions').where('draft', '==', d.id).get(), L = q.docs.map(x => x.data()).sort((a, b) => b.v - a.v);
+    box.innerHTML = L.length ? L.map(x => `<div class="st-ver"><b>v${x.v} · ${x.by === 'claude' ? 'Claude' : 'you'}</b> <small>${esc(new Date(x.at).toLocaleString())}</small>${x.note ? `<p>${esc(x.note)}</p>` : ''}${(x.changes || []).length ? `<small>${esc(x.changes.join('; '))}</small>` : ''}<button type="button" data-ver="${x.v}">Open this one</button></div>`).join('') : '<p>Nothing sent yet: Send to Claude starts the history.</p>';
+  } catch (err) { box.innerHTML = `<p>Could not load the history (${esc(err.code || 'error')}).</p>`; }
+}
+async function openVersion(v) {
+  const d = S.draft, st = await versionStage(d.id, v).catch(() => null); if (!st) { status('Could not fetch that version.', true); return; }
+  remember(); d.prev = d.stage; st.name = d.name; d.stage = st; saveDrafts(); $('st-history').hidden = true; openDraft(d, true); status(`Version ${v} is open (Undo goes back).`);
 }
 // the viewer's hooks: the stage picker lists the drafts; a pick opens one
 function options(idx) {
   if (!S.drafts.length) return null;
   const cur = idx === S.slot && S.draft ? 'd:' + S.draft.id : null;
-  return { skip: S.slot, value: cur, html: `<optgroup label="My tracks (Studio drafts)">${S.drafts.map(d => `<option value="d:${esc(d.id)}">${esc(d.name)}</option>`).join('')}</optgroup>` };
+  return { skip: S.slot, value: cur, html: `<optgroup label="My tracks (Studio drafts)">${S.drafts.map(d => `<option value="d:${esc(d.id)}">${esc(d.name)}${d.pending ? ' \u2022 new from Claude' : ''}</option>`).join('')}</optgroup>` };
 }
 function pick(v) { const d = S.drafts.find(x => 'd:' + x.id === v); if (d) { S.undo = []; S.redo = []; openDraft(d); } }
 function opened(idx) {
-  if (idx !== S.slot || !S.draft) { if (S.on) leave(); $('vw-edit').hidden = false; $('vw-edit').textContent = 'Edit'; return; }
+  if (idx !== S.slot || !S.draft) { if (S.on) leave(); $('vw-edit').hidden = false; $('vw-edit').textContent = 'Edit'; $('st-claude').hidden = true; return; }
   S.built = clone((stage().edits || {}).sculpt || null); clearMarks(); S.path = null;
   { const tr = G.world.tr, N = tr.loopN || tr.N; let k = 0; for (let i = 0; i < N; i++) k = Math.max(k, Math.abs(tr.ks[i])); if (S.on && k > 1 / 9) status('The road turns very tightly somewhere: a hairpin under 9 m across. Cars may struggle there.', true); }
   if (S.on) { G.editDrive = true; G.onEditorBack = () => { S.driving = false; openDraft(S.draft, true); }; }   // Drive it comes back to the studio
-  ui();
+  ui(); claudeBanner();
 }
-function closed() { if (!S.driving) { G.editDrive = false; G.onEditorBack = null; } if (S.cursor) S.cursor.visible = false; $('st').hidden = true; if (S.handles) S.handles.clear(); if (S.pmarks) S.pmarks.clear(); }
+function closed() { if (!S.driving) { G.editDrive = false; G.onEditorBack = null; } if (S.cursor) S.cursor.visible = false; $('st').hidden = true; $('st-claude').hidden = true; if (S.handles) S.handles.clear(); if (S.pmarks) S.pmarks.clear(); }
 // ---------- the panel ----------
 function setTool(t) { S.tool = t; S.sel = null; S.pt = -1; S.psel = -1; ui(); status(t === 'pieces' && !G.world.tr.loopN ? 'Set pieces go on circuits: this is a downhill run.' : HINT[t]); }
 function ui() {

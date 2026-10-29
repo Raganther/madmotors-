@@ -74,7 +74,7 @@ export function initViewer() {
 export function openViewer(idx, { keep = false } = {}) {   // keep: the camera stays where it was (a rebuild after an edit)
   idx = clamp(idx | 0, 0, STAGES.length - 1);
   if (G.noteMode) exitNotes();
-  $('menu').hidden = true; $('editor').hidden = true; $('tb').hidden = true;
+  $('menu').hidden = true;
   selectStage(idx, () => {
     G.title = false; G.titleCam = null; V.idx = idx; V.racing = false; V.fly = false; V.yawOff = 0;
     viewRace(); setRacing(false); G.state = 'viewing'; G.accumulator = 0; AudioSys.update(null, 'off');

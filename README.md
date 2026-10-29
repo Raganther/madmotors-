@@ -616,37 +616,6 @@ or `?workshop` (the hub) / `?workshop=<tab>`. Tabs live in `src/data/workshop.js
    overlaps by accident, then play it with `npm run dev`.
 4. `npm run golden` to record the new stage, then `npm run check`.
 
-In the game, the menu's **Track editor** (`src/ui/editor.js`, geometry in `src/core/track/editing.js`) edits the same
-`segs` on a plan view: pick a section, change its length / radius / turn / height / element tags, "Close the loop"
-(sets the last corner so the lap turns whole circles, then stretches two straights to land on the start), and
-"Test drive" installs it as a temporary stage. "Send to Claude" stores it in the artifact's `tracks` collection.
-"Draw my own" starts a blank plan: the Draw tool turns a freehand stroke into straights and curves
-(`editing.js` `fromStroke`: simplify, round each corner off with an arc, close it if it ends near its start), and
-dragging from the open end carries the track on. The Comment tool pins notes anywhere on the plan, and each section
-has a note box; both go to Claude with the track.
-
-The menu's **Terrain builder** (`src/ui/terrain-builder.js`, landscape in `src/core/track/ground.js`) starts from the
-land instead: an 800 m square of ground seen in 3D, shaped with the Raise / Lower / Smooth / Flatten brushes (a
-height grid every 8 m, contours every 5 m), then the Road tool paints the track's line on it (the same `fromStroke`).
-The road's heights come from the ground under it (`roadOnGround`: short sections, smoothed over 30 m, no steeper than
-14%), so the climbs and drops are the land's. The stage it makes is a gorge stage with `ground` = { a0, b0, cell,
-cols, rows, h } in plan metres from the start line: `circuit.js` uses it as the ground away from the road (no
-generated hills, no far/near profiles), and the road cuts and fills across it with guard rails along the drops.
-Road up / Road down brush the road's own height along it (`road.lift`, every 10 m): held 6 m over the ground a piece
-becomes a bridge, 9 m under it a tunnel (`roadOnGround` tags them). Pieces drops set pieces on the road (`road.pieces`
-= { s: metres along, tag, v }: kickers, crests, whoops, water, mud, boost pads, chicanes, a crumbling bridge,
-wrecking balls, rockfall, ice, dirt, a town, a waterfall); chicanes and timber bridges go on the nearest straight.
-"Send to Claude" stores it in `tracks` with base "terrain". To make a real stage of one, keep `ground` and `segs`
-and add the look and set pieces on top.
-**Generate land** fills the square with a landscape in a style (rolling hills, mountains, a river valley, canyon
-country, mesas: `generateGround`, seeded value noise, gentler in the middle than at the edges); **Generate road** lays
-a lap on it (`autoRoad`: a loop with a few bends, the best of 18 tries at sitting on the land, short / medium / long,
-with a crest jump on a straight and a water splash in the lowest dip if Set pieces is ticked). Both can be pressed
-again for another and are undoable. Getting about: drag turns, right-drag / Space + drag / two fingers move, wheel or
-pinch zooms; a trackpad's two-finger slide moves the view and its pinch zooms; double-click or double-tap flies
-there; WASD or the arrows move (Shift: faster), Q / E turn, R / F tilt, + / - zoom, 1-9 pick the tools, T top view,
-Home fits, Ctrl+Z undoes; the arrow pad does the moving on a touch screen.
-
 The menu's **Track viewer** (`src/ui/viewer.js`, `?viewer=<n>`) shows a stage as it really is, every building, set
 piece and hazard built and moving, from a free camera: drag turns, right-drag / two fingers / Shift + drag move,
 wheel or pinch zooms, double-click flies there; WASD, Q / E, R / F, + / -, T top view, Home fits, Space flies the lap.
@@ -660,9 +629,36 @@ slow < 25, medium < 30, fast), the climb, and the **moments**: every element mar
 design pillars of docs/TRACK_DESIGN.md (three moments of two kinds, nothing quiet for more than 15 s, corner
 variety, 30-80% flat out, a choice, something to smash, something that moves). Moments are numbered on the map,
 on the height-and-speed strip and over the road; tap any to fly there. Note drops a note where you tap (the same
-`notes` as in a race, `camera: 'viewer'`), and every note on the stage stands as a pin while the viewer is open. The
-Track editor and the Terrain builder have "View in 3D" beside Test drive. `npm run report` ranks every stage by its
+`notes` as in a race, `camera: 'viewer'`), and every note on the stage stands as a pin while the viewer is open.
+`npm run report` ranks every stage by its
 card (`npm run report -- <stage>` lists one stage's moments); tests/report.test.js keeps it sane.
+
+The **Track Studio** is the Track viewer's Edit mode (`src/ui/studio.js`). Edit makes a draft copy of the stage on
+show (the stage itself is never touched); drafts live in this browser (`downhill-rush-studio`) and under My tracks in
+the stage picker. Its tools work on the real track in 3D:
+- **Raise / Lower / Smooth / Flatten** brush the land and the road over it (a hump, a jump, a dip, a hill); the ground
+  mesh follows the brush live and the stage is rebuilt from the draft a moment after you let go.
+- **Road**: the road's line as yellow points; drag one to move the road, tap the road between points for another, tap
+  a point to lift or sink the road there, delete it, or start the lap there.
+- **Pieces**: tap the road to put a set piece there (kicker, crest jump, whoops, splash, mud, boost, ice, dirt,
+  chicane, crumbling bridge, wrecking balls, rockfall, tunnel, bridge, town, arch, waterfall); tap one to size it, drag
+  it along the road. Circuits only.
+- **Place**: trees, bushes, rocks, boulders, cacti and every building type (turn, size, drag, delete); **Erase** takes
+  scenery away.
+- **New track** generates a draft: a landscape in a style, a lap laid on it, an existing stage's look and set pieces a
+  beat every ~9 s, the best of six tries by its report card (`core/track/generate.js`).
+- Undo / Redo, Rename, Delete draft, Drive it (comes back to the Studio). A change that won't build is taken back.
+
+Everything is data on the draft, `stage.edits` (so a stage file can carry it too): `sculpt` (a sparse height grid
+added to the ground and the road: `core/track/edits.js`), `path` (control points the road is laid through, with the
+generator's heights, channels and marks carried over by distance: `core/track/path.js`), `pieces` (element section
+tags laid on samples: `core/track/pieces.js`), `props`, `clears` and `houses`. A stage without edits builds exactly as
+before. **Send to Claude** shares a draft as a version in the artifact's db: `studio/<id>` is its latest
+({ name, base, v, by, at, note, changes, status }), `studioVersions/<id>-<v>` each version whole ({ draft, v, by, at,
+note, changes, stage } or `asset` for a big one); `changes` is `editsDiff`'s summary. Claude's versions (`by: 'claude'`)
+come back as a banner to take or leave, History lists them all, and drafts made on another device (or by Claude) turn
+up under My tracks. The Studio replaced the old Track editor and Terrain builder; their stage formats (`segs`,
+`ground`) still build.
 
 The menu's **Sketch pad** (`src/ui/sketch.js`) is for ideas that aren't a track yet: a 1600 x 1200 sheet (grid or
 plain) with a pen that follows Apple Pencil pressure, a marker, an eraser, line, arrow, box, circle and words, ten
