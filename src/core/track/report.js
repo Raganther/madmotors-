@@ -84,9 +84,9 @@ export function trackReport(tr, stage, terr = null) {
     { id: 'rhythm', name: 'Rhythm: no dead stretch', ok: dead <= 15, val: `longest quiet stretch ${dead.toFixed(0)} s`, tip: 'Something every 15 s or so: break up the quiet stretch with a set piece or a sharper corner.' },
     { id: 'variety', name: 'Corner variety', ok: ['hairpin', 'slow', 'medium', 'fast'].filter(k => corners[k]).length >= 3, val: `${corners.hairpin} hairpin, ${corners.slow} slow, ${corners.medium} medium, ${corners.fast} fast`, tip: 'Mix the corners: a hairpin, some medium bends and a fast sweeper.' },
     { id: 'flow', name: 'Fast-slow-fast', ok: flat / len >= 0.3 && flat / len <= 0.8, val: `${Math.round(flat / len * 100)}% flat out`, tip: flat / len > 0.8 ? 'Mostly flat out: add corners that need braking.' : 'Hardly ever flat out: open up a straight or two.' },
-    { id: 'choice', name: 'A choice', ok: routes > 0 || smash > 0, val: routes ? `${routes} route split${routes > 1 ? 's' : ''}` : smash ? `${smash} things to smash` : 'none', tip: 'A split: a shortcut, or a building to smash through for a quicker line.' },
-    { id: 'smash', name: 'Destruction', ok: smash > 0, val: smash ? `${smash} breakable things` : 'nothing breaks', tip: 'Something to smash: a breach, a collapse, a topple or a smash lane.' },
-    { id: 'alive', name: 'Something moves', ok: movers > 0, val: movers ? `${movers} moving hazards` : 'all still', tip: 'A moving hazard: wrecking balls, a drawbridge, a train, rockfall.' },
+    { id: 'choice', name: 'A choice', ok: routes > 0 || smash > 0, val: routes ? `${routes} route split${routes > 1 ? 's' : ''}` : smash ? `${smash} thing${smash > 1 ? 's' : ''} to smash` : 'none', tip: 'A split: a shortcut, or a building to smash through for a quicker line.' },
+    { id: 'smash', name: 'Destruction', ok: smash > 0, val: smash ? `${smash} breakable thing${smash > 1 ? 's' : ''}` : 'nothing breaks', tip: 'Something to smash: a breach, a collapse, a topple or a smash lane.' },
+    { id: 'alive', name: 'Something moves', ok: movers > 0, val: movers ? `${movers} moving hazard${movers > 1 ? 's' : ''}` : 'all still', tip: 'A moving hazard: wrecking balls, a drawbridge, a train, rockfall.' },
   ];
   const score = pillars.filter(q => q.ok).length;
   return {

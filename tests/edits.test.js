@@ -57,3 +57,20 @@ describe('studio road (core/track/path.js)', () => {
     expect(tr.H[n.i] - tr0.H[tr0.nearest(q[0], q[1]).i]).toBeGreaterThan(2.5);
   });
 });
+describe('studio set pieces and New track', () => {
+  it('a set piece on any circuit is the element itself, where it was put', async () => {
+    const { trackMarkers } = await import('../src/core/elements/index.js');
+    for (const k of [18, 4]) {   // a gorge circuit and a generated loop
+      const st = STAGES[k], tr = buildTrack(copy(st, { pieces: [{ s: 300, k: 'hammers' }, { s: 500, k: 'kick' }] })), m = trackMarkers(tr);
+      expect(m.some(x => x.element === 'hammer' && Math.abs(tr.bi(x.i) - 330) < 40), st.name).toBe(true);
+      expect(m.some(x => x.element === 'kick' && Math.abs(tr.bi(x.i) - 500) < 5), st.name).toBe(true);
+    }
+  });
+  it('New track makes a stage that builds, with set pieces and a decent report card', async () => {
+    const { generateStage, trackReport } = await import('../src/core/index.js');
+    const st = generateStage({ style: 'valley', length: 'medium', surface: 'tarmac', look: STAGES[1], seed: 7 });
+    expect(st).toBeTruthy(); expect(st.edits.pieces.length).toBeGreaterThan(1);
+    const tr = buildTrack(JSON.parse(JSON.stringify(st))), R = trackReport(tr, st, buildTerrain(tr, st));
+    expect(R.score).toBeGreaterThanOrEqual(5);
+  });
+});

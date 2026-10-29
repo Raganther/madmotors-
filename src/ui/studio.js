@@ -6,6 +6,9 @@ import { HALF } from '../core/constants.js';
 import { corners } from '../core/elements/structures.js';
 import { PROPS, sculptAt, sculptDab } from '../core/track/edits.js';
 import { pathFromTrack, samplePath } from '../core/track/path.js';
+import { PIECES } from '../core/track/pieces.js';
+import { LOOKS, generateStage } from '../core/track/generate.js';
+import { LAND_STYLES } from '../core/track/ground.js';
 import { buildTrack } from '../core/track/build.js';
 import { pickGround } from '../render/notepins.js';
 import { pcamera, scene } from '../render/renderer.js';
@@ -19,18 +22,23 @@ import { openViewer, setEditHooks, viewerState } from './viewer.js';
 //   Place                             tap the ground to put a tree, a bush, a rock or a building there (the palette);
 //                                     tap one you put there to turn it, size it or delete it, drag it to move it
 //   Erase                             brush away scenery: the stage's own trees and rocks, and anything put there
+//   Pieces                            set pieces on the road (core/track/pieces.js): tap the road for the picked one
+//                                     (a kicker, a splash, wrecking balls, a tunnel...), tap one to size it, drag to move
+//   New track                         Generate: a landscape, a lap on it and set pieces to meet the pillars
+//                                     (core/track/generate.js), as a new draft to edit
 //   Road                              the road's line as yellow points (core/track/path.js): drag one to move the road,
 //                                     tap the road between them for another, tap one to lift or sink the road there
 // Each change is data on the draft (stage.edits: core/track/edits.js), so the stage is rebuilt from it a moment after
 // you let go and the report card follows. Undo / Redo, Test drive (Drive it) comes back here; drafts are kept in this
 // browser and listed under the stage picker; Send to Claude puts one in the shared `tracks` collection (base "studio").
 // Getting about is the viewer's: two fingers, right-drag or the View tool move the camera while a brush is picked.
-const LS = 'downhill-rush-studio', TOOLS = ['view', 'raise', 'lower', 'smooth', 'flatten', 'road', 'place', 'erase'];
+const LS = 'downhill-rush-studio', TOOLS = ['view', 'raise', 'lower', 'smooth', 'flatten', 'road', 'pieces', 'place', 'erase'];
 const HINT = { view: 'Move the view: drag, two fingers, wheel', raise: 'Drag to raise the land: under the road it lifts the road (a hump, a jump)', lower: 'Drag to dig the land down: dips, hollows, drops',
   smooth: 'Drag to smooth out bumps and steps', flatten: 'Drag to level the land at the height where you started', place: 'Tap the ground to put the picked thing there; tap one of yours to change it, drag it to move it',
   erase: 'Drag over trees, bushes and rocks to take them away',
+  pieces: 'Pick a set piece, then tap the road to put it there; tap one to make it longer or shorter, drag it along the road to move it',
   road: 'Drag a yellow point to move the road; tap the road between points to add one; tap a point to raise, lower or delete it' };
-const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, path: null, handles: null, pt: -1 };
+const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, path: null, handles: null, pt: -1, piece: 'yump', psel: -1, pdrag: null, pmarks: null };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const clone = o => JSON.parse(JSON.stringify(o));
 const stage = () => S.draft && S.draft.stage, edits = () => { const st = stage(); return st.edits || (st.edits = {}); };
@@ -44,6 +52,12 @@ export function initStudio() {
   $('st-palette').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (b) { S.kind = b.dataset.kind; S.sel = null; ui(); } });
   $('st-size').addEventListener('input', e => { S.size = +e.target.value; });
   $('st-power').addEventListener('input', e => { S.power = +e.target.value / 10; });
+  $('st-pieces').innerHTML = Object.entries(PIECES).map(([k, P]) => `<button type="button" data-piece="${k}"><i style="background:${P.color}"></i>${esc(P.name)}</button>`).join('');
+  $('st-pieces').addEventListener('click', e => { const b = e.target.closest('[data-piece]'); if (b) { S.piece = b.dataset.piece; S.psel = -1; ui(); } });
+  $('vw-new').addEventListener('click', () => { $('st-gen').hidden = !$('st-gen').hidden; });
+  $('st-gen-style').innerHTML = Object.entries(LAND_STYLES).map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('');
+  $('st-gen-look').innerHTML = Object.entries(LOOKS).map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('');
+  $('st-gen-go').addEventListener('click', generate); $('st-gen-x').addEventListener('click', () => { $('st-gen').hidden = true; });
   $('st-undo').addEventListener('click', undo); $('st-redo').addEventListener('click', redo);
   $('st-rotl').addEventListener('click', () => turnSel(-15)); $('st-rotr').addEventListener('click', () => turnSel(15));
   $('st-smaller').addEventListener('click', () => sizeSel(1 / 1.2)); $('st-bigger').addEventListener('click', () => sizeSel(1.2));
@@ -56,7 +70,7 @@ export function initStudio() {
     if (!S.on || $('viewer').hidden || (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))) return;
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
     else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') { e.preventDefault(); redo(); }
-    else if (/^Digit[1-8]$/.test(e.code)) setTool(TOOLS[+e.code.slice(5) - 1]);
+    else if (/^Digit[1-9]$/.test(e.code)) setTool(TOOLS[+e.code.slice(5) - 1]);
     else if (e.code === 'BracketLeft') { S.size = Math.max(4, S.size / 1.25); ui(); } else if (e.code === 'BracketRight') { S.size = Math.min(80, S.size * 1.25); ui(); }
     else if ((e.code === 'Delete' || e.code === 'Backspace') && S.sel) delSel();
   });
@@ -115,20 +129,22 @@ function opened(idx) {
   if (S.on) { G.editDrive = true; G.onEditorBack = () => { S.driving = false; openDraft(S.draft, true); }; }   // Drive it comes back to the studio
   ui();
 }
-function closed() { if (!S.driving) { G.editDrive = false; G.onEditorBack = null; } if (S.cursor) S.cursor.visible = false; $('st').hidden = true; if (S.handles) S.handles.clear(); }
+function closed() { if (!S.driving) { G.editDrive = false; G.onEditorBack = null; } if (S.cursor) S.cursor.visible = false; $('st').hidden = true; if (S.handles) S.handles.clear(); if (S.pmarks) S.pmarks.clear(); }
 // ---------- the panel ----------
-function setTool(t) { S.tool = t; S.sel = null; S.pt = -1; ui(); status(HINT[t]); }
+function setTool(t) { S.tool = t; S.sel = null; S.pt = -1; S.psel = -1; ui(); status(t === 'pieces' && !G.world.tr.loopN ? 'Set pieces go on circuits: this is a downhill run.' : HINT[t]); }
 function ui() {
-  const on = S.on && !!S.draft; drawHandles();
+  const on = S.on && !!S.draft; drawHandles(); drawPieces();
   $('st').hidden = !on; $('vw-edit').textContent = on ? 'Done' : 'Edit'; $('vw-edit').classList.toggle('on', on);
   if (!on) return;
   document.querySelectorAll('#st [data-st]').forEach(b => b.classList.toggle('on', b.dataset.st === S.tool));
   $('st-brush').hidden = !['raise', 'lower', 'smooth', 'flatten', 'erase'].includes(S.tool); $('st-size').value = String(Math.round(S.size)); $('st-power').value = String(Math.round(S.power * 10));
   $('st-palette').hidden = S.tool !== 'place'; document.querySelectorAll('#st-palette [data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === S.kind));
-  const rp = S.tool === 'road' && S.pt >= 0;
-  $('st-sel').hidden = !S.sel && !rp; if (S.sel) $('st-selname').textContent = KIND_NAME[S.sel.o.k || S.sel.o.type] || 'Selected';
+  const rp = S.tool === 'road' && S.pt >= 0, pp = S.tool === 'pieces' && S.psel >= 0 && !!(edits().pieces || [])[S.psel];
+  $('st-pieces').hidden = S.tool !== 'pieces'; document.querySelectorAll('#st-pieces [data-piece]').forEach(b => b.classList.toggle('on', b.dataset.piece === S.piece));
+  $('st-sel').hidden = !S.sel && !rp && !pp;
+  if (pp) { const q = edits().pieces[S.psel], P = PIECES[q.k]; $('st-selname').textContent = `${P.name}, ${q.len || P.len} m, ${((q.s - G.world.tr.startIdx) % G.world.tr.loopN + G.world.tr.loopN) % G.world.tr.loopN} m round the lap`; } if (S.sel) $('st-selname').textContent = KIND_NAME[S.sel.o.k || S.sel.o.type] || 'Selected';
   if (rp) $('st-selname').textContent = `Road point ${S.pt + 1}` + (roadPath().pts[S.pt][2] ? ` (road ${roadPath().pts[S.pt][2] > 0 ? 'up' : 'down'} ${Math.abs(roadPath().pts[S.pt][2])} m)` : '');
-  $('st-rotl').hidden = $('st-rotr').hidden = rp; $('st-smaller').textContent = rp ? 'Road down' : '\u2212'; $('st-bigger').textContent = rp ? 'Road up' : '+'; $('st-del').textContent = rp ? 'Delete point' : 'Delete'; $('st-start').hidden = !rp || !roadPath().closed || S.pt === 0;
+  $('st-rotl').hidden = $('st-rotr').hidden = rp || pp; $('st-smaller').textContent = rp ? 'Road down' : pp ? 'Shorter' : '\u2212'; $('st-bigger').textContent = rp ? 'Road up' : pp ? 'Longer' : '+'; $('st-del').textContent = rp ? 'Delete point' : 'Delete'; $('st-start').hidden = !rp || !roadPath().closed || S.pt === 0;
   drawHandles();
   $('st-undo').disabled = !S.undo.length; $('st-redo').disabled = !S.redo.length;
   $('st-name').textContent = S.draft.name;
@@ -152,6 +168,7 @@ function down(e) {
   const p = pickGround(e.clientX, e.clientY); if (!p) return;
   cursorAt(p);
   if (S.tool === 'road') { roadDown(e, p); return; }
+  if (S.tool === 'pieces') { pieceDown(p); return; }
   if (S.tool === 'place') {
     const hit = hitTest(p);
     if (hit) { S.sel = hit; S.drag = { hit, moved: false }; ui(); return; }
@@ -164,6 +181,7 @@ function move(e) {
   const p = pickGround(e.clientX, e.clientY); if (!p) return;
   cursorAt(p);
   if (S.drag && S.drag.pt !== undefined) { roadMove(p); return; }
+  if (S.pdrag) { pieceMove(p); return; }
   if (S.drag) {
     if (!S.drag.moved) { remember(); S.drag.moved = true; }
     S.drag.hit.o.x = Math.round(p.x * 10) / 10; S.drag.hit.o.z = Math.round(p.z * 10) / 10; mark(S.drag.hit.o); return;
@@ -175,13 +193,14 @@ function move(e) {
   S.stroke.last = p;
 }
 function up() {
+  if (S.pdrag) { const m = S.pdrag.moved; S.pdrag = null; if (m) changed(); ui(); return; }
   if (S.drag && S.drag.pt !== undefined) { const m = S.drag.moved; S.drag = null; if (m) changed(); ui(); return; }
   if (S.drag) { const moved = S.drag.moved, h = S.drag.hit; S.drag = null; if (moved) { if (h.house && onRoad(h.o)) { status('That puts it on the road: moved back.', true); undo(); return; } changed(); } ui(); return; }
   if (S.stroke) { endStroke(); changed(); }
 }
 function endStroke() { clearInterval(S.stroke.held); S.stroke = null; }
 function cancel() { if (S.stroke) { endStroke(); changed(); } if (S.drag) { S.drag = null; changed(); } }
-function hover(e) { if (!S.on || S.tool === 'view' || S.tool === 'place' || S.tool === 'road') { if (S.cursor) S.cursor.visible = false; return; } const p = pickGround(e.clientX, e.clientY); if (p) cursorAt(p); }
+function hover(e) { if (!S.on || S.tool === 'view' || S.tool === 'place' || S.tool === 'road' || S.tool === 'pieces') { if (S.cursor) S.cursor.visible = false; return; } const p = pickGround(e.clientX, e.clientY); if (p) cursorAt(p); }
 // ---------- brushes ----------
 function dab(p) {
   const E = edits(), r = S.size;
@@ -226,8 +245,8 @@ function hitTest(p) {
   return best;
 }
 function turnSel(deg) { if (!S.sel) return; remember(); const o = S.sel.o; if (S.sel.house) { o.f = ((o.f || 0) + deg + 360) % 360; if (onRoad(o)) { undo(); status('Turned that way it would stand on the road.', true); return; } } else o.ry = Math.round(((o.ry || 0) + deg * Math.PI / 180) * 100) / 100; changed(); }
-function sizeSel(k) { if (S.tool === 'road' && S.pt >= 0) { liftPt(k > 1 ? 1 : -1); return; } if (!S.sel || S.sel.house) return; remember(); S.sel.o.s = Math.round(Math.max(0.4, Math.min(3, (S.sel.o.s || 1) * k)) * 100) / 100; changed(); }
-function delSel() { if (S.tool === 'road' && S.pt >= 0) { delPt(); return; } if (!S.sel) return; remember(); const E = edits(), o = S.sel.o; E.props = (E.props || []).filter(x => x !== o); E.houses = (E.houses || []).filter(x => x !== o); S.sel = null; changed(); }
+function sizeSel(k) { if (S.tool === 'road' && S.pt >= 0) { liftPt(k > 1 ? 1 : -1); return; } if (S.tool === 'pieces' && S.psel >= 0) { lenPiece(k > 1 ? 10 : -10); return; } if (!S.sel || S.sel.house) return; remember(); S.sel.o.s = Math.round(Math.max(0.4, Math.min(3, (S.sel.o.s || 1) * k)) * 100) / 100; changed(); }
+function delSel() { if (S.tool === 'road' && S.pt >= 0) { delPt(); return; } if (S.tool === 'pieces' && S.psel >= 0) { remember(); edits().pieces.splice(S.psel, 1); S.psel = -1; changed(); return; } if (!S.sel) return; remember(); const E = edits(), o = S.sel.o; E.props = (E.props || []).filter(x => x !== o); E.houses = (E.houses || []).filter(x => x !== o); S.sel = null; changed(); }
 // ---------- what's drawn for the studio: the brush ring, and a marker on a change until the rebuild shows it ----------
 function cursorAt(p) {
   if (!S.cursor) {
@@ -295,4 +314,48 @@ function drawHandles() {
   const line = new THREE.Mesh(lg, S.lineM); line.renderOrder = 22; S.handles.add(line);
   const sz = Math.max(0.9, viewerState.dist * 0.009);
   P.pts.forEach((q, k) => { const m = new THREE.Mesh(S.dotG.clone(), k === S.pt ? S.dotSel : S.dotM); m.scale.setScalar(k === 0 ? sz * 1.4 : sz); m.position.set(q[0], ptY(q), q[1]); m.renderOrder = 23; S.handles.add(m); });
+}
+// ---------- set pieces (core/track/pieces.js) ----------
+/** The base sample of the road nearest (x, z) on a circuit, within 12 m of it (a finger's width at a distance), or -1. */
+function roadSample(p) { const tr = G.world.tr; if (!tr.loopN) return -1; const q = tr.nearest(p.x, p.z); return q && q.d < 12 ? tr.bi(q.i) : -1; }
+function pieceDown(p) {
+  if (!G.world.tr.loopN) { status('Set pieces go on circuits: this is a downhill run.', true); return; }
+  const b = roadSample(p); if (b < 0) { S.psel = -1; ui(); status('Tap the road to put a set piece on it.'); return; }
+  const L = edits().pieces || [], hit = L.findIndex(q => b >= q.s - 4 && b <= q.s + (q.len || PIECES[q.k].len) + 4);
+  if (hit >= 0) { S.psel = hit; S.pdrag = { off: b - L[hit].s, moved: false }; ui(); return; }
+  remember(); const E = edits(); (E.pieces || (E.pieces = [])).push({ s: b, k: S.piece }); S.psel = E.pieces.length - 1;
+  status(`${PIECES[S.piece].name} put on the road. Tap it to make it longer or shorter, drag it to move it.`); changed();
+}
+function pieceMove(p) {
+  const b = roadSample(p); if (b < 0) return;
+  if (!S.pdrag.moved) { remember(); S.pdrag.moved = true; }
+  const q = edits().pieces[S.psel]; q.s = Math.max(0, b - S.pdrag.off); drawPieces();
+}
+function lenPiece(d) { const q = edits().pieces[S.psel]; remember(); q.len = Math.max(10, Math.min(300, (q.len || PIECES[q.k].len) + d)); changed(); }
+/** Each set piece as a coloured stretch over the road, while the Pieces tool is out. */
+function drawPieces() {
+  if (!S.pmarks) { S.pmarks = new THREE.Group(); scene.add(S.pmarks); }
+  for (const c of S.pmarks.children.slice()) { S.pmarks.remove(c); c.geometry.dispose(); c.material.dispose(); }
+  if (!(S.on && S.tool === 'pieces' && G.world && G.world.tr.loopN)) return;
+  const tr = G.world.tr, N = tr.loopN;
+  (edits().pieces || []).forEach((q, n) => {
+    const P = PIECES[q.k]; if (!P) return; const len = q.len || P.len, pos = [], idx = [];
+    for (let i = q.s; i <= q.s + len; i += 2) { const k = i % N, w = 3.2; pos.push(tr.xs[k] - tr.rx[k] * w, tr.H[k] + 0.6, tr.zs[k] - tr.rz[k] * w, tr.xs[k] + tr.rx[k] * w, tr.H[k] + 0.6, tr.zs[k] + tr.rz[k] * w); const v = pos.length / 3 - 2; if (v >= 2) idx.push(v - 2, v - 1, v, v - 1, v + 1, v); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: P.color, transparent: true, opacity: n === S.psel ? 0.85 : 0.55, depthTest: false, side: THREE.DoubleSide })); m.renderOrder = 22; S.pmarks.add(m);
+  });
+}
+// ---------- New track (core/track/generate.js) ----------
+function generate() {
+  const look = STAGES.find(s => s.name === LOOKS[$('st-gen-look').value]) || STAGES[0], seed = 1 + Math.floor(Math.random() * 9999);
+  status('Making a track...'); $('st-gen-go').disabled = true;
+  setTimeout(() => {
+    let st = null; try { st = generateStage({ style: $('st-gen-style').value, length: $('st-gen-len').value, surface: $('st-gen-surf').value, look, seed, name: 'New track' }); } catch (e) { console.error(e); }
+    $('st-gen-go').disabled = false;
+    if (!st) { status('That landscape didn\'t take a road this time: try again, or another style.', true); return; }
+    let n = 1, nm = '\u270E New track'; while (S.drafts.some(d => d.name === nm)) nm = `\u270E New track ${++n}`; st.name = nm;
+    const d = { id: 'd' + Date.now().toString(36), name: nm, base: look.name, stage: st, at: new Date().toISOString(), made: 'generated' };
+    S.drafts.push(d); saveDrafts(); S.undo = []; S.redo = []; $('st-gen').hidden = true;
+    S.on = true; openDraft(d); status(`A new track: ${LAND_STYLES[$('st-gen-style').value]} with ${st.edits.pieces.length} set pieces${st.edits.houses.length ? ' and houses to smash' : ''}. Edit away.`);
+  }, 30);
 }
