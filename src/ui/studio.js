@@ -4,7 +4,7 @@ import { STAGES } from '../data/stages/index.js';
 import { BUILDINGS, BUILDING_TYPES } from '../data/structures.js';
 import { HALF } from '../core/constants.js';
 import { corners } from '../core/elements/structures.js';
-import { PROPS, editsDiff, sculptAt, sculptDab } from '../core/track/edits.js';
+import { KIT_PIECES, PROPS, editsDiff, sculptAt, sculptDab } from '../core/track/edits.js';
 import { pathFromTrack, samplePath } from '../core/track/path.js';
 import { PIECES } from '../core/track/pieces.js';
 import { LOOKS, generateStage } from '../core/track/generate.js';
@@ -36,21 +36,33 @@ import { openViewer, setEditHooks, viewerState } from './viewer.js';
 // Getting about is the viewer's: two fingers, right-drag or the View tool move the camera while a brush is picked.
 const LS = 'downhill-rush-studio', TOOLS = ['view', 'raise', 'lower', 'smooth', 'flatten', 'road', 'pieces', 'place', 'erase'];
 const HINT = { view: 'Move the view: drag, two fingers, wheel', raise: 'Drag to raise the land: under the road it lifts the road (a hump, a jump)', lower: 'Drag to dig the land down: dips, hollows, drops',
-  smooth: 'Drag to smooth out bumps and steps', flatten: 'Drag to level the land at the height where you started', place: 'Tap the ground to put the picked thing there; tap one of yours to change it, drag it to move it',
+  smooth: 'Drag to smooth out bumps and steps', flatten: 'Drag to level the land at the height where you started', place: 'Pick something (or a mix) and tap or drag on the ground: Count paints many at once. With Count 1, tap one of yours to turn, size or delete it, drag it to move it',
   erase: 'Drag over trees, bushes and rocks to take them away',
   pieces: 'Pick a set piece, then tap the road to put it there; tap one to make it longer or shorter, drag it along the road to move it',
   road: 'Drag a yellow point to move the road; tap the road between points to add one; tap a point to raise, lower or delete it' };
-const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, remote: new Map(), path: null, handles: null, pt: -1, piece: 'yump', psel: -1, pdrag: null, pmarks: null };
+const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, remote: new Map(), path: null, handles: null, pt: -1, brush: { count: 1, spread: 12, scale: 1, variety: 0.5, spacing: 4 }, eraseF: 'all', piece: 'yump', psel: -1, pdrag: null, pmarks: null };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const clone = o => JSON.parse(JSON.stringify(o));
 const stage = () => S.draft && S.draft.stage, edits = () => { const st = stage(); return st.edits || (st.edits = {}); };
-const KIND_NAME = { ...PROPS, ...Object.fromEntries(BUILDING_TYPES.map(t => [t, BUILDINGS[t].name])) };
+// what the asset brush puts down: scenery (PROPS), buildings, street pieces, and mixes of them (kind: weight)
+const STREET = Object.keys(KIT_PIECES).filter(k => !KIT_PIECES[k].len);
+const MIXES = {
+  forest: { name: 'Pine forest', mix: { pine: 6, fir: 3, bush: 1 } }, woods: { name: 'Woodland', mix: { tree: 5, autumn: 1, bush: 3 } }, autumnwood: { name: 'Autumn wood', mix: { autumn: 5, tree: 2, bush: 2 } },
+  orchard: { name: 'Blossom', mix: { blossom: 4, tree: 1, bush: 1 } }, rocky: { name: 'Rocky ground', mix: { rock: 5, boulder: 2, bush: 1 } }, desert: { name: 'Desert scrub', mix: { cactus: 3, rock: 2, bush: 1 } },
+  village: { name: 'Village', mix: { cottage: 3, house: 2, shed: 1 } }, town: { name: 'Town', mix: { house: 2, terrace: 2, shop: 1, flats: 1 } }, farm: { name: 'Farm', mix: { barn: 1, shed: 2, hay: 2 } },
+  streetset: { name: 'Street furniture', mix: { post: 2, bin: 1, bench: 1, postbox: 1 } },
+};
+const KIND_NAME = { ...PROPS, ...Object.fromEntries(BUILDING_TYPES.map(t => [t, BUILDINGS[t].name])), ...Object.fromEntries(STREET.map(k => [k, KIT_PIECES[k].name])), ...Object.fromEntries(Object.entries(MIXES).map(([k, m]) => ['mix:' + k, m.name])) };
+const catOf = k => PROPS[k] ? 'prop' : BUILDINGS[k] ? 'house' : KIT_PIECES[k] ? 'kit' : null;
 
 export function initStudio() {
   try { S.drafts = JSON.parse(localStorage.getItem(LS) || '[]') || []; } catch (e) { S.drafts = []; }
   $('vw-edit').addEventListener('click', () => S.on ? leave() : enter());
   document.querySelectorAll('#st [data-st]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.st)));
-  $('st-palette').innerHTML = Object.keys(KIND_NAME).map(k => `<button type="button" data-kind="${k}">${esc(KIND_NAME[k])}</button>`).join('');
+  const group = (title, keys) => `<b>${title}</b>` + keys.map(k => `<button type="button" data-kind="${k}">${esc(KIND_NAME[k])}</button>`).join('');
+  $('st-palette').innerHTML = group('Mixes', Object.keys(MIXES).map(k => 'mix:' + k)) + group('Trees and rocks', Object.keys(PROPS)) + group('Buildings', BUILDING_TYPES) + group('Street', STREET);
+  for (const [id, key, f] of [['st-acount', 'count', v => v], ['st-aspread', 'spread', v => v], ['st-asize', 'scale', v => v / 10], ['st-avar', 'variety', v => v / 10], ['st-aspace', 'spacing', v => v]]) $(id).addEventListener('input', e => { S.brush[key] = f(+e.target.value); ui(); });
+  $('st-erasef').addEventListener('change', e => { S.eraseF = e.target.value; });
   $('st-palette').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (b) { S.kind = b.dataset.kind; S.sel = null; ui(); } });
   $('st-size').addEventListener('input', e => { S.size = +e.target.value; });
   $('st-power').addEventListener('input', e => { S.power = +e.target.value / 10; });
@@ -200,7 +212,9 @@ function ui() {
   if (!on) return;
   document.querySelectorAll('#st [data-st]').forEach(b => b.classList.toggle('on', b.dataset.st === S.tool));
   $('st-brush').hidden = !['raise', 'lower', 'smooth', 'flatten', 'erase'].includes(S.tool); $('st-size').value = String(Math.round(S.size)); $('st-power').value = String(Math.round(S.power * 10));
-  $('st-palette').hidden = S.tool !== 'place'; document.querySelectorAll('#st-palette [data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === S.kind));
+  $('st-palette').hidden = $('st-abrush').hidden = S.tool !== 'place'; $('st-erase').hidden = S.tool !== 'erase';
+  { const B = S.brush; $('st-acount').value = B.count; $('st-aspread').value = B.spread; $('st-asize').value = Math.round(B.scale * 10); $('st-avar').value = Math.round(B.variety * 10); $('st-aspace').value = B.spacing;
+    $('st-abrush-read').textContent = B.count === 1 ? `One at a time (drag for a row, ${B.spacing} m apart)` : `${B.count} at a time across ${B.spread * 2} m, ${B.spacing} m apart`; } document.querySelectorAll('#st-palette [data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === S.kind));
   const rp = S.tool === 'road' && S.pt >= 0, pp = S.tool === 'pieces' && S.psel >= 0 && !!(edits().pieces || [])[S.psel];
   $('st-pieces').hidden = S.tool !== 'pieces'; document.querySelectorAll('#st-pieces [data-piece]').forEach(b => b.classList.toggle('on', b.dataset.piece === S.piece));
   $('st-sel').hidden = !S.sel && !rp && !pp;
@@ -232,9 +246,9 @@ function down(e) {
   if (S.tool === 'road') { roadDown(e, p); return; }
   if (S.tool === 'pieces') { pieceDown(p); return; }
   if (S.tool === 'place') {
-    const hit = hitTest(p);
+    const hit = S.brush.count === 1 ? hitTest(p) : null;
     if (hit) { S.sel = hit; S.drag = { hit, moved: false }; ui(); return; }
-    S.sel = null; placeAt(p); return;
+    S.sel = null; remember(); S.stroke = { last: p, n: 0, asset: true }; assetDab(p, true); return;
   }
   remember();
   S.stroke = { last: p, to: p.y, held: setInterval(() => { if (S.stroke && S.tool !== 'erase') dab(S.stroke.last); }, 70) }; dab(p);   // held still, the brush keeps working (a mountain)
@@ -249,6 +263,7 @@ function move(e) {
     S.drag.hit.o.x = Math.round(p.x * 10) / 10; S.drag.hit.o.z = Math.round(p.z * 10) / 10; mark(S.drag.hit.o); return;
   }
   if (!S.stroke) return;
+  if (S.stroke.asset) { const L = S.stroke.last, step = S.brush.count === 1 ? Math.max(1.5, S.brush.spacing) : Math.max(S.brush.spacing, S.brush.spread * 0.8); if (Math.hypot(p.x - L.x, p.z - L.z) >= step) { assetDab(p, false); S.stroke.last = p; } return; }
   const L = S.stroke.last, d = Math.hypot(p.x - L.x, p.z - L.z), step = Math.max(1.5, S.size * 0.25);
   if (d < step) return;
   for (let t = step; t <= d; t += step) dab({ x: L.x + (p.x - L.x) * t / d, z: L.z + (p.z - L.z) * t / d });
@@ -258,18 +273,20 @@ function up() {
   if (S.pdrag) { const m = S.pdrag.moved; S.pdrag = null; if (m) changed(); ui(); return; }
   if (S.drag && S.drag.pt !== undefined) { const m = S.drag.moved; S.drag = null; if (m) changed(); ui(); return; }
   if (S.drag) { const moved = S.drag.moved, h = S.drag.hit; S.drag = null; if (moved) { if (h.house && onRoad(h.o)) { status('That puts it on the road: moved back.', true); undo(); return; } changed(); } ui(); return; }
-  if (S.stroke) { endStroke(); changed(); }
+  if (S.stroke) { const a = S.stroke.asset, n = S.stroke.n; endStroke(); if (a && !n) { S.undo.pop(); return; } if (a) status(`${n === 1 ? KIND_NAME[S.lastKind] || 'One' : n} put down. ${S.brush.count === 1 ? 'Tap one to turn it, size it or delete it.' : 'Undo takes the whole stroke back.'}`); changed(); }
 }
 function endStroke() { clearInterval(S.stroke.held); S.stroke = null; }
 function cancel() { if (S.stroke) { endStroke(); changed(); } if (S.drag) { S.drag = null; changed(); } }
-function hover(e) { if (!S.on || S.tool === 'view' || S.tool === 'place' || S.tool === 'road' || S.tool === 'pieces') { if (S.cursor) S.cursor.visible = false; return; } const p = pickGround(e.clientX, e.clientY); if (p) cursorAt(p); }
+function hover(e) { if (!S.on || S.tool === 'view' || (S.tool === 'place' && S.brush.count === 1) || S.tool === 'road' || S.tool === 'pieces') { if (S.cursor) S.cursor.visible = false; return; } const p = pickGround(e.clientX, e.clientY); if (p) cursorAt(p); }
 // ---------- brushes ----------
 function dab(p) {
   const E = edits(), r = S.size;
   if (S.tool === 'erase') {
-    (E.clears || (E.clears = [])).push([Math.round(p.x * 10) / 10, Math.round(p.z * 10) / 10, Math.round(r * 10) / 10]);
-    if (E.props) E.props = E.props.filter(o => Math.hypot(o.x - p.x, o.z - p.z) > r);
-    if (E.houses) E.houses = E.houses.filter(o => Math.hypot(o.x - p.x, o.z - p.z) > r);
+    const f = S.eraseF, inR = o => Math.hypot(o.x - p.x, o.z - p.z) <= r, PK = { trees: ['pine', 'fir', 'tree', 'autumn', 'blossom', 'cactus'], rocks: ['rock', 'boulder'], bushes: ['bush'] };
+    if (f !== 'buildings') (E.clears || (E.clears = [])).push([Math.round(p.x * 10) / 10, Math.round(p.z * 10) / 10, Math.round(r * 10) / 10].concat(f === 'all' ? [] : [f]));   // the stage's own scenery too
+    if (E.props && (f === 'all' || PK[f])) E.props = E.props.filter(o => !(inR(o) && (f === 'all' || PK[f].includes(o.k))));
+    if (E.houses && (f === 'all' || f === 'buildings')) E.houses = E.houses.filter(o => !inR(o));
+    if (E.kit && (f === 'all' || f === 'street')) E.kit = E.kit.filter(o => !inR(o));
     return;
   }
   const sc = E.sculpt || (E.sculpt = { cell: 4, d: {} }), terr = G.world.terr, built = S.built;
@@ -287,42 +304,62 @@ function onRoad(o) {
   const tr = G.world.tr, T = BUILDINGS[o.type], b = { x: o.x, z: o.z, f: (o.f || 0) * Math.PI / 180, w: T.w, d: T.d };
   return corners(b).concat([[o.x, o.z]]).some(([x, z]) => { const q = tr.nearest(x, z); return q && q.d < HALF + 0.5; });
 }
-function placeAt(p) {
-  const E = edits(), x = Math.round(p.x * 10) / 10, z = Math.round(p.z * 10) / 10;
-  if (BUILDINGS[S.kind]) {
-    const tr = G.world.tr, q = tr.nearest(x, z), f = q ? Math.round(Math.atan2(tr.xs[q.i] - x, tr.zs[q.i] - z) * 180 / Math.PI) : 0;   // the front faces the road
-    const o = { type: S.kind, x, z, f };
-    if (onRoad(o)) { status('Too close to the road: buildings go beside it (tap further off).', true); return; }
-    remember(); (E.houses || (E.houses = [])).push(o); S.sel = { o, house: true };
-  } else {
-    if (G.world.tr.nearest(x, z) && G.world.tr.nearest(x, z).d < HALF + 0.5) { status('That\'s on the road: scenery goes beside it.', true); return; }
-    remember(); const o = { k: S.kind, x, z, s: 1, ry: Math.round(Math.random() * 628) / 100 }; (E.props || (E.props = [])).push(o); S.sel = { o, house: false };
+/** The kind to put down next: the picked one, or one of a mix by its weights. */
+function nextKind() { const M = S.kind.startsWith('mix:') && MIXES[S.kind.slice(4)]; if (!M) return S.kind; const e = Object.entries(M.mix), tot = e.reduce((t, [, w]) => t + w, 0); let r = Math.random() * tot; for (const [k, w] of e) { if ((r -= w) <= 0) return k; } return e[0][0]; }
+const roadGap = (x, z) => { const q = G.world.tr.nearest(x, z); return q ? q.d : Infinity; };
+/** One dab of the asset brush at p: count things scattered over its spread (exact: one, right there), each kept off the
+ *  road and spacing metres from the rest, sized and shaded by the brush's size and variety. */
+function assetDab(p, exact) {
+  const E = edits(), B = S.brush, tr = G.world.tr, n = B.count, R = n === 1 ? 0 : B.spread;
+  for (let k = 0, tries = 0; k < n && tries < n * 6; tries++) {
+    const a = Math.random() * Math.PI * 2, rr = R * Math.sqrt(Math.random()), x = Math.round((p.x + Math.cos(a) * rr) * 10) / 10, z = Math.round((p.z + Math.sin(a) * rr) * 10) / 10;
+    const kind = nextKind(), cat = catOf(kind); if (!cat) continue;
+    const vary = 1 + (Math.random() * 2 - 1) * 0.35 * B.variety, sp = B.spacing;
+    let o = null;
+    if (cat === 'house') {
+      const T = BUILDINGS[kind], q = tr.nearest(x, z), f = q ? Math.round(Math.atan2(tr.xs[q.i] - x, tr.zs[q.i] - z) * 180 / Math.PI) : 0;
+      o = { type: kind, x, z, f }; if (onRoad(o)) continue;
+      if ((E.houses || []).some(h => Math.hypot(h.x - x, h.z - z) < (Math.max(T.w, T.d) + Math.max(BUILDINGS[h.type].w, BUILDINGS[h.type].d)) / 2 + sp * 0.5)) continue;
+      (E.houses || (E.houses = [])).push(o);
+    } else if (cat === 'kit') {
+      if (roadGap(x, z) < HALF + 1 || (E.kit || []).some(h => Math.hypot(h.x - x, h.z - z) < sp)) continue;
+      const q = tr.nearest(x, z); o = { k: kind, x, z, yaw: q ? Math.round(tr.th[q.i] * 180 / Math.PI) : 0 }; (E.kit || (E.kit = [])).push(o);   // lined up with the road
+    } else {
+      const s = Math.round(Math.max(0.4, Math.min(3, B.scale * vary)) * 100) / 100;
+      if (roadGap(x, z) < HALF + 1.5 + (kind === 'boulder' ? 2 * s : 0) || (n > 1 || !exact) && (E.props || []).some(h => Math.hypot(h.x - x, h.z - z) < sp)) continue;
+      o = { k: kind, x, z, s, ry: Math.round(Math.random() * 628) / 100 }; if (B.variety > 0) o.t = Math.round((Math.random() * 2 - 1) * B.variety * 100) / 100;
+      (E.props || (E.props = [])).push(o);
+    }
+    k++; S.stroke.n++; S.lastKind = kind; if (S.stroke.n < 400) mark(o);
+    if (exact && n === 1) { S.sel = { o, house: cat === 'house', kit: cat === 'kit' }; ui(); }
   }
-  mark(S.sel.o); status(`${KIND_NAME[S.kind]} put there. Tap it to turn it or size it; tap the ground for another.`); changed();
+  if (exact && !S.stroke.n) status(n === 1 ? 'Too close to the road (or to another one): try a little further off.' : 'No room there: further from the road, or less spacing.', true);
 }
 function hitTest(p) {
   const E = edits();
   for (const o of (E.houses || []).slice().reverse()) { const T = BUILDINGS[o.type], f = (o.f || 0) * Math.PI / 180, dx = p.x - o.x, dz = p.z - o.z, u = dx * Math.sin(f) + dz * Math.cos(f), v = dx * Math.cos(f) - dz * Math.sin(f); if (Math.abs(u) < T.d / 2 + 1 && Math.abs(v) < T.w / 2 + 1) return { o, house: true }; }
+  for (const o of (E.kit || []).slice().reverse()) { const P = KIT_PIECES[o.k], yw = (o.yaw || 0) * Math.PI / 180, dx = p.x - o.x, dz = p.z - o.z, along = dx * Math.sin(yw) + dz * Math.cos(yw), off = dx * Math.cos(yw) - dz * Math.sin(yw); if (Math.abs(along) < (P.len ? (o.w || 4) : P.w) / 2 + 1 && Math.abs(off) < P.d / 2 + 1.2) return { o, kit: true }; }
   let best = null, bd = Infinity; for (const o of E.props || []) { const d = Math.hypot(o.x - p.x, o.z - p.z); if (d < Math.max(2.5, 1.6 * (o.s || 1) * (o.k === 'boulder' ? 2.6 : 1)) && d < bd) { bd = d; best = { o, house: false }; } }
   return best;
 }
-function turnSel(deg) { if (!S.sel) return; remember(); const o = S.sel.o; if (S.sel.house) { o.f = ((o.f || 0) + deg + 360) % 360; if (onRoad(o)) { undo(); status('Turned that way it would stand on the road.', true); return; } } else o.ry = Math.round(((o.ry || 0) + deg * Math.PI / 180) * 100) / 100; changed(); }
-function sizeSel(k) { if (S.tool === 'road' && S.pt >= 0) { liftPt(k > 1 ? 1 : -1); return; } if (S.tool === 'pieces' && S.psel >= 0) { lenPiece(k > 1 ? 10 : -10); return; } if (!S.sel || S.sel.house) return; remember(); S.sel.o.s = Math.round(Math.max(0.4, Math.min(3, (S.sel.o.s || 1) * k)) * 100) / 100; changed(); }
-function delSel() { if (S.tool === 'road' && S.pt >= 0) { delPt(); return; } if (S.tool === 'pieces' && S.psel >= 0) { remember(); edits().pieces.splice(S.psel, 1); S.psel = -1; changed(); return; } if (!S.sel) return; remember(); const E = edits(), o = S.sel.o; E.props = (E.props || []).filter(x => x !== o); E.houses = (E.houses || []).filter(x => x !== o); S.sel = null; changed(); }
+function turnSel(deg) { if (!S.sel) return; remember(); const o = S.sel.o; if (S.sel.kit) o.yaw = ((o.yaw || 0) + deg + 360) % 360; else if (S.sel.house) { o.f = ((o.f || 0) + deg + 360) % 360; if (onRoad(o)) { undo(); status('Turned that way it would stand on the road.', true); return; } } else o.ry = Math.round(((o.ry || 0) + deg * Math.PI / 180) * 100) / 100; changed(); }
+function sizeSel(k) { if (S.tool === 'road' && S.pt >= 0) { liftPt(k > 1 ? 1 : -1); return; } if (S.tool === 'pieces' && S.psel >= 0) { lenPiece(k > 1 ? 10 : -10); return; } if (S.sel && S.sel.kit) { const P = KIT_PIECES[S.sel.o.k]; if (!P.len) return; remember(); S.sel.o.w = Math.round(Math.max(1, Math.min(30, (S.sel.o.w || 4) * k)) * 10) / 10; changed(); return; } if (!S.sel || S.sel.house) return; remember(); S.sel.o.s = Math.round(Math.max(0.4, Math.min(3, (S.sel.o.s || 1) * k)) * 100) / 100; changed(); }
+function delSel() { if (S.tool === 'road' && S.pt >= 0) { delPt(); return; } if (S.tool === 'pieces' && S.psel >= 0) { remember(); edits().pieces.splice(S.psel, 1); S.psel = -1; changed(); return; } if (!S.sel) return; remember(); const E = edits(), o = S.sel.o; E.props = (E.props || []).filter(x => x !== o); E.houses = (E.houses || []).filter(x => x !== o); E.kit = (E.kit || []).filter(x => x !== o); S.sel = null; changed(); }
 // ---------- what's drawn for the studio: the brush ring, and a marker on a change until the rebuild shows it ----------
 function cursorAt(p) {
   if (!S.cursor) {
     S.cursor = new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xFFC72C, transparent: true, opacity: 0.9, depthTest: false }));
     S.cursor.renderOrder = 21; scene.add(S.cursor);
   }
-  const r = S.tool === 'place' ? 2 : S.size; S.cursor.visible = S.on && S.tool !== 'view'; S.cursor.scale.set(r, 1, r); S.cursor.position.set(p.x, p.y + 0.4, p.z);
+  const r = S.tool === 'place' ? (S.brush.count === 1 ? 2 : S.brush.spread) : S.size; S.cursor.visible = S.on && S.tool !== 'view' && S.tool !== 'road' && S.tool !== 'pieces'; S.cursor.scale.set(r, 1, r); S.cursor.position.set(p.x, p.y + 0.4, p.z);
   S.cursor.material.color.set(S.tool === 'lower' ? 0x4AA8E8 : S.tool === 'erase' ? 0xFF6A5A : S.tool === 'smooth' || S.tool === 'flatten' ? 0xFFFFFF : 0xFFC72C);
 }
 function mark(o) {
   if (!S.marks) { S.marks = new THREE.Group(); scene.add(S.marks); }
   let m = S.marks.children.find(c => c.userData.o === o);
-  if (!m) { const T = BUILDINGS[o.type]; m = new THREE.Mesh(T ? new THREE.BoxGeometry(T.w, 3 * T.floors, T.d) : new THREE.ConeGeometry(1.2 * (o.s || 1), 4 * (o.s || 1), 8), new THREE.MeshBasicMaterial({ color: 0xFFC72C, transparent: true, opacity: 0.45 })); m.userData.o = o; S.marks.add(m); }
-  const y = G.world.terr.at(o.x, o.z); m.position.set(o.x, y + (BUILDINGS[o.type] ? 1.5 * BUILDINGS[o.type].floors : 2 * (o.s || 1)), o.z); m.rotation.y = BUILDINGS[o.type] ? (o.f || 0) * Math.PI / 180 : 0;
+  const KP = o.k && KIT_PIECES[o.k];
+  if (!m) { const T = BUILDINGS[o.type]; m = new THREE.Mesh(T ? new THREE.BoxGeometry(T.w, 3 * T.floors, T.d) : KP ? new THREE.BoxGeometry(KP.d + 0.2, KP.h, KP.len ? o.w || 4 : KP.w) : new THREE.ConeGeometry(1.2 * (o.s || 1), 4 * (o.s || 1), 8), new THREE.MeshBasicMaterial({ color: 0xFFC72C, transparent: true, opacity: 0.45 })); m.userData.o = o; S.marks.add(m); }
+  const y = G.world.terr.at(o.x, o.z); m.position.set(o.x, y + (BUILDINGS[o.type] ? 1.5 * BUILDINGS[o.type].floors : KP ? KP.h / 2 : 2 * (o.s || 1)), o.z); m.rotation.y = BUILDINGS[o.type] ? (o.f || 0) * Math.PI / 180 : KP ? (o.yaw || 0) * Math.PI / 180 : 0;
 }
 function clearMarks() { if (!S.marks) return; for (const m of S.marks.children.slice()) { S.marks.remove(m); m.geometry.dispose(); m.material.dispose(); } }
 // ---------- the road (core/track/path.js) ----------

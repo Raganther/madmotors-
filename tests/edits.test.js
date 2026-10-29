@@ -74,3 +74,14 @@ describe('studio set pieces and New track', () => {
     expect(R.score).toBeGreaterThanOrEqual(5);
   });
 });
+describe('studio asset brush data', () => {
+  it('tree kinds keep their colours, street pieces join the kit, an eraser can take only one kind', () => {
+    const st = STAGES[18], tr0 = buildTrack(st), i = 200, x = tr0.xs[i] + tr0.rx[i] * 25, z = tr0.zs[i] + tr0.rz[i] * 25;
+    const s2 = copy(st, { props: [{ k: 'autumn', x, z, s: 1.2 }, { k: 'fir', x: x + 5, z }, { k: 'rock', x: x + 10, z }],
+      kit: [{ k: 'wall', x, z: z + 10, yaw: 90, w: 5 }, { k: 'post', x: x + 3, z: z + 10 }], clears: [[x + 10, z, 3, 'trees']] });
+    const tr = buildTrack(s2), t = buildTerrain(tr, s2), mine = t.obst.items.filter(o => Math.hypot(o.x - x, o.z - z) < 12);
+    expect(mine.find(o => o.kind === 1).color).not.toBe(st.colors.round[0]);   // an autumn tree isn't the stage's green
+    expect(mine.some(o => o.kind === 3)).toBe(true);                               // a 'trees' eraser leaves the rock
+    expect(t.kit.solid.filter(o => o.placed).map(o => o.kind)).toEqual(['wall', 'post']);
+  });
+});
