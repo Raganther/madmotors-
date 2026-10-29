@@ -25,6 +25,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape' && !$('garage').hidden) { closeGarage(); return; }
   if (e.code === 'Escape' && !$('league').hidden) { closeLeagues(); return; }
   if (e.code === 'Escape' && !$('career').hidden) { closeCareer(); return; }
+  if (e.code === 'Escape' && !$('backup').hidden) { $('backup').hidden = true; return; }
   if (e.code === 'Escape' && !$('notes').hidden) { $('notes').hidden = true; return; }
   if (e.code === 'Escape' && G.noteMode) { exitNotes(); return; }
   if (e.code === 'KeyN' && race && G.state !== 'menu') { G.noteMode ? exitNotes() : enterNotes(); return; }

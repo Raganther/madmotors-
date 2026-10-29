@@ -667,6 +667,16 @@ data (`{ k, c, w, p: [x, y, pressure, ...] }`), so a sketch is redrawn from them
 uploads the picture (PNG) and the strokes (JSON) as assets and writes a `sketches` doc; My sketches lists them with
 Claude's replies. Without the database they're kept in this browser.
 
+The menu's **Backup** (`src/ui/backup.js`) carries the game's data to another artifact (another Claude account, a new
+publish): a new artifact starts with empty browser storage (it has its own address) and an empty database. Export
+saves one JSON file (`kind: "mad-motors-backup"`) through the page's `downloads` permission, or Copy puts it on the
+clipboard: every `downhill-rush-*` storage key (settings, car picks, best times, Career, League, Studio and sketch
+drafts, offline notes), the shared collections (`notes`, `sketches`, `studio`, `studioVersions`, `assetNotes`,
+`tracks`), and the assets their docs point to as base64. Import (a file or a paste) shows what's in it first, then
+merges: drafts and notes join by id, best times keep the better, docs already there are left alone, settings and the
+Career / League saves take the backup's; assets are uploaded again and the docs pointed at their new ids; then the page
+reloads. Comments on the artifact page in claude.ai belong to the platform and can't come along.
+
 ## Adding a vehicle
 
 1. A body builder in `src/render/carmodels.js` (`MODELS.<name>`): outline, wheels (`K.wheels`), the damage parts, and

@@ -73,10 +73,14 @@ answer the same way (`{ reply, status: "done" }`), rebuild with `npm run assets 
   draws one asks `blenderPack` / `sceneryPack` / `kitPack` and must keep its Classic path working (Models: Classic, and
   Auto on Graphics: Low). Behaviour (damage, animation, collisions) stays in code; a pack brings shapes, parts and pivots.
 - Publish by `npm run build && node tools/split.mjs dist`, then publishing `dist/publish/index.html` with
-  `files: { "game.js": "dist/publish/game.js" }` to the existing artifact, https://claude.ai/artifact/6PU1DKmhM5TwS8nRXJa92V
-  (pass it as `url`; it keeps its db + assets capabilities); dist is not committed. (It moved here on 2026-10-10: the
-  old game artifact could no longer be opened, so notes and tracks sent before then are not in this database.) (A single-file page is over the
-  artifact size limit, ~4.7 MB; the error it gives talks about "pr-review machinery".) The user's notes and tracks live
-  in that artifact's database. When assets or the lab change, also `npm run lab && node tools/split.mjs dist-lab` and
+  `files: { "game.js": "dist/publish/game.js" }` to the game artifact of the Claude account this session runs as (pass
+  it as `url`; it keeps its db + assets + downloads capabilities); dist is not committed. The user works from two
+  accounts, each with its own game artifact (and its own database of notes, sketches and Studio drafts):
+  https://claude.ai/artifact/6PU1DKmhM5TwS8nRXJa92V and https://claude.ai/artifact/VWoYkDJ6JEu65zXEbELwwC. `Artifact`
+  `list` shows which one is yours; read and answer notes there. The menu's Backup moves their data between the two
+  (README "Backup"); a backup file they give you can be committed under `backups/` and loaded into either database with
+  `ArtifactData` `batch`. (An older game artifact could no longer be opened after 2026-10-10: notes and tracks sent
+  before then are in neither database.) (A single-file page is over the artifact size limit, ~4.7 MB; the error it
+  gives talks about "pr-review machinery".) When assets or the lab change, also `npm run lab && node tools/split.mjs dist-lab` and
   publish `dist-lab/publish/index.html` (+ its game.js) to the lab artifact above. Work on a branch off `main` and merge
   back by pull request.
