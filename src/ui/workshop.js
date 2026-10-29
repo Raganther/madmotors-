@@ -10,8 +10,8 @@ import { STAGES } from '../data/stages/index.js';
 import { VEHICLES, vehicleById } from '../data/vehicles.js';
 import { makeCar } from '../core/sim/car.js';
 import { damageCar } from '../core/sim/damage.js';
-import { ITEMS, ITEM_USES } from '../core/features/weapons.js';
-import { GEAR, GEAR_IDS, WEAPONS } from '../data/weapons.js';
+import { DEFENCE, ITEMS, ITEM_USES, setGear } from '../core/features/weapons.js';
+import { DEFENCES, GEAR, GEAR_IDS, WEAPONS } from '../data/weapons.js';
 import { PANELS, PANEL_STEPS } from '../data/anatomy.js';
 import { PART_MAX, SLOTS, TYRE_KINDS } from '../data/parts.js';
 import { upgradedVeh } from '../data/career.js';
@@ -138,7 +138,7 @@ function lineUp() {
 }
 function give(it) { const w = P().wpn; if (!w) return; w.item = it; w.uses = ITEM_USES[it]; arm(); }
 // the level on the player's weapons and the gear on the targets (data/weapons.js), straight onto the race's cars
-function arm() { const w = P().wpn; if (!w) return; w.load = { lv: Object.fromEntries(ITEMS.map(k => [k, S.lv])) }; for (const c of rivals()) if (c.wpn) c.wpn.gear = S.gear || null; }
+function arm() { const w = P().wpn; if (!w) return; w.load = { lv: Object.fromEntries(ITEMS.map(k => [k, S.lv])) }; for (const c of rivals()) if (c.wpn) setGear(c, S.gear); }
 const HITS = { 'missile-hit': 'Missile', 'mortar-hit': 'Mortar', 'crater-hit': 'Crater', 'bullet-hit': 'Bullet', 'oil-hit': 'Oil', 'pulse-hit': 'Shockwave', 'harpoon-hit': 'Harpoon', 'door-hit': 'Door' };
 function onEvent(c, e) {
   if (S.tab === 'destruct' && c.isPlayer) {
@@ -218,6 +218,7 @@ function drawPanel() {
     <div class="row"><button class="ws-btn" id="ws-run" type="button">Run</button><button class="ws-btn alt" id="ws-fix" type="button">Repair</button></div>${common}<div id="ws-read"></div><div id="ws-log"></div>`;
   else panel.innerHTML = `<h2>Weapons range</h2>${carSel}<label>Weapon</label><div class="row">${ITEMS.map(it => `<button class="ws-btn alt ${it === S.item ? 'on' : ''}" data-it="${it}" type="button">${esc(flow.ITEM_NAME[it])}</button>`).join('')}</div>
     <label>Level</label><div class="row">${[1, 2, 3].map(L => `<button class="ws-btn alt ${L === S.lv ? 'on' : ''}" data-lv="${L}" type="button">${L}: ${esc(WEAPONS[S.item].looks[L - 1])}</button>`).join('')}</div>
+    <label>Your defence (G)</label><div class="row">${DEFENCE.map(d => `<button class="ws-btn alt" data-def="${d}" type="button" title="${esc(DEFENCES[d].blurb)}">${esc(DEFENCES[d].name)}</button>`).join('')}</div>
     <label>Targets' gear</label><div class="row">${['', ...GEAR_IDS].map(g => `<button class="ws-btn alt ${g === S.gear ? 'on' : ''}" data-gear="${g}" type="button">${g ? GEAR[g].name : 'None'}</button>`).join('')}</div>
     <div class="row"><button class="ws-btn" id="ws-fire" type="button">Fire (F)</button><button class="ws-btn alt ${S.refill ? 'on' : ''}" id="ws-refill" type="button">Endless ammo</button></div>
     <label>Targets</label><div class="row"><button class="ws-btn alt ${S.targets === 'dummies' ? 'on' : ''}" data-tg="dummies" type="button">Dummies</button><button class="ws-btn alt ${S.targets === 'racing' ? 'on' : ''}" data-tg="racing" type="button">Rivals racing</button><button class="ws-btn alt ${S.auto ? 'on' : ''}" id="ws-auto" type="button">Autopilot</button></div>
@@ -260,6 +261,7 @@ function drawPanel() {
     for (const b of panel.querySelectorAll('[data-gear]')) b.onclick = () => { S.gear = b.dataset.gear; arm(); drawPanel(); };
     for (const b of panel.querySelectorAll('[data-tg]')) b.onclick = () => { S.targets = b.dataset.tg; lineUp(); drawPanel(); };
     $('ws-fire').onclick = () => { if (!P().wpn.item) give(S.item); P().inp.fire = true; };
+    for (const b of panel.querySelectorAll('[data-def]')) b.onclick = () => { P().wpn.def = b.dataset.def; P().inp.defend = true; };
     $('ws-refill').onclick = () => { S.refill = !S.refill; drawPanel(); };
     $('ws-auto').onclick = () => { S.auto = !S.auto; R().autoPlayer = S.auto; drawPanel(); };
     $('ws-line').onclick = lineUp;

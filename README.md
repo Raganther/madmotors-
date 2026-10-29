@@ -45,14 +45,22 @@ in buildings and shove rubble about, and a missile that flies into a wall goes o
 racer on its own timer, more often the further back it is, and what you get depends on your position (the back gets
 missiles and harpoons, the front oil and shockwaves). Q swings a door into the car beside you (the side is picked
 for you). The AI uses all of it. On touch there are Fire and Door buttons; a gamepad uses B and the bumpers.
+**Defence** (a second slot beside the weapon, `c.wpn.def`): about one crate in three is **blue** (a shield on it) and
+holds something for it, used with **G** (touch: Defence, beside Fire; pad: X), so you can hold one of each. **Flares**
+burn for 1.6 s: a missile homing on you goes for them and nobody can lock on meanwhile (on the lock warning, which
+flashes "press G!" while you hold them; too early and they're out before the missile comes). **Shield**: a 3 s bubble
+that missiles, rounds, blasts, slicks and hooks glance off. **Smoke**: a cloud laid behind you; no lock through it, a
+missile homing on a car in it loses that car, and it drags on whoever drives in. **Repair kit**: every dent mended. The
+AI uses them on the threat they're for, the sharper drivers sooner. `npm run balance` counts their uses and the hits they stopped.
+
 Weapons have levels and cars carry gear (`src/data/weapons.js`; a race def's `wpn: { lv, gear }`): each level swaps
 some of the core's `WPN` numbers (a longer gun burst, wider slicks, glue at level 3, a bigger shockwave, a longer tow,
-twin missiles, a bigger mortar blast, then a three-shell barrage). Gear works by itself: flares draw off a missile locked on to you, a shield soaks up the next hit, a
-magnet pulls crates in from across the road. Five vehicles find a **signature weapon** in crates too (`SIGNATURES`):
+twin missiles, a bigger mortar blast, then a three-shell barrage). Gear: flares or a shield start every race in your
+defence slot (below) and come back 20 / 18 s after you use them; a magnet pulls crates in from across the road. Five vehicles find a **signature weapon** in crates too (`SIGNATURES`):
 the fire engine's water cannon, the mixer's cement trail, the police car's stinger, the monster truck's crush (a leap
 that slams whoever is near when it lands) and the ice cream van's jingle (everyone in earshot stutters). In the career
 they're bought per car in the garage's Armoury; rivals carry the tier's level, bosses a shield. The Workshop's Weapons
-range fires any weapon at any level at targets with any gear; `npm run balance -- --level 2` prices a level.
+range fires any weapon at any level at targets with any gear, and gives you any defence to try; `npm run balance -- --level 2` prices a level.
 
 **Leagues** (menu: Leagues; `src/data/leagues.js`, `src/ui/league.js`): a championship over a named run of stages
 (Rookie Cup, Circuit Series, Mud & Snow, Wild Cup), raced as Races against a fixed field of seven. Points go

@@ -1,5 +1,6 @@
 // Weapons balance (npm run balance): each hit incident's cost = time the victim took over the next 4 s' stretch minus what the same car took
-// over that same stretch in the identical race with weapons off. Aim for roughly 1 s per use for every weapon.
+// over that same stretch in the identical race with weapons off. Aim for roughly 1 s per use for every weapon (a little
+// less now the defence slot stops some: the 'def' rows count its uses, 'saved' the hits a shield or flares or smoke took).
 //   node tools/balance-weapons.mjs [stage,stage,...] [--level 1|2|3]   every car's weapons at that level (data/weapons.js)
 // The field is the standard one plus a car of each vehicle with a signature weapon (the fire engine's water cannon...).
 import * as M from '../src/core/index.js';
@@ -29,6 +30,7 @@ for (const si of stages) for (const seedBase of [1, 2]) {
         if (!weapons) { const a = base[c._k]; while (a.length <= c.progress) a.push(t); }
         for (const e of c.events) {
           if (e.t === 'use') add(e.item, 'use', 1);
+          if (e.t === 'defend') add('def ' + e.item, 'use', 1); if (e.t === 'shield-hit' || e.t === 'decoyed') add('saved', 'use', 1);   // the defence slot: what's used, and what it stopped
           const k = HIT[e.t]; if (k && weapons && !watch.some(w => w.c === c && w.k === k && t - w.t0 < 1.5)) watch.push({ c, k, t0: t, p0: c.progress });
         }
         c.events.length = 0;

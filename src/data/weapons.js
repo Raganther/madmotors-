@@ -24,13 +24,20 @@ export const WEAPONS = {
 export const WEAPON_IDS = Object.keys(WEAPONS);
 /** Vehicle id -> its signature weapon. */
 export const SIGNATURES = { firetruck: 'water', mixer: 'cement', police: 'stinger', monster: 'crush', icecream: 'jingle' };
-/** Gear: one fitted per car, it works by itself (no button). */
+/** Gear: one fitted per car. Flares and a shield start every race in the defence slot and come back after use; the magnet works by itself. */
 export const GEAR = {
-  flares: { name: 'Flares', blurb: 'A missile locked on to you goes for the flares instead (recharges in 20 s)' },
-  shield: { name: 'Shield', blurb: 'Soaks up the next weapon hit (recharges in 18 s)' },
+  flares: { name: 'Flares', blurb: 'Start every race holding flares (G on the lock warning: the missile goes for them); they come back 20 s after use' },
+  shield: { name: 'Shield', blurb: 'Start every race holding a shield (G: a 3 s bubble nothing gets through); it comes back 18 s after use' },
   magnet: { name: 'Magnet', blurb: 'Pulls in weapon crates from further across the road' },
 };
 export const GEAR_IDS = Object.keys(GEAR);
+/** The defence slot's items (core/features/weapons.js DEFENCE): what the HUD and the Workshop call them. */
+export const DEFENCES = {
+  flares: { name: 'Flares', blurb: 'Decoys a missile homing on you; nobody can lock on while they burn. Use on the lock warning' },
+  shield: { name: 'Shield', blurb: 'A bubble for 3 s: missiles, rounds, blasts and slicks glance off' },
+  smoke: { name: 'Smoke', blurb: 'A cloud behind you: no locks through it, and it slows whoever drives in' },
+  repair: { name: 'Repair kit', blurb: 'Mends every dent on the spot' },
+};
 export const WEAPON_PRICE = [0, ...costCurve(2500, 2, 2.4)], GEAR_PRICE = 3000;   // level 2, level 3 (data/prices.js); a piece of gear
 /** The level of weapon `it` in loadout w (a def's `wpn`). */
 export const levelOf = (w, it) => Math.max(1, Math.min(WEAPON_MAX, (w && w.lv && w.lv[it]) || 1));

@@ -1,6 +1,6 @@
 import { HALF } from '../constants.js';
 import { clamp, mulberry32, wrapAngle } from '../math.js';
-import { damageCar } from '../sim/damage.js';
+import { carWear, damageCar } from '../sim/damage.js';
 import { SIGNATURES, WEAPONS, levelOf } from '../../data/weapons.js';
 import { BREAKABLES } from '../../data/breakables.js';
 import { blastStructures, solidAt as wallAt } from './structures.js';
@@ -37,10 +37,19 @@ import { splashLevelOf } from '../elements/mud.js';
 // timer (quicker the further back it is), and a crate nobody can reach any more is cleared away.
 // Door bash (Road Rash with doors), always there: one button, the door on the side with a car beside you swings open;
 // the car is shoved off its line and dented a little, and you're nudged the other way.
+// Defence: a second slot beside the weapon (c.wpn.def), filled from the blue crates (DEF_CRATE of them), used with its
+// own button (inp.defend: G), one at a time:
+//   flares   FLARE_ON s of decoys: a missile homing on you goes for them instead, and nobody can lock on meanwhile.
+//            Fire them on the lock warning: too early and they've burnt out before the missile comes
+//   shield   a bubble for SHIELD_ON s: missiles, rounds, blasts, slicks, hooks and the rest glance off (shielded)
+//   smoke    a cloud laid behind you for SMOKE_T s: a car in it can't lock on (nor be locked on), a missile homing on a
+//            car in it loses that car, and it drags a little on whoever drives through
+//   repair   the car mended on the spot (every dent and panel)
 // Levels, gear and signature weapons (F6, data/weapons.js): a car's def can carry `wpn: { lv, gear }`. A weapon's level
 // swaps some of WPN's numbers for its own (WEAPONS[it].fx: a longer burst, a wider slick, twin missiles, glue); gear
-// works by itself (flares draw off a missile, a shield soaks up the next hit, a magnet pulls crates in); and five
-// vehicles find their own signature weapon in crates too:
+// flares or a shield means the car starts with that in its defence slot and gets it back FLARE_COOL / SHIELD_COOL s
+// after using it (when the slot's empty); a magnet pulls crates in. Five vehicles find their own signature weapon in
+// crates too:
 //   water    fire engine: a jet ahead for WATER_T s that shoves cars aside and leaves them sliding
 //   cement   mixer: a trail of wet cement behind for CEMENT_T s; a car in it bogs down
 //   stinger  police: a spike strip across the road behind; the first STINGER_HITS cars over it lose speed and spin
@@ -50,7 +59,7 @@ import { splashLevelOf } from '../elements/mud.js';
 // features' random sequence is untouched; and with weapons off nothing here runs at all.
 export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_S: 2.4, HIT_LAT: 1.9, ARM: 0.12, SLOW: 0.35, POP: 6, SPIN: 5,
   DOOR_T: 0.45, DOOR_COOL: 2.5, SHOVE: 6, KICK: 1.2, REACH: 4.2, DOOR_SCRUB: 0.92,
-  CRATE_EVERY: 7, CRATE_AHEAD: [60, 100], CRATE_R: 1.9, CRATE_LIFE: 40,
+  CRATE_EVERY: 5.5, CRATE_AHEAD: [60, 100], CRATE_R: 1.9, CRATE_LIFE: 40,
   GUN_T: 3, GUN_RATE: 14, GUN_SWING: 0.26, GUN_SCATTER: 0.05, BULLET_V: 95, BULLET_LIFE: 0.9, BULLET_SLOW: 0.945, BULLET_PUSH: 1.4, BULLET_SPIN: 0.6, OIL_R: 2.8, OIL_T: 1.4, OIL_SPIN: 2.6, OIL_SCRUB: 0.85, OIL_LIFE: 16, OIL_HITS: 3,
   FIRE_T: 4, FIRE_DMG: 5, FIRE_REACH: 4, DRUM_G: 22, DRUM_UP: 2.6, DRUM_FWD: 0.55, DRUM_BOUNCE: 0.42, DRUM_FUSE: 1.4, DRUM_HIT: 0.75, DRUM_OIL: 1.6,
   PULSE_R: 13, PULSE_V: 8, STALL: 1.1, HARP_R: 70, HARP_V: 70, TOW_T: 2.2, TOW_PULL: 16, TOW_DRAG: 3.5,
@@ -62,28 +71,33 @@ export const WPN = { RANGE: 110, SPEED: 20, VMIN: 44, LIFE: 3.6, TURN: 3.6, HIT_
   JINGLE_T: 2.5, JINGLE_R: 22, JINGLE_DUTY: 0.33,
   MORTAR_R: 5.5, MORTAR_FLIGHT: 1.7, MORTAR_RANGE: 130, MORTAR_AHEAD: 60, MORTAR_DMG: 4, MORTAR_POP: 5, MORTAR_PUSH: 7, MORTAR_SCRUB: 0.55, SHELLS: 1, SHELL_GAP: 0.3,
   CRATER_R: 3.1, CRATER_DEEP: 0.15, CRATER_JUMP: 1.5, CRATER_LIFE: 60, CRATER_MAX: 14, CRATER_HOP: 1.3, CRATER_SCRUB: 0.96, CRATER_SPIN: 0.8, CRATER_KICK: 1.5, FIZZLE_CRATER: 1.7,
-  FLARE_COOL: 20, SHIELD_COOL: 18, SHIELD_ON: 1, MAGNET: 2.4, SIG_ODDS: 1.5,
+  FLARE_COOL: 20, SHIELD_COOL: 18, FLARE_ON: 1.6, SHIELD_ON: 3, MAGNET: 2.4, SIG_ODDS: 1.5, DEF_CRATE: 0.33,
+  SMOKE_T: 1.8, SMOKE_EVERY: 0.2, SMOKE_R: 4.5, SMOKE_LIFE: 6, SMOKE_DRAG: 0.3,
   MINE_ARM: 0.8, MINE_FWD: 0.5, MINE_UP: 3.4, MINE_BOUNCE: 0.4, MINE_GRIP: 3.5, MINE_TRIG: 3, MINE_BLAST: 5, MINE_DMG: 6.5, MINE_POP: 6.5, MINE_SLOW: 0.42, MINE_LIFE: 40,
   BLAST_MISSILE: [5, 48], BLAST_MINE: [5, 40], BLAST_MORTAR: [6, 50], BLAST_PULSE: 26, BLAST_CRUSH: 36 };   // scenery blasts: [radius m, power (as a car's impact)]
 export const ITEMS = ['missile', 'gun', 'oil', 'pulse', 'harpoon', 'water', 'cement', 'stinger', 'crush', 'jingle', 'mortar', 'mine'];
 export const ITEM_USES = { missile: 1, gun: 1, oil: 2, pulse: 1, harpoon: 1, water: 1, cement: 1, stinger: 2, crush: 1, jingle: 1, mortar: 1, mine: 2 };
 export const SIG_ITEMS = ITEMS.filter(it => WEAPONS[it].sig);
+/** The defence slot's items (blue crates), and what each gear piece starts you with. */
+export const DEFENCE = ['flares', 'shield', 'smoke', 'repair'];
+const GEAR_DEF = { flares: 'flares', shield: 'shield' };
 /** Weapon number k for car c's item it: its level's (data/weapons.js) or WPN's. */
 export const wv = (c, it, k) => { const f = WEAPONS[it].fx[levelOf(c.wpn && c.wpn.load, it) - 1]; return f[k] !== undefined ? f[k] : WPN[k]; };
 // pick-up odds by race position r (0 = leading, 1 = last): the back gets missiles and harpoons, the front oil and pulses
 const ODDS = { missile: r => 0.5 + 1.5 * r, gun: () => 1, oil: r => 1.5 - r, pulse: r => 1.1 - 0.4 * r, harpoon: r => 0.15 + 1.6 * r, mortar: r => 0.35 + 1.1 * r, mine: r => 1.1 - 0.6 * r };
+// and a blue crate's: the front (the one being shot at) gets flares and smoke, a battered car the repair kit
+const DEF_ODDS = { flares: r => 1.3 - 0.6 * r, shield: () => 1, smoke: r => 1.3 - 0.7 * r, repair: (r, wear) => 0.4 + 3 * wear };
 
 const along = (c, o) => (o.x - c.x) * Math.sin(c.yaw) + (o.z - c.z) * Math.cos(c.yaw);
 const across = (c, o) => -(o.x - c.x) * Math.cos(c.yaw) + (o.z - c.z) * Math.sin(c.yaw);   // + = the car's right (core rx, rz)
 const live = c => !(c.wreckT > 0) && !(c.ghost > 0) && !c.finished;
 const idx = (R, c) => R.cars.indexOf(c);
-/** Does car c's shield take this hit? (gear: soaks up the first hit, and anything else in the next SHIELD_ON s) */
-function shielded(c) {
-  const w = c.wpn; if (!w || w.gear !== 'shield') return false;
-  if (w.shieldOn > 0) return true;
-  if (w.shieldT > 0) return false;
-  w.shieldT = WPN.SHIELD_COOL; w.shieldOn = WPN.SHIELD_ON; c.events.push({ t: 'shield', x: c.x, y: c.y, z: c.z }); return true;
-}
+/** Does car c's shield take this hit? (the bubble's up: SHIELD_ON s from using it) */
+const shielded = c => !!(c.wpn && c.wpn.shieldOn > 0);
+/** Is car c in a smoke cloud? */
+const inSmoke = (R, c) => R.wpn.clouds.some(k => Math.abs(c.y - k.y) < 4 && Math.hypot(c.x - k.x, c.z - k.z) < k.r);
+/** Can't c see o for a lock? Flares burning on o, o pouring smoke, or smoke round either. */
+const blinded = (R, c, o) => !!o && (o.wpn.flareOn > 0 || o.wpn.smokeT > 0 || inSmoke(R, o) || inSmoke(R, c));
 /** A blast at (x, z): breakables (data/breakables.js) within r m break if `power` (falling off with distance) beats
  *  their hp, whatever their minimum mass; buildings' walls break or crack (blastStructures); loose rubble and blocks
  *  are thrown outwards. `by` (a car index, or -1) gets the credit. Returns what broke. */
@@ -154,13 +168,19 @@ function crates(R, W, dt) {
     w.crateT = WPN.CRATE_EVERY * (1.35 - 0.6 * r) * (0.8 + 0.4 * rng());           // further back: offered more often
     if (S.crates.some(k => k.s > c.progress + a - 20 && k.s < c.progress + b + 10)) continue;   // one already waiting up the road
     const s = c.progress + a + rng() * (b - a); if (!spotOK(tr, s)) continue;
-    S.crates.push({ id: S.next++, s, lat: (rng() * 2 - 1) * (HALF - 2.2), t: 0 });
+    S.crates.push({ id: S.next++, s, lat: (rng() * 2 - 1) * (HALF - 2.2), t: 0, def: rng() < WPN.DEF_CRATE });   // def: a blue crate (defence)
   }
   S.crates = S.crates.filter(k => {
     k.t += dt; if (k.t > WPN.CRATE_LIFE || R.cars.every(c => !live(c) || c.progress > k.s + 6)) return false;
     for (const c of R.cars) {
       const reach = c.wpn.gear === 'magnet' ? WPN.MAGNET : 1;
-      if (!live(c) || c.wpn.item || Math.abs(c.progress - k.s) > WPN.CRATE_R * reach || Math.abs(onRoad(tr, c) - k.lat) > (WPN.CRATE_R + 0.4) * reach) continue;
+      if (!live(c) || (k.def ? c.wpn.def : c.wpn.item) || Math.abs(c.progress - k.s) > WPN.CRATE_R * reach || Math.abs(onRoad(tr, c) - k.lat) > (WPN.CRATE_R + 0.4) * reach) continue;
+      if (k.def) {   // a blue crate: something for the defence slot
+        const r = rankOf(R, c), wear = carWear(c), odds = DEFENCE.map(d => DEF_ODDS[d](r, wear)), sum = odds.reduce((x, y) => x + y, 0);
+        let pick = rng() * sum, def = DEFENCE[0]; for (let q = 0; q < DEFENCE.length; q++) { pick -= odds[q]; if (pick <= 0) { def = DEFENCE[q]; break; } }
+        c.wpn.def = def; c.events.push({ t: 'pickup', def, x: c.x, y: c.y, z: c.z, crate: k.id });
+        return false;
+      }
       // the five standard weapons by race position, and the car's own signature weapon if it has one
       const odds = pickupOdds(R, c), sum = odds.reduce((x, y) => x + y, 0);
       let pick = rng() * sum, item = ITEMS[0]; for (let q = 0; q < ITEMS.length; q++) { if (!odds[q]) continue; pick -= odds[q]; if (pick <= 0) { item = ITEMS[q]; break; } }
@@ -180,20 +200,20 @@ function locking(R, W, dt) {
   R.cars.forEach((c, k) => {
     const w = c.wpn; if (w.item !== 'missile' || !live(c)) { w.lockTgt = -1; w.lockK = 0; return; }
     if (!lockable(c, R.cars[w.lockTgt])) { const t = missileTarget(R, c); if (t !== w.lockTgt) { w.lockTgt = t; w.lockK = 0; } }   // a new car in the sights starts again
-    if (w.lockTgt < 0) { w.lockK = 0; return; }
+    if (w.lockTgt < 0 || blinded(R, c, R.cars[w.lockTgt])) { w.lockK = 0; return; }   // flares burning, or smoke between: no lock
     const was = w.lockK; w.lockK = Math.min(1, w.lockK + dt / wv(c, 'missile', 'LOCK_T'));
     if (was < 1 && w.lockK >= 1) { c.events.push({ t: 'locked', tgt: w.lockTgt }); R.cars[w.lockTgt].events.push({ t: 'locked-on', from: k }); }
   });
 }
 /** Car c's locked target (index), or -1 when the lock isn't complete. */
-export const lockedOn = (R, c) => c.wpn && c.wpn.lockK >= 1 && lockable(c, R.cars[c.wpn.lockTgt]) ? c.wpn.lockTgt : -1;
+export const lockedOn = (R, c) => c.wpn && c.wpn.lockK >= 1 && lockable(c, R.cars[c.wpn.lockTgt]) && !blinded(R, c, R.cars[c.wpn.lockTgt]) ? c.wpn.lockTgt : -1;
 // ----- using a weapon -----
 function use(R, W, c) {
   const w = c.wpn, it = w.item, k = idx(R, c), tr = W.tr, sp = Math.hypot(c.vx, c.vz);
   if (it === 'missile') {
     const t = lockedOn(R, c), turn = wv(c, it, 'TURN'), fire = (tg, lat) => {   // locked: it homes; not yet: straight down the road
       R.missiles.push({ id: R.wpn.next++, from: k, tgt: tg, s: c.progress + 2.5, lat, v: Math.max(WPN.VMIN, sp + WPN.SPEED), t: 0, turn });
-      if (tg >= 0) lock(R, W, R.cars[tg], k);
+      if (tg >= 0) R.cars[tg].events.push({ t: 'missile-lock', from: k });
     };
     if (wv(c, it, 'TWIN')) { const t2 = t >= 0 ? secondTarget(R, c, t) : -1; fire(t, onRoad(tr, c) - 1.2); fire(t2 >= 0 ? t2 : t, onRoad(tr, c) + 1.2); }   // twin: one each at the two cars ahead
     else fire(t, onRoad(tr, c));
@@ -229,12 +249,21 @@ function use(R, W, c) {
   c.events.push({ t: 'use', item: it, lv: levelOf(w.load, it) });
   if (--w.uses <= 0) { w.item = null; w.uses = 0; }
 }
-// a missile locking on: flares (gear) draw it off, if they're charged
-function lock(R, W, T, k) {
-  const m = R.missiles[R.missiles.length - 1], w = T.wpn;
-  // drawn off to the side away from the car, and it's lost that car for good (it may still hit another)
-  if (w && w.gear === 'flares' && !(w.flareT > 0)) { w.flareT = WPN.FLARE_COOL; m.spare = m.tgt; m.tgt = -1; m.decoy = m.lat >= onRoad(W.tr, T) ? 1 : -1; T.events.push({ t: 'flares', x: T.x, y: T.y, z: T.z, from: k }); return; }
-  T.events.push({ t: 'missile-lock', from: k });
+// ----- defence (the second slot) -----
+function defend(R, W, c) {
+  const w = c.wpn, it = w.def, k = idx(R, c);
+  if (it === 'flares') w.flareOn = WPN.FLARE_ON;                                  // (flyMissiles draws off whatever's homing on c)
+  else if (it === 'shield') w.shieldOn = WPN.SHIELD_ON;
+  else if (it === 'smoke') { w.smokeT = WPN.SMOKE_T; w.smokeAcc = 1; }
+  else if (it === 'repair') { c.dmg = { f: 0, b: 0, l: 0, r: 0 }; c.panels = {}; c.hitT = 0; c.events.push({ t: 'repair' }); }
+  c.events.push({ t: 'defend', item: it, k, x: c.x, y: c.y, z: c.z });
+  w.def = null;
+}
+// a missile homing on T loses it: flares draw it off to the side away from the car, for good (it may still hit
+// another); in smoke it just flies on blind down the road
+function decoy(R, W, m, T, flares) {
+  if (flares) { m.spare = m.tgt; m.decoy = m.lat >= onRoad(W.tr, T) ? 1 : -1; }
+  m.tgt = -1; T.events.push({ t: 'decoyed', from: m.from, flares, x: T.x, y: T.y, z: T.z });
 }
 /** The second car ahead of c (for twin missiles), not `first`. */
 function secondTarget(R, c, first) {
@@ -256,7 +285,8 @@ function flyMissiles(R, W, dt) {
   for (const m of R.missiles) {
     m.t += dt; m.s += m.v * dt;
     const T = m.tgt >= 0 ? R.cars[m.tgt] : null;
-    if (T && live(T)) m.lat += clamp(onRoad(tr, T) - m.lat, -(m.turn || WPN.TURN) * dt, (m.turn || WPN.TURN) * dt);   // home in across the road
+    if (T && (T.wpn.flareOn > 0 || T.wpn.smokeT > 0 || inSmoke(R, T))) decoy(R, W, m, T, T.wpn.flareOn > 0);
+    else if (T && live(T)) m.lat += clamp(onRoad(tr, T) - m.lat, -(m.turn || WPN.TURN) * dt, (m.turn || WPN.TURN) * dt);   // home in across the road
     else if (m.decoy) m.lat += WPN.TURN2 * dt * m.decoy;                                // after the flares: off the road, away from the car it was after
     if (m.t < WPN.ARM) continue;
     for (const c of R.cars) {                                                    // anyone in its path, not only the target
@@ -468,7 +498,15 @@ function signatures(R, W, dt) {
   const S = R.wpn, tr = W.tr;
   for (const c of R.cars) {
     const w = c.wpn, k = idx(R, c);
-    if (w.flareT > 0) w.flareT -= dt; if (w.shieldT > 0) w.shieldT -= dt; if (w.shieldOn > 0) w.shieldOn -= dt;
+    if (w.flareOn > 0) w.flareOn -= dt; if (w.shieldOn > 0) w.shieldOn -= dt;
+    // gear (flares, shield): the slot fills again COOL s after it's emptied
+    const g = GEAR_DEF[w.gear];
+    if (g) { if (w.def) w.defT = 0; else if (!(w.defT > 0)) w.defT = g === 'flares' ? WPN.FLARE_COOL : WPN.SHIELD_COOL; else if ((w.defT -= dt) <= 0) { w.def = g; w.defT = 0; c.events.push({ t: 'recharged', item: g }); } }
+    // smoke: a puff of cloud laid behind every SMOKE_EVERY s while it pours
+    if (w.smokeT > 0) {
+      w.smokeT -= dt; w.smokeAcc += dt;
+      if (w.smokeAcc >= WPN.SMOKE_EVERY) { w.smokeAcc = 0; const b = c.hl + 2; S.clouds.push({ id: S.next++, x: c.x - Math.sin(c.yaw) * b, y: c.y, z: c.z - Math.cos(c.yaw) * b, r: 0, t: 0, from: k }); }
+    }
     // water cannon: everything in the jet's cone is shoved away down it, scrubbed and left sliding
     if (w.waterT > 0) {
       w.waterT -= dt;
@@ -504,6 +542,13 @@ function signatures(R, W, dt) {
         if (on) o.stallT = Math.max(o.stallT || 0, 1 / 30);
       });
     }
+  }
+  // smoke clouds: swelling to SMOKE_R, thinning away; a drag on anyone else driving through
+  S.clouds = S.clouds.filter(o => { o.t += dt; o.r = WPN.SMOKE_R * Math.min(1, 0.4 + o.t * 0.8) * (o.t > WPN.SMOKE_LIFE - 1 ? WPN.SMOKE_LIFE - o.t : 1); return o.t < WPN.SMOKE_LIFE; });
+  for (const [j, c] of R.cars.entries()) {
+    if (!live(c) || !S.clouds.some(o => o.from !== j && Math.abs(c.y - o.y) < 4 && Math.hypot(c.x - o.x, c.z - o.z) < o.r)) { c.fogT = 0; continue; }
+    if (!(c.fogT > 0)) c.events.push({ t: 'smoke-hit', from: S.clouds.find(o => o.from !== j && Math.hypot(c.x - o.x, c.z - o.z) < o.r).from });
+    c.fogT = (c.fogT || 0) + dt; c.vx *= 1 - WPN.SMOKE_DRAG * dt; c.vz *= 1 - WPN.SMOKE_DRAG * dt;
   }
   // wet cement: drags anyone in it
   S.cement = S.cement.filter(o => {
@@ -601,10 +646,10 @@ function doors(R, dt) {
 function aiWeapons(R, W, dt) {
   const rng = R.wpn.rng;
   for (const c of R.cars) {
-    if ((c.isPlayer && !R.autoPlayer) || c.hold || !live(c)) continue;
+    if ((c.isPlayer && !R.autoPlayer) || !live(c)) continue;
     const P = c.ai.persona, bold = P === 'bomber' || P === 'nemesis', keen = (0.6 + (c.ai.flick || 0.3)) * (P === 'bomber' ? 2.5 : P === 'nemesis' ? 1.6 : 1), w = c.wpn;   // personalities (G5): fire sooner, at more
     w.heldT = w.item ? (w.heldT || 0) + dt : 0;
-    if (w.item && !(w.gunT > 0) && rng() < dt * 0.8 * keen) {
+    if (w.item && !c.hold && !(w.gunT > 0) && rng() < dt * 0.8 * keen) {
       const ahead = missileTarget(R, c), gap = ahead >= 0 ? R.cars[ahead].progress - c.progress : 999;
       const behind = R.cars.some(o => o !== c && live(o) && c.progress - o.progress > (bold ? 2 : 3) && c.progress - o.progress < (bold ? 45 : 30));
       const near = R.cars.filter(o => o !== c && live(o) && Math.hypot(o.x - c.x, o.z - c.z) < WPN.PULSE_R * 0.7).length;
@@ -615,7 +660,15 @@ function aiWeapons(R, W, dt) {
         water: inJet, cement: behind, stinger: behind, crush: close >= 1 && c.onGround, jingle: heard >= 2, mortar: mortarTarget(R, c) >= 0, mine: behind }[w.item];
       if (want || w.heldT > 10) use(R, W, c);   // held too long with no use for it (the leader with a missile): fire it anyway, to make room for the next crate
     }
-    if (!(w.doorCool > 0) && !(w.doorT > 0) && rng() < dt * 0.45 * keen) {
+    // defence (a Workshop dummy held still too): on the threat it's for; the sharper the driver, the quicker (a poor one may be too late)
+    if (w.def && rng() < dt * (1 + 7 * (c.ai.skill ?? 0.7) ** 2)) {
+      const k = idx(R, c), homing = R.missiles.filter(m => m.tgt === k), lockedBy = R.cars.some(o => o !== c && o.wpn.item === 'missile' && o.wpn.lockTgt === k && o.wpn.lockK >= 0.8);
+      const incoming = homing.some(m => c.progress - m.s < 30) || R.wpn.shells.some(sh => sh.tgt === k && !(sh.wait > 0) && sh.t > WPN.MORTAR_FLIGHT - 0.8) || R.wpn.hooks.some(h => h.to === k && !h.tow && c.progress - h.s < 25);
+      const tailed = R.cars.some(o => o !== c && live(o) && (o.wpn.item === 'missile' || o.wpn.item === 'gun' || o.wpn.gunT > 0) && c.progress - o.progress > 4 && c.progress - o.progress < 40);
+      const d = c.dmg, want = { flares: homing.length > 0 || lockedBy, shield: incoming, smoke: lockedBy || (tailed && rng() < 0.05), repair: carWear(c) > 0.3 || Math.max(d.f, d.b, d.l, d.r) > 0.65 }[w.def];
+      if (want) defend(R, W, c);
+    }
+    if (!c.hold && !(w.doorCool > 0) && !(w.doorT > 0) && rng() < dt * 0.45 * keen) {
       for (const o of R.cars) {
         if (o === c || !live(o)) continue;
         const lat = across(c, o), lon = along(c, o);
@@ -624,15 +677,18 @@ function aiWeapons(R, W, dt) {
     }
   }
 }
+/** Fit gear g (data/weapons.js GEAR, or null) to car c: flares or a shield go straight into its defence slot. */
+export function setGear(c, g) { const w = c.wpn; w.gear = g || null; w.defT = 0; if (GEAR_DEF[g]) w.def = GEAR_DEF[g]; }
 export const feature = {
   name: 'weapons',
   init(R, W) {
     R.missiles = []; if (W) W.craters = W.dents = null; if (!R.weapons) return;
-    R.wpn = { rng: mulberry32(R.cars.length * 104729 + 3), next: 0, crates: [], bullets: [], slicks: [], hooks: [], cement: [], strips: [], shells: [], craters: [], mines: [], drums: [] };
+    R.wpn = { rng: mulberry32(R.cars.length * 104729 + 3), next: 0, crates: [], bullets: [], slicks: [], hooks: [], cement: [], strips: [], shells: [], craters: [], mines: [], drums: [], clouds: [] };
     R.cars.forEach((c, k) => {
       const load = c.def.wpn || null;   // levels and gear (data/weapons.js); the signature weapon comes with the vehicle
       c.wpn = { item: null, uses: 0, gunT: 0, gunAcc: 0, doorT: 0, doorSide: 0, doorCool: 0, crateT: 1.5 + k * 0.4,
-        load, gear: (load && load.gear) || null, sig: SIGNATURES[c.def.vehicle || c.def.model] || null, flareT: 0, shieldT: 0, shieldOn: 0, soaked: [], jingled: [], lockTgt: -1, lockK: 0 };
+        load, gear: null, def: null, defT: 0, sig: SIGNATURES[c.def.vehicle || c.def.model] || null, flareOn: 0, shieldOn: 0, smokeT: 0, soaked: [], jingled: [], lockTgt: -1, lockK: 0 };
+      setGear(c, load && load.gear);
     });
   },
   after(R, W, dt) {
@@ -641,6 +697,7 @@ export const feature = {
     for (const c of R.cars) {
       const w = c.wpn, inp = c.inp;
       if (inp.fire) { inp.fire = false; if (racing && w.item && !(w.gunT > 0) && live(c)) use(R, W, c); }
+      if (inp.defend) { inp.defend = false; if (racing && w.def && live(c)) defend(R, W, c); }
       if (inp.door) { if (racing && !(w.doorCool > 0) && live(c)) swingDoor(R, c, doorSide(R, c)); inp.door = 0; }
     }
     if (racing) { locking(R, W, dt); crates(R, W, dt); aiWeapons(R, W, dt); }

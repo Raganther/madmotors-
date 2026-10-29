@@ -2,7 +2,7 @@ import { G } from '../game.js';
 import { screenOffset } from '../core/sim/view.js';
 import { CP, SD, cpState, sdLeader, sdMult } from '../core/modes/showdown.js';
 import { WPN, wv } from '../core/features/weapons.js';
-import { GEAR, levelOf } from '../data/weapons.js';
+import { DEFENCES, GEAR, levelOf } from '../data/weapons.js';
 import { AudioSys } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { ranking } from '../core/sim/race.js';
@@ -63,11 +63,17 @@ export function updateHUD(dt) {
     const W = P.wpn, pi = race.cars.indexOf(P), lock = race.missiles.some(m => m.tgt === pi) || race.cars.some(o => o !== P && o.wpn && o.wpn.lockTgt === pi && o.wpn.lockK > 0.35), el = $('wpn'), it = W.item;
     const aiming = it === 'missile' && !(W.gunT > 0) ? (W.lockK >= 1 ? ' · LOCKED' : W.lockTgt >= 0 ? ' · locking' : ' · no target') : '';   // the missile's lock (core lockedOn)
     const act = W.gunT > 0 ? ['gun', W.gunT, wv(P, 'gun', 'GUN_T')] : W.waterT > 0 ? ['water', W.waterT, wv(P, 'water', 'WATER_T')] : W.cementT > 0 ? ['cement', W.cementT, wv(P, 'cement', 'CEMENT_T')] : W.jingleT > 0 ? ['jingle', W.jingleT, WPN.JINGLE_T] : null, firing = !!act;
-    const gear = W.gear ? ` · ${GEAR[W.gear].name}${W.gear === 'magnet' ? '' : (W.gear === 'shield' ? W.shieldT : W.flareT) > 0 ? ' ' + Math.ceil(W.gear === 'shield' ? W.shieldT : W.flareT) + 's' : ' ready'}` : '';
+    const gear = W.gear === 'magnet' ? ` · ${GEAR.magnet.name}` : '';
     el.hidden = false; el.className = lock ? 'lock' : it || firing ? '' : 'reload';
     setTxt('wpn-state', (lock ? (race.missiles.some(m => m.tgt === pi) ? 'Missile incoming!' : 'Locked on to you!') : firing ? ITEM_NAME[act[0]] + '!' : it ? ITEM_NAME[it] + (levelOf(W.load, it) > 1 ? ' L' + levelOf(W.load, it) : '') + (W.uses > 1 ? ` ×${W.uses}` : '') + aiming + (isTouch ? '' : ' · F') : 'Grab a ? crate') + gear);
     const fw = (firing ? 100 * act[1] / act[2] : it === 'missile' ? 100 * (W.lockK || 0) : it ? 100 : 0).toFixed(0) + '%', ff = $('wpn-fill'); if (ff._w !== fw) { ff._w = fw; ff.style.width = fw; }
     $('wpn-fire').classList.toggle('ready', !!it); $('wpn-fire').classList.toggle('lock', lock);
+    // the defence slot: what's in it (G), a recharging gear piece's countdown, and a flashing prompt when flares would save you
+    const D = W.def, on = W.shieldOn > 0 ? 'Shield up' : W.flareOn > 0 ? 'Flares burning' : W.smokeT > 0 ? 'Smoke!' : '', urgent = lock && (D === 'flares' || D === 'shield' || D === 'smoke');
+    setTxt('wpn-def', on || (D ? `${DEFENCES[D].name}${urgent ? (isTouch ? '' : ' · press G!') : isTouch ? '' : ' · G'}` : W.defT > 0 ? `${DEFENCES[W.gear].name} back in ${Math.ceil(W.defT)}s` : 'Defence: grab a blue crate'));
+    $('wpn-def').className = urgent ? 'urgent' : D || on ? '' : 'empty';
+    $('wpn-guard').classList.toggle('ready', !!D); $('wpn-guard').classList.toggle('urgent', urgent);
+    setTxt('wpn-guard', D ? { flares: 'Flares', shield: 'Shield', smoke: 'Smoke', repair: 'Repair' }[D] : W.defT > 0 ? Math.ceil(W.defT) + 's' : 'Defence');
     setTxt('wpn-fire', it ? { missile: 'Missile', gun: 'Guns', oil: 'Oil', pulse: 'Pulse', harpoon: 'Hook', water: 'Water', cement: 'Cement', stinger: 'Stinger', crush: 'Crush', jingle: 'Jingle', mortar: 'Mortar', mine: 'Mines' }[it] : 'Fire');   // on touch the Fire button is the weapon panel: it says what you hold
   } else $('wpn').hidden = true;
   $('touch').classList.toggle('nowpn', !race.weapons);

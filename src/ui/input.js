@@ -31,8 +31,9 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyN' && race && G.state !== 'menu') { G.noteMode ? exitNotes() : enterNotes(); return; }
   if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
   if (e.code === 'KeyM') AudioSys.toggle();
-  if (G.state === 'racing' && race && race.weapons) {                              // weapons: F fires what you're holding, Q (or E) swings a door
+  if (G.state === 'racing' && race && race.weapons) {                              // weapons: F fires what you're holding, G uses the defence, Q (or E) swings a door
     if (e.code === 'KeyF') race.player.inp.fire = true;
+    if (e.code === 'KeyG') race.player.inp.defend = true;                          // the defence slot
     if (e.code === 'KeyQ' || e.code === 'KeyE') race.player.inp.door = 1;          // the side is picked for you: wherever a car is
   }
   if (e.code === 'KeyC' && G.state !== 'menu' && G.state !== 'viewing') { setCamera(nextCamera()); callout('Camera: ' + CAM_MODES[G.camMode].name); }   // cycle the camera
@@ -70,8 +71,8 @@ thumbZone($('steer-zone'), (_x, _y, e) => {
   touch.dir = [dx, -dy]; wheelG.setAttribute('transform', `rotate(${(Math.atan2(dx, -dy) * 180 / Math.PI).toFixed(1)})`);
   return null;
 }, () => { touch.dir = null; touch.wheel = touch.left = touch.right = false; wheel.classList.remove('on'); wheelG.removeAttribute('transform'); arrowEls.forEach(el => el.classList.remove('on')); });
-// touch weapons: fire what you're holding; the door swings on whichever side has a car (the core picks)
-for (const [id, act] of [['wpn-fire', P => { P.inp.fire = true; }], ['wpn-door', P => { P.inp.door = 1; }]]) $(id).addEventListener('pointerdown', e => { e.preventDefault(); if (G.state === 'racing' && race && race.weapons) act(race.player); });
+// touch weapons: fire what you're holding, use the defence; the door swings on whichever side has a car (the core picks)
+for (const [id, act] of [['wpn-fire', P => { P.inp.fire = true; }], ['wpn-guard', P => { P.inp.defend = true; }], ['wpn-door', P => { P.inp.door = 1; }]]) $(id).addEventListener('pointerdown', e => { e.preventDefault(); if (G.state === 'racing' && race && race.weapons) act(race.player); });
 /** Camera mode and zoom (render/camera.js). Remembered between visits. */
 export function setCamera(mode = G.camMode, zoom = G.camZoom) {
   G.camMode = mode in CAM_MODES ? mode : 'classic'; G.camZoom = zoom in CAM_ZOOMS ? zoom : 'normal'; saveCamera({ mode: G.camMode, zoom: G.camZoom });
@@ -107,8 +108,8 @@ export function readInput(dt) {
     const ax = gp.axes[0] || 0; if (Math.abs(ax) > 0.15) st = ax;
     if (gp.buttons[7]) thr = Math.max(thr, gp.buttons[7].value); if (gp.buttons[6]) brk = Math.max(brk, gp.buttons[6].value);
     if (gp.buttons[0] && gp.buttons[0].pressed) hb = 1;
-    const pr = k => gp.buttons[k] && gp.buttons[k].pressed, was = G.gpPrev || [];                          // B: missile, LB / RB: doors
-    if (race.weapons) { if (pr(1) && !was[1]) P.inp.fire = true; if ((pr(4) && !was[4]) || (pr(5) && !was[5])) P.inp.door = 1; }
+    const pr = k => gp.buttons[k] && gp.buttons[k].pressed, was = G.gpPrev || [];                          // B: weapon, X: defence, LB / RB: doors
+    if (race.weapons) { if (pr(1) && !was[1]) P.inp.fire = true; if (pr(2) && !was[2]) P.inp.defend = true; if ((pr(4) && !was[4]) || (pr(5) && !was[5])) P.inp.door = 1; }
     G.gpPrev = [0, 1, 2, 3, 4, 5].map(pr);
   }
   const cur = P.inp.steer;

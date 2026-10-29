@@ -47,9 +47,8 @@ export function eventSound(c, e, near) {
     case 'cement-hit': if (close) S('splash', { at: c, vol: 0.6, rate: 0.45 }); break;
     case 'stinger-hit': if (close) S('puncture', { at: c, vol: me ? 0.9 : 0.6 }); break;
     case 'crush': if (dist(at) < 70) { AudioSys.thud(1, at); AudioSys.crash('car', 1, at); S('rubble', { at, vol: 0.4, rate: 0.7 }); } break;
-    case 'shield': if (close) S('zap', { at: c, vol: 0.35, rate: 2.4, wet: 0.2 }); break;
+    case 'defend': if (close) { if (e.item === 'shield') S('zap', { at: c, vol: 0.4, rate: 2.4, wet: 0.2 }); else if (e.item === 'flares') { S('rocket', { at: c, vol: 0.3, rate: 2 }); AudioSys.burst(0.2, 'bandpass', 3000, 0.3); } else if (e.item === 'smoke') AudioSys.burst(0.3, 'lowpass', 900, 0.6); else S('clank', { at: c, vol: 0.4, rate: 1.4 }); } break;
     case 'shield-hit': if (close && t - shieldT > 0.15) { shieldT = t; S('zap', { at, vol: 0.2, rate: 3 }); } break;
-    case 'flares': if (close) { S('rocket', { at: c, vol: 0.3, rate: 2 }); AudioSys.burst(0.2, 'bandpass', 3000, 0.3); } break;
     case 'missile-hit': AudioSys.boom(at, 'mid'); if (close) AudioSys.crash('car', 0.9, at); break;
     case 'missile-fizzle': if (e.boom) AudioSys.boom(at, 'small'); else S('thud', { at, vol: 0.4, rate: 1.6 }); break;
     case 'mine-boom': AudioSys.boom(at, 'mid'); S('rubble', { at, vol: 0.35, rate: 1.4 }); break;

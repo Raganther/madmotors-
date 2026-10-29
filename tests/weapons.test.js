@@ -67,7 +67,7 @@ describe('weapons', () => {
     for (let t = 0; t < 45; t += 1 / 120) {
       M.raceStep(R, 1 / 120, Wd);
       for (const k of R.wpn.crates) R.cars.forEach((c, j) => { if (k.s - c.progress > 40 && k.s - c.progress < 110) near.add(j); });
-      for (const c of R.cars) { for (const e of c.events) if (e.t === 'pickup') got.push({ item: e.item, rank: R.cars.filter(o => o.progress > c.progress).length }); c.events.length = 0; }
+      for (const c of R.cars) { for (const e of c.events) if (e.t === 'pickup' && !e.def) got.push({ item: e.item, rank: R.cars.filter(o => o.progress > c.progress).length }); c.events.length = 0; }
     }
     expect(near.size).toBe(4);                                                          // every car had a crate coming up at some point
     expect(got.length).toBeGreaterThan(4); expect(got.every(g => M.ITEMS.includes(g.item))).toBe(true);
@@ -142,13 +142,40 @@ describe('weapon modules', () => {
     M.blastScenery(R, conc.x, conc.z, M.WPN.BLAST_MISSILE[0], M.WPN.BLAST_MISSILE[1], 0); expect(conc.broken).toBe(true); expect(R.chunks.length).toBe(3);
     expect(R.brk.filter(o => o.broken).length).toBe(2);
   });
-  it('gear: flares draw a missile off, a shield soaks up a hit, then both recharge', () => {
+  it('defence: rivals with flares or a shield (gear) start holding it, use it on a missile coming for them, and get it back', () => {
     for (const gear of ['flares', 'shield']) {
       const { R, Wd } = setup('missile', [3, 5, -5], [40, -60, -70], {}, { wpn: { gear } }), T = R.cars[0]; const seen = [];
-      run(R, Wd, 3, (e, c) => { if (c === T) seen.push(e.t); });
-      expect(seen.includes('missile-hit'), gear).toBe(false); expect(seen.includes(gear === 'flares' ? 'flares' : 'shield'), gear).toBe(true);
-      expect(gear === 'flares' ? T.wpn.flareT : T.wpn.shieldT).toBeGreaterThan(10);
+      expect(T.wpn.def).toBe(gear);
+      run(R, Wd, 3, (e, c) => { if (c === T) seen.push(e.t === 'defend' ? e.item : e.t); });
+      expect(seen.includes('missile-hit'), gear).toBe(false); expect(seen.includes(gear), gear).toBe(true);
+      expect(T.wpn.def, gear).toBe(null); expect(T.wpn.defT, gear).toBeGreaterThan(10);
+      R.wpn.crates = []; for (const c of R.cars) c.wpn.crateT = 1e9;   // (no blue crate to fill the slot meanwhile)
+      let back = false; run(R, Wd, 20, (e, c) => { if (c === T && e.t === 'recharged' && e.item === gear) back = true; }); expect(back, gear).toBe(true);
     }
+  });
+  it('defence: flares too early burn out, a shield blocks, smoke breaks a lock, a repair kit mends', () => {
+    // P fires a locked missile at T; T uses its defence `at` s after (before, when negative): was T hit?
+    const missileAt = (def, at) => {
+      const { R, Wd, P } = setup('missile', [3, 5, -5], [40, -60, -70]), T = R.cars[0], use = () => { T.wpn.def = def; T.inp.defend = true; }; P.inp.fire = false;
+      if (at < 0) { use(); for (let k = 0; k < -at * 120; k++) { M.raceStep(R, 1 / 120, Wd); put(P, 400, 0, 22); put(T, 440, 3, 22); } }
+      P.wpn.item = 'missile'; P.wpn.uses = 1; P.wpn.lockTgt = 0; P.wpn.lockK = 1; P.inp.fire = true; let hit = false;
+      for (let k = 0; k < 360; k++) { if (k === Math.round(at * 120)) use(); run(R, Wd, 1 / 120, (e, c) => { if (c === T && e.t === 'missile-hit') hit = true; }); }
+      return hit;
+    };
+    expect(missileAt(null, 99)).toBe(true);
+    expect(missileAt('flares', 0.3)).toBe(false);
+    expect(missileAt('flares', -2)).toBe(true);   // too early: burnt out before the missile came
+    expect(missileAt('shield', 0.5)).toBe(false);
+    { const { R, Wd, P } = setup('missile', [3, 5, -5], [40, -60, -70]), T = R.cars[0]; P.inp.fire = false; expect(M.lockedOn(R, P)).toBe(0);
+      T.wpn.def = 'smoke'; T.inp.defend = true; M.raceStep(R, 1 / 120, Wd); expect(M.lockedOn(R, P)).toBe(-1); expect(T.wpn.def).toBe(null);
+      run(R, Wd, 0.5); expect(R.wpn.clouds.length).toBeGreaterThan(0); expect(P.wpn.lockK).toBe(0); }
+    { const { R, Wd } = setup('gun', [3, 5, -5], [40, -60, -70]), T = R.cars[0]; T.dmg = { f: 0.6, b: 0.2, l: 0.5, r: 0 };
+      T.wpn.def = 'repair'; T.inp.defend = true; M.raceStep(R, 1 / 120, Wd); expect(T.dmg).toEqual({ f: 0, b: 0, l: 0, r: 0 }); }
+  });
+  it('defence: blue crates fill the defence slot beside the weapon, and the rivals use what they get', () => {
+    const { R, Wd } = raceW(), got = [], used = []; R.autoPlayer = true;
+    run(R, Wd, 150, (e, c) => { if (e.t === 'pickup' && e.def) got.push(e.def); if (e.t === 'defend') used.push(e.item); });
+    expect(got.length).toBeGreaterThan(1); expect(got.every(d => M.DEFENCE.includes(d))).toBe(true); expect(used.length).toBeGreaterThan(0);
   });
   it('signature weapons come with their vehicle, and only with it', () => {
     const { R, Wd } = raceW({ vehicle: 'firetruck' }), got = [];

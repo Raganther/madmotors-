@@ -26,13 +26,14 @@ import { resetDirt } from '../render/effects/dirt.js';
 import { drumBounceFx, drumBurstFx } from '../render/weapons.js';
 import { coat, rinse } from '../render/effects/dirt.js';
 import { clearTrails } from '../render/effects/trails.js';
-import { bulletHitFx, crushFx, mineBlast, flaresFx, shieldFx, stingerFx, flash, missileBlast, mortarBlast, mortarLaunchFx, craterHitFx, missilePuff, mountKick, oilDropFx, pickupFx, pulseFx, smoke, muzzleFx } from '../render/weapons.js';
+import { bulletHitFx, crushFx, mineBlast, defendFx, shieldFx, stingerFx, flash, missileBlast, mortarBlast, mortarLaunchFx, craterHitFx, missilePuff, mountKick, oilDropFx, pickupFx, pulseFx, smoke, muzzleFx } from '../render/weapons.js';
 import { landDust } from '../render/effects/carfx.js';
 import { carVis, setRoster, dentFx, repairCarVis, sdBoomFx, sdSpawnFx, takedownFx, visOf, wreckFx } from '../render/vehicles.js';
 import { resetBarrierVis } from '../render/world/barriers.js';
 import { buildWorld } from '../render/world/index.js';
 import { elementHook } from '../render/elements/index.js';
 import { $, isTouch } from './dom.js';
+import { DEFENCES } from '../data/weapons.js';
 import { fmt, ordinal } from './format.js';
 import { callout } from './hud.js';
 import { buildTrackCards, refreshTrackCards } from './tracks.js';
@@ -131,7 +132,7 @@ export function handleEvents() {
         case 'sd-crown': sdCrown(e); break;
         case 'cp-point': cpPoint(e); break;
         case 'hammer-hit': shockwave(e.x, e.y - 1, e.z, 5, 0xFFC72C); sparks(e.x, e.y, e.z, 22); flash(e.x, e.y, e.z, 4, 0xFFFFFF, 0.2); for (let k = 0; k < 3; k++) smoke(e.x + (Math.random() - 0.5) * 2, e.y - 0.5, e.z + (Math.random() - 0.5) * 2, 3, 0xB8A890, 1.1, 1); if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1); callout('Wrecking ball!'); } break;
-        case 'pickup': pickupFx(e); if (c.isPlayer) callout(ITEM_NAME[e.item] + '!'); break;
+        case 'pickup': pickupFx(e); if (c.isPlayer) callout(e.def ? DEFENCES[e.def].name + '! (defence)' : ITEM_NAME[e.item] + '!'); break;
         case 'use': mountKick(visOf(c)); useFx(c, e.item); break;
         case 'shot': if (near) muzzleFx(c); break;
         case 'bullet-hit': { bulletHitFx(e, race.cars[e.from]); const v = visOf(c); if (v) v.wobble = Math.min(0.3, (v.wobble || 0) + 0.08); } if (c.isPlayer) { G.shake = Math.min(1, G.shake + 0.12); if (G.calloutTimer <= 0) callout('Taking fire!'); } break;
@@ -139,7 +140,7 @@ export function handleEvents() {
         case 'pulse-hit': flash(c.x, c.y + 1, c.z, 3.5, 0x9ADCFF, 0.3); for (let k = 0; k < 6; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 6, 2 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.3, 0.3, 0xBFE8FF, -2); if (c.isPlayer) { callout('Shockwave! Engine out!'); G.shake = Math.min(1.4, G.shake + 0.7); } break;
         case 'harpoon-hit': { flash(c.x, c.y + 1, c.z, 2.2, 0xFFFFFF, 0.15); sparks(c.x, c.y + 0.8, c.z, 8); const by = race.cars[e.from]; if (c.isPlayer) callout(`Harpooned by ${by.name}!`); else if (by === race.player) callout(`Hooked ${c.name}!`); break; }
         case 'locked': if (c.isPlayer) { AudioSys.beep(1800, 0.08); AudioSys.tone(1500, 0.2, 0.05, 'square', 1.4); } break;   // your lock is on: fire
-        case 'locked-on': if (c.isPlayer) { callout(`${race.cars[e.from].name} has a missile lock on you!`); AudioSys.beep(900, 0.12); } break;
+        case 'locked-on': if (c.isPlayer) { callout(`${race.cars[e.from].name} has a missile lock on you!` + (c.wpn.def === 'flares' ? (isTouch ? ' Flares!' : ' G: flares!') : '')); AudioSys.beep(900, 0.12); } break;
         case 'missile-lock': if (c.isPlayer) { callout(`${race.cars[e.from].name} fired a missile at you!`); AudioSys.beep(1500, 0.1); AudioSys.tone(1200, 0.25, 0.05, 'square', 1.2); } break;
         case 'water-hit': { const v = visOf(c); rinse(v); if (v) { v.soakT = 1.6; v.dripT = 2; v.dripCol = 0xCFE8FF; } } for (let k = 0; k < 10; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, 0.6, 0.5, 0xCFE8FF, -9, 'solid'); if (c.isPlayer) callout('Soaked!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`Hosed ${c.name}!`); break;
         case 'cement-hit': coat(visOf(c), 0x9A968E, 0.45, 12); if (c.isPlayer) callout('Stuck in cement!'); else if (race.cars[e.from] === race.player && G.calloutTimer <= 0) callout(`${c.name} is in your cement!`); break;
@@ -147,9 +148,11 @@ export function handleEvents() {
         case 'crush': crushFx(e); if (near) G.shake = Math.min(1.4, G.shake + (c.isPlayer ? 0.8 : 0.4)); break;
         case 'crush-hit': if (c.isPlayer) callout('Crushed!'); else if (race.cars[e.from] === race.player) callout(`Crushed ${c.name}!`); break;
         case 'jingle-hit': if (c.isPlayer) callout('Ice cream! Engine stuttering'); break;
-        case 'shield': shieldFx(c); if (c.isPlayer) callout('Shield!'); break;
-        case 'shield-hit': flash(e.x, e.y + 1, e.z, 2.5, 0x9ADCFF, 0.15); break;
-        case 'flares': flaresFx(c); if (c.isPlayer) callout('Flares! Missile decoyed'); else if (race.cars[e.from] === race.player) callout(`${c.name} fired flares`); break;
+        case 'defend': defendFx(c, e.item); if (c.isPlayer) callout({ flares: 'Flares!', shield: 'Shield up!', smoke: 'Smoke screen!', repair: 'Repaired!' }[e.item]); break;
+        case 'shield-hit': flash(e.x, e.y + 1, e.z, 2.5, 0x9ADCFF, 0.15); shieldFx(c); break;
+        case 'decoyed': if (c.isPlayer) callout(e.flares ? 'Missile decoyed!' : 'Lost in the smoke!'); else if (race.cars[e.from] === race.player) callout(e.flares ? `${c.name} decoyed your missile` : `Your missile lost ${c.name} in the smoke`); break;
+        case 'recharged': if (c.isPlayer && G.calloutTimer <= 0) callout(DEFENCES[e.item].name + ' ready'); break;
+        case 'smoke-hit': if (c.isPlayer && G.calloutTimer <= 0) callout('In the smoke!'); break;
         case 'missile-hit': { const v = visOf(c); if (v) v.burnT = 2.5; } missileBlast(e); if (c.isPlayer) { G.shake = Math.min(1.6, G.shake + 1.1); callout('Hit by a missile!'); } else if (race.cars[e.from] === race.player) callout(`Direct hit on ${c.name}!`); break;
         case 'missile-fizzle': if (e.boom) missileBlast(e); else missilePuff(e); break;
         case 'mine-boom': mineBlast(e); break;

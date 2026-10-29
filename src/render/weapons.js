@@ -17,7 +17,7 @@ import { pushWave } from './waves.js';
 const L = c => new THREE.MeshLambertMaterial({ color: c }), B = c => new THREE.MeshBasicMaterial({ color: c });
 const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); return b; };
 const cyl = (r, l, m, x = 0, y = 0, z = 0) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 10).rotateX(Math.PI / 2), m); c.position.set(x, y, z); return c; };
-let laserPool = [], drumPool = [], minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, reticle = null, shellPool = [], markPool = [], scorches = [], later = [], sci = 0, fi = 0, si = 0, di = 0;
+let laserPool = [], drumPool = [], minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, reticle = null, bubbles = [], cloudPool = [], flareAcc = 0, shellPool = [], markPool = [], scorches = [], later = [], sci = 0, fi = 0, si = 0, di = 0;
 const MAXB = 80, _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _y = new THREE.Vector3(0, 1, 0);
 export function initWeaponVis() {
   const white = L(0xF2F2EE), red = L(0xD8203A);
@@ -44,7 +44,14 @@ export function initWeaponVis() {
     g.strokeStyle = 'rgba(60,38,16,0.35)'; g.lineWidth = 1; for (let k = 0; k < 14; k++) { const y = Math.random() * h; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + 3, w * 0.6, y - 3, w, y + 1); g.stroke(); }
     g.fillStyle = '#FFC72C'; g.shadowColor = '#FFE27A'; g.shadowBlur = 12; g.font = 'bold 84px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', w / 2, h / 2 + 4); g.shadowBlur = 0; g.lineWidth = 4; g.strokeStyle = '#7A4A10'; g.strokeText('?', w / 2, h / 2 + 4);
   });
-  const cm = new THREE.MeshLambertMaterial({ map: q, emissive: 0x4A3010 }), ring = new THREE.MeshBasicMaterial({ color: 0xFFC72C, transparent: true, opacity: 0.45, depthWrite: false });
+  // the blue crate (defence): steel-blue boards and a white shield on each face
+  const qd = canvasTex(128, 128, (g, w, h) => {
+    for (let k = 0; k < 4; k++) { g.fillStyle = k % 2 ? '#2A5C9A' : '#336CB0'; g.fillRect(0, k * h / 4, w, h / 4 - 2); g.fillStyle = 'rgba(10,20,40,0.5)'; g.fillRect(0, (k + 1) * h / 4 - 3, w, 3); }
+    g.shadowColor = '#BFE8FF'; g.shadowBlur = 12; g.fillStyle = '#F4FAFF'; g.beginPath(); g.moveTo(w / 2, 22); g.lineTo(w - 30, 34); g.lineTo(w - 32, 70); g.quadraticCurveTo(w - 40, 96, w / 2, 110); g.quadraticCurveTo(40, 96, 32, 70); g.lineTo(30, 34); g.closePath(); g.fill();
+    g.shadowBlur = 0; g.lineWidth = 4; g.strokeStyle = '#123A6A'; g.stroke(); g.fillStyle = '#336CB0'; g.fillRect(w / 2 - 5, 40, 10, 52); g.fillRect(w / 2 - 22, 58, 44, 10);
+  });
+  const cm = new THREE.MeshLambertMaterial({ map: q, emissive: 0x4A3010 }), cmd = new THREE.MeshLambertMaterial({ map: qd, emissive: 0x10264A });
+  const ring = new THREE.MeshBasicMaterial({ color: 0xFFC72C, transparent: true, opacity: 0.45, depthWrite: false }), ringd = new THREE.MeshBasicMaterial({ color: 0x5CB8FF, transparent: true, opacity: 0.45, depthWrite: false });
   const edges = []; for (const [ax, ay] of [[0, 1], [0, 2], [1, 2]]) for (const a of [-1, 1]) for (const b2 of [-1, 1]) { const p = [0, 0, 0]; p[ax] = a * 0.9; p[ay] = b2 * 0.9; const sz = [0.16, 0.16, 0.16]; sz[3 - ax - ay] = 1.92; edges.push(new THREE.BoxGeometry(...sz).translate(...p)); }
   const edgeG = mergeAll(edges), edgeM = L(0x5E6670);
   crates = [];
@@ -52,7 +59,7 @@ export function initWeaponVis() {
     const g = new THREE.Group(), b = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.8, 1.8), cm); body.castShadow = true; b.add(body, new THREE.Mesh(edgeG, edgeM)); g.add(b);
     const r = new THREE.Mesh(new THREE.RingGeometry(1.4, 2.0, 24).rotateX(-Math.PI / 2), ring); r.position.y = -1.3; g.add(r);
     const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xFFC72C, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.35 })); gl.scale.set(4.2, 4.2, 1); g.add(gl);
-    g.visible = false; scene.add(g); crates.push({ g, b, r });
+    g.visible = false; scene.add(g); crates.push({ g, b, r, body, gl, mats: [cm, cmd, ring, ringd] });
   }
   // scorch marks: where a missile or a blast hit, a black smudge on the road that fades over half a minute
   const scTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 1, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(10,8,6,0.85)'); gr.addColorStop(0.5, 'rgba(25,20,16,0.55)'); gr.addColorStop(1, 'rgba(30,26,22,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); for (let k = 0; k < 9; k++) { const a = k / 9 * 6.28; g.strokeStyle = 'rgba(12,10,8,0.5)'; g.lineWidth = 2; g.beginPath(); g.moveTo(w / 2, h / 2); g.lineTo(w / 2 + Math.cos(a) * w * 0.48, h / 2 + Math.sin(a) * h * 0.48); g.stroke(); } });
@@ -135,6 +142,9 @@ export function initWeaponVis() {
   const fireTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,252,235,1)'); gr.addColorStop(0.3, 'rgba(255,214,110,1)'); gr.addColorStop(0.62, 'rgba(255,120,30,0.85)'); gr.addColorStop(1, 'rgba(255,60,10,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
   for (let k = 0; k < 24; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: fireTex, depthWrite: false, transparent: true })); sp.renderOrder = 6; sp.visible = false; scene.add(sp); flashes.push({ sp, t: 1, life: 1, size: 1 }); }
   for (let k = 0; k < 64; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, depthWrite: false, transparent: true })); sp.visible = false; scene.add(sp); smokes.push({ sp, t: 1, life: 1, size: 1, vy: 0 }); }
+  // shields up (defence): a bubble round the car while it lasts; smoke screens: a soft grey lump on each cloud
+  bubbles = []; for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 14), new THREE.MeshBasicMaterial({ color: 0x7FD4FF, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false })); m.visible = false; scene.add(m); bubbles.push(m); }
+  cloudPool = []; for (let k = 0; k < 96; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, color: 0xEDEDE8, depthWrite: false, transparent: true })); sp.renderOrder = 5; sp.visible = false; scene.add(sp); cloudPool.push(sp); }
   for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x6EC8FF, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.visible = false; scene.add(m); domes.push({ m, t: 1, size: 1 }); }
   targetRing = new THREE.Mesh(new THREE.RingGeometry(2.1, 2.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xFF2A2A, transparent: true, opacity: 0.8, depthWrite: false, depthTest: false }));
   targetRing.renderOrder = 9; targetRing.visible = false; scene.add(targetRing);
@@ -229,7 +239,19 @@ export function updateWeaponVis(dt, now) {
     p.g.visible = true; p.g.position.set(x, y, z); p.g.lookAt(x2 + (x2 - x) * 10, y2 + (y2 - y) * 10, z2 + (z2 - z) * 10);
     if (G.state === 'racing' && (p.puffT = (p.puffT || 0) - dt) <= 0) { p.puffT = 0.04; smoke(x, y, z, 1.1, 0xD8D8D0, 0.7, 0.2); }
   });
-  S.crates.forEach((k, j) => { const c = crates[j % crates.length]; place(c.g, tr, k.s, k.lat, 1.3 + Math.sin(now * 2.5 + k.id) * 0.2); c.g.visible = true; c.b.rotation.set(now * 0.9 + k.id, now * 1.3, 0); c.r.material.opacity = 0.3 + 0.2 * Math.sin(now * 4 + k.id); });
+  S.crates.forEach((k, j) => {
+    const c = crates[j % crates.length]; place(c.g, tr, k.s, k.lat, 1.3 + Math.sin(now * 2.5 + k.id) * 0.2); c.g.visible = true; c.b.rotation.set(now * 0.9 + k.id, now * 1.3, 0);
+    c.body.material = c.mats[k.def ? 1 : 0]; c.r.material = c.mats[k.def ? 3 : 2]; c.gl.material.color.set(k.def ? 0x5CB8FF : 0xFFC72C); c.r.material.opacity = 0.3 + 0.2 * Math.sin(now * 4 + k.id);
+  });
+  // defence: shields up, flares burning, smoke clouds
+  let nb2 = 0; for (const m of bubbles) m.visible = false;
+  for (const c of R.cars) {
+    const w = c.wpn; if (!w) continue;
+    if (w.shieldOn > 0 && nb2 < bubbles.length) { const m = bubbles[nb2++], r = Math.max(c.hl || 2.2, 2.2) * 1.25; m.visible = true; m.position.set(c.x, c.y + 0.7, c.z); m.scale.set(r * 0.8, r * 0.6, r); m.rotation.y = c.yaw; m.material.opacity = Math.min(0.24, w.shieldOn * 0.3) * (0.8 + 0.2 * Math.sin(now * 14)); }
+    if (w.flareOn > 0 && G.state === 'racing' && (flareAcc += dt) > 0.07) { flareAcc = 0; const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), sd = Math.random() < 0.5 ? 1 : -1; emit(c.x - fx * 1.5, c.y + 1.4, c.z - fz * 1.5, c.vx * 0.5 - fx * 5 - fz * sd * 5, 6 + Math.random() * 3, c.vz * 0.5 - fz * 5 + fx * sd * 5, 1.2, 0.5, 0xFFE08A, 6, 'solid'); flash(c.x - fx * 4, c.y + 2.5, c.z - fz * 4, 2.2, 0xFFE08A, 0.15); }
+  }
+  // (two lumps a cloud, turned apart, so it reads as thick smoke rather than a haze)
+  cloudPool.forEach((sp, j) => { const o = S.clouds[S.clouds.length - 1 - (j >> 1)]; sp.visible = !!o; if (!o) return; const sz = o.r * (j & 1 ? 2.2 : 2.8); sp.position.set(o.x, o.y + o.r * (j & 1 ? 0.8 : 0.5), o.z); sp.scale.set(sz, sz * 0.85, 1); sp.material.rotation = o.id * 1.7 + (j & 1) * 2.1 + now * 0.15; sp.material.opacity = Math.min(1, o.t * 3) * Math.min(1, (WPN.SMOKE_LIFE - o.t) / 1.5); });
   let nb = 0;
   for (const b of S.bullets) {
     if (nb >= MAXB) break;
@@ -396,9 +418,16 @@ export function crushFx(e) {
   for (let k = 0; k < 8; k++) smoke(e.x + (Math.random() - 0.5) * 5, e.y + 0.5, e.z + (Math.random() - 0.5) * 5, 3 + Math.random() * 2, 0xB79C78, 1.4, 1);
   for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; emit(e.x, e.y + 0.3, e.z, Math.cos(a) * 11, 2 + Math.random() * 3, Math.sin(a) * 11, 0.5, 0.6, 0x8A7356, -9, 'solid'); }
 }
-/** A shield taking a hit (gear): a blue bubble round the car. */
+/** A shield going up, or taking a hit: a blue flash round the car. */
 export function shieldFx(c) { dome(c.x, c.y, c.z, 3.4, 0x7FD4FF); flash(c.x, c.y + 1, c.z, 4, 0xBFE8FF, 0.25); }
-/** Flares (gear): hot sparks fired up and back, drawing the missile off. */
+/** Using a defence item: flares, a shield going up, a burst of smoke, a repair's sparkle. */
+export function defendFx(c, it) {
+  if (it === 'flares') flaresFx(c);
+  else if (it === 'shield') shieldFx(c);
+  else if (it === 'smoke') { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); for (let k = 0; k < 6; k++) smoke(c.x - fx * (2 + k), c.y + 0.8, c.z - fz * (2 + k), 3 + k * 0.4, 0xC8C8C4, 1.4, 0.6); }
+  else if (it === 'repair') { flash(c.x, c.y + 1, c.z, 4, 0x9CFF9C, 0.3); for (let k = 0; k < 16; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 5, 2 + Math.random() * 3, (Math.random() - 0.5) * 5, 0.6, 0.35, k % 2 ? 0x9CFF9C : 0xFFFFFF, -4, 'solid'); }
+}
+/** Flares (defence): hot sparks fired up and back, drawing the missile off. */
 export function flaresFx(c) {
   const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
   for (let k = 0; k < 10; k++) { const s = k % 2 ? 1 : -1; emit(c.x - fx, c.y + 1.6, c.z - fz, c.vx * 0.6 - fx * 6 - fz * s * (3 + k), 7 + Math.random() * 3, c.vz * 0.6 - fz * 6 + fx * s * (3 + k), 1.4, 0.6, k % 3 ? 0xFFE08A : 0xFFFFFF, 6, 'solid'); }
