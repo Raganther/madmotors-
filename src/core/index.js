@@ -13,6 +13,7 @@ export * from './track/edits.js';
 export * from './track/path.js';
 export * from './track/pieces.js';
 export * from './track/generate.js';
+export * from './track/themes.js';
 export * from './sim/barriers.js';
 export * from './sim/obstacles.js';
 export * from './sim/car.js';

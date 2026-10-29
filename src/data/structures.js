@@ -48,6 +48,8 @@ export const BUILDINGS = {
   chapel: { name: 'Chapel', mat: 'stone', w: 9, d: 14, floors: 2, walls: [0xA8A090, 0xB8B0A0], roof: 'steep', roofC: [0x3A3F47] },
   warehouse: { name: 'Warehouse', mat: 'concrete', w: 18, d: 14, floors: 2, walls: [0x9CA3AB, 0xB7B2A6, 0x7E8790], roof: 'flat', roofC: [0x5E6670] },
   flats: { name: 'Flats', mat: 'concrete', w: 14, d: 10, floors: 4, walls: [0xC2B59B, 0xB9B6AE, 0xD0C8B8], roof: 'flat', roofC: [0x5E6670] },
+  keep: { name: 'Keep', mat: 'stone', w: 14, d: 14, floors: 4, walls: [0xA8A090, 0x9C968A], roof: 'flat', roofC: [0x6E6A62] },   // the Castle theme's
+  tavern: { name: 'Tavern', mat: 'timber', w: 11, d: 9, floors: 2, walls: [0xE9DCC0, 0xD8C7A0], roof: 'steep', roofC: [0x5B4A3E, 0x6E5A48] },
   stall: { name: 'Market stall', mat: 'timber', w: 5, d: 3, floors: 1, walls: [0xD7261E, 0x2E6FB0, 0xE0B020], roof: 'flat', roofC: [0xF4F1EA], open: true },
 };
 export const BUILDING_TYPES = Object.keys(BUILDINGS);

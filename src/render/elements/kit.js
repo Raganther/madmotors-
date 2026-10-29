@@ -35,6 +35,17 @@ export function addKit(group, tr, terr, stage) {
     if (k === 'house' || k === 'barn') return;                                       // buildings: render/elements/structures.js draws (and breaks) them
     if (k === 'picket') { bx(0, H / 2, 0, 0.06, H, L, 0xF6F4EE, { picket: true }); return; }   // one panel, its pickets cut out of a texture
     if (k === 'wall') { const c = o.style === 'desert' ? 0xC98E5F : 0x9C968A; bx(0, H / 2 - 0.3, 0, D, H + 0.6, L, c); bx(0, H + 0.04, 0, D + 0.1, 0.12, L + 0.05, new THREE.Color(c).multiplyScalar(0.85).getHex()); return; }
+    if (k === 'castlewall') {   // a curtain wall: dressed stone with a walk along the top and merlons on the outer edge
+      const c = 0x9C968A; bx(0, H / 2 - 0.3, 0, D, H + 0.6, L, c); bx(0, H + 0.02, 0, D + 0.15, 0.2, L + 0.05, 0x8A847A);
+      for (let v = -L / 2 + 0.4; v <= L / 2 - 0.3; v += 1.2) bx(D / 2 - 0.25, H + 0.45, v, 0.5, 0.7, 0.6, 0x948E83);
+      return;
+    }
+    if (k === 'tower') {        // a square tower: a plinth, the shaft, a corbelled parapet with merlons, a slit or two
+      const c = 0x9A9488, W2 = Math.max(L, D); bx(0, 0.4, 0, W2 + 0.6, 1.2, W2 + 0.6, 0x8A847A); bx(0, H / 2, 0, W2, H, W2, c); bx(0, H + 0.2, 0, W2 + 0.7, 0.45, W2 + 0.7, 0x8A847A);
+      for (const e of [-1, 1]) for (let q = -W2 / 2; q <= W2 / 2 + 0.01; q += W2 / 3) { bx(e * (W2 / 2 + 0.1), H + 0.85, q, 0.5, 0.8, 0.55, 0x948E83); bx(q, H + 0.85, e * (W2 / 2 + 0.1), 0.55, 0.8, 0.5, 0x948E83); }
+      for (const e of [-1, 1]) bx(e * (W2 / 2 + 0.02), H * 0.62, 0, 0.06, 1.3, 0.3, 0x2B2F3A);
+      return;
+    }
     if (k === 'hedge') { bx(0, H / 2 - 0.1, 0, D, H + 0.2, L, 0x3F6B33); return; }
     if (k === 'railing') { for (let v = -L / 2; v <= L / 2 + 0.01; v += L / Math.ceil(L / 1.5)) bx(0, H / 2, v, 0.07, H, 0.07, 0xF4F4F0, SM); for (const y of [0.45, H]) bx(0, y, 0, 0.05, 0.06, L, 0xF4F4F0, SM); return; }
     if (k === 'chain') { for (let v = -L / 2; v <= L / 2 + 0.01; v += L / Math.ceil(L / 2.5)) bx(0, H / 2, v, 0.08, H, 0.08, 0x8D939C, SM); bx(0, H / 2, 0, 0.02, H - 0.1, L, 0xA7ABB1, { glass: true }); bx(0, H, 0, 0.05, 0.05, L, 0x8D939C); return; }

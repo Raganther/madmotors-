@@ -26,6 +26,8 @@ Object.assign(BREAKABLES, {
   bin: { name: 'Bin', hp: 2, minMass: 0, kit: true },
   bench: { name: 'Bench', hp: 4, minMass: 0, kit: true },
   postbox: { name: 'Postbox', hp: 22, minMass: 1, kit: true },
+  castlewall: { name: 'Castle wall', hp: 60, minMass: 2, kit: true },   // the Castle theme's (core/track/themes.js): only the heaviest breach it
+  tower: { name: 'Tower', hp: Infinity, minMass: Infinity, kit: true },
 });
 // A derby arena's wall ring (core/elements/arena.js): unbreakable, drawn as one ring by render/elements/arena.js.
 Object.assign(BREAKABLES, {

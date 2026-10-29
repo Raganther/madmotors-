@@ -43,6 +43,7 @@ export const KIT_PIECES = {
   wall: { name: 'Stone wall', d: 0.5, h: 0.95, len: true }, hedge: { name: 'Hedge', d: 0.9, h: 1.35, len: true }, picket: { name: 'Picket fence', d: 0.14, h: 1.0, len: true },
   railing: { name: 'Railing', d: 0.1, h: 1.0, len: true }, chain: { name: 'Chain-link fence', d: 0.08, h: 1.8, len: true }, fence: { name: 'Wooden fence', d: 0.25, h: 1.2, len: true },
   post: { name: 'Lamp post', w: 0.3, d: 0.3, h: 4.6 }, bin: { name: 'Bin', w: 0.6, d: 0.6, h: 1.0 }, bench: { name: 'Bench', w: 1.6, d: 0.5, h: 0.8 }, postbox: { name: 'Postbox', w: 0.5, d: 0.5, h: 1.4 },
+  castlewall: { name: 'Castle wall', d: 1.6, h: 4.2, len: true }, tower: { name: 'Tower', w: 5.2, d: 5.2, h: 10 },
   hay: { name: 'Hay bales', w: 4.4, d: 1.3, h: 1.3 }, crates: { name: 'Crates', w: 3.2, d: 1.2, h: 1.2 }, concrete: { name: 'Concrete blocks', w: 6, d: 0.8, h: 1.0 },
 };
 const scaleHex = (c, k) => { const f = v => Math.max(0, Math.min(255, Math.round(v * k))); return (f(c >> 16 & 255) << 16) | (f(c >> 8 & 255) << 8) | f(c & 255); };

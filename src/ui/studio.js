@@ -7,8 +7,9 @@ import { corners } from '../core/elements/structures.js';
 import { KIT_PIECES, PAINTS, PROPS, editsDiff, paintDab, sculptAt, sculptDab } from '../core/track/edits.js';
 import { pathFromTrack, samplePath } from '../core/track/path.js';
 import { PIECES } from '../core/track/pieces.js';
-import { LOOKS, generateStage } from '../core/track/generate.js';
+import { generateStage } from '../core/track/generate.js';
 import { LAND_STYLES } from '../core/track/ground.js';
+import { LOOK_KEYS, THEMES, walledTown } from '../core/track/themes.js';
 import { buildTrack } from '../core/track/build.js';
 import { pickGround } from '../render/notepins.js';
 import { pcamera, scene } from '../render/renderer.js';
@@ -52,17 +53,18 @@ const MIXES = {
   forest: { name: 'Pine forest', mix: { pine: 6, fir: 3, bush: 1 } }, woods: { name: 'Woodland', mix: { tree: 5, autumn: 1, bush: 3 } }, autumnwood: { name: 'Autumn wood', mix: { autumn: 5, tree: 2, bush: 2 } },
   orchard: { name: 'Blossom', mix: { blossom: 4, tree: 1, bush: 1 } }, rocky: { name: 'Rocky ground', mix: { rock: 5, boulder: 2, bush: 1 } }, desert: { name: 'Desert scrub', mix: { cactus: 3, rock: 2, bush: 1 } },
   village: { name: 'Village', mix: { cottage: 3, house: 2, shed: 1 } }, town: { name: 'Town', mix: { house: 2, terrace: 2, shop: 1, flats: 1 } }, farm: { name: 'Farm', mix: { barn: 1, shed: 2, hay: 2 } },
-  streetset: { name: 'Street furniture', mix: { post: 2, bin: 1, bench: 1, postbox: 1 } },
+  streetset: { name: 'Street furniture', mix: { post: 2, bin: 1, bench: 1, postbox: 1 } }, castle: { name: 'Castle town', mix: { cottage: 3, tavern: 2, stall: 2, house: 1 } },
 };
-const KIND_NAME = { ...PROPS, ...Object.fromEntries(BUILDING_TYPES.map(t => [t, BUILDINGS[t].name])), ...Object.fromEntries(STREET.map(k => [k, KIT_PIECES[k].name])), ...Object.fromEntries(Object.entries(MIXES).map(([k, m]) => ['mix:' + k, m.name])) };
+const KIND_NAME = { ...PROPS, ...Object.fromEntries(BUILDING_TYPES.map(t => [t, BUILDINGS[t].name])), ...Object.fromEntries(STREET.map(k => [k, KIT_PIECES[k].name])), ...Object.fromEntries(Object.entries(MIXES).map(([k, m]) => ['mix:' + k, m.name])), 'stamp:walledtown': 'Walled town (tap the road)' };
 const catOf = k => PROPS[k] ? 'prop' : BUILDINGS[k] ? 'house' : KIT_PIECES[k] ? 'kit' : null;
 
 export function initStudio() {
   try { S.drafts = JSON.parse(localStorage.getItem(LS) || '[]') || []; } catch (e) { S.drafts = []; }
   $('vw-edit').addEventListener('click', () => S.on ? leave() : enter());
   document.querySelectorAll('#st [data-st]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.st)));
-  const group = (title, keys) => `<b>${title}</b>` + keys.map(k => `<button type="button" data-kind="${k}">${esc(KIND_NAME[k])}</button>`).join('');
-  $('st-palette').innerHTML = group('Mixes', Object.keys(MIXES).map(k => 'mix:' + k)) + group('Trees and rocks', Object.keys(PROPS)) + group('Buildings', BUILDING_TYPES) + group('Street', STREET);
+  palette();
+  $('st-theme').innerHTML = '<option value="">Theme: the stage\'s own</option>' + Object.entries(THEMES).map(([k, T]) => `<option value="${k}">Theme: ${esc(T.name)}</option>`).join('');
+  $('st-theme').addEventListener('change', e => applyTheme(e.target.value));
   for (const [id, key, f] of [['st-acount', 'count', v => v], ['st-aspread', 'spread', v => v], ['st-asize', 'scale', v => v / 10], ['st-avar', 'variety', v => v / 10], ['st-aspace', 'spacing', v => v]]) $(id).addEventListener('input', e => { S.brush[key] = f(+e.target.value); ui(); });
   $('st-erasef').addEventListener('change', e => { S.eraseF = e.target.value; });
   $('st-paints').innerHTML = Object.entries(PAINTS).concat([['grass', { name: 'Grass (no paint)', col: 0x6E9E4B }]]).map(([k, P]) => `<button type="button" data-paint="${k}"><i style="background:#${(P.col || (k === 'dirt' ? 0x8F7352 : 0x8E8C84)).toString(16).padStart(6, '0')}"></i>${esc(P.name)}</button>`).join('');
@@ -76,7 +78,8 @@ export function initStudio() {
   $('st-pieces').addEventListener('click', e => { const b = e.target.closest('[data-piece]'); if (b) { S.piece = b.dataset.piece; S.psel = -1; ui(); } });
   $('vw-new').addEventListener('click', () => { $('st-gen').hidden = !$('st-gen').hidden; });
   $('st-gen-style').innerHTML = Object.entries(LAND_STYLES).map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('');
-  $('st-gen-look').innerHTML = Object.entries(LOOKS).map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('');
+  $('st-gen-look').innerHTML = Object.entries(THEMES).map(([k, T]) => `<option value="${k}">${esc(T.name)}</option>`).join('');
+  $('st-gen-look').addEventListener('change', e => { const T = THEMES[e.target.value]; $('st-gen-style').value = T.land; $('st-gen-surf').value = T.surface; });
   $('st-gen-go').addEventListener('click', generate); $('st-gen-x').addEventListener('click', () => { $('st-gen').hidden = true; });
   $('st-undo').addEventListener('click', undo); $('st-redo').addEventListener('click', redo);
   $('st-rotl').addEventListener('click', () => turnSel(-15)); $('st-rotr').addEventListener('click', () => turnSel(15));
@@ -204,7 +207,7 @@ function options(idx) {
 function pick(v) { const d = S.drafts.find(x => 'd:' + x.id === v); if (d) { S.undo = []; S.redo = []; openDraft(d); } }
 function opened(idx) {
   if (idx !== S.slot || !S.draft) { if (S.on) leave(); $('vw-edit').hidden = false; $('vw-edit').textContent = 'Edit'; $('st-claude').hidden = true; return; }
-  S.built = clone((stage().edits || {}).sculpt || null); clearMarks(); S.path = null;
+  S.built = clone((stage().edits || {}).sculpt || null); clearMarks(); S.path = null; palette();
   { const tr = G.world.tr, N = tr.loopN || tr.N; let k = 0; for (let i = 0; i < N; i++) k = Math.max(k, Math.abs(tr.ks[i])); if (S.on && k > 1 / 9) status('The road turns very tightly somewhere: a hairpin under 9 m across. Cars may struggle there.', true); }
   if (S.on) { G.editDrive = true; G.onEditorBack = () => { S.driving = false; openDraft(S.draft, true); }; }   // Drive it comes back to the studio
   ui(); claudeBanner();
@@ -229,17 +232,19 @@ function ui() {
   $('st-rotl').hidden = $('st-rotr').hidden = rp || pp; $('st-smaller').textContent = rp ? 'Road down' : pp ? 'Shorter' : '\u2212'; $('st-bigger').textContent = rp ? 'Road up' : pp ? 'Longer' : '+'; $('st-del').textContent = rp ? 'Delete point' : 'Delete'; $('st-start').hidden = !rp || !roadPath().closed || S.pt === 0;
   drawHandles();
   $('st-undo').disabled = !S.undo.length; $('st-redo').disabled = !S.redo.length;
-  $('st-name').textContent = S.draft.name;
+  $('st-name').textContent = S.draft.name; $('st-theme').value = edits().theme || '';
 }
 function status(t, bad = false) { const el = $('st-status'); el.textContent = t; el.classList.toggle('bad', bad); }
 // ---------- changes: undo, redo, rebuild ----------
-function remember() { S.undo.push(JSON.stringify(stage().edits || {})); if (S.undo.length > 60) S.undo.shift(); S.redo = []; }
-function undo() { if (!S.undo.length) return; S.redo.push(JSON.stringify(stage().edits || {})); stage().edits = JSON.parse(S.undo.pop()); S.sel = null; changed(0); }
-function redo() { if (!S.redo.length) return; S.undo.push(JSON.stringify(stage().edits || {})); stage().edits = JSON.parse(S.redo.pop()); S.sel = null; changed(0); }
+// undo keeps the whole draft (a theme changes its look as well as its edits)
+function setStage(st) { st.name = S.draft.name; S.draft.stage = st; STAGES[S.slot] = st; }
+function remember() { S.undo.push(JSON.stringify(stage())); if (S.undo.length > 40) S.undo.shift(); S.redo = []; }
+function undo() { if (!S.undo.length) return; S.redo.push(JSON.stringify(stage())); setStage(JSON.parse(S.undo.pop())); S.sel = null; changed(0); }
+function redo() { if (!S.redo.length) return; S.undo.push(JSON.stringify(stage())); setStage(JSON.parse(S.redo.pop())); S.sel = null; changed(0); }
 /** The draft changed: keep it, and rebuild the stage from it in a moment (another change in the meantime waits for it). */
 function changed(ms = 350) {
   if (!S.stroke && !S.drag) {   // a change that won't build (a building left on the road, a road that can't be laid) is taken back
-    try { buildTrack(clone(stage())); } catch (err) { if (S.undo.length) stage().edits = JSON.parse(S.undo.pop()); status('That won\'t work: ' + err.message.replace(/^[^:]*: /, ''), true); S.sel = null; S.pt = -1; ui(); return; }
+    try { buildTrack(clone(stage())); } catch (err) { if (S.undo.length) setStage(JSON.parse(S.undo.pop())); status('That won\'t work: ' + err.message.replace(/^[^:]*: /, ''), true); S.sel = null; S.pt = -1; ui(); return; }
   }
   S.draft.at = new Date().toISOString(); saveDrafts(); ui();
   clearTimeout(S.timer); S.timer = setTimeout(() => { if (S.stroke || S.drag) { changed(ms); return; } forgetTrack(S.slot); G.forceBuild = true; openViewer(S.slot, { keep: true }); }, ms);
@@ -327,6 +332,7 @@ const roadGap = (x, z) => { const q = G.world.tr.nearest(x, z); return q ? q.d :
 /** One dab of the asset brush at p: count things scattered over its spread (exact: one, right there), each kept off the
  *  road and spacing metres from the rest, sized and shaded by the brush's size and variety. */
 function assetDab(p, exact) {
+  if (S.kind === 'stamp:walledtown') { if (exact) stampTown(p); return; }
   const E = edits(), B = S.brush, tr = G.world.tr, n = B.count, R = n === 1 ? 0 : B.spread;
   for (let k = 0, tries = 0; k < n && tries < n * 6; tries++) {
     const a = Math.random() * Math.PI * 2, rr = R * Math.sqrt(Math.random()), x = Math.round((p.x + Math.cos(a) * rr) * 10) / 10, z = Math.round((p.z + Math.sin(a) * rr) * 10) / 10;
@@ -463,16 +469,16 @@ function drawPieces() {
 }
 // ---------- New track (core/track/generate.js) ----------
 function generate() {
-  const look = STAGES.find(s => s.name === LOOKS[$('st-gen-look').value]) || STAGES[0], seed = 1 + Math.floor(Math.random() * 9999);
+  const theme = $('st-gen-look').value, look = STAGES.find(s => s.name === THEMES[theme].look) || STAGES[0], seed = 1 + Math.floor(Math.random() * 9999);
   status('Making a track...'); $('st-gen-go').disabled = true;
   setTimeout(() => {
-    let st = null; try { st = generateStage({ style: $('st-gen-style').value, length: $('st-gen-len').value, surface: $('st-gen-surf').value, look, seed, name: 'New track' }); } catch (e) { console.error(e); }
+    let st = null; try { st = generateStage({ style: $('st-gen-style').value, length: $('st-gen-len').value, surface: $('st-gen-surf').value, look, seed, name: 'New track', theme }); } catch (e) { console.error(e); }
     $('st-gen-go').disabled = false;
     if (!st) { status('That landscape didn\'t take a road this time: try again, or another style.', true); return; }
     let n = 1, nm = '\u270E New track'; while (S.drafts.some(d => d.name === nm)) nm = `\u270E New track ${++n}`; st.name = nm;
     const d = { id: 'd' + Date.now().toString(36), name: nm, base: look.name, stage: st, at: new Date().toISOString(), made: 'generated' };
     S.drafts.push(d); saveDrafts(); S.undo = []; S.redo = []; $('st-gen').hidden = true;
-    S.on = true; openDraft(d); status(`A new track: ${LAND_STYLES[$('st-gen-style').value]} with ${st.edits.pieces.length} set pieces${st.edits.houses.length ? ' and houses to smash' : ''}. Edit away.`);
+    S.on = true; openDraft(d); status(`A new ${THEMES[theme].name.toLowerCase()} track: ${LAND_STYLES[$('st-gen-style').value]} with ${st.edits.pieces.length} set pieces${(st.edits.kit || []).length ? ', a walled town' : st.edits.houses.length ? ' and houses to smash' : ''}. Edit away.`); S.wallKind = THEMES[theme].wall; palette();
   }, 30);
 }
 // ---------- walls (a run of the world kit's boundary pieces) ----------
@@ -491,10 +497,15 @@ function buildWall(raw) {
   for (let i = 1; i < seq.length; i++) {
     const [ax, az] = seq[i - 1], [bx, bz] = seq[i], mx = (ax + bx) / 2, mz = (az + bz) / 2, w = Math.hypot(bx - ax, bz - az);
     const near = [[ax, az], [mx, mz], [bx, bz]].map(([x, z]) => tr.nearest(x, z)).filter(Boolean), q = near.reduce((a, b) => (a && a.d < b.d ? a : b), null);
-    if (q && q.d < HALF + 1.5) { if (S.wallKind === 'wall' && tr.loopN) arches.push(tr.bi(q.i)); continue; }   // the road goes through: a gap
+    if (q && q.d < HALF + 1.5) { if ((S.wallKind === 'wall' || S.wallKind === 'castlewall') && tr.loopN && !arches.some(a => Math.abs(a - tr.bi(q.i)) < 15)) arches.push(tr.bi(q.i)); continue; }   // the road goes through: a gap
     add.push({ k: S.wallKind, x: Math.round(mx * 10) / 10, z: Math.round(mz * 10) / 10, yaw: Math.round(Math.atan2(bx - ax, bz - az) * 1800 / Math.PI) / 10, w: Math.round(w * 10) / 10, run });
   }
   if (!add.length) { status('That line is all road: draw it beside the road (it may cross it).', true); return; }
+  if (S.wallKind === 'castlewall') {   // towers at the ends, every ~30 m along, and either side of the road where it goes through
+    const tw = (x, z) => { const q = tr.nearest(x, z); if (!q || q.d > HALF + 4) add.push({ k: 'tower', x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, yaw: 0, run }); };
+    seq.forEach(([x, z], k) => { if (k === 0 || k === seq.length - 1 || k % 6 === 0) tw(x, z); });
+    for (const b of arches) for (const sd of [-1, 1]) tw(tr.xs[b] + tr.rx[b] * sd * (HALF + 4.5), tr.zs[b] + tr.rz[b] * sd * (HALF + 4.5));
+  }
   remember(); (E.kit || (E.kit = [])).push(...add);
   for (const b of arches) if (!(E.pieces || []).some(q => q.k === 'arch' && Math.abs(q.s - b) < 20)) (E.pieces || (E.pieces = [])).push({ s: Math.max(0, b - 5), k: 'arch' });
   status(`${add.length * 5 > 60 ? 'A long run' : 'A run'} of ${KIT_PIECES[S.wallKind].name.toLowerCase()}, ${Math.round(add.reduce((t, o) => t + o.w, 0))} m${arches.length ? ', with an arch where it crosses the road' : ''}.`);
@@ -505,4 +516,29 @@ function drawWallLine() {
   const L = S.wline || [], terr = G.world.terr, pos = [];
   for (const [x, z] of L) pos.push(x, terr.at(x, z) + 1.2, z);
   S.wmesh.geometry.dispose(); S.wmesh.geometry = new THREE.BufferGeometry(); S.wmesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); S.wmesh.visible = L.length > 1;
+}
+// ---------- themes (core/track/themes.js) ----------
+/** The asset palette: the theme's own mixes first, then everything by kind. */
+function palette() {
+  const T = S.draft && THEMES[(stage().edits || {}).theme], group = (title, keys) => `<b>${title}</b>` + keys.map(k => `<button type="button" data-kind="${k}">${esc(KIND_NAME[k])}</button>`).join('');
+  $('st-palette').innerHTML = (T ? group(`${T.name} theme`, T.mixes.map(k => 'mix:' + k).concat(T.stamp ? ['stamp:' + T.stamp] : [])) : '') + group('Mixes', Object.keys(MIXES).map(k => 'mix:' + k))
+    + group('Castle', ['stamp:walledtown', 'keep', 'tavern', 'tower']) + group('Trees and rocks', Object.keys(PROPS)) + group('Buildings', BUILDING_TYPES.filter(k => k !== 'keep' && k !== 'tavern')) + group('Street', STREET.filter(k => k !== 'tower'));
+  document.querySelectorAll('#st-palette [data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === S.kind));
+}
+/** Dress the draft in a theme: the look of its stage (colours, light, scenery), its wall, its palette. Undo takes it back. */
+function applyTheme(key) {
+  if (!S.draft) return; remember(); const st = stage(), E = edits();
+  if (!key) { delete E.theme; status('The stage\'s own look is kept as it is now (Undo for the theme before).'); changed(0); return; }
+  const T = THEMES[key], look = STAGES.find(x => x.name === T.look);
+  if (look) for (const k of LOOK_KEYS) { if (look[k] !== undefined) st[k] = clone(look[k]); else delete st[k]; }
+  E.theme = key; S.wallKind = T.wall; $('st-wallkind').value = T.wall; palette();
+  status(`${T.name} theme: ${T.look}'s colours and light, its mixes first in Assets${T.stamp ? ', and the walled town to stamp on the road' : ''}.`); changed(0);
+}
+/** The Castle's walled town round the road where you tapped. */
+function stampTown(p) {
+  const tr = G.world.tr, q = tr.nearest(p.x, p.z); if (!q || q.d > 45) { status('Tap on (or near) the road: the town is built round it.', true); return; }
+  const T = walledTown(tr, tr.bi(q.i), { seed: Math.floor(Math.random() * 9999) }), E = edits();
+  (E.kit || (E.kit = [])).push(...T.kit); (E.houses || (E.houses = [])).push(...T.houses); (E.pieces || (E.pieces = [])).push(...T.pieces);
+  S.stroke.n += T.kit.length + T.houses.length; S.lastKind = 'stamp:walledtown';
+  status(`A walled town: ${T.kit.filter(o => o.k === 'castlewall').length * 5} m of wall, ${T.kit.filter(o => o.k === 'tower').length} towers, ${T.houses.length} buildings${T.pieces.length ? ' and gates over the road' : ''}.`);
 }

@@ -4,26 +4,28 @@ import { buildTrack } from './build.js';
 import { buildTerrain } from './terrain.js';
 import { trackReport } from './report.js';
 import { PIECES } from './pieces.js';
+import { THEMES, walledTown } from './themes.js';
 
 // The Track Studio's Generate (ui/studio.js): a whole track to start editing from. A landscape in a style
 // (ground.js generateGround), a lap laid on it (autoRoad), the look of an existing stage, and set pieces put along it
 // to meet the design pillars (core/track/report.js): a beat every ~9 s of the lap, each a different kind from the one
 // before (a jump, wrecking balls, something to smash, a splash), jumps and chicanes only on straights. Six tries, each curlier,
-// the best report card wins. Returns a stage with edits.pieces / edits.houses (so they show and edit like any).
+// the best report card wins. A theme (core/track/themes.js) adds its stamp: the Castle's walled town round the
+// straightest stretch. Returns a stage with edits.pieces / houses / kit (so they show and edit like any).
 export const LOOKS = { meadow: 'Summit Meadow', forest: 'Pine Forest', canyon: 'Red Mesa Canyon', snow: 'Frostpeak', dunes: 'Dune Rally', moor: 'Highland Rally', bog: 'Bogwood Rally', alpine: 'Alpine Viaduct', park: 'Sunday Park' };
 const BEAT = 9, ROTA = ['air', 'moving', 'smash', 'surface', 'air', 'smash', 'moving', 'air'];
 const clone = o => JSON.parse(JSON.stringify(o));
 /** A generated stage. look: the stage whose colours, light and scenery it borrows. */
-export function generateStage({ style = 'hills', length = 'medium', surface = 'tarmac', look, seed = 1, name = 'Generated track' }) {
+export function generateStage({ style = 'hills', length = 'medium', surface = 'tarmac', look, seed = 1, name = 'Generated track', theme = null }) {
   let best = null;
   for (let t = 0; t < 6; t++) {
-    const st = attempt({ style, length, surface, look, seed: seed + t * 101, name, wiggle: 1 + t * 0.45 }); if (!st) continue;   // (curlier each try)
+    const st = attempt({ style, length, surface, look, seed: seed + t * 101, name, wiggle: 1 + t * 0.45, theme }); if (!st) continue;   // (curlier each try)
     let R; try { const tr = buildTrack(clone(st)); R = trackReport(tr, st, buildTerrain(tr, clone(st))); } catch (e) { continue; }
     if (!best || R.score > best.R.score) best = { st, R };
   }
   return best ? best.st : null;
 }
-function attempt({ style, length, surface, look, seed, name, wiggle }) {
+function attempt({ style, length, surface, look, seed, name, wiggle, theme }) {
   const ground = generateGround(style, seed), road = autoRoad(ground, { seed, length, pieces: false, wiggle }); if (!road) return null;
   const st = { name, blurb: 'Generated in the Track Studio', type: 'gorge', laps: 3, seed, surface, hillAmp: 0, armco: true, startHeading: road.heading,
     segs: roadOnGround(road.segs, road.heading, ground, road.start, {}), ground: groundFor(ground, road.start), edits: { pieces: [], houses: [] } };
@@ -45,6 +47,16 @@ function attempt({ style, length, surface, look, seed, name, wiggle }) {
       if (kind === 'smash' && !k) { houses(st, tr, s); used.push(s); d = 99; break; }
       if (PIECES[k].straight && !straight(s, PIECES[k].len)) continue;
       st.edits.pieces.push({ s, k }); used.push(s); d = 99; break;
+    }
+  }
+  // a theme's stamp (the Castle's walled town) on the straightest stretch round the middle of the lap, clear of the beats
+  if (theme && THEMES[theme]) st.edits.theme = theme;
+  if (theme && THEMES[theme] && THEMES[theme].stamp === 'walledtown') {
+    let best = -1, bk = Infinity; for (let i = Math.round(N * 0.3); i < N * 0.75; i += 5) { let k = 0; for (let d = -55; d <= 55; d += 5) k += Math.abs(tr.ks[((i + d) % N + N) % N]); if (k < bk) { bk = k; best = i; } }
+    if (best >= 0) {
+      const T = walledTown(tr, best, { seed }), far = q => Math.min(Math.abs(q - best), N - Math.abs(q - best)) > 90;
+      st.edits.pieces = st.edits.pieces.filter(q => far(q.s)); st.edits.houses = st.edits.houses.filter(h => { const n = tr.nearest(h.x, h.z); return !n || far(n.i); });
+      st.edits.kit = T.kit; st.edits.houses.push(...T.houses); st.edits.pieces.push(...T.pieces);
     }
   }
   st.edits.pieces.sort((a, b) => a.s - b.s);

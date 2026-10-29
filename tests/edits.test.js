@@ -96,3 +96,20 @@ describe('studio ground paint', () => {
     expect(at(ox, oz)).toBe('mud'); expect(at(tr.xs[i], tr.zs[i])).toBe(s2.surface);
   });
 });
+describe('themes', () => {
+  it('a walled town builds round the road on any track, with its gates clear of the road', async () => {
+    const { walledTown } = await import('../src/core/track/themes.js');
+    for (const k of [18, 0]) {
+      const st = STAGES[k], tr0 = buildTrack(st), T = walledTown(tr0, tr0.startIdx + 200);
+      expect(T.kit.filter(o => o.k === 'castlewall').length, st.name).toBeGreaterThan(30); expect(T.houses.length, st.name).toBeGreaterThan(5);
+      const s2 = copy(st, { kit: T.kit, houses: T.houses, pieces: T.pieces }), tr = buildTrack(s2), t = buildTerrain(tr, s2);
+      for (const o of t.kit.solid.filter(p => p.kind === 'castlewall')) expect(tr.nearest(o.x, o.z).d, st.name).toBeGreaterThan(6);
+    }
+  });
+  it('New track in the Castle theme has its walled town', async () => {
+    const { generateStage } = await import('../src/core/index.js');
+    const st = generateStage({ style: 'hills', look: STAGES.find(s => s.name === 'Village Green'), seed: 5, theme: 'castle' });
+    expect(st.edits.theme).toBe('castle'); expect(st.edits.kit.some(o => o.k === 'tower')).toBe(true); expect(st.edits.houses.some(h => h.type === 'keep' || h.type === 'tavern')).toBe(true);
+    expect(() => buildTerrain(buildTrack(JSON.parse(JSON.stringify(st))), st)).not.toThrow();
+  });
+});
