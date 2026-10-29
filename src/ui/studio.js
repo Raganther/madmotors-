@@ -4,7 +4,7 @@ import { STAGES } from '../data/stages/index.js';
 import { BUILDINGS, BUILDING_TYPES } from '../data/structures.js';
 import { HALF } from '../core/constants.js';
 import { corners } from '../core/elements/structures.js';
-import { KIT_PIECES, PROPS, editsDiff, sculptAt, sculptDab } from '../core/track/edits.js';
+import { KIT_PIECES, PAINTS, PROPS, editsDiff, paintDab, sculptAt, sculptDab } from '../core/track/edits.js';
 import { pathFromTrack, samplePath } from '../core/track/path.js';
 import { PIECES } from '../core/track/pieces.js';
 import { LOOKS, generateStage } from '../core/track/generate.js';
@@ -34,14 +34,15 @@ import { openViewer, setEditHooks, viewerState } from './viewer.js';
 // you let go and the report card follows. Undo / Redo, Test drive (Drive it) comes back here; drafts are kept in this
 // browser and listed under the stage picker; Send to Claude puts one in the shared `tracks` collection (base "studio").
 // Getting about is the viewer's: two fingers, right-drag or the View tool move the camera while a brush is picked.
-const LS = 'downhill-rush-studio', TOOLS = ['view', 'raise', 'lower', 'smooth', 'flatten', 'road', 'pieces', 'place', 'walls', 'erase'];
+const LS = 'downhill-rush-studio', TOOLS = ['view', 'raise', 'lower', 'smooth', 'flatten', 'paint', 'road', 'pieces', 'place', 'walls', 'erase'];
 const HINT = { view: 'Move the view: drag, two fingers, wheel', raise: 'Drag to raise the land: under the road it lifts the road (a hump, a jump)', lower: 'Drag to dig the land down: dips, hollows, drops',
   smooth: 'Drag to smooth out bumps and steps', flatten: 'Drag to level the land at the height where you started', place: 'Pick something (or a mix) and tap or drag on the ground: Count paints many at once. With Count 1, tap one of yours to turn, size or delete it, drag it to move it',
   erase: 'Drag over trees, bushes and rocks to take them away',
+  paint: 'Pick a ground and brush it on: meadow, forest floor, dirt, sand, snow, tundra, rock, mud (off the road it drives like it: mud bogs you down, snow slides). Grass takes paint off',
   walls: 'Draw a line on the ground for a wall, hedge or fence; end it where you began to close a ring. Where it crosses the road it leaves a gap (a stone wall gets an arch). Tap a wall to delete its run',
   pieces: 'Pick a set piece, then tap the road to put it there; tap one to make it longer or shorter, drag it along the road to move it',
   road: 'Drag a yellow point to move the road; tap the road between points to add one; tap a point to raise, lower or delete it' };
-const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, remote: new Map(), path: null, handles: null, pt: -1, wallKind: 'wall', wline: null, brush: { count: 1, spread: 12, scale: 1, variety: 0.5, spacing: 4 }, eraseF: 'all', piece: 'yump', psel: -1, pdrag: null, pmarks: null };
+const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, remote: new Map(), path: null, handles: null, pt: -1, paintKind: 'meadow', wallKind: 'wall', wline: null, brush: { count: 1, spread: 12, scale: 1, variety: 0.5, spacing: 4 }, eraseF: 'all', piece: 'yump', psel: -1, pdrag: null, pmarks: null };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const clone = o => JSON.parse(JSON.stringify(o));
 const stage = () => S.draft && S.draft.stage, edits = () => { const st = stage(); return st.edits || (st.edits = {}); };
@@ -64,6 +65,8 @@ export function initStudio() {
   $('st-palette').innerHTML = group('Mixes', Object.keys(MIXES).map(k => 'mix:' + k)) + group('Trees and rocks', Object.keys(PROPS)) + group('Buildings', BUILDING_TYPES) + group('Street', STREET);
   for (const [id, key, f] of [['st-acount', 'count', v => v], ['st-aspread', 'spread', v => v], ['st-asize', 'scale', v => v / 10], ['st-avar', 'variety', v => v / 10], ['st-aspace', 'spacing', v => v]]) $(id).addEventListener('input', e => { S.brush[key] = f(+e.target.value); ui(); });
   $('st-erasef').addEventListener('change', e => { S.eraseF = e.target.value; });
+  $('st-paints').innerHTML = Object.entries(PAINTS).concat([['grass', { name: 'Grass (no paint)', col: 0x6E9E4B }]]).map(([k, P]) => `<button type="button" data-paint="${k}"><i style="background:#${(P.col || (k === 'dirt' ? 0x8F7352 : 0x8E8C84)).toString(16).padStart(6, '0')}"></i>${esc(P.name)}</button>`).join('');
+  $('st-paints').addEventListener('click', e => { const b = e.target.closest('[data-paint]'); if (b) { S.paintKind = b.dataset.paint; ui(); } });
   $('st-wallkind').innerHTML = Object.entries(KIT_PIECES).filter(([, P]) => P.len).map(([k, P]) => `<option value="${k}">${esc(P.name)}</option>`).join('');
   $('st-wallkind').addEventListener('change', e => { S.wallKind = e.target.value; });
   $('st-palette').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (b) { S.kind = b.dataset.kind; S.sel = null; ui(); } });
@@ -87,7 +90,7 @@ export function initStudio() {
     if (!S.on || $('viewer').hidden || (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))) return;
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
     else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') { e.preventDefault(); redo(); }
-    else if (/^Digit[0-9]$/.test(e.code) && TOOLS[(+e.code.slice(5) + 9) % 10]) setTool(TOOLS[(+e.code.slice(5) + 9) % 10]);
+    else if (/^Digit[0-9]$/.test(e.code) && !e.altKey) setTool(TOOLS[(+e.code.slice(5) + 9) % 10]);
     else if (e.code === 'BracketLeft') { S.size = Math.max(4, S.size / 1.25); ui(); } else if (e.code === 'BracketRight') { S.size = Math.min(80, S.size * 1.25); ui(); }
     else if ((e.code === 'Delete' || e.code === 'Backspace') && S.sel) delSel();
   });
@@ -214,7 +217,7 @@ function ui() {
   $('st').hidden = !on; $('vw-edit').textContent = on ? 'Done' : 'Edit'; $('vw-edit').classList.toggle('on', on);
   if (!on) return;
   document.querySelectorAll('#st [data-st]').forEach(b => b.classList.toggle('on', b.dataset.st === S.tool));
-  $('st-brush').hidden = !['raise', 'lower', 'smooth', 'flatten', 'erase'].includes(S.tool); $('st-size').value = String(Math.round(S.size)); $('st-power').value = String(Math.round(S.power * 10));
+  $('st-brush').hidden = !['raise', 'lower', 'smooth', 'flatten', 'paint', 'erase'].includes(S.tool); $('st-paints').hidden = S.tool !== 'paint'; document.querySelectorAll('#st-paints [data-paint]').forEach(b => b.classList.toggle('on', b.dataset.paint === S.paintKind)); $('st-size').value = String(Math.round(S.size)); $('st-power').value = String(Math.round(S.power * 10));
   $('st-palette').hidden = $('st-abrush').hidden = S.tool !== 'place'; $('st-erase').hidden = S.tool !== 'erase'; $('st-walls').hidden = S.tool !== 'walls';
   { const B = S.brush; $('st-acount').value = B.count; $('st-aspread').value = B.spread; $('st-asize').value = Math.round(B.scale * 10); $('st-avar').value = Math.round(B.variety * 10); $('st-aspace').value = B.spacing;
     $('st-abrush-read').textContent = B.count === 1 ? `One at a time (drag for a row, ${B.spacing} m apart)` : `${B.count} at a time across ${B.spread * 2} m, ${B.spacing} m apart`; } document.querySelectorAll('#st-palette [data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === S.kind));
@@ -255,7 +258,7 @@ function down(e) {
     S.sel = null; remember(); S.stroke = { last: p, n: 0, asset: true }; assetDab(p, true); return;
   }
   remember();
-  S.stroke = { last: p, to: p.y, held: setInterval(() => { if (S.stroke && S.tool !== 'erase') dab(S.stroke.last); }, 70) }; dab(p);   // held still, the brush keeps working (a mountain)
+  S.stroke = { last: p, to: p.y, held: setInterval(() => { if (S.stroke && S.tool !== 'erase' && S.tool !== 'paint') dab(S.stroke.last); }, 70) }; dab(p);   // held still, the brush keeps working (a mountain)
 }
 function move(e) {
   const p = pickGround(e.clientX, e.clientY); if (!p) return;
@@ -293,6 +296,14 @@ function dab(p) {
     if (E.props && (f === 'all' || PK[f])) E.props = E.props.filter(o => !(inR(o) && (f === 'all' || PK[f].includes(o.k))));
     if (E.houses && (f === 'all' || f === 'buildings')) E.houses = E.houses.filter(o => !inR(o));
     if (E.kit && (f === 'all' || f === 'street')) E.kit = E.kit.filter(o => !inR(o));
+    return;
+  }
+  if (S.tool === 'paint') {   // the cells, and the ground's colours under the brush straight away (the rebuild blends them properly)
+    paintDab(E.paint || (E.paint = { cell: 4, d: {} }), S.paintKind, p.x, p.z, r);
+    const P = PAINTS[S.paintKind], col = new THREE.Color(P ? P.col || (S.paintKind === 'dirt' ? stage().colors.dirt : stage().colors.rock) : stage().colors.grassA), tmp = new THREE.Color();
+    G.world.terrainMesh.traverse(o => { if (!o.isMesh || !o.geometry.attributes.color) return; const a = o.geometry.attributes.position.array, c = o.geometry.attributes.color.array; let hit = false;
+      for (let i = 0; i < a.length; i += 3) { const d = Math.hypot(a[i] - p.x, a[i + 2] - p.z); if (d > r) continue; tmp.setRGB(c[i], c[i + 1], c[i + 2]).lerp(col, 0.85); c[i] = tmp.r; c[i + 1] = tmp.g; c[i + 2] = tmp.b; hit = true; }
+      if (hit) o.geometry.attributes.color.needsUpdate = true; });
     return;
   }
   const sc = E.sculpt || (E.sculpt = { cell: 4, d: {} }), terr = G.world.terr, built = S.built;
@@ -358,7 +369,7 @@ function cursorAt(p) {
     S.cursor.renderOrder = 21; scene.add(S.cursor);
   }
   const r = S.tool === 'place' ? (S.brush.count === 1 ? 2 : S.brush.spread) : S.size; S.cursor.visible = S.on && S.tool !== 'view' && S.tool !== 'road' && S.tool !== 'pieces'; S.cursor.scale.set(r, 1, r); S.cursor.position.set(p.x, p.y + 0.4, p.z);
-  S.cursor.material.color.set(S.tool === 'lower' ? 0x4AA8E8 : S.tool === 'erase' ? 0xFF6A5A : S.tool === 'smooth' || S.tool === 'flatten' ? 0xFFFFFF : 0xFFC72C);
+  S.cursor.material.color.set(S.tool === 'paint' ? 0xFFFFFF : S.tool === 'lower' ? 0x4AA8E8 : S.tool === 'erase' ? 0xFF6A5A : S.tool === 'smooth' || S.tool === 'flatten' ? 0xFFFFFF : 0xFFC72C);
 }
 function mark(o) {
   if (!S.marks) { S.marks = new THREE.Group(); scene.add(S.marks); }

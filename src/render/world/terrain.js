@@ -4,6 +4,7 @@ import { clamp, mulberry32, smoothstep } from '../../core/math.js';
 import { chunkMesh } from '../geometry.js';
 import { withCutaway } from '../materials.js';
 import { groundDetail } from '../detail.js';
+import { PAINTS } from '../../core/track/edits.js';
 import { quality } from '../renderer.js';
 
 /** The ground's colour under (x, z), for things that sit on it (render/world/clutter.js), from the last terrain built. */
@@ -13,6 +14,15 @@ export function makeTerrainMesh(terr, tr, stage) {
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
   const cA = new THREE.Color(C.grassA), cB = new THREE.Color(C.grassB), cR = new THREE.Color(C.rock), cD = new THREE.Color(C.dirt), cS = new THREE.Color(0xE9EEF2), cR2 = new THREE.Color(C.rock2 || C.rock), t = new THREE.Color();
   const rnd = mulberry32(stage.seed + 5), O = terr.obst, near = [];
+  // the Track Studio's painted ground (core/track/edits.js): blended between its 4 m cells, a little mottled; tundra is
+  // snow lying in patches over moss
+  const PT = stage.edits && stage.edits.paint && stage.edits.paint.d ? stage.edits.paint : null, pc = new THREE.Color(), acc = new THREE.Color(), moss = new THREE.Color(0x7F8C62), snowC = new THREE.Color(0xEEF3F7);
+  const colOf = (k, x, z) => k === 'dirt' ? pc.copy(cD) : k === 'rock' ? pc.copy(cR) : k === 'tundra' ? pc.copy(moss).lerp(snowC, smoothstep(-0.1, 0.25, tr.noise.fbm(x * 0.09 + 3, z * 0.09, 2))) : pc.setHex(PAINTS[k].col);
+  function painted(x, z, nv) {
+    const C = PT.cell || 4, fx = x / C, fz = z / C, c0 = Math.floor(fx), r0 = Math.floor(fz), u = fx - c0, v = fz - r0; let w = 0; acc.setRGB(0, 0, 0);
+    for (const [dc, dr, k] of [[0, 0, (1 - u) * (1 - v)], [1, 0, u * (1 - v)], [0, 1, (1 - u) * v], [1, 1, u * v]]) { const m = PT.d[(c0 + dc) + ',' + (r0 + dr)]; if (!m || !PAINTS[m]) continue; colOf(m, x, z); acc.r += pc.r * k; acc.g += pc.g * k; acc.b += pc.b * k; w += k; }
+    if (w <= 0) return; acc.multiplyScalar(1 / w).multiplyScalar(0.9 + 0.2 * nv); t.lerp(acc, smoothstep(0, 0.6, w));
+  }
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const i = r * cols + c, x = x0 + c * S, z = z0 + r * S, y = h[i];
     pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
@@ -40,6 +50,7 @@ export function makeTerrainMesh(terr, tr, stage) {
     t.multiplyScalar(1 - clamp((ring / 8 - y) * 0.07, -0.07, 0.12));
     // the ground under a tree, a rock or a bush: a little darker, where the sky can't reach (soft contact shading)
     if (O) { let ao = 1; for (const k of O.near(x, z, near)) { const o = O.items[k], reach = o.kind === 3 ? Math.max(o.sx || 1, o.sz || 1) * 1.1 : (o.s || 1) * (o.kind === 4 ? 1.1 : 1.6), dd = Math.hypot(x - o.x, z - o.z); if (dd < reach) ao -= 0.16 * (1 - dd / reach) ** 2; } t.multiplyScalar(Math.max(0.74, ao)); }
+    if (PT) painted(x, z, nv);
     const d = dist[i]; if (d < HALF + 5) t.lerp(cD, 1 - smoothstep(HALF + 2, HALF + 5, d));
     t.offsetHSL(0, 0, (rnd() - 0.5) * 0.035);
     col[i * 3] = t.r; col[i * 3 + 1] = t.g; col[i * 3 + 2] = t.b;

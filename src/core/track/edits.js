@@ -9,6 +9,7 @@ import { BUILDINGS, BUILDING_TYPES } from '../../data/structures.js';
 //                                           t a shade (-1 darker .. 1 lighter)
 //   clears: [[x, z, r, f], ...]              the stage's own scenery taken away inside these circles: f 'trees', 'rocks',
 //                                           'bushes', 'street' (the towns' fences, walls and furniture) or all of it
+//   paint: { cell, d: { "c,r": kind } }     the ground painted (PAINTS): its colour, and off the road how it drives
 //   kit: [{ k, x, z, yaw, w, style }]        street and boundary pieces (KIT_PIECES): walls, hedges and fences w long,
 //                                           lamps, bins, benches, hay; yaw in degrees along the piece
 //   houses: [{ type, x, z, f }]              buildings put there (data/structures.js types; f: degrees, the way the front
@@ -16,6 +17,23 @@ import { BUILDINGS, BUILDING_TYPES } from '../../data/structures.js';
 // }. A stage without edits builds exactly as before. Applied by core/track/circuit.js and downhill.js (the road),
 // terrain.js (the ground), obstacles.js (props, clears) and build.js (houses).
 export const SCULPT = { CELL: 4, MAX: 60 };
+/** Ground the Studio paints: its colour (null: the stage's own), and the surface a car off the road drives on there. */
+export const PAINTS = {
+  meadow: { name: 'Meadow', col: 0x9DBF5A, surf: null }, forest: { name: 'Forest floor', col: 0x4E5A30, surf: null },
+  dirt: { name: 'Dirt', col: null, surf: 'gravel' }, sand: { name: 'Sand', col: 0xD9C08A, surf: 'gravel' }, snow: { name: 'Snow', col: 0xEEF3F7, surf: 'snow' },
+  tundra: { name: 'Tundra', col: 0xB4BCA6, surf: 'snow' }, rock: { name: 'Rock', col: null, surf: 'gravel' }, mud: { name: 'Mud', col: 0x5E4630, surf: 'mud' },
+};
+/** The painted kind at world (x, z), or null. */
+export function paintAt(pt, x, z) { if (!pt || !pt.d) return null; const C = pt.cell || SCULPT.CELL; return pt.d[Math.round(x / C) + ',' + Math.round(z / C)] || null; }
+/** Paint (or, kind 'grass', unpaint) the ground in a circle; returns how many cells changed. */
+export function paintDab(pt, kind, x, z, r) {
+  const C = pt.cell || (pt.cell = SCULPT.CELL), d = pt.d || (pt.d = {}); let n = 0;
+  for (let c = Math.floor((x - r) / C); c <= Math.ceil((x + r) / C); c++) for (let q = Math.floor((z - r) / C); q <= Math.ceil((z + r) / C); q++) {
+    if (Math.hypot(c * C - x, q * C - z) > r) continue; const key = c + ',' + q;
+    if (kind === 'grass' || !PAINTS[kind]) { if (d[key]) { delete d[key]; n++; } } else if (d[key] !== kind) { d[key] = kind; n++; }
+  }
+  return n;
+}
 export const PROPS = { pine: 'Pine', fir: 'Tall fir', tree: 'Oak', autumn: 'Autumn tree', blossom: 'Blossom tree', bush: 'Bush', rock: 'Rock', boulder: 'Boulder', cactus: 'Cactus' };
 // trees with colours of their own (the rest take the stage's palette)
 const PROP_COL = { fir: [0x22513A, 0x1D4530, 0x2A5C40], autumn: [0xD9822B, 0xC4562A, 0xE0A93A, 0xB8452B], blossom: [0xF2A7C3, 0xF7C6D9, 0xE88AB0, 0xFFFFFF] };

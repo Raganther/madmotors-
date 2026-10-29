@@ -18,5 +18,5 @@ export function buildTrack(stage) {
   throw new Error('Track generation failed for ' + stage.name);
 }
 
-// the Track Studio's placed buildings (core/track/edits.js) join the stage's own
-function withHouses(tr, stage) { editHouses(tr, stage); return tr; }
+// the Track Studio's placed buildings (core/track/edits.js) join the stage's own; its painted ground goes on the track
+function withHouses(tr, stage) { editHouses(tr, stage); if (stage.edits && stage.edits.paint) tr.paint = stage.edits.paint; return tr; }   // (and its painted ground: sim/car.js)

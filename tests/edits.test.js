@@ -85,3 +85,14 @@ describe('studio asset brush data', () => {
     expect(t.kit.solid.filter(o => o.placed).map(o => o.kind)).toEqual(['wall', 'post']);
   });
 });
+describe('studio ground paint', () => {
+  it('painted ground off the road drives like what it is; the road itself is unchanged', async () => {
+    const M = await import('../src/core/index.js'), { raceDefs } = await import('../src/data/cars.js'), { vehicleById } = await import('../src/data/vehicles.js');
+    const st = STAGES[18], tr0 = buildTrack(st), i = tr0.startIdx + 120, ox = tr0.xs[i] + tr0.rx[i] * 14, oz = tr0.zs[i] + tr0.rz[i] * 14;
+    const pt = { cell: 4, d: {} }; M.paintDab(pt, 'mud', ox, oz, 10); M.paintDab(pt, 'snow', tr0.xs[i], tr0.zs[i], 3);
+    const s2 = copy(st, { paint: pt }), tr = buildTrack(s2), W = { tr, terr: buildTerrain(tr, s2), surf: s2.surface, armco: !!s2.armco };
+    const R = M.createRace(W, raceDefs(vehicleById('coupe'), 1)), P = R.player; R.phase = 'racing'; for (const c of R.cars) c.hold = true;
+    const at = (x, z) => { Object.assign(P, { x, z, y: W.terr.at(x, z), vx: 0, vz: 0, pr: M.project(tr, x, z, i, 4, 4) }); M.raceStep(R, M.STEP, W); return P.surface; };
+    expect(at(ox, oz)).toBe('mud'); expect(at(tr.xs[i], tr.zs[i])).toBe(s2.surface);
+  });
+});
