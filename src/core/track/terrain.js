@@ -1,4 +1,4 @@
-import { HALF, WALL } from '../constants.js';
+import { HALF, WALL, useTrackWidth } from '../constants.js';
 
 export const BORE_H = 7.2;   // a tunnel bore's height over the road (render/elements/tunnel.js draws it)
 import { clamp, lerp, smoothstep } from '../math.js';
@@ -27,6 +27,7 @@ function pastMouth(tr, i, x, z) {
   return (along < -0.5 && !tr.tunnel[nb(-1)]) || (along > 0.5 && !tr.tunnel[nb(1)]);
 }
 export function buildTerrain(tr, stage) {
+  useTrackWidth(tr);
   const S = tr.gridS || 3, M = tr.margin || 95, x0 = Math.floor(Math.min(-200, tr.minX - M)), x1 = Math.ceil(Math.max(200, tr.maxX + M)), z0 = Math.floor(tr.minZ - Math.max(90, M)), z1 = Math.ceil(tr.maxZ + Math.max(120, M));
   const cols = Math.floor((x1 - x0) / S) + 1, rows = Math.floor((z1 - z0) / S) + 1;
   const h = new Float32Array(cols * rows), dist = new Float32Array(cols * rows), nearI = new Int32Array(cols * rows);

@@ -2,11 +2,13 @@ import { buildLoop } from './circuit.js';
 import { finishTrack, genPath, validPath } from './downhill.js';
 import { validateStage } from '../elements/index.js';
 import { prepareGround } from './ground.js';
+import { HALF, ROAD_WIDTH, setRoadWidth } from '../constants.js';
 import { editHouses, streetGrid } from './edits.js';
 import { onPath } from './path.js';
 
 /** Build the road for a stage. @param {import('../types.js').Stage} stage @returns {import('../types.js').Track} */
 export function buildTrack(stage) {
+  setRoadWidth(stage.width || ROAD_WIDTH);                // its own road width (constants.js), for everything built from here
   prepareGround(stage);                                   // a described landscape (stage.ground hills, stage.drape): its grid and draped road
   validateStage(stage);                                   // unknown tags / options fail loudly instead of doing nothing
   if (stage.type === 'loop' || stage.type === 'pass' || stage.type === 'gorge') return withHouses(buildLoop(stage), stage);
@@ -19,4 +21,4 @@ export function buildTrack(stage) {
 }
 
 // the Track Studio's placed buildings (core/track/edits.js) join the stage's own; its painted ground goes on the track
-function withHouses(tr, stage) { editHouses(tr, stage); if (stage.edits && stage.edits.paint) tr.paint = stage.edits.paint; if (stage.edits && stage.edits.streets) tr.streets = streetGrid(stage.edits); return tr; }   // (and its painted ground: sim/car.js)
+function withHouses(tr, stage) { tr.half = HALF; editHouses(tr, stage); if (stage.edits && stage.edits.paint) tr.paint = stage.edits.paint; if (stage.edits && stage.edits.streets) tr.streets = streetGrid(stage.edits); return tr; }   // (and its painted ground: sim/car.js)

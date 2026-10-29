@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { G } from '../game.js';
 import { STAGES } from '../data/stages/index.js';
 import { BUILDINGS, BUILDING_TYPES } from '../data/structures.js';
-import { HALF } from '../core/constants.js';
+import { HALF, ROAD_WIDTH } from '../core/constants.js';
 import { corners } from '../core/elements/structures.js';
 import { KIT_PIECES, PAINTS, PROPS, STREETS, editsDiff, paintDab, sculptAt, sculptDab } from '../core/track/edits.js';
 import { pathFromTrack, samplePath } from '../core/track/path.js';
@@ -43,7 +43,7 @@ const HINT = { view: 'Move the view: drag, two fingers, wheel', raise: 'Drag to 
   streets: 'Draw a street, lane, track or footpath off the road (cobbles or paving paint a square). Tap one to line it with houses or delete it',
   walls: 'Draw a line on the ground for a wall, hedge or fence; end it where you began to close a ring. Where it crosses the road it leaves a gap (a stone wall gets an arch). Tap a wall to delete its run',
   pieces: 'Pick a set piece, then tap the road to put it there; tap one to make it longer or shorter, drag it along the road to move it',
-  road: 'Drag a yellow point to move the road; tap the road between points to add one; tap a point to raise, lower or delete it' };
+  road: 'Drag a yellow point to move the road; tap the road between points to add one; tap a point to raise, lower or delete it. Road width sets how wide the whole road is' };
 const S = { on: false, tool: 'raise', size: 14, power: 0.5, kind: 'pine', drafts: [], draft: null, slot: -1, undo: [], redo: [], stroke: null, sel: null, drag: null, built: null, timer: 0, cursor: null, marks: null, driving: false, db: null, remote: new Map(), path: null, handles: null, pt: -1, paintKind: 'meadow', streetKind: 'street', ssel: -1, wallKind: 'wall', wline: null, brush: { count: 1, spread: 12, scale: 1, variety: 0.5, spacing: 4 }, eraseF: 'all', piece: 'yump', psel: -1, pdrag: null, pmarks: null };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -73,6 +73,8 @@ export function initStudio() {
   $('st-streetkind').innerHTML = Object.entries(STREETS).map(([k, P]) => `<option value="${k}">${esc(P.name)} (${P.w} m)</option>`).join(''); $('st-streetkind').value = 'street';
   $('st-streetkind').addEventListener('change', e => { S.streetKind = e.target.value; });
   $('st-line').addEventListener('click', lineStreet); $('st-sdel').addEventListener('click', () => { if (S.ssel < 0) return; remember(); edits().streets.splice(S.ssel, 1); S.ssel = -1; changed(); });
+  $('st-roadw').addEventListener('input', e => { $('st-roadw-read').textContent = e.target.value + ' m'; });
+  $('st-roadw').addEventListener('change', e => { const v = +e.target.value; remember(); if (v === ROAD_WIDTH) delete stage().width; else stage().width = v; status(`The road is ${v} m wide now${v < ROAD_WIDTH ? ': tighter racing, harder to pass' : v > ROAD_WIDTH ? ': room to race side by side' : ''}.`); changed(0); });
   $('st-wallkind').innerHTML = Object.entries(KIT_PIECES).filter(([, P]) => P.len).map(([k, P]) => `<option value="${k}">${esc(P.name)}</option>`).join('');
   $('st-wallkind').addEventListener('change', e => { S.wallKind = e.target.value; });
   $('st-palette').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (b) { S.kind = b.dataset.kind; S.sel = null; ui(); } });
@@ -225,7 +227,7 @@ function ui() {
   if (!on) return;
   document.querySelectorAll('#st [data-st]').forEach(b => b.classList.toggle('on', b.dataset.st === S.tool));
   $('st-brush').hidden = !['raise', 'lower', 'smooth', 'flatten', 'paint', 'erase'].includes(S.tool); $('st-paints').hidden = S.tool !== 'paint'; document.querySelectorAll('#st-paints [data-paint]').forEach(b => b.classList.toggle('on', b.dataset.paint === S.paintKind)); $('st-size').value = String(Math.round(S.size)); $('st-power').value = String(Math.round(S.power * 10));
-  $('st-palette').hidden = $('st-abrush').hidden = S.tool !== 'place'; $('st-erase').hidden = S.tool !== 'erase'; $('st-walls').hidden = S.tool !== 'walls'; $('st-streets').hidden = S.tool !== 'streets'; $('st-ssel').hidden = !(S.tool === 'streets' && S.ssel >= 0 && (edits().streets || [])[S.ssel]);
+  $('st-palette').hidden = $('st-abrush').hidden = S.tool !== 'place'; $('st-erase').hidden = S.tool !== 'erase'; $('st-walls').hidden = S.tool !== 'walls'; $('st-streets').hidden = S.tool !== 'streets'; $('st-roadwbox').hidden = S.tool !== 'road'; $('st-roadw').value = String(stage().width || ROAD_WIDTH); $('st-roadw-read').textContent = (stage().width || ROAD_WIDTH) + ' m'; $('st-ssel').hidden = !(S.tool === 'streets' && S.ssel >= 0 && (edits().streets || [])[S.ssel]);
   { const B = S.brush; $('st-acount').value = B.count; $('st-aspread').value = B.spread; $('st-asize').value = Math.round(B.scale * 10); $('st-avar').value = Math.round(B.variety * 10); $('st-aspace').value = B.spacing;
     $('st-abrush-read').textContent = B.count === 1 ? `One at a time (drag for a row, ${B.spacing} m apart)` : `${B.count} at a time across ${B.spread * 2} m, ${B.spacing} m apart`; } document.querySelectorAll('#st-palette [data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === S.kind));
   const rp = S.tool === 'road' && S.pt >= 0, pp = S.tool === 'pieces' && S.psel >= 0 && !!(edits().pieces || [])[S.psel];

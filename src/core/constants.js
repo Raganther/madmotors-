@@ -1,4 +1,12 @@
-export const HALF = 6, WALL = HALF + 2.3, CAR_R = 1.25, CAR_HIT = 2.9, CAR_HW = 1.0, CAR_HL = 1.78, CAR_I = 3.2;
+// HALF: half the race road's width; WALL: how far out its barriers stand. A stage may set its own road width (stage.width,
+// the Track Studio's Road width): setRoadWidth switches them, and the track, its terrain and its race each put them back
+// to their own (tr.half) before they use them, so building another stage never changes the one being raced.
+export let HALF = 6, WALL = HALF + 2.3;
+export const ROAD_WIDTH = 12;
+export function setRoadWidth(w = ROAD_WIDTH) { HALF = w / 2; WALL = HALF + 2.3; }
+/** Road width back to this track's own. */
+export function useTrackWidth(tr) { const h = (tr && tr.half) || ROAD_WIDTH / 2; if (h !== HALF) setRoadWidth(h * 2); }
+export const CAR_R = 1.25, CAR_HIT = 2.9, CAR_HW = 1.0, CAR_HL = 1.78, CAR_I = 3.2;
 export const PHYS = { ENGINE: 24, DRAG: 0.019, BRAKE: 46, REVERSE: 14, BOOST: 17, G: 38, GS: 34, STEER: 2.5, HB_LAT: 9, DRAFT: 7,
   HOLD: 1.15, HOLD_PLANT: 1.04, PLANT_GRIP: 1.3 };   // tarmac: how far the nose may out-turn the grip (x latMax / speed), and a tarmac car's
 export const SURF = {

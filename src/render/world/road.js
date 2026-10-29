@@ -9,7 +9,8 @@ import { bridgeMat } from '../elements/bridge.js';
 import { NO_WUV, wetShine, withRuts, wuvOf } from '../ruts.js';
 import { rowDepths, WEAR_OPT } from '../../core/features/wear.js';
 
-export const ROAD_STRIPS = [-HALF + 1.1, -3.7, -2.3, -1.2, 1.2, 2.3, 3.7, HALF - 1.1];
+/** Where the road's surface is cut along its width (lanes, wheel lines): from its edges in (the road may be wider or narrower: constants.js). */
+export const roadStrips = () => [-HALF + 1.1, -HALF + 2.3, -HALF + 3.7, -1.2, 1.2, HALF - 3.7, HALF - 2.3, HALF - 1.1];
 export function makeRoadMesh(tr, stage) {
   const C = stage.colors, N = tr.loopN || tr.N, loop = !!tr.loopN;
   const mainPos = [], mainCol = [], mainW = [], brPos = [], brCol = [], brW = [];
@@ -65,8 +66,8 @@ export function makeRoadMesh(tr, stage) {
         // the driving surface in strips: darker worn wheel tracks in each lane plus the odd repair patch
         const dirtHere = isDirt(i), surf = dirtHere ? dirtRoad : road;                  // dirt shortcuts: a rutted dirt track
         const base = 1 + tr.noise.n2(i * 0.15, 3.3) * (dirtHere ? 0.16 : 0.08);
-        for (let q = 0; q < ROAD_STRIPS.length - 1; q++) {
-          const pa = ROAD_STRIPS[q], pb = ROAD_STRIPS[q + 1];
+        for (let q = 0, RS = roadStrips(); q < RS.length - 1; q++) {
+          const pa = RS[q], pb = RS[q + 1];
           let k = base * (q === 1 || q === 5 ? (dirtHere ? 0.82 : 0.9) : q === 3 ? (dirtHere ? 1.08 : 1.02) : 1);
           const pn = tr.noise.n2(i * 0.045 + q * 0.7, 9.1 + q * 0.3); if (pn > 0.62) k *= tr.surface === 'tarmac' ? 0.86 : 1.08;
           tmp.copy(surf).multiplyScalar(k);

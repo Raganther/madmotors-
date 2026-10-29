@@ -6,6 +6,7 @@ import { elementHook } from '../elements/index.js';
 import { G } from '../../game.js';
 import { buildTrack } from '../../core/track/build.js';
 import { buildTerrain } from '../../core/track/terrain.js';
+import { useTrackWidth } from '../../core/constants.js';
 import { STAGES } from '../../data/stages/index.js';
 import { clearSkids } from '../effects/skids.js';
 import { clearTrails } from '../effects/trails.js';
@@ -41,7 +42,7 @@ function coverMap(tr) {
 }
 export function buildWorld(idx) {
   if (G.world) { scene.remove(G.world.group); disposeGroup(G.world.group); }
-  const stage = STAGES[idx], tr = trackOf(idx), terr = buildTerrain(tr, stage);
+  const stage = STAGES[idx], tr = trackOf(idx); useTrackWidth(tr); const terr = buildTerrain(tr, stage);   // (its own road width: core/constants.js)
   const group = new THREE.Group(); scene.add(group);
   scene.background.set(stage.colors.sky); scene.fog.color.set(stage.colors.sky);
   const Lt = stage.light; sun.color.setHex(Lt.sun); sun.intensity = Lt.sunI; hemi.color.setHex(Lt.sky); hemi.groundColor.setHex(Lt.ground); hemi.intensity = Lt.hemiI; FX.cloudAmt.value = Lt.cloud; setGrade(Lt); setSky(scene, stage); setMuck(stage);

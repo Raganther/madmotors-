@@ -124,3 +124,14 @@ describe('studio streets', () => {
     expect(t.kit.ground.filter(g => g.kind === 'street').length).toBe(2);
   });
 });
+describe('road width', () => {
+  it('a stage sets its own road width, and its race keeps it whatever is built in between', async () => {
+    const M = await import('../src/core/index.js'), { raceDefs } = await import('../src/data/cars.js'), { vehicleById } = await import('../src/data/vehicles.js');
+    const st = { ...JSON.parse(JSON.stringify(STAGES[18])), width: 18 }, tr = buildTrack(st), W = { tr, terr: buildTerrain(tr, st), surf: st.surface, armco: !!st.armco };
+    expect(tr.half).toBe(9);
+    buildTrack(STAGES[0]); expect(M.HALF).toBe(6);                       // another stage built: the default width
+    const R = M.createRace(W, raceDefs(vehicleById('coupe'), 1)); expect(M.HALF).toBe(9);   // its race puts its own back
+    M.raceStep(R, M.STEP, W); buildTrack(STAGES[0]); M.raceStep(R, M.STEP, W); expect(M.HALF).toBe(9);
+    M.setRoadWidth();   // (leave the default for the tests after)
+  });
+});

@@ -1,3 +1,4 @@
+import { useTrackWidth } from '../constants.js';
 import { FEATURES } from '../features/index.js';
 import { SD_KINDS, initShowdown, sdLeader, showdownStep } from '../modes/showdown.js';
 import { derbyControl, derbyStep, initDerby } from '../modes/derby.js';
@@ -19,6 +20,7 @@ export function gridSlots(n) {
 }
 /** Start a race on a built world. @param {import('../types.js').World} W @param {object[]} defs  one per car (see data/cars.js) @param {{mode?: 'race'|'showdown'|'deuce'|'tiebreak'|'derby'|'demolition', weapons?: boolean, wear?: object}} [opts]  wear: features/wear.js WEAR_OPT overrides (menu: Track wear) @returns {import('../types.js').Race} */
 export function createRace(W, defs, opts = {}) {
+  useTrackWidth(W.tr);   // (a stage's own road width: constants.js)
   W.bar = makeBarriers(W.tr, W.armco);
   const grid = gridSlots(defs.length), cars = defs.map((d, k) => makeCar(W, grid[k][0], grid[k][1], d));
   const R = { weapons: !!opts.weapons, wearOpt: opts.wear || null, cars, player: cars.find(c => c.isPlayer) || cars[0], time: 0, phase: 'grid', nFinished: 0, autoPlayer: false, rnd: mulberry32((W.tr.seed || 1) * 31 + 7) };
@@ -31,6 +33,7 @@ export function createRace(W, defs, opts = {}) {
 }
 /** Advance the whole race by one fixed step (STEP = 1/120 s). @param {import('../types.js').Race} R @param {number} dt @param {import('../types.js').World} W */
 export function raceStep(R, dt, W) {
+  useTrackWidth(W.tr);
   const racing = R.phase === 'racing';
   if (racing) R.time += dt;
   const P = R.player, tr = W.tr, all = R.cars.concat(...FEATURES.filter(f => f.vehicles).map(f => f.vehicles(R)));
