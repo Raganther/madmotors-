@@ -29,6 +29,7 @@ Run from the repo root. Stop and fix at the first failure; never commit red.
    you didn't verify. Send the screenshots that show the change.
 
 ## Traps
+- What the artifact's db hands over (`snap.data()`) is read-only: copy it before changing anything in it (a draft's stage `name` once threw "Cannot assign to read only property" on load). Test db code against a stand-in that freezes its documents.
 - `npm run check | grep ...` hides a failure (the pipe's exit is grep's): run it to a log and read its exit code before committing. It let a failing test through once. we've hit
 - Never revert an experiment with `git checkout -- <file>` or `git stash` while other edits are uncommitted: it
   silently takes those too. Undo by editing.

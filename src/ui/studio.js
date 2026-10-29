@@ -105,7 +105,7 @@ export function initStudio() {
   });
   if (window.claude && window.claude.use) window.claude.use('db').then(d => {
     if (!d) return; S.db = d;
-    d.collection('studio').onSnapshot(q => { S.remote = new Map(q.docs.map(x => [x.id, x.data()])); syncRemote(); }, () => { });
+    d.collection('studio').onSnapshot(q => { S.remote = new Map(q.docs.map(x => [x.id, x.data()])); syncRemote().catch(e => console.warn('studio sync', e)); }, () => { });
   });
   $('st-take').addEventListener('click', takeClaude); $('st-leave').addEventListener('click', () => { $('st-claude').hidden = true; });
   $('st-hist').addEventListener('click', history);
@@ -162,20 +162,23 @@ async function send() {
     $('st-msg').value = ''; $('st-sendform').hidden = true; status(`Sent to Claude as version ${v}. Ask Claude to look at it: its answer comes back here.`); ui();
   } catch (err) { status('Could not send it (' + (err.code || err.message || 'error') + '); try again in a moment.', true); }
 }
+/** A version's stage, as a copy the Studio can change. */
 async function versionStage(id, v) {
   const snap = await S.db.doc(`studioVersions/${id}-${v}`).get(); if (!snap.exists) return null; const x = snap.data();
-  if (x.stage) return x.stage; if (x.asset) { const r = await fetch('/_blob/' + x.asset); return r.ok ? r.json() : null; } return null;
+  if (x.stage) return clone(x.stage);   // (a copy: what the database hands over is read-only)
+  if (x.asset) { const r = await fetch('/_blob/' + x.asset); return r.ok ? r.json() : null; }
+  return null;
 }
 // what the shared store holds: new drafts come in, Claude's answers wait on theirs
 async function syncRemote() {
-  for (const [id, R] of S.remote) {
+  for (const [id, R] of S.remote) try {   // (one bad draft never stops the rest, nor the game)
     let d = S.drafts.find(x => x.id === id);
     if (!d) {   // made or sent from another device, or made by Claude
       const st = await versionStage(id, R.v).catch(() => null); if (!st) continue;
       d = { id, name: '✎ ' + R.name, base: R.base, stage: st, at: R.at, v: R.v, shared: clone(st), made: R.by }; st.name = d.name; S.drafts.push(d); saveDrafts();
       if (R.by === 'claude') status(`Claude made you a track: "${R.name}". It's under My tracks.`);
-    } else if (R.v > (d.v || 0) && R.by === 'claude') d.pending = { v: R.v, note: R.note || '', changes: R.changes || [] };
-  }
+    } else if (R.v > (d.v || 0) && R.by === 'claude') d.pending = { v: R.v, note: R.note || '', changes: [...(R.changes || [])] };
+  } catch (e) { console.warn('studio: draft ' + id + ' could not be read', e); }
   ui(); claudeBanner();
 }
 function claudeBanner() {
