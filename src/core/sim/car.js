@@ -134,7 +134,13 @@ export function stepCar(c, dt, W, racing) {
     // instead of swinging round and sliding; a tarmac car (data/vehicles.js planted) hardly over-rotates at all.
     // On loose surfaces, and with the handbrake, it still slides as it always did.
     // (against the dry road's grip: oil, rain and standing water still take it away under a car turning in)
-    if (c.surface === 'tarmac' && !hb && sp > 8) rate = Math.min(rate, (plant ? PHYS.HOLD_PLANT : PHYS.HOLD) * latMax / (slick || 1) / sp);
+    // Steering harder than that scrubs speed instead (the fronts scrubbing, the car settling into the corner): the turn
+    // tightens by itself as it slows, so a corner at full lock needs no brake.
+    if (c.surface === 'tarmac' && !hb && sp > 8) {
+      const cap = (plant ? PHYS.HOLD_PLANT : PHYS.HOLD) * latMax / (slick || 1) / sp, want = rate * Math.abs(inp.steer);
+      if (want > cap) { const scrub = PHYS.SCRUB * (want - cap) / want * dt; vf -= Math.sign(vf) * Math.min(Math.abs(vf), scrub); }
+      rate = Math.min(rate, cap);
+    }
     const pull = (c.dmg.r - c.dmg.l) * 0.12 * clamp(sp / 20, 0, 1);   // a bent corner drags the car toward it
     c.yaw -= (inp.steer + pull) * rate * (vf >= 0 ? 1 : -1) * dt;
     c.vx = fx * vf + rx * vr; c.vz = fz * vf + rz * vr;

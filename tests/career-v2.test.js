@@ -87,7 +87,8 @@ describe('personalities (core/sim/ai.js, features/weapons.js)', () => {
       R = M.createRace(W, defs, { weapons: true }); R.phase = 'racing'; R.autoPlayer = true; const got = new Map();
       for (let i = 0; i < 120 * 60; i++) {   // how long a rival holds an item before using it
         M.raceStep(R, 1 / 120, W);
-        for (const c of R.cars) { for (const e of c.events) if (!c.isPlayer && e.t === 'pickup') got.set(c, R.time); else if (!c.isPlayer && e.t === 'use' && got.has(c)) { held += R.time - got.get(c); used++; got.delete(c); } c.events.length = 0; }
+        for (const c of R.cars) { for (const e of c.events) if (!c.isPlayer && e.t === 'pickup' && !e.def) got.set(c, R.time);   // (a weapon, not a blue crate's defence)
+        else if (!c.isPlayer && e.t === 'use' && got.has(c)) { held += R.time - got.get(c); used++; got.delete(c); } c.events.length = 0; }
       }
     }
     return { hold: held / Math.max(1, used), R };

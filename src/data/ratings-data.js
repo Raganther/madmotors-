@@ -1,6 +1,6 @@
 // Written by `npm run ratings` (tools/ratings.mjs): measured, do not edit. data/ratings.js reads it.
 export default {
- "key": "f31decbc",
+ "key": "2b254ff8",
  "sens": {
   "tarmac": {
    "accel": -25.59,
@@ -52,7 +52,7 @@ export default {
    "tough": 1.01
   },
   "hotrod": {
-   "tarmac": 0.64,
+   "tarmac": 0.63,
    "loose": 2.75,
    "tough": 1
   },
@@ -87,7 +87,7 @@ export default {
    "tough": 1.02
   },
   "hover": {
-   "tarmac": 3.2,
+   "tarmac": 3.21,
    "loose": -4.71,
    "tough": 0.98
   },

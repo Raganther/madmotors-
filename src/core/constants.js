@@ -8,7 +8,7 @@ export function setRoadWidth(w = ROAD_WIDTH) { HALF = w / 2; WALL = HALF + 2.3; 
 export function useTrackWidth(tr) { const h = (tr && tr.half) || ROAD_WIDTH / 2; if (h !== HALF) setRoadWidth(h * 2); }
 export const CAR_R = 1.25, CAR_HIT = 2.9, CAR_HW = 1.0, CAR_HL = 1.78, CAR_I = 3.2;
 export const PHYS = { ENGINE: 24, DRAG: 0.019, BRAKE: 46, REVERSE: 14, BOOST: 17, G: 38, GS: 34, STEER: 2.5, HB_LAT: 9, DRAFT: 7,
-  HOLD: 1.15, HOLD_PLANT: 1.04, PLANT_GRIP: 1.3 };   // tarmac: how far the nose may out-turn the grip (x latMax / speed), and a tarmac car's
+  HOLD: 1.15, HOLD_PLANT: 1.04, PLANT_GRIP: 1.3, SCRUB: 30 };   // tarmac: how far the nose may out-turn the grip (x latMax / speed), and a tarmac car's
 export const SURF = {
   tarmac: { engine: 1, latMax: 31, grip: 10, drag: 0 },
   gravel: { engine: 0.95, latMax: 25, grip: 7, drag: 0.02 },
