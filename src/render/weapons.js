@@ -17,7 +17,7 @@ import { pushWave } from './waves.js';
 const L = c => new THREE.MeshLambertMaterial({ color: c }), B = c => new THREE.MeshBasicMaterial({ color: c });
 const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); return b; };
 const cyl = (r, l, m, x = 0, y = 0, z = 0) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 10).rotateX(Math.PI / 2), m); c.position.set(x, y, z); return c; };
-let laserPool = [], drumPool = [], minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, reticle = null, bubbles = [], cloudPool = [], flareAcc = 0, shellPool = [], markPool = [], scorches = [], later = [], sci = 0, fi = 0, si = 0, di = 0;
+let laserPool = [], drumPool = [], minePool = [], jetPool = [], cementPool = [], stripPool = [], missiles = [], crates = [], slickPool = [], hookPool = [], tracers = null, tracerMat = null, flashes = [], smokes = [], domes = [], streaks = [], targetRing = null, reticle = null, bubbles = [], cloudPool = [], flareAcc = 0, glows = [], gi = 0, bolts = null, boltList = [], flarePool = [], jetCores = [], shellPool = [], markPool = [], scorches = [], later = [], sci = 0, fi = 0, si = 0, di = 0;
 const MAXB = 80, _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _y = new THREE.Vector3(0, 1, 0);
 export function initWeaponVis() {
   const white = L(0xF2F2EE), red = L(0xD8203A);
@@ -86,8 +86,9 @@ export function initWeaponVis() {
   for (let k = 0; k < 8; k++) {
     const g = new THREE.Group(); g.add(cyl(0.07, 1.4, L(0x9AA3AD))); const head = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 6).rotateX(Math.PI / 2), L(0x3A3F46)); head.position.z = 0.9; g.add(head);
     for (const s of [-1, 1]) { const barb = box(0.05, 0.05, 0.4, L(0x3A3F46), s * 0.15, 0, 0.6); barb.rotation.y = -s * 0.6; g.add(barb); }
-    g.scale.setScalar(1.6); g.visible = false; scene.add(g);
-    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0x2A2A2A })); line.frustumCulled = false; line.visible = false; scene.add(line);
+    g.scale.setScalar(2); g.visible = false; scene.add(g);
+    // the line: a braided rope (a thin tube, stretched from the gun to the hook each frame), so it reads from the camera
+    const line = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1, 6, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5), L(0xC8B48A)); line.frustumCulled = false; line.castShadow = true; line.visible = false; scene.add(line);
     hookPool.push({ g, line });
   }
   // wet cement: a grey splat with darker ridges (F6 signature: the mixer)
@@ -104,7 +105,14 @@ export function initWeaponVis() {
   // the water cannon's jet: a pale cone of water from the nozzle, flickering, as long as the jet reaches
   const jetTex = canvasTex(8, 64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.7)'); gr.addColorStop(1, 'rgba(255,255,255,1)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });   // fades out where the jet breaks up
   const jetG = new THREE.CylinderGeometry(0.9, 0.16, 1, 12, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
-  jetPool = []; for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(jetG, new THREE.MeshBasicMaterial({ color: 0xCFEAFF, map: jetTex, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide })); m.visible = false; scene.add(m); jetPool.push(m); }
+  // and inside it a hard core of streaming water: white streaks running out along it (the texture scrolls)
+  const streakTex = canvasTex(64, 128, (g, w, h) => { g.fillStyle = 'rgba(255,255,255,0.15)'; g.fillRect(0, 0, w, h); for (let k = 0; k < 26; k++) { const x = Math.random() * w, y = Math.random() * h, l = 20 + Math.random() * 50; const gr = g.createLinearGradient(0, y, 0, y + l); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(x, y, 2 + Math.random() * 3, l); } });
+  streakTex.wrapS = streakTex.wrapT = THREE.RepeatWrapping; streakTex.repeat.set(2, 2);
+  const coreG = new THREE.CylinderGeometry(0.42, 0.11, 1, 10, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
+  jetPool = []; jetCores = []; for (let k = 0; k < 4; k++) {
+    const m = new THREE.Mesh(jetG, new THREE.MeshBasicMaterial({ color: 0xCFEAFF, map: jetTex, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide })); m.visible = false; scene.add(m); jetPool.push(m);
+    const c = new THREE.Mesh(coreG, new THREE.MeshBasicMaterial({ color: 0xF4FBFF, map: streakTex, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending })); c.visible = false; c.renderOrder = 4; m.add(c); jetCores.push(c);
+  }
   stripPool = []; for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(stripG, L(0x22252B)); m.visible = false; scene.add(m); stripPool.push(m); }
   // oil drums: a steel drum, two rolling ribs, a yellow hazard band and a black top, tumbling end over end
   drumPool = [];
@@ -122,8 +130,11 @@ export function initWeaponVis() {
     const band = new THREE.Mesh(new THREE.CylinderGeometry(0.735, 0.735, 0.08, 14, 1, true), L(0xFFC72C)); band.position.y = 0.1; g.add(band);
     for (let a = 0; a < 3; a++) { const pr = box(0.06, 0.22, 0.06, L(0x2A2E33), Math.cos(a * 2.09) * 0.3, 0.38, Math.sin(a * 2.09) * 0.3); g.add(pr); }
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), B(0xFF2A2A)); lamp.position.y = 0.34; g.add(lamp);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xFF2A2A, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); glow.scale.set(1.6, 1.6, 1); glow.position.y = 0.36; glow.renderOrder = 7; g.add(glow);
     const spin = new THREE.Group(); spin.position.y = 0.2; for (const ch of [...g.children]) { ch.position.y -= 0.2; spin.add(ch); } g.add(spin);   // turns about its middle as it tumbles
-    g.scale.setScalar(1.3); g.visible = false; scene.add(g); minePool.push({ g, lamp, spin });
+    // armed: a faint red ring on the road the size of its trigger, pulsing out
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xFF3A2A, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending })); ring.position.y = 0.06; ring.renderOrder = 3; g.add(ring);
+    g.scale.setScalar(1.3); g.visible = false; scene.add(g); minePool.push({ g, lamp, spin, glow, ring });
   }
   // fireballs and flashes (additive glow sprites), smoke puffs (soft grey sprites), shockwave domes, and the red ring
   // under a car a missile is homing on
@@ -138,14 +149,36 @@ export function initWeaponVis() {
     }
   });
   flashes = []; smokes = []; domes = [];
-  // a fireball: white-hot middle, orange body, soft edge; tinted by the flash colour (white = fire)
-  const fireTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,252,235,1)'); gr.addColorStop(0.3, 'rgba(255,214,110,1)'); gr.addColorStop(0.62, 'rgba(255,120,30,0.85)'); gr.addColorStop(1, 'rgba(255,60,10,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
-  for (let k = 0; k < 24; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: fireTex, depthWrite: false, transparent: true })); sp.renderOrder = 6; sp.visible = false; scene.add(sp); flashes.push({ sp, t: 1, life: 1, size: 1 }); }
+  // a fireball: a billow of lumps round a white-hot middle, an orange body and a ragged edge, each turned its own way
+  // (flash()); it cools as it goes, white to yellow to a deep orange-red (updateFx). Coloured flashes (a shield's blue,
+  // a repair's green) are a plain glow instead, so they keep their colour
+  const fireTex = canvasTex(128, 128, (g, w, h) => {
+    // value noise, a few octaves: the flame's licks at the edge and the churn inside
+    const N = 16, grid = Array.from({ length: N * N }, () => Math.random()), sm = t => t * t * (3 - 2 * t);
+    const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), fx = sm(x - xi), fy = sm(y - yi), at = (i, j) => grid[((j % N + N) % N) * N + ((i % N + N) % N)]; return (at(xi, yi) * (1 - fx) + at(xi + 1, yi) * fx) * (1 - fy) + (at(xi, yi + 1) * (1 - fx) + at(xi + 1, yi + 1) * fx) * fy; };
+    const img = g.createImageData(w, h), d = img.data;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const u = x / w * 2 - 1, v = y / h * 2 - 1, r = Math.hypot(u, v), n = vn(x / 16, y / 16) * 0.5 + vn(x / 8, y / 8) * 0.3 + vn(x / 4, y / 4) * 0.2;
+      const dens = Math.max(0, Math.min(1, (1 - r * (1.05 + 0.55 * (1 - n))) * 2.6));     // ragged edge
+      const heat = Math.max(0, Math.min(1, dens * (0.55 + 0.75 * n) - r * 0.25));        // hotter inside, churned
+      const R0 = 255, G0 = 70 + 185 * Math.min(1, heat * 1.3), B0 = 20 + 220 * Math.max(0, heat - 0.55) * 2.2, dark = 0.55 + 0.45 * Math.min(1, heat * 2);
+      const i = (y * w + x) * 4; d[i] = R0 * dark; d[i + 1] = G0 * dark; d[i + 2] = Math.min(255, B0) * dark; d[i + 3] = 255 * Math.min(1, dens * 1.4);
+    }
+    g.putImageData(img, 0, 0);
+  });
+  for (let k = 0; k < 40; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: fireTex, depthWrite: false, transparent: true })); sp.renderOrder = 6; sp.visible = false; scene.add(sp); flashes.push({ sp, t: 1, life: 1, size: 1, fire: true }); }
+  flashes.fireTex = fireTex;
+  // light thrown on the ground round a blast or a muzzle: a soft additive pool laid flat, gone in a moment
+  glows = []; for (let k = 0; k < 10; k++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: glowTex(), color: 0xFF8A3A, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); m.renderOrder = 3; m.visible = false; scene.add(m); glows.push({ m, t: 1, life: 1 }); }
+  // lightning: the pulse's arcs onto the cars it throws, short glowing segments jittered every frame (all one mesh)
+  bolts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 0.14, 1), new THREE.MeshBasicMaterial({ color: 0xCFF0FF, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }), 96); bolts.count = 0; bolts.frustumCulled = false; bolts.renderOrder = 8; scene.add(bolts);
+  // flares: white-hot points arcing away from the car, drifting down slowly, each trailing smoke
+  flarePool = []; for (let k = 0; k < 24; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xFFF0C0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); sp.renderOrder = 7; sp.visible = false; scene.add(sp); flarePool.push({ sp, t: 9, life: 1.8 }); }
   for (let k = 0; k < 64; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, depthWrite: false, transparent: true })); sp.visible = false; scene.add(sp); smokes.push({ sp, t: 1, life: 1, size: 1, vy: 0 }); }
   // shields up (defence): a bubble round the car while it lasts; smoke screens: a soft grey lump on each cloud
-  bubbles = []; for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 14), new THREE.MeshBasicMaterial({ color: 0x7FD4FF, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false })); m.visible = false; scene.add(m); bubbles.push(m); }
+  bubbles = []; for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 18), rimMat(0x7FD4FF, 1)); m.renderOrder = 7; m.visible = false; scene.add(m); bubbles.push(m); }
   cloudPool = []; for (let k = 0; k < 96; k++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, color: 0xEDEDE8, depthWrite: false, transparent: true })); sp.renderOrder = 5; sp.visible = false; scene.add(sp); cloudPool.push(sp); }
-  for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x6EC8FF, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.visible = false; scene.add(m); domes.push({ m, t: 1, size: 1 }); }
+  for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), rimMat(0x6EC8FF, 0)); m.renderOrder = 7; m.visible = false; scene.add(m); domes.push({ m, t: 1, size: 1 }); }
   targetRing = new THREE.Mesh(new THREE.RingGeometry(2.1, 2.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xFF2A2A, transparent: true, opacity: 0.8, depthWrite: false, depthTest: false }));
   targetRing.renderOrder = 9; targetRing.visible = false; scene.add(targetRing);
   // the missile's lock (core lockedOn): four corner brackets on the car in your sights, closing in and turning as the
@@ -169,6 +202,7 @@ export function initWeaponVis() {
   for (let k = 0; k < 9; k++) {
     const g = new THREE.Group(); g.add(cyl(0.22, 0.9, olive)); const nose = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2), olive); nose.position.z = 0.45; g.add(nose);
     g.add(cyl(0.225, 0.12, band, 0, 0, 0.2)); for (let f = 0; f < 4; f++) { const fin = box(0.03, 0.3, 0.26, L(0x3C4430), 0, 0, -0.5); fin.rotation.z = f * Math.PI / 2 + Math.PI / 4; fin.translateY(0.2); g.add(fin); }
+    const sg = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xFFB45A, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); sg.scale.set(0.9, 0.9, 1); sg.position.z = -0.6; g.add(sg);   // its fuse glowing
     g.scale.setScalar(2.2); g.visible = false; scene.add(g);
     const mark = new THREE.Group(), mm = new THREE.MeshBasicMaterial({ color: 0xFF3A2A, transparent: true, opacity: 0.85, depthWrite: false, depthTest: false });
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), mm), fill = new THREE.Mesh(new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xFF3A2A, transparent: true, opacity: 0.28, depthWrite: false, depthTest: false }));
@@ -177,18 +211,73 @@ export function initWeaponVis() {
     shellPool.push({ g, id: -1 }); markPool.push(mark);
   }
 }
+/** An energy bubble (a shield, the pulse's wave): see-through in the middle, bright at the rim where you look along
+ *  its skin, with a faint lattice and bands running up it; `hit` flares it white. Works for both camera kinds (view-space
+ *  normal). uniforms: col, op (overall strength), t (time), hit (0..1). */
+function rimMat(color, op) {
+  return new THREE.ShaderMaterial({
+    uniforms: { col: { value: new THREE.Color(color) }, op: { value: op }, t: { value: 0 }, hit: { value: 0 } },
+    vertexShader: 'varying vec3 vN; varying vec3 vP; void main(){ vP = position; vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform vec3 col; uniform float op, t, hit; varying vec3 vN; varying vec3 vP;
+      void main(){
+        float rim = pow(1.0 - abs(vN.z), 2.2);
+        vec2 q = vec2(atan(vP.z, vP.x) * 4.0, vP.y * 7.0);
+        float lat = smoothstep(0.42, 0.5, abs(fract(q.x + 0.5 * floor(q.y)) - 0.5)) + smoothstep(0.4, 0.5, abs(fract(q.y) - 0.5));
+        float band = 0.5 + 0.5 * sin(vP.y * 9.0 - t * 7.0);
+        float a = op * (0.08 + rim * 0.95 + lat * 0.16 * (0.4 + band) + hit * (0.35 + rim));
+        gl_FragColor = vec4(mix(col, vec3(1.0), clamp(rim * 0.45 + hit * 0.6, 0.0, 1.0)) * a, 1.0);
+      }`,
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
+  });
+}
 const glowTex = () => G.glowTex || (G.glowTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }));
 /** A glowing flash that swells and fades: fireballs, muzzle flashes, hits. */
-export function flash(x, y, z, size, color, life = 0.35) { const f = flashes[fi]; fi = (fi + 1) % flashes.length; if (!f) return; f.sp.position.set(x, y, z); f.sp.material.color.set(color); f.t = 0; f.life = life; f.size = size; f.sp.visible = true; }
+export function flash(x, y, z, size, color, life = 0.35) {
+  const f = flashes[fi]; fi = (fi + 1) % flashes.length; if (!f) return;
+  const c = f.sp.material.color.set(color), fire = c.r >= c.b && c.g >= c.b * 0.9;   // warm: a fireball that cools; cool or green: a glow keeping its colour
+  if (f.fire !== fire) { f.fire = fire; f.sp.material.map = fire ? flashes.fireTex : glowTex(); f.sp.material.blending = fire ? THREE.NormalBlending : THREE.AdditiveBlending; f.sp.material.needsUpdate = true; }
+  f.c0 = color; f.sp.position.set(x, y, z); f.sp.material.rotation = Math.random() * 6.28; f.t = 0; f.life = life; f.size = size; f.sp.visible = true;
+}
+/** Light from a blast or a flash on the ground at (x, y, z): a pool size m across that fades in `life` s. */
+export function groundGlow(x, y, z, size, color = 0xFF8A3A, life = 0.5) { const g = glows[gi]; gi = (gi + 1) % glows.length; if (!g) return; g.m.position.set(x, y + 0.2, z); g.m.scale.set(size, 1, size); g.m.material.color.set(color); g.t = 0; g.life = life; g.m.visible = true; }
+/** A lightning arc from car a to car b (the pulse), crackling for `life` s. */
+export function bolt(a, b, life = 0.22) { boltList.push({ a, b, t: life }); }
+const _z = new THREE.Vector3(0, 0, 1), _d = new THREE.Vector3(), _c = new THREE.Color(), HOT = new THREE.Color(0xFF6A20);
 /** A soft smoke puff that rises, swells and thins out. */
 export function smoke(x, y, z, size, color, life = 1.6, vy = 1.5) { const f = smokes[si]; si = (si + 1) % smokes.length; if (!f) return; f.sp.position.set(x, y, z); f.sp.material.color.set(color); f.sp.material.rotation = Math.random() * 6.28; f.t = 0; f.life = life; f.size = size; f.vy = vy; f.sp.visible = true; }
-function dome(x, y, z, size, color) { const d = domes[di]; di = (di + 1) % domes.length; if (!d) return; d.m.position.set(x, y, z); d.m.material.color.set(color); d.t = 0; d.size = size; d.m.visible = true; }
+function dome(x, y, z, size, color) { const d = domes[di]; di = (di + 1) % domes.length; if (!d) return; d.m.position.set(x, y, z); d.m.material.uniforms.col.value.set(color); d.t = 0; d.size = size; d.m.visible = true; }
 function updateFx(dt) {
   if (later.length) { for (const l of later) l.t -= dt; const due = later.filter(l => l.t <= 0); later = later.filter(l => l.t > 0); due.forEach(l => l.fn()); }   // billowing blasts: their later puffs
   for (const k of scorches) { if (k.t > 30) continue; k.t += dt; k.m.material.opacity = Math.min(1, (30 - k.t) / 8); if (k.t > 30) k.m.visible = false; }
-  for (const f of flashes) { if (f.t >= f.life) continue; f.t += dt; const k = Math.min(1, f.t / f.life), sc = f.size * (0.5 + 0.8 * Math.sqrt(k)); f.sp.scale.set(sc, sc, 1); f.sp.material.opacity = k < 0.4 ? 1 : 1 - (k - 0.4) / 0.6; if (k >= 1) f.sp.visible = false; }
+  for (const f of flashes) {
+    if (f.t >= f.life) continue; f.t += dt; const k = Math.min(1, f.t / f.life), sc = f.size * (0.5 + 0.8 * Math.sqrt(k)); f.sp.scale.set(sc, sc, 1); f.sp.material.opacity = f.fire ? 1 - Math.pow(k, 0.8) : k < 0.4 ? 1 : 1 - (k - 0.4) / 0.6;   // a fireball thins from the start
+    if (f.fire) { f.sp.material.color.setHex(f.c0).lerp(HOT, Math.min(1, k * 1.4)).multiplyScalar(1 - 0.6 * k); f.sp.material.rotation += dt * 0.6; }   // (darkening into smoke as it goes)   // cooling: white, yellow, then orange-red as it swells and goes
+    if (k >= 1) f.sp.visible = false;
+  }
+  for (const g of glows) { if (g.t >= g.life) continue; g.t += dt; const k = Math.min(1, g.t / g.life); g.m.material.opacity = 0.75 * (1 - k) * (1 - k); if (k >= 1) g.m.visible = false; }
+  for (const f of flarePool) {
+    if (f.t >= f.life) continue; f.t += dt; const k = f.t / f.life;
+    f.vy -= (f.vy > -1.5 ? 9 : 0) * dt; f.vx *= Math.exp(-dt * 1.5); f.vz *= Math.exp(-dt * 1.5);                       // up, over, then a slow drift down (a little chute)
+    f.sp.position.x += f.vx * dt; f.sp.position.y += f.vy * dt; f.sp.position.z += f.vz * dt;
+    const s = (2.6 + Math.random() * 1.4) * (1 - k * 0.4); f.sp.scale.set(s, s, 1); f.sp.material.opacity = k > 0.8 ? (1 - k) * 5 : 1;
+    if ((f.puff -= dt) <= 0) { f.puff = 0.05; smoke(f.sp.position.x, f.sp.position.y, f.sp.position.z, 0.9 + k, 0xE8E6E0, 1.1, 0.4); }
+    if (k >= 1) f.sp.visible = false;
+  }
+  if (bolts) {   // each arc: 8 segments between the two cars, kinked at random every frame
+    boltList = boltList.filter(b => (b.t -= dt) > 0); let n = 0;
+    for (const b of boltList) {
+      const ax = b.a.x, ay = b.a.y + 1.4, az = b.a.z, bx = b.b.x, by = b.b.y + 0.8, bz = b.b.z, S = 8, L = Math.hypot(bx - ax, bz - az);
+      let px = ax, py = ay, pz = az;
+      for (let q = 1; q <= S && n < 96; q++) {
+        const u = q / S, j = q < S ? L * 0.08 : 0, x = ax + (bx - ax) * u + (Math.random() - 0.5) * j, y = ay + (by - ay) * u + Math.sin(u * Math.PI) * 1.2 + (Math.random() - 0.5) * j, z = az + (bz - az) * u + (Math.random() - 0.5) * j;
+        _d.set(x - px, y - py, z - pz); const l = _d.length() || 1; _q.setFromUnitVectors(_z, _d.multiplyScalar(1 / l));
+        _m.compose(_p.set((x + px) / 2, (y + py) / 2, (z + pz) / 2), _q, _s.set(1, 1, l)); bolts.setMatrixAt(n++, _m); px = x; py = y; pz = z;
+      }
+    }
+    bolts.count = n; if (n) bolts.instanceMatrix.needsUpdate = true;
+  }
   for (const f of smokes) { if (f.t >= f.life) continue; f.t += dt; const k = Math.min(1, f.t / f.life), sc = f.size * (0.6 + 0.9 * k); f.sp.position.y += f.vy * dt * (1 - k); f.sp.scale.set(sc, sc, 1); f.sp.material.opacity = 0.85 * (1 - k) * Math.min(1, f.t * 8); if (k >= 1) f.sp.visible = false; }
-  for (const d of domes) { if (d.t >= 1) continue; d.t += dt / 0.45; const k = Math.min(1, d.t), e = 1 - Math.pow(1 - k, 3); d.m.scale.set(d.size * (0.15 + e), d.size * (0.15 + e) * 0.45, d.size * (0.15 + e)); d.m.material.opacity = 0.45 * (1 - k); if (k >= 1) d.m.visible = false; }
+  for (const d of domes) { if (d.t >= 1) continue; d.t += dt / 0.5; const k = Math.min(1, d.t), e = 1 - Math.pow(1 - k, 3), U = d.m.material.uniforms; d.m.scale.set(d.size * (0.15 + e), d.size * (0.15 + e) * 0.55, d.size * (0.15 + e)); U.op.value = 1.1 * (1 - k) * (1 - k); U.hit.value = Math.max(0, 1 - k * 4); U.t.value += dt; if (k >= 1) d.m.visible = false; }
 }
 function place(g, tr, s, lat, up, prev) {
   const p = roadPos(tr, s, lat, up), n = roadPos(tr, s + 1, lat, up);
@@ -222,7 +311,7 @@ export function updateWeaponVis(dt, now) {
     const T = R.cars[m.tgt]; if (T && k === 0 && targetRing) { targetRing.visible = true; targetRing.position.set(T.dx ?? T.x, (T.dy ?? T.y) + 0.15, T.dz ?? T.z); const pul = 1 + 0.15 * Math.sin(now * 18); targetRing.scale.set(pul, 1, pul); }   // who it's after
     if (G.state === 'racing' && p.id === m.id && p.last) {                                   // exhaust: a smoke trail (a puff every 50 ms) and sparks
       const bx = pos.x - Math.sin(p.g.rotation.y) * 2.6, bz = pos.z - Math.cos(p.g.rotation.y) * 2.6;
-      if ((p.puffT = (p.puffT || 0) - dt) <= 0) { p.puffT = 0.03; smoke(bx, pos.y, bz, 1.3 + Math.random() * 0.6, 0xEDEDE8, 1.2, 0.3); }
+      if ((p.puffT = (p.puffT || 0) - dt) <= 0) { p.puffT = 0.025; smoke(bx, pos.y, bz, 2 + Math.random() * 0.8, 0xF2F2EE, 1.7, 0.25); }   // a thick white contrail
       emit(bx, pos.y, bz, (Math.random() - 0.5) * 1.5, 0.8 + Math.random(), (Math.random() - 0.5) * 1.5, 0.35, 0.4, 0xFFB03A, -0.5);
     }
     p.id = m.id; p.last = pos;
@@ -237,7 +326,7 @@ export function updateWeaponVis(dt, now) {
     const H = Math.max(16, Math.hypot(land.x - sh.x0, land.z - sh.z0) * 0.3), at = v => [sh.x0 + (land.x - sh.x0) * v, sh.y0 + (land.y - sh.y0) * v + H * 4 * v * (1 - v), sh.z0 + (land.z - sh.z0) * v];
     const [x, y, z] = at(u), [x2, y2, z2] = at(Math.min(1, u + 0.02)), p = shellPool[j];
     p.g.visible = true; p.g.position.set(x, y, z); p.g.lookAt(x2 + (x2 - x) * 10, y2 + (y2 - y) * 10, z2 + (z2 - z) * 10);
-    if (G.state === 'racing' && (p.puffT = (p.puffT || 0) - dt) <= 0) { p.puffT = 0.04; smoke(x, y, z, 1.1, 0xD8D8D0, 0.7, 0.2); }
+    if (G.state === 'racing' && (p.puffT = (p.puffT || 0) - dt) <= 0) { p.puffT = 0.03; smoke(x, y, z, 1.6, 0xD8D8D0, 1.1, 0.2); }
   });
   S.crates.forEach((k, j) => {
     const c = crates[j % crates.length]; place(c.g, tr, k.s, k.lat, 1.3 + Math.sin(now * 2.5 + k.id) * 0.2); c.g.visible = true; c.b.rotation.set(now * 0.9 + k.id, now * 1.3, 0);
@@ -247,8 +336,11 @@ export function updateWeaponVis(dt, now) {
   let nb2 = 0; for (const m of bubbles) m.visible = false;
   for (const c of R.cars) {
     const w = c.wpn; if (!w) continue;
-    if (w.shieldOn > 0 && nb2 < bubbles.length) { const m = bubbles[nb2++], r = Math.max(c.hl || 2.2, 2.2) * 1.25; m.visible = true; m.position.set(c.x, c.y + 0.7, c.z); m.scale.set(r * 0.8, r * 0.6, r); m.rotation.y = c.yaw; m.material.opacity = Math.min(0.24, w.shieldOn * 0.3) * (0.8 + 0.2 * Math.sin(now * 14)); }
-    if (w.flareOn > 0 && G.state === 'racing' && (flareAcc += dt) > 0.07) { flareAcc = 0; const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), sd = Math.random() < 0.5 ? 1 : -1; emit(c.x - fx * 1.5, c.y + 1.4, c.z - fz * 1.5, c.vx * 0.5 - fx * 5 - fz * sd * 5, 6 + Math.random() * 3, c.vz * 0.5 - fz * 5 + fx * sd * 5, 1.2, 0.5, 0xFFE08A, 6, 'solid'); flash(c.x - fx * 4, c.y + 2.5, c.z - fz * 4, 2.2, 0xFFE08A, 0.15); }
+    if (w.shieldOn > 0 && nb2 < bubbles.length) {   // the bubble: rim-lit, a lattice crawling up it, flaring white where it takes a hit; flickering out at the end
+      const m = bubbles[nb2++], r = Math.max(c.hl || 2.2, 2.2) * 1.25, U = m.material.uniforms, hit = shieldHits.get(c); m.visible = true; m.position.set(c.dx ?? c.x, (c.dy ?? c.y) + 0.7, c.dz ?? c.z); m.scale.set(r * 0.8, r * 0.62, r); m.rotation.y = c.yaw;
+      U.t.value = now; U.hit.value = hit ? Math.max(0, 1 - (now - hit) / 0.3) : 0; U.op.value = w.shieldOn < 0.6 ? (Math.floor(now * 20) % 2 ? 0.35 : 1.1) : 1.1 * Math.min(1, (WPN.SHIELD_ON - w.shieldOn) * 6 + 0.3);
+    }
+    if (w.flareOn > 0 && G.state === 'racing' && (flareAcc += dt) > 0.22) { flareAcc = 0; launchFlare(c, Math.random() < 0.5 ? 1 : -1); }   // a fresh pair keeps going up while they burn
   }
   // (two lumps a cloud, turned apart, so it reads as thick smoke rather than a haze)
   cloudPool.forEach((sp, j) => { const o = S.clouds[S.clouds.length - 1 - (j >> 1)]; sp.visible = !!o; if (!o) return; const sz = o.r * (j & 1 ? 2.2 : 2.8); sp.position.set(o.x, o.y + o.r * (j & 1 ? 0.8 : 0.5), o.z); sp.scale.set(sz, sz * 0.85, 1); sp.material.rotation = o.id * 1.7 + (j & 1) * 2.1 + now * 0.15; sp.material.opacity = Math.min(1, o.t * 3) * Math.min(1, (WPN.SMOKE_LIFE - o.t) / 1.5); });
@@ -295,6 +387,8 @@ export function updateWeaponVis(dt, now) {
     const v = minePool[j % minePool.length], rolling = o.s !== undefined && !o.rest; v.g.visible = true; v.g.position.set(o.x, o.y + 0.02, o.z); v.g.rotation.y = o.id;
     if (rolling) { v.spin.rotation.set(o.t * (7 + Math.abs(o.vs) * 0.4), 0, o.t * 4.3); v.lamp.visible = Math.floor(now * 14) % 2 === 0; }
     else { const w = 0.35 * Math.exp(-o.t * 6); v.spin.rotation.set(Math.sin(o.t * 26) * w, 0, Math.cos(o.t * 21) * w); v.lamp.visible = o.t < WPN.MINE_ARM ? Math.floor(now * 3) % 2 === 0 : Math.floor(now * 9) % 2 === 0; }
+    v.glow.visible = v.lamp.visible; const armed = !rolling && o.t >= WPN.MINE_ARM, u = (now * 1.2 + o.id * 0.37) % 1; v.ring.visible = armed;
+    if (armed) { v.ring.scale.setScalar((WPN.MINE_TRIG / 1.3) * (0.4 + 0.6 * u)); v.ring.material.opacity = 0.55 * (1 - u); }
   });
   (S.strips || []).forEach((o, j) => { const m = stripPool[j % stripPool.length], p = roadPos(tr, o.s, 0, 0.02); m.position.set(p.x, p.y, p.z); m.rotation.y = tr.th[p.i]; m.visible = true; });
   // the jets and tunes playing right now: the fire engine's water, the ice cream van's notes
@@ -303,11 +397,13 @@ export function updateWeaponVis(dt, now) {
     const w = c.wpn; if (!w || !(w.waterT > 0) || nj >= jetPool.length) continue;
     const m = jetPool[nj++], fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), L = WPN.WATER_R * (0.85 + 0.1 * Math.sin(now * 23 + nj));
     m.visible = true; m.position.set((c.dx ?? c.x) + fx * (c.hl + 0.3), (c.dy ?? c.y) + 1.5, (c.dz ?? c.z) + fz * (c.hl + 0.3)); m.rotation.set(-0.06, c.yaw, 0); m.scale.set(1 + 0.15 * Math.sin(now * 31), 1, L); m.material.opacity = 0.35 + 0.15 * Math.sin(now * 17);
+    const core = jetCores[nj - 1]; core.visible = true; core.scale.z = 0.8; core.material.map.offset.y = -now * 3.5;   // (the streaks are shared: one scroll for every jet)
   }
   if (G.state === 'racing') for (const c of R.cars) {
     const w = c.wpn; if (!w) continue;
     if (w.waterT > 0) { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), x = (c.dx ?? c.x) + fx * (c.hl + 0.4), y = (c.dy ?? c.y) + 1.7, z = (c.dz ?? c.z) + fz * (c.hl + 0.4);
-      for (let k = 0; k < 6; k++) { const a = (Math.random() - 0.5) * WPN.WATER_CONE * 0.8, sp = 26 + Math.random() * 10, dx = Math.sin(c.yaw + a), dz = Math.cos(c.yaw + a); emit(x, y, z, c.vx + dx * sp, 1.5 + Math.random() * 2, c.vz + dz * sp, 0.7, 0.9 + Math.random() * 0.6, k % 3 ? 0xCFE8FF : 0xFFFFFF, -9, 'solid'); } }
+      for (let k = 0; k < 6; k++) { const a = (Math.random() - 0.5) * WPN.WATER_CONE * 0.8, sp = 26 + Math.random() * 10, dx = Math.sin(c.yaw + a), dz = Math.cos(c.yaw + a), o = Math.random() * 6; emit(x + dx * o, y, z + dz * o, c.vx + dx * sp, 1.5 + Math.random() * 2, c.vz + dz * sp, 0.7, 0.35 + Math.random() * 0.3, k % 3 ? 0xCFE8FF : 0xFFFFFF, -9, 'solid'); }   // droplets along the jet
+      if (Math.random() < 0.5) { const L = WPN.WATER_R * 0.8; smoke(x + fx * L, y - 0.8, z + fz * L, 3 + Math.random() * 2, 0xEEF6FF, 0.7, 0.6); } }   // spray where it comes down
     if (w.jingleT > 0 && Math.random() < dt * 9) { const a = Math.random() * Math.PI * 2; emit((c.dx ?? c.x) + Math.cos(a) * 1.2, (c.dy ?? c.y) + 2.6, (c.dz ?? c.z) + Math.sin(a) * 1.2, Math.cos(a) * 2, 2.5, Math.sin(a) * 2, 1.2, 0.45, [0xF46FAE, 0xFFD21F, 0x8FD3FF][Math.floor(Math.random() * 3)], 1, 'solid'); }
     if (w.jingleT > 0 && Math.floor(w.jingleT * 2) !== w.ringK) { w.ringK = Math.floor(w.jingleT * 2); shockwave(c.x, c.y, c.z, (w.jingleR || WPN.JINGLE_R) * 0.9, 0xF6B8D0); }
   }
@@ -316,7 +412,9 @@ export function updateWeaponVis(dt, now) {
     const p = h.tow && T ? { x: T.dx ?? T.x, y: (T.dy ?? T.y) + 0.9, z: T.dz ?? T.z } : place(v.g, tr, h.s, h.lat, 1.0);
     if (h.tow && T) { v.g.position.set(p.x, p.y, p.z); v.g.rotation.set(0, T.yaw + Math.PI, 0); }
     v.g.visible = true; v.line.visible = true;
-    const a = v.line.geometry.attributes.position; a.setXYZ(0, A.dx ?? A.x, (A.dy ?? A.y) + 1.3, A.dz ?? A.z); a.setXYZ(1, p.x, p.y, p.z); a.needsUpdate = true;
+    const ax = A.dx ?? A.x, ay = (A.dy ?? A.y) + 1.3, az = A.dz ?? A.z, len = Math.hypot(p.x - ax, p.y - ay, p.z - az) || 0.01;
+    v.line.position.set(ax, ay, az); v.line.lookAt(p.x, p.y, p.z); v.line.scale.set(1, 1, len);
+    if (h.tow && G.state === 'racing' && Math.random() < dt * 6) { const u = Math.random(); emit(ax + (p.x - ax) * u, ay + (p.y - ay) * u, az + (p.z - az) * u, (Math.random() - 0.5) * 2, 1, (Math.random() - 0.5) * 2, 0.25, 0.2, 0xFFE08A, -6); }   // the line singing under the strain
   });
 }
 /** A missile hitting a car: fireball, smoke, sparks and bits, a shock ring. */
@@ -330,13 +428,21 @@ export function scorch(x, y, z, r) {
 /** A fireball that keeps billowing: a few more flashes and puffs over the next quarter second, rising. */
 function billow(x, y, z, size) { for (let q = 1; q <= 4; q++) later.push({ t: q * 0.06, fn: () => { flash(x + (Math.random() - 0.5) * size * 0.4, y + q * size * 0.12, z + (Math.random() - 0.5) * size * 0.4, size * (0.9 - q * 0.12), q < 3 ? 0xFFFFFF : 0xFFC080, 0.5); smoke(x, y + q * size * 0.15, z, size * 0.5, 0x3A3632, 2.2, 2.5); } }); }
 export function missileBlast(e) {
-  billow(e.x, e.y + 1, e.z, 9); scorch(e.x, (G.world && G.world.terr ? G.world.terr.at(e.x, e.z) : e.y - 1.1), e.z, 5);
+  billow(e.x, e.y + 1, e.z, 9); scorch(e.x, (G.world && G.world.terr ? G.world.terr.at(e.x, e.z) : e.y - 1.1), e.z, 5); groundGlow(e.x, e.y - 1, e.z, 22, 0xFF8A3A, 0.7); fireCore(e.x, e.y + 0.5, e.z, 6);
   shockwave(e.x, e.y - 1, e.z, 9, 0xFF7A2E); flash(e.x, e.y + 1.5, e.z, 13, 0xFFFFFF, 0.5); flash(e.x, e.y + 2.2, e.z, 8, 0xFFFFFF, 0.8);
   for (let k = 0; k < 6; k++) smoke(e.x + (Math.random() - 0.5) * 3, e.y + 1 + Math.random() * 1.5, e.z + (Math.random() - 0.5) * 3, 4 + Math.random() * 3, k < 2 ? 0x7A5A48 : 0x4A4A4A, 1.6 + Math.random() * 0.8, 2 + Math.random() * 1.5);
   for (let k = 0; k < 14; k++) { const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 7; emit(e.x, e.y, e.z, Math.cos(a) * s, 2 + Math.random() * 6, Math.sin(a) * s, 0.4 + Math.random() * 0.4, 1.2 + Math.random(), Math.random() < 0.5 ? 0xFFB03A : 0xFF5A1E, -2); }
   for (let k = 0; k < 8; k++) emit(e.x + (Math.random() - 0.5) * 2, e.y + Math.random(), e.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 3, 2 + Math.random() * 3, (Math.random() - 0.5) * 3, 1.2 + Math.random() * 0.8, 1.6 + Math.random(), Math.random() < 0.5 ? 0x4A4A4A : 0x6E6E6E, -1.2);
   for (let k = 0; k < 8; k++) debris(e.x, e.y, e.z, (Math.random() - 0.5) * 12, 4 + Math.random() * 6, (Math.random() - 0.5) * 12, 0x2A2A2A, 0.2, 0.08, 0.3, 1.4);
+  smokeColumn(e.x, e.y + 1, e.z, 4, 5);
 }
+/** The heart of a blast: a cluster of fireball lumps thrown out round (x, y, z) and rising, `size` m across each. */
+function fireCore(x, y, z, size) {
+  for (let k = 0; k < 4; k++) { const a = k / 4 * 6.28 + Math.random(), d = size * (0.3 + Math.random() * 0.3); flash(x + Math.cos(a) * d, y + Math.random() * size * 0.4, z + Math.sin(a) * d, size * (0.8 + Math.random() * 0.5), [0xFFFFFF, 0xFFE6B0, 0xFFC890, 0xFFFFFF][k], 0.4 + Math.random() * 0.25); }
+  for (let k = 0; k < 10; k++) { const a = Math.random() * 6.28, sp = 5 + Math.random() * 9; emit(x, y, z, Math.cos(a) * sp, 4 + Math.random() * 8, Math.sin(a) * sp, 0.9 + Math.random() * 0.6, 0.3, Math.random() < 0.5 ? 0xFFD27A : 0xFF7A2E, -7, 'solid'); }   // embers arcing out
+}
+/** Dark smoke rising off a blast for a second or so after it: n puffs climbing a column. */
+function smokeColumn(x, y, z, size, n) { for (let q = 0; q < n; q++) later.push({ t: 0.25 + q * 0.12, fn: () => smoke(x + (Math.random() - 0.5) * size * 0.4, y + q * size * 0.3, z + (Math.random() - 0.5) * size * 0.4, size * (1 + q * 0.15), q < 2 ? 0x3A3430 : 0x5A5652, 2.4 + Math.random(), 2.2) }); }
 /** An oil drum hitting the road: a clang, a scuff of dust and a spark or two. */
 export function drumBounceFx(e) { for (let k = 0; k < 6; k++) emit(e.x, e.y + 0.2, e.z, (Math.random() - 0.5) * 3, 0.6 + Math.random(), (Math.random() - 0.5) * 3, 0.5, 0.6, 0x9A9488, -2); }
 /** An oil drum bursting: black oil thrown out in a ring, bits of drum; on a car, a whoomph of flame too. */
@@ -349,7 +455,7 @@ export function drumBurstFx(e) {
 }
 /** A mine going off: a ground-hugging fireball, dirt thrown up, a shock ring. */
 export function mineBlast(e) {
-  const r = e.r || WPN.MINE_BLAST; shockwave(e.x, e.y + 0.1, e.z, r * 1.6, 0xFF8A3A); flash(e.x, e.y + 0.8, e.z, r * 2.2, 0xFFFFFF, 0.45);
+  const r = e.r || WPN.MINE_BLAST; shockwave(e.x, e.y + 0.1, e.z, r * 1.6, 0xFF8A3A); flash(e.x, e.y + 0.8, e.z, r * 2.2, 0xFFFFFF, 0.45); groundGlow(e.x, e.y, e.z, r * 4, 0xFF8A3A, 0.6); fireCore(e.x, e.y + 0.6, e.z, r * 0.9); smokeColumn(e.x, e.y + 0.5, e.z, 3.5, 4); scorch(e.x, e.y, e.z, r * 1.2);
   for (let k = 0; k < 5; k++) smoke(e.x + (Math.random() - 0.5) * 2, e.y + 0.6 + Math.random(), e.z + (Math.random() - 0.5) * 2, 3 + Math.random() * 2.5, k < 2 ? 0x6E5A44 : 0x4A4A4A, 1.4 + Math.random() * 0.6, 1.8);
   for (let k = 0; k < 18; k++) { const a = Math.random() * Math.PI * 2, s = 4 + Math.random() * 8; emit(e.x, e.y + 0.3, e.z, Math.cos(a) * s, 4 + Math.random() * 7, Math.sin(a) * s, 0.7, 0.5, k % 3 ? 0x5E4A36 : 0xFF9A3A, -9, 'solid'); }
 }
@@ -366,7 +472,7 @@ export function mortarBlast(e) {
     for (let k = 0; k < 10; k++) emit(e.x, y + 0.3, e.z, (Math.random() - 0.5) * 8, 8 + Math.random() * 8, (Math.random() - 0.5) * 8, 1, 0.3, pick(), -9, 'solid');   // mud from the bottom
     return;
   }
-  billow(e.x, e.y + 1.5, e.z, r * 1.8); scorch(e.x, e.y, e.z, r * 2.2);
+  billow(e.x, e.y + 1.5, e.z, r * 1.8); scorch(e.x, e.y, e.z, r * 2.2); groundGlow(e.x, e.y, e.z, r * 5, 0xFF8A3A, 0.8); fireCore(e.x, e.y + 1, e.z, r * 1.1); smokeColumn(e.x, e.y + 1.5, e.z, r, 6);
   shockwave(e.x, e.y + 0.2, e.z, r * 1.7, 0xFF8A3A); shockwave(e.x, e.y + 0.4, e.z, r * 1.1, P ? hex(P.lip) : 0xC9A26A); flash(e.x, e.y + 2, e.z, r * 2.6, 0xFFFFFF, 0.55); flash(e.x, e.y + 4, e.z, r * 1.5, 0xFFE0A0, 0.9);
   // the smoke and the ground thrown up are what it was dug in: dust and soil, a cloud of sand, a burst of snow, slop
   const dust = K.kind === 'snow' || K.kind === 'ice' ? 0xF2F6FA : K.kind === 'sand' ? (P ? hex(P.lip) : 0xD8B47A) : K.kind === 'mud' ? 0x4A3A2A : 0x5E4E40;
@@ -382,7 +488,9 @@ export function mortarLaunchFx(c) { flash(c.x, c.y + 2.6, c.z, 3, 0xFFE0A0, 0.2)
 export function craterHitFx(e) { for (let k = 0; k < 10; k++) emit(e.x, e.y + 0.3, e.z, (Math.random() - 0.5) * 5, 2 + Math.random() * 3, (Math.random() - 0.5) * 5, 0.6, 0.3, 0x5E544A, -9, 'solid'); smoke(e.x, e.y + 0.6, e.z, 2.5, 0x9C8E7C, 1, 1); }
 export function missilePuff(e) { flash(e.x, e.y, e.z, 4, 0xFFFFFF, 0.3); for (let k = 0; k < 10; k++) emit(e.x, e.y, e.z, (Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3, 0.8, 1.2, 0x9A9A9A, -0.8); }
 export function pickupFx(e) { shockwave(e.x, e.y, e.z, 3.5, 0xFFC72C); for (let k = 0; k < 14; k++) emit(e.x, e.y + 1.2, e.z, (Math.random() - 0.5) * 6, 3 + Math.random() * 4, (Math.random() - 0.5) * 6, 0.5, 0.5, k % 2 ? 0xFFC72C : 0x8A5A2B, -3, 'solid'); }
-export function pulseFx(c) { const PR = (c.wpn && c.wpn.pulseR) || WPN.PULSE_R; dome(c.x, c.y, c.z, PR, 0x6EC8FF); flash(c.x, c.y + 1, c.z, 7, 0x9ADCFF, 0.3); shockwave(c.x, c.y, c.z, PR, 0x6EC8FF); shockwave(c.x, c.y + 0.5, c.z, PR * 0.6, 0xCFEFFF); for (let k = 0; k < 30; k++) { const a = k / 30 * Math.PI * 2; emit(c.x, c.y + 0.8, c.z, Math.cos(a) * 16, 0.5, Math.sin(a) * 16, 0.4, 0.6, 0x9ADCFF, 0); } }
+/** A car thrown by the pulse: a lightning arc onto it from the car that let it off, and a crackle round it. */
+export function pulseHitFx(c, from) { if (from) bolt(from, c); flash(c.x, c.y + 1, c.z, 3.5, 0x9ADCFF, 0.3); for (let k = 0; k < 8; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 7, 2 + Math.random() * 3, (Math.random() - 0.5) * 7, 0.3, 0.25, 0xCFF0FF, -2); }
+export function pulseFx(c) { const PR = (c.wpn && c.wpn.pulseR) || WPN.PULSE_R; dome(c.x, c.y, c.z, PR, 0x6EC8FF); flash(c.x, c.y + 1, c.z, 7, 0x9ADCFF, 0.3); shockwave(c.x, c.y, c.z, PR, 0x6EC8FF); shockwave(c.x, c.y + 0.5, c.z, PR * 0.6, 0xCFEFFF); groundGlow(c.x, c.y, c.z, PR * 1.6, 0x6EC8FF, 0.5); for (let k = 0; k < 30; k++) { const a = k / 30 * Math.PI * 2; emit(c.x, c.y + 0.8, c.z, Math.cos(a) * 16, 0.5, Math.sin(a) * 16, 0.4, 0.6, 0x9ADCFF, 0); } }
 export function oilDropFx(c) { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); for (let k = 0; k < 10; k++) emit(c.x - fx * 2.2, c.y + 0.5, c.z - fz * 2.2, (Math.random() - 0.5) * 2, 1 + Math.random() * 2, (Math.random() - 0.5) * 2, 0.5, 0.4, 0x1A1820, -9, 'solid'); }
 const visByCar = new WeakMap(), _mz = new THREE.Vector3(), LASER_R = 90;
 const live = c => c && !(c.wreckT > 0) && !(c.ghost > 0) && !c.finished;
@@ -427,11 +535,20 @@ export function defendFx(c, it) {
   else if (it === 'smoke') { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); for (let k = 0; k < 6; k++) smoke(c.x - fx * (2 + k), c.y + 0.8, c.z - fz * (2 + k), 3 + k * 0.4, 0xC8C8C4, 1.4, 0.6); }
   else if (it === 'repair') { flash(c.x, c.y + 1, c.z, 4, 0x9CFF9C, 0.3); for (let k = 0; k < 16; k++) emit(c.x, c.y + 1, c.z, (Math.random() - 0.5) * 5, 2 + Math.random() * 3, (Math.random() - 0.5) * 5, 0.6, 0.35, k % 2 ? 0x9CFF9C : 0xFFFFFF, -4, 'solid'); }
 }
-/** Flares (defence): hot sparks fired up and back, drawing the missile off. */
+/** Flares (defence): a fan of white-hot flares fired up and out behind, each arcing away trailing smoke. */
 export function flaresFx(c) {
-  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
-  for (let k = 0; k < 10; k++) { const s = k % 2 ? 1 : -1; emit(c.x - fx, c.y + 1.6, c.z - fz, c.vx * 0.6 - fx * 6 - fz * s * (3 + k), 7 + Math.random() * 3, c.vz * 0.6 - fz * 6 + fx * s * (3 + k), 1.4, 0.6, k % 3 ? 0xFFE08A : 0xFFFFFF, 6, 'solid'); }
-  flash(c.x, c.y + 2, c.z, 5, 0xFFE08A, 0.3);
+  for (let k = 0; k < 6; k++) launchFlare(c, k % 2 ? 1 : -1, 0.6 + k * 0.35);
+  flash(c.x, c.y + 2, c.z, 5, 0xFFE08A, 0.3); groundGlow(c.x, c.y, c.z, 10, 0xFFD27A, 0.6);
+}
+const shieldHits = new WeakMap();
+/** A shield taking a hit: the bubble flares (render) where it's drawn. */
+export function shieldHitFx(c, e) { shieldHits.set(c, performance.now() / 1000); flash(e.x, e.y + 1, e.z, 2.5, 0x9ADCFF, 0.15); }
+// one flare out of the back of car c, to side s (spread: how far out)
+function launchFlare(c, s, spread = 1) {
+  const f = flarePool.find(q => q.t >= q.life); if (!f) return;
+  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), out = (2 + Math.random() * 2) * spread;
+  f.sp.position.set(c.x - fx * 1.5, c.y + 1.5, c.z - fz * 1.5); f.vx = c.vx * 0.55 - fx * 5 - fz * s * out; f.vy = 7 + Math.random() * 3; f.vz = c.vz * 0.55 - fz * 5 + fx * s * out;
+  f.t = 0; f.life = 1.6 + Math.random() * 0.5; f.puff = 0; f.sp.visible = true;
 }
 /** A stinger puncture or a car bogging down in cement. */
 export function stingerFx(e) { flash(e.x, e.y + 0.4, e.z, 2, 0xFFFFFF, 0.12); for (let k = 0; k < 10; k++) emit(e.x, e.y + 0.3, e.z, (Math.random() - 0.5) * 6, 1 + Math.random() * 2, (Math.random() - 0.5) * 6, 0.6, 0.3, 0x2A2A2A, -9, 'solid'); }
