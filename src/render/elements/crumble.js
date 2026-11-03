@@ -38,7 +38,7 @@ export function addCrumbles(group, tr, terr) {
     }
     // the planks
     const n = len * CRUMBLE.LANES, pl = new THREE.InstancedMesh(flat(new THREE.BoxGeometry(CRUMBLE.LANE_W - 0.08, 0.16, 0.9)), L(0xffffff), n);
-    pl.castShadow = true; pl.receiveShadow = true;
+    pl.castShadow = true; pl.receiveShadow = true; pl.frustumCulled = false;   // planks fall away: no fixed bounds to cull by
     const at = [];
     for (let u = 0; u < len; u++) for (let l = 0; l < CRUMBLE.LANES; l++) { const k = u * CRUMBLE.LANES + l; at.push([(l - (CRUMBLE.LANES - 1) / 2) * CRUMBLE.LANE_W, u + 0.5, ((u * 7 + l * 3) % 5) * 0.03]); pl.setColorAt(k, _c.copy(_a).multiplyScalar(0.92 + at[k][2])); }
     along.add(pl);

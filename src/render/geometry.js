@@ -87,7 +87,7 @@ export function addInstanced(group, geo, mat, items, opts = {}) {
       r = Math.max(r, Math.hypot(it.x - cx, it.y - cy, it.z - cz) + Math.max(_s.x, _s.y, _s.z) * 6);
     });
     mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, cy, cz), r + 4);
+    mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, cy, cz), r + 4);   // the chunk's own sphere, in world space (three.js culls instances by it)
     mesh.frustumCulled = true;   // InstancedMesh turns culling off by default; each chunk has a real bounding sphere, so cull it
     mesh.castShadow = !!opts.cast; mesh.receiveShadow = !!opts.receive;
     group.add(mesh); out.push({ mesh, list });

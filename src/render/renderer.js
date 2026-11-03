@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SKY, SUN, legacyRenderer } from './legacy.js';
 import { G } from '../game.js';
 import { FX, getCrackTex, makeCloudTex } from './materials.js';
 import { $, isTouchDevice } from '../ui/dom.js';
@@ -33,8 +34,7 @@ export function applyQuality() {
   if (Math.abs(renderer.getPixelRatio() - pr) > 0.01) renderer.setPixelRatio(pr);
   if (sun.shadow.mapSize.x !== Q.shadow) { sun.shadow.mapSize.set(Q.shadow, Q.shadow); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
   FX.grain.value = quality === 'low' ? 0 : 1;                                        // surface detail off on Low
-  const st = quality === 'low' ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;          // soft-edged shadows, but on Low
-  if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; renderer.shadowMap.needsUpdate = true; }
+  sun.shadow.radius = 1;                                                              // PCF shadows (three.js dropped the soft variant)
   scene.traverse(o => { if (o.userData.terrain) o.castShadow = quality !== 'low'; });   // terrain shadows off on Low
   const b = $('gfx-btn'); if (b) b.textContent = 'Graphics: ' + Q.label;
 }
@@ -63,8 +63,7 @@ export function setGrade(Lt) { grade.rgb.set(...Lt.grade); grade.sat = Lt.sat; }
 export function postWanted() { const Q = QUALITY[quality]; return Q.post && (!Q.dyn || autoPost); }
 export function initPost() {
   const opts = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat };
-  const gl2 = renderer.capabilities.isWebGL2, rt = gl2 ? new THREE.WebGLMultisampleRenderTarget(4, 4, opts) : new THREE.WebGLRenderTarget(4, 4, opts);
-  if (gl2) rt.samples = 4;
+  const gl2 = renderer.capabilities.isWebGL2, rt = new THREE.WebGLRenderTarget(4, 4, gl2 ? { ...opts, samples: 4 } : opts);
   const mat = new THREE.ShaderMaterial({
     uniforms: { tDiffuse: { value: rt.texture }, uRes: { value: new THREE.Vector2(4, 4) }, uGrade: { value: grade.rgb }, uSat: { value: 1.1 }, uBlur: { value: 1 } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
@@ -112,8 +111,7 @@ export function renderFrame() {
 export function createGLContext() {
   let reason = '';
   const attempts = [
-    ['webgl2', { antialias: (devicePixelRatio || 1) < 1.5, powerPreference: 'low-power' }], ['webgl2', { antialias: false, failIfMajorPerformanceCaveat: false, powerPreference: 'default' }],
-    ['webgl', { antialias: true }], ['webgl', { antialias: false, failIfMajorPerformanceCaveat: false }], ['experimental-webgl', {}]
+    ['webgl2', { antialias: (devicePixelRatio || 1) < 1.5, powerPreference: 'low-power' }], ['webgl2', { antialias: false, failIfMajorPerformanceCaveat: false, powerPreference: 'default' }]   // three.js needs WebGL 2 (every current browser has it)
   ];
   for (const [type, attrs] of attempts) {
     const cv = document.createElement('canvas');
@@ -142,7 +140,7 @@ export function recoverGraphics() {
 let recovering = false;
 export function initRenderer() {
   const gl = createGLContext();
-  renderer = new THREE.WebGLRenderer({ canvas: gl.canvas, context: gl.context, antialias: gl.aa });
+  renderer = legacyRenderer(new THREE.WebGLRenderer({ canvas: gl.canvas, context: gl.context, antialias: gl.aa }));
   // the browser took the graphics away (out of GPU memory, too many 3D canvases, the tab in the background): wait for
   // them back and reload; Safari often never says they're back, so reload anyway after a few seconds
   gl.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); contextLost = true; $('loading').hidden = false; $('loading-text').textContent = 'Graphics reset, recovering…'; setTimeout(recoverGraphics, 3000); });
@@ -152,8 +150,8 @@ export function initRenderer() {
   $('game').appendChild(renderer.domElement);
   scene = new THREE.Scene(); scene.background = new THREE.Color(0xBFE3F2); scene.fog = new THREE.Fog(0xBFE3F2, 330, 620);
   camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 900); pcamera = new THREE.PerspectiveCamera(60, 1, 0.3, 900);
-  hemi = new THREE.HemisphereLight(0xE8F4FF, 0x6B7A4A, 0.62); scene.add(hemi);
-  sun = new THREE.DirectionalLight(0xFFF1DC, 0.9); sun.castShadow = true;
+  hemi = new THREE.HemisphereLight(0xE8F4FF, 0x6B7A4A, 0.62 * SKY); scene.add(hemi);
+  sun = new THREE.DirectionalLight(0xFFF1DC, 0.9 * SUN); sun.castShadow = true;
   sun.shadow.mapSize.set(1536, 1536); const sc = sun.shadow.camera; sc.left = -75; sc.right = 75; sc.top = 75; sc.bottom = -75; sc.near = 1; sc.far = 260;
   sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.1; scene.add(sun); scene.add(sun.target);   // normalBias: any lower and slopes shade themselves in fine stripes (shadow acne)
   addEventListener('resize', () => renderer.setSize(innerWidth, innerHeight));

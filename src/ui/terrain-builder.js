@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { legacyRenderer } from '../render/legacy.js';
 import { G } from '../game.js';
 import { STAGES } from '../data/stages/index.js';
 import { buildTrack } from '../core/track/build.js';
@@ -124,7 +125,7 @@ const FS = `varying vec3 vP; varying vec3 vN; uniform float lo; uniform float hi
   }`;
 function build3D() {
   built = true; const cv = newCanvas();
-  R = new THREE.WebGLRenderer({ canvas: cv, antialias: true }); R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.setClearColor(0x9ec8e8);
+  R = legacyRenderer(new THREE.WebGLRenderer({ canvas: cv, antialias: true })); R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.setClearColor(0x9ec8e8);
   scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x9ec8e8, 1400, 2600);
   cam = new THREE.PerspectiveCamera(45, 1, 2, 5000);
   const g = B.ground, geo = new THREE.BufferGeometry(), pos = new Float32Array(g.cols * g.rows * 3), idx = [];

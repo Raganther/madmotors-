@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SKY, SUN, legacyRenderer } from './legacy.js';
 import { buildCarModel, setCarDetail } from './carmodels.js';
 import { setCarEnvironment } from './carpaint.js';
 import { disposeGroup } from './geometry.js';
@@ -11,10 +12,10 @@ const UP = 0.32, SWAP = 0.4, DONE = 1.1;
 /** Let go of the renderer and its canvas's 3D context (a browser allows only a few, and each holds GPU memory). */
 function release() { if (!R) return; if (car) disposeGroup(car.root); car = null; const cv = R.domElement; R.dispose(); R.forceContextLoss(); cv.lost = true; R = null; }
 function setup(canvas) {
-  R = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.shadowMap.enabled = true;
+  R = legacyRenderer(new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })); R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.shadowMap.enabled = true;
   scene = new THREE.Scene(); cam = new THREE.PerspectiveCamera(30, canvas.width / canvas.height, 0.1, 100);
-  scene.add(new THREE.HemisphereLight(0xEAF2FF, 0x3A3F52, 0.85));
-  const sun = new THREE.DirectionalLight(0xFFF3DE, 0.85); sun.position.set(-4, 9, 3); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  scene.add(new THREE.HemisphereLight(0xEAF2FF, 0x3A3F52, 0.85 * SKY));
+  const sun = new THREE.DirectionalLight(0xFFF3DE, 0.85 * SUN); sun.position.set(-4, 9, 3); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
   Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4 }); scene.add(sun);
   const s0 = new THREE.Scene(); setCarEnvironment(R, s0, { colors: { sky: 0xBFE3F2 }, light: { ground: 0x4A5040, sun: 0xFFF3DE } }); scene.environment = s0.environment;
   const floor = new THREE.Mesh(new THREE.CircleGeometry(4.2, 48).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x8C8F94 })); floor.receiveShadow = true; scene.add(floor);

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SKY, SUN, legacyRenderer } from '../render/legacy.js';
 import { VEHICLES } from '../data/vehicles.js';
 import { STAGES } from '../data/stages/index.js';
 import { CAR_HL, CAR_HW } from '../core/constants.js';
@@ -65,11 +66,11 @@ export function startLab() {
   </div><div id="lab-parts"></div><pre id="lab-stats"></pre>
   <div id="lab-notes"><b>Notes on this asset</b><ul id="lab-nl"></ul><textarea id="lab-nt" placeholder="What would you change? (goes to Claude)"></textarea><button id="lab-ns" type="button">Send to Claude</button> <span id="lab-nm"></span></div></div>`;
   const $ = id => document.getElementById(id), view = $('lab-view');
-  R = new THREE.WebGLRenderer({ antialias: true }); R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.shadowMap.enabled = true;
+  R = legacyRenderer(new THREE.WebGLRenderer({ antialias: true })); R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.shadowMap.enabled = true;
   view.insertBefore(R.domElement, view.firstChild);
   scene = new THREE.Scene(); cam = new THREE.PerspectiveCamera(35, 1, 0.1, 200);
-  hemi = new THREE.HemisphereLight(0xE8F4FF, 0x6B7A4A, 0.62); scene.add(hemi);
-  sun = new THREE.DirectionalLight(0xFFF1DC, 0.9); sun.position.set(-6, 12, -4); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  hemi = new THREE.HemisphereLight(0xE8F4FF, 0x6B7A4A, 0.62 * SKY); scene.add(hemi);
+  sun = new THREE.DirectionalLight(0xFFF1DC, 0.9 * SUN); sun.position.set(-6, 12, -4); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
   Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5 }); scene.add(sun);
   const floor = new THREE.Mesh(new THREE.CircleGeometry(7, 48).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x8C8F94 })); floor.receiveShadow = true; scene.add(floor);
   holder = new THREE.Group(); scene.add(holder);
@@ -110,7 +111,7 @@ export function startLab() {
 }
 function light() {
   const st = STAGES[S.stage], Lt = st.light;
-  sun.color.setHex(Lt.sun); sun.intensity = Lt.sunI; hemi.color.setHex(Lt.sky); hemi.groundColor.setHex(Lt.ground); hemi.intensity = Lt.hemiI;
+  sun.color.setHex(Lt.sun); sun.intensity = Lt.sunI * SUN; hemi.color.setHex(Lt.sky); hemi.groundColor.setHex(Lt.ground); hemi.intensity = Lt.hemiI * SKY;
   scene.background = new THREE.Color(st.colors.sky); setCarEnvironment(R, scene, st);
 }
 function build(it) {

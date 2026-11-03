@@ -33,7 +33,7 @@
     "dashboard": "node tools/dashboard.mjs"
   },
   "dependencies": {
-    "three": "0.128.0"
+    "three": "0.186.0"
   },
   "devDependencies": {
     "@babel/parser": "^8.0.6",

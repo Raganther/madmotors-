@@ -1,3 +1,4 @@
+import './render/legacy.js';   // r128's colour handling, before anything makes a colour
 import './debug.js';
 import { updatePieces } from './render/effects/pieces.js';
 import { G } from './game.js';

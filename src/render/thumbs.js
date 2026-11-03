@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SKY, SUN, legacyRenderer } from './legacy.js';
 import { buildCarModel, setCarDetail } from './carmodels.js';
 import { blenderOn } from './assets/index.js';
 import { disposeGroup } from './geometry.js';
@@ -13,12 +14,12 @@ const cache = new Map(); let R = null, env = null, idle = 0;
 function release() { if (!R) return; R.dispose(); R.forceContextLoss(); R = null; env = null; }
 export function vehicleThumb(v, w = 240, h = 150) {
   const key = v.id + buildKey(v.build) + w + (blenderOn() ? 'b' : 'c') + v.color + '/' + v.accent; if (cache.has(key)) return cache.get(key);   // one picture per model set
-  if (!R) { R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); }
+  if (!R) { R = legacyRenderer(new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true })); R.setPixelRatio(1); }
   clearTimeout(idle); idle = setTimeout(release, 4000);
   R.setSize(w, h);
   const scene = new THREE.Scene(), root = new THREE.Group(), body = new THREE.Group(); root.add(body); scene.add(root);
-  scene.add(new THREE.HemisphereLight(0xEAF2FF, 0x3A3F52, 0.9));
-  const sun = new THREE.DirectionalLight(0xFFF3DE, 0.85); sun.position.set(4, 8, 5); scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0xEAF2FF, 0x3A3F52, 0.9 * SKY));
+  const sun = new THREE.DirectionalLight(0xFFF3DE, 0.85 * SUN); sun.position.set(4, 8, 5); scene.add(sun);
   if (!env) { const s0 = new THREE.Scene(); setCarEnvironment(R, s0, { colors: { sky: 0xBFE3F2 }, light: { ground: 0x4A5040, sun: 0xFFF3DE } }); env = s0.environment; }   // built once
   scene.environment = env;
   const m = buildCarModel({ ...v, num: 7 }, root, body); setCarDetail(m.lod, true); body.position.y = m.lift || 0;   // the garage shows the close-up body, with its parts
