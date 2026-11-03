@@ -3,13 +3,14 @@
 // than reading the numbers as real frame times.
 //   node tools/bench.mjs [stage ...]         (default: all stages; RIVALS=13 for a full field; CAM=behind [ZOOM=close] for
 //   another camera; DETAIL=near|far to force every car's body detail, e.g. to price the close-up bodies; MODELS=classic|blender
-//   for the Models setting, e.g. to price the Blender assets)
+//   for the Models setting, e.g. to price the Blender assets; GFX=auto|high|medium|low for the Graphics setting, DPR=2 for a high-density screen)
 import { chromium } from 'playwright';
 import path from 'node:path';
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-const url = 'file://' + path.resolve('dist/index.html');
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: +(process.env.DPR || 1) });   // DPR=2: a high-density screen (an iPad, a Retina Mac)
+const url = 'file://' + path.resolve(process.env.DIST ? process.env.DIST + '/index.html' : 'dist/index.html');   // DIST=dir: another build
 if (process.env.MODELS) await page.addInitScript(m => localStorage.setItem('downhill-rush-models', m), process.env.MODELS);
+if (process.env.GFX) await page.addInitScript(q => localStorage.setItem('downhill-rush-quality', q), process.env.GFX);
 await page.goto(url); await page.waitForFunction(() => window.__dr && window.__dr.G.world, null, { timeout: 30000 });
 const n = await page.evaluate(() => window.__dr.core.STAGES.length);
 const stages = process.argv.length > 2 ? process.argv.slice(2).map(a => Number(a) - 1) : [...Array(n).keys()];
