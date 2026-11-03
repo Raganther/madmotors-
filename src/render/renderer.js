@@ -8,11 +8,9 @@ export let contextLost = false;
 export let renderer, scene, camera, pcamera, sun, hemi;   // camera: the orthographic race view; pcamera: the perspective views (render/camera.js sets G.persp)
 // ---------- graphics quality ----------
 // Auto scales the render resolution with the frame rate; the fixed levels trade sharpness and shadow detail for speed.
-// High stops at 1.5x the screen's points: 2x drew 2.6 times Medium's pixels for an image barely sharper (bench at DPR=2:
-// 27% quicker). Medium stays without the screen effect: even with its blur off, the extra pass cost Medium 40%.
 export const QUALITY = {
   auto: { label: 'Auto', pr: 2, shadow: 1536, dyn: true, post: true },
-  high: { label: 'High', pr: 1.5, shadow: 2048, post: true },
+  high: { label: 'High', pr: 2, shadow: 2048, post: true },
   medium: { label: 'Medium', pr: 1.25, shadow: 1536, post: false },
   low: { label: 'Low', pr: 0.85, shadow: 1024, post: false }
 };
