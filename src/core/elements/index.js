@@ -43,8 +43,9 @@ import { element as weather } from './weather.js';
 import { element as structures } from './structures.js';
 import { element as crumble } from './crumble.js';
 import { element as chicane } from './chicane.js';
+import { element as streams } from './streams.js';
 
-export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops, yump, ice, dirt, hammer, open, breakables, kit, arena, weather, structures, crumble, chicane];
+export const ELEMENTS = [ground, rails, jump, kick, bridge, tunnel, town, gallery, rockfall, arch, gap, boost, ferry, falls, drawbridge, mill, mud, whoops, yump, ice, dirt, hammer, open, breakables, kit, arena, weather, structures, crumble, chicane, streams];
 export const elementPhase = (phase, ...args) => { for (const e of ELEMENTS) if (e[phase]) e[phase](...args); };
 
 // stage options that belong to the stage itself rather than to an element

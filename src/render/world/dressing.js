@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { waterAt } from '../../core/elements/streams.js';
 import { HALF, WALL } from '../../core/constants.js';
 import { TAU, mulberry32 } from '../../core/math.js';
 import { arenaOut } from '../../core/elements/arena.js';
@@ -26,7 +27,7 @@ const shade = (g, lo = 0.6) => { g.computeBoundingBox(); const b = g.boundingBox
 export function addDressing(group, tr, terr, stage) {
   const rnd = mulberry32(stage.seed * 13 + 5), C = stage.colors, low = quality === 'low', N = tr.loopN || tr.N;
   const dry = stage.surface === 'gravel' && !/(Farm|Park|Green|Bogwood)/.test(stage.name), snow = stage.surface === 'snow', pale = (C.grassA >> 16 & 255) > 205 && (C.grassA >> 8 & 255) > 200;   // salt, sand
-  const river = tr.river, wet = (x, z) => river && terr.at(x, z) < river.level + 0.25;
+  const wet = (x, z) => (tr.river || tr.streams) && waterAt(tr, x, z, terr.at(x, z) - 0.25) !== null;   // under a river, lake or stream
   const free = (x, z, d) => { const q = tr.nearest(x, z); return !q || q.d > d; };
   const openAt = i => tr.open && tr.open[tr.bi ? tr.bi(i) : i];
   const tufts = [], flowers = [], pebbles = [];

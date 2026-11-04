@@ -349,6 +349,7 @@ elements, by tagging its sections (`{ bridge: true }`, `{ kick: 2.4 }`) or setti
 | hammer | `hammers: <n>` | wrecking balls swinging across the road from gantries (hits in `features/hammers.js`); the AI times its run |
 | ice | `ice: true` | an ice patch across the road: hardly any grip; the AI slows for it. Best on a snow stage |
 | open | `open: 'field' \| 'forest' \| 'rocks' \| 'stream'`, `gate` | off-piste: a leg with no road (rolling ground, no barriers, no resets for leaving the line) through a meadow, a forest with gaps, a rock garden or a stream; `gate: true` puts a gate at the section's start. See "Off-piste" below |
+| streams | stage `streams: [{ pts: [[a, b, level?], ...], width }]` | mountain rivers running downhill into the lake (`river`): a channel cut into the land with water that follows it down, levels from the land on a described landscape; where the road crosses one it's a bridge. Trees and dressing keep out of the water |
 
 A core element can declare `tags`, `stageKeys`, per-sample `channels`, a `section()` hook, build phases (`heights`,
 `walls`, `wallsLate`, `wallsLast`), `track()` to add fields to the built track, and `markers()` saying where it is (see

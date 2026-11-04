@@ -1,5 +1,6 @@
 import { closeLoop, fromStroke, sketch, endH, freeze } from './editing.js';
 import { mulberry32 } from '../math.js';
+import { streamProject } from '../elements/streams.js';
 
 // ---------- painted ground (the Terrain builder, ui/terrain.js) ----------
 // A stage can carry its own landscape: `ground` = { a0, b0, cell, cols, rows, h } is a grid of heights in metres over
@@ -97,7 +98,7 @@ export function groundFor(g, start) {
 }
 
 // ---------- a landscape described, not painted (a stage file: data, no grids) ----------
-// `ground: { size, cell, base, hills: [[a, b, height, radius], ...], ridges: [[a1, b1, a2, b2, height, radius], ...] }`:
+// `ground: { size, cell, base, floor, hills: [[a, b, height, radius], ...], ridges: [[a1, b1, a2, b2, height, radius], ...] }`:
 // round hills (negative: hollows) and ridges along a line (negative: valleys), each a smooth bump `radius` wide, added to
 // `base`, over a square `size` m across round the circuit's middle. `drape: { lift: [[from, to, metres], ...], pieces }`
 // lays the road over it the way the Terrain builder does (lift: the road held up or sunk between those metres along the
@@ -110,6 +111,7 @@ export function groundFromSpec(spec, mid = { a: 0, b: 0 }) {
     const p = [g.a0 + c * g.cell, g.b0 + r * g.cell]; let v = g.h[r * g.cols + c];
     for (const [a, b, h, rad] of spec.hills || []) v += h * bump(Math.hypot(p[0] - a, p[1] - b), rad);
     for (const [a1, b1, a2, b2, h, rad] of spec.ridges || []) v += h * bump(toSeg(p, [a1, b1], [a2, b2]), rad);
+    if (spec.floor !== undefined) v = Math.max(v, spec.floor);   // valleys bottom out here (just above a lake, so they stay dry)
     g.h[r * g.cols + c] = Math.round(v * 10) / 10;
   }
   return g;
@@ -129,7 +131,23 @@ export function prepareGround(stage) {
   const flat = freeze(stage.segs, stage.startHeading || 0), k = sketch(flat, stage.startHeading || 0, 4), len = k.lens.reduce((a, b) => a + b, 0);
   let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity; for (const p of k.pts) { a0 = Math.min(a0, p.a); a1 = Math.max(a1, p.a); b0 = Math.min(b0, p.b); b1 = Math.max(b1, p.b); }
   const ground = groundFromSpec(stage.ground, { a: (a0 + a1) / 2, b: (b0 + b1) / 2 }), d = stage.drape || {};
-  stage.segs = roadOnGround(flat, stage.startHeading || 0, ground, { a: 0, b: 0 }, { lift: liftFromSpans(d.lift, len), pieces: d.pieces });
+  // streams (elements/streams.js) without levels take them from the land, a little under it, never rising downstream
+  // and never below the lake they run into
+  if (stage.streams) stage.streams = stage.streams.map(st => { let lo = Infinity; return { ...st, pts: st.pts.map(([a, b, h]) => { lo = Math.min(lo, h ?? groundAt(ground, a, b) - 1.2); return [a, b, Math.round(Math.max(lo, stage.river ? stage.river.level : -Infinity) * 10) / 10]; }) }; });
+  // where the road crosses a stream it's held up off the water on a bridge
+  const spans = (d.lift || []).slice(), over = [];
+  for (const st of stage.streams || []) {
+    let run = null; const at = [];
+    const pk = sketch(flat, stage.startHeading || 0, 2), rn = runOf(pk);
+    pk.pts.forEach((p, i) => { const q = streamProject(st, p.a, p.b), wet = q.d < st.width / 2 + 7; if (wet && !run) run = { s0: rn[i], need: 0 }; if (wet) { run.s1 = rn[i]; run.need = Math.max(run.need, q.level + 3.5 - groundAt(ground, p.a, p.b)); } if (!wet && run) { at.push(run); run = null; } });
+    if (run) at.push(run);
+    for (const r of at) { spans.push([r.s0 - 6, r.s1 + 6, Math.max(0, Math.round(r.need * 10) / 10)]); over.push([r.s0 - 4, r.s1 + 4]); }
+  }
+  stage.segs = roadOnGround(flat, stage.startHeading || 0, ground, { a: 0, b: 0 }, { lift: liftFromSpans(spans, len), pieces: d.pieces });
+  if (over.length) {
+    const k2 = sketch(stage.segs, stage.startHeading || 0, 2), r2 = runOf(k2), at = q => r2[k2.starts[q].i];
+    stage.segs.forEach((sg, q) => { const s0 = at(q), s1 = q + 1 < stage.segs.length ? at(q + 1) : len; if (over.some(([a, b]) => s0 < b && s1 > a)) (sg[0] === 's' ? sg[3] : sg[4]).bridge = true; });
+  }
   // branches name main sections by index: move them onto the pieces those sections became, and lay them on the land too
   if (stage.branches) {
     const F = stage.segs.firsts, m = sketch(stage.segs, stage.startHeading || 0, 2), hAt = s => endH(stage.segs[(s + stage.segs.length - 1) % stage.segs.length]);

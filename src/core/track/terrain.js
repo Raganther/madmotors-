@@ -8,6 +8,7 @@ import { layoutTowns } from '../kit/layout.js';
 import { arenaOut, arenaRamps } from '../elements/arena.js';
 import { OPEN } from '../elements/open.js';
 import { splashBed } from '../elements/mud.js';
+import { streamBed } from '../elements/streams.js';
 
 export function riverDist(rv, x, z) {
   let best = 1e9; const P = rv.pts;
@@ -56,6 +57,7 @@ export function buildTerrain(tr, stage) {
       }
       if (q && tr.mud && q.d < HALF + 30) v = Math.min(v, splashBed(tr, q.i, (x - tr.xs[q.i]) * tr.rx[q.i] + (z - tr.zs[q.i]) * tr.rz[q.i]));   // a water splash's pool
       if (tr.river) v = Math.min(v, riverBed(tr.river, x, z));
+      if (tr.streams) for (const st of tr.streams) v = Math.min(v, streamBed(st, x, z));
       if (tr.rails) for (const L of tr.rails.lines) {           // embankments and cuttings under the tracks
         const pj = railProject(L, x, z); if (pj.d > 12 || pj.s < L.visA - 2 || pj.s > L.visB + 2) continue;
         v = lerp(railAt(L, pj.s).h - 0.1, v, smoothstep(4, 12, pj.d));

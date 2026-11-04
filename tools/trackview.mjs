@@ -48,6 +48,7 @@ for (const name of list) {
   out.push({ id: name, name: stage.name, blurb: stage.blurb, laps: stage.laps, surface: stage.surface, design: d,
     len: N, climb: Math.round(climb), hmin: r1(Math.min(...H)), hmax: r1(Math.max(...H)), start: tr.startIdx, lap,
     ground: { x0: terr.x0, z0: terr.z0, S: terr.S * k, cols, rows, h: b64(h) },
+    streams: (tr.streams || []).map(st => ({ w: st.width, pts: st.pts.map(p => p.map(r1)) })),
     water: tr.river ? { level: tr.river.level, pts: tr.river.pts.map(p => p.map(r1)), width: tr.river.width, color: tr.river.color ?? null } : null,
     road: main, alts, trees: thin, houses, marks, colors: stage.colors, sky: stage.light?.sky ?? stage.colors?.sky });
   console.log(`${stage.name}: ${N} m a lap, climb ${Math.round(climb)} m, ${r1(Math.min(...H))}..${r1(Math.max(...H))} m, AI lap ${lap.best}-${lap.slow} s (${lap.finished}/${lap.cars} finished, ${lap.resets} resets), ${thin.length / 5} trees, ${houses.length} houses; ${marks.map(m => m.label).join(', ')}`);

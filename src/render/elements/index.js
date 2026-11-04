@@ -17,6 +17,7 @@ import { initRockVis, updateRocks } from '../rocks.js';
 import { makeTrafficMesh } from '../vehicles.js';
 import { addBridge } from './bridge.js';
 import { addRiver, addRiverLogs, updateRiverLogs } from './river.js';
+import { addStreams } from './streams.js';
 import { addTunnel } from './tunnel.js';
 import { addArches } from './arch.js';
 import { addBoostPads, updateBoostPads } from './boost.js';
@@ -44,6 +45,7 @@ import { clearWaves, updateWaves } from '../waves.js';
 
 const bridge = { name: 'bridge', build(group, tr, terr, stage) { addBridge(group, tr, terr, stage); } };
 const river = { name: 'river', build(group, tr, terr) { addRiver(group, tr, terr); addRiverLogs(group, tr); }, update(dt, now) { updateRiverLogs(dt, now); } };
+const streams = { name: 'streams', build(group, tr, terr) { addStreams(group, tr, terr); } };
 const railways = {
   name: 'rails',
   build(group, tr) { addRails(group, tr); addCrossings(group, tr); },
@@ -104,5 +106,5 @@ const crumble = { name: 'crumble', build(group, tr, terr) { addCrumbles(group, t
 
 // the water's waves (render/waves.js): the cars stir every water surface
 const waves = { name: 'waves', newRace() { clearWaves(); }, update(dt) { updateWaves(dt); } };
-export const RENDER_ELEMENTS = [bridge, river, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather, ambient, structures, crumble, waves];
+export const RENDER_ELEMENTS = [bridge, river, streams, railways, town, gallery, tunnel, arch, boost, ferry, rockfall, hazards, falls, drawbridge, mill, mud, wear, ice, snowfall, gates, weapons, hammer, open, breakables, kit, arena, weather, ambient, structures, crumble, waves];
 export const elementHook = (hook, ...args) => { for (const f of RENDER_ELEMENTS) if (f[hook]) f[hook](...args); };

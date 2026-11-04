@@ -70,7 +70,7 @@ button:focus-visible, .beat:focus-visible { outline: 2.5px solid var(--hivis); o
 <div class="wrap">
   <header>
     <div>
-      <div class="eyebrow">Downhill Rush · layout drafts · iteration 1</div>
+      <div class="eyebrow">Downhill Rush · layout drafts · iteration 2</div>
       <h1 id="title">Timberline</h1>
     </div>
     <div class="tabs" id="tabs" role="group" aria-label="Variation"></div>
@@ -122,7 +122,7 @@ function groundAt(g, x, z) {
 
 function build(d) {
   if (group) { scene.remove(group); group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
-  group = new THREE.Group(); scene.add(group);
+  group = new THREE.Group(); group.rotation.y = -Math.PI / 4; scene.add(group);   // the game's world is turned 45 degrees from the plan: turn it back so north (up-screen in the game) is up here
   const sky = col(d.sky || 0xB6D4E2); scene.background = sky; scene.fog = new THREE.Fog(sky, 900, 2600);
   const g = d.ground; g.hv = Float32Array.from(decode(g.h), v => v / 10);
   // ground: grass low down, darker forest floor, rock on the steep and the high, snow on the top
@@ -151,7 +151,18 @@ function build(d) {
       wp.push(x0, L, z0, x0, L, z1, x1, L, z0, x1, L, z0, x0, L, z1, x1, L, z1);
     }
     const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wp, 3)); wg.computeVertexNormals();
-    group.add(new THREE.Mesh(wg, new THREE.MeshPhongMaterial({ color: d.water.color || 0x4E7F8C, shininess: 80, specular: 0x557788, transparent: true, opacity: 0.88 })));
+    group.add(new THREE.Mesh(wg, new THREE.MeshLambertMaterial({ color: d.water.color || 0x4E7F8C, transparent: true, opacity: 0.92 })));
+  }
+  // streams: a ribbon of water down each channel at its level
+  for (const st of d.streams || []) {
+    const P = st.pts, q = [];
+    for (let k = 0; k < P.length - 1; k++) {
+      const [ax, az, ah] = P[k], [bx, bz, bh] = P[k + 1], L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / 4)), nx = -(bz - az) / L * st.w / 2, nz = (bx - ax) / L * st.w / 2;
+      for (let j = 0; j < n; j++) { const u0 = j / n, u1 = (j + 1) / n, x0 = ax + (bx - ax) * u0, z0 = az + (bz - az) * u0, y0 = ah + (bh - ah) * u0 + 0.3, x1 = ax + (bx - ax) * u1, z1 = az + (bz - az) * u1, y1 = ah + (bh - ah) * u1 + 0.3;
+        q.push(x0 + nx, y0, z0 + nz, x0 - nx, y0, z0 - nz, x1 + nx, y1, z1 + nz, x1 + nx, y1, z1 + nz, x0 - nx, y0, z0 - nz, x1 - nx, y1, z1 - nz); }
+    }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(q, 3)); sg.computeVertexNormals();
+    group.add(new THREE.Mesh(sg, new THREE.MeshPhongMaterial({ color: 0x4A86A8, shininess: 60, side: THREE.DoubleSide })));
   }
   // the road: a ribbon 12 m wide; trestle posts under the bridges; tunnels drawn through the hill
   const ribbon = (P, base, lift) => {
@@ -198,9 +209,10 @@ function build(d) {
 }
 
 // ---- the notes, stats and profile ----
-const roadPt = (d, m) => { const k = Math.max(0, Math.min(d.road.length / 4 - 1, Math.round(((m + d.start) % d.len) / 2))) * 4; return new THREE.Vector3(d.road[k], d.road[k + 2], d.road[k + 1]); };
+const YAX = new THREE.Vector3(0, 1, 0), turn = v => v.applyAxisAngle(YAX, -Math.PI / 4);
+const roadPt = (d, m) => { const k = Math.max(0, Math.min(d.road.length / 4 - 1, Math.round(((m + d.start) % d.len) / 2))) * 4; return turn(new THREE.Vector3(d.road[k], d.road[k + 2], d.road[k + 1])); };
 // a beat on an alternative route sits `along` metres down that branch's road instead
-const beatPt = (d, b) => { if (b.alt == null) return roadPt(d, b.m); const P = d.alts[b.alt].pts, k = Math.max(0, Math.min(P.length / 4 - 1, Math.round(b.along / 2))) * 4; return new THREE.Vector3(P[k], P[k + 2], P[k + 1]); };
+const beatPt = (d, b) => { if (b.alt == null) return roadPt(d, b.m); const P = d.alts[b.alt].pts, k = Math.max(0, Math.min(P.length / 4 - 1, Math.round(b.along / 2))) * 4; return turn(new THREE.Vector3(P[k], P[k + 2], P[k + 1])); };
 function beatsOf(d) { return (d.design.beats || []).map((b, n) => ({ ...b, n: n + 1 })); }
 function renderNotes(d) {
   const ds = d.design, beats = beatsOf(d);
@@ -240,12 +252,12 @@ function renderProfile(d) {
 }
 
 // ---- camera ----
-function bounds(d) { let a = [1e9, 1e9, -1e9, -1e9]; for (let k = 0; k < d.road.length; k += 4) { a[0] = Math.min(a[0], d.road[k]); a[1] = Math.min(a[1], d.road[k + 1]); a[2] = Math.max(a[2], d.road[k]); a[3] = Math.max(a[3], d.road[k + 1]); } return a; }
+function bounds(d) { let a = [1e9, 1e9, -1e9, -1e9]; const v = new THREE.Vector3(); for (let k = 0; k < d.road.length; k += 4) { turn(v.set(d.road[k], 0, d.road[k + 1])); a[0] = Math.min(a[0], v.x); a[1] = Math.min(a[1], v.z); a[2] = Math.max(a[2], v.x); a[3] = Math.max(a[3], v.z); } return a; }
 function frame(top) {
   const [x0, z0, x1, z1] = bounds(cur), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, span = Math.max(x1 - x0, z1 - z0), asp = camera.aspect, dist = span * (asp < 1 ? 1.25 / asp : 1.15);
   controls.target.set(cx, 10, cz);
-  // the game's camera looks from +x +z (the plan's "up-screen" is away from it): keep that view so the drafts read the same way
-  if (top) camera.position.set(cx + 0.01, dist * 1.25, cz + 0.01); else camera.position.set(cx + dist * 0.42, dist * 0.62, cz + dist * 0.42);
+  // looking north, from the south, as the game's camera does
+  if (top) camera.position.set(cx, dist * 1.2, cz + 0.01); else camera.position.set(cx, dist * 0.62, cz + dist * 0.62);
   camera.lookAt(controls.target); controls.update();
 }
 function focusBeat(n) {
