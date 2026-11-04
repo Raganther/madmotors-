@@ -87,3 +87,9 @@ splash, a double jump, a muddy S-bend. The rules it follows:
   round the circuit's middle) and `road: true`: build the track, take the branch's middle sample (`tr.NM + n/2`) and
   convert it (a = ((x - cx) - (z - cz)) / sqrt2, b = (-(z - cz) - (x - cx)) / sqrt2, cx/cz the main lap's mean), make
   it wider than the road (`w`), and check with a scripted scene (`tools/scene.mjs`) that a heavy car goes through it.
+- Drafting a layout over a landscape (src/data/stages/drafts, `npm run trackview`): draw the lap as waypoints with
+  `drawnLap` (drafts/draw.js). A sharp corner between two waypoints is rounded from as far back as its legs allow, so
+  a zigzag of plain waypoints collapses into a gentle S: lay every hairpin and loop with `bend()`. The road follows the
+  land no steeper than 14%: where the land climbs faster it ends up in a tunnel, where it falls faster on a bridge, so
+  give climbs room (a 100 m climb is 700 m of road) and put crossings ±10 m apart with named-waypoint `lift`s.
+  Ridges, hills and scarps add up where they overlap: one polyline ridge for a winding canyon, not a chain of segments.

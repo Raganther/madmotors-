@@ -39,7 +39,7 @@ for (const name of list) {
   const trees = []; for (const t of terr.obst.items) if (t.kind === 0 || t.kind === 1) trees.push(r1(t.x), r1(t.z), r1(t.y), r1(t.s), t.kind);
   const step = Math.max(1, Math.ceil(trees.length / 5 / 9000));   // at most 9000 trees
   const thin = []; for (let q = 0; q < trees.length; q += 5 * step) thin.push(...trees.slice(q, q + 5));
-  const houses = terr.kit.solid.filter(s => s.w * s.d > 12 && s.h > 3).map(s => [r1(s.x), r1(s.z), r1(s.y ?? 0), r1(s.w), r1(s.d), r1(s.h), r1(s.yaw)]);
+  const houses = (terr.kit ? terr.kit.solid : []).filter(s => s.w * s.d > 12 && s.h > 3).map(s => [r1(s.x), r1(s.z), r1(s.y ?? 0), r1(s.w), r1(s.d), r1(s.h), r1(s.yaw)]);
   const marks = M.trackMarkers(tr).filter(m => m.i < N).map(m => ({ i: m.i, el: m.element, label: m.label }));
   const H = Array.from(tr.H.slice(0, N));
   const climb = H.reduce((s, v, i) => s + Math.max(0, v - H[(i + N - 1) % N]), 0);
@@ -50,7 +50,7 @@ for (const name of list) {
     ground: { x0: terr.x0, z0: terr.z0, S: terr.S * k, cols, rows, h: b64(h) },
     streams: (tr.streams || []).map(st => ({ w: st.width, pts: st.pts.map(p => p.map(r1)) })),
     water: tr.river ? { level: tr.river.level, pts: tr.river.pts.map(p => p.map(r1)), width: tr.river.width, color: tr.river.color ?? null } : null,
-    road: main, alts, trees: thin, houses, marks, colors: stage.colors, sky: stage.light?.sky ?? stage.colors?.sky });
+    road: main, alts, trees: thin, houses, marks, colors: stage.colors, alpine: stage.alpine || null, sky: stage.light?.sky ?? stage.colors?.sky });
   console.log(`${stage.name}: ${N} m a lap, climb ${Math.round(climb)} m, ${r1(Math.min(...H))}..${r1(Math.max(...H))} m, AI lap ${lap.best}-${lap.slow} s (${lap.finished}/${lap.cars} finished, ${lap.resets} resets), ${thin.length / 5} trees, ${houses.length} houses; ${marks.map(m => m.label).join(', ')}`);
 }
 const tpl = fs.readFileSync(new URL('./trackview.html', import.meta.url), 'utf8');

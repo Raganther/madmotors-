@@ -98,19 +98,29 @@ export function groundFor(g, start) {
 }
 
 // ---------- a landscape described, not painted (a stage file: data, no grids) ----------
-// `ground: { size, cell, base, floor, hills: [[a, b, height, radius], ...], ridges: [[a1, b1, a2, b2, height, radius], ...] }`:
-// round hills (negative: hollows) and ridges along a line (negative: valleys), each a smooth bump `radius` wide, added to
+// `ground: { size, cell, base, floor, hills: [[a, b, height, radius, edge?], ...], ridges: [[a1, b1, a2, b2, height, radius, edge?] | [[[a, b], ...], height, radius, edge?], ...],
+// scarps: [[a1, b1, a2, b2, height, edge], ...], rough: [amp, scale, ridged?], seed }`: round hills (negative: hollows) and
+// ridges along a line (negative: valleys), each a smooth bump `radius` wide (with `edge`: flat-topped, sides falling over
+// `edge` m: mesas, cliffs, sheer canyons); scarps raise the land left of a line (looking from 1 to 2) by `height` over
+// `edge` m (an escarpment, a sea cliff); rough adds seeded noise (ridged: crags). All are added to
 // `base`, over a square `size` m across round the circuit's middle. `drape: { lift: [[from, to, metres], ...], pieces }`
 // lays the road over it the way the Terrain builder does (lift: the road held up or sunk between those metres along the
 // lap, eased in and out over 30 m). prepareGround turns both into the grid and sections a stage builds from.
 const bump = (d, r) => Math.exp(-(d * d) / (2 * r * r));
+// a round bump, or with `edge` a flat top `r` across whose sides fall over `edge` metres: a mesa, a cliff, a sheer canyon wall
+const shape = (d, r, edge) => edge ? 1 - sm(Math.min(1, Math.max(0, (d - (r - edge)) / edge))) : bump(d, r);
 const toSeg = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)); return Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t); };
 export function groundFromSpec(spec, mid = { a: 0, b: 0 }) {
   const g = blankGround(mid.a, mid.b, spec.base || 0, spec.size || GROUND.SIZE, spec.cell || GROUND.CELL);
   for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) {
     const p = [g.a0 + c * g.cell, g.b0 + r * g.cell]; let v = g.h[r * g.cols + c];
-    for (const [a, b, h, rad] of spec.hills || []) v += h * bump(Math.hypot(p[0] - a, p[1] - b), rad);
-    for (const [a1, b1, a2, b2, h, rad] of spec.ridges || []) v += h * bump(toSeg(p, [a1, b1], [a2, b2]), rad);
+    for (const [a, b, h, rad, edge] of spec.hills || []) v += h * shape(Math.hypot(p[0] - a, p[1] - b), rad, edge);
+    for (const R of spec.ridges || []) {
+      if (Array.isArray(R[0])) { const [pts, h, rad, edge] = R; let d = Infinity; for (let k = 0; k < pts.length - 1; k++) d = Math.min(d, toSeg(p, pts[k], pts[k + 1])); v += h * shape(d, rad, edge); }   // along a line of points: one ridge or valley, however it bends
+      else { const [a1, b1, a2, b2, h, rad, edge] = R; v += h * shape(toSeg(p, [a1, b1], [a2, b2]), rad, edge); }
+    }
+    for (const [a1, b1, a2, b2, h, edge] of spec.scarps || []) { const L = Math.hypot(a2 - a1, b2 - b1) || 1, sd = ((a2 - a1) * (p[1] - b1) - (b2 - b1) * (p[0] - a1)) / L; v += h * sm(Math.min(1, Math.max(0, sd / edge + 0.5))); }
+    if (spec.rough) { const [amp, scale, ridged] = spec.rough; v += amp * fbm(p[0] / scale, p[1] / scale, spec.seed || 1, 4, !!ridged); }
     if (spec.floor !== undefined) v = Math.max(v, spec.floor);   // valleys bottom out here (just above a lake, so they stay dry)
     g.h[r * g.cols + c] = Math.round(v * 10) / 10;
   }
@@ -134,12 +144,12 @@ export function prepareGround(stage) {
   // streams (elements/streams.js) without levels take them from the land, a little under it, never rising downstream
   // and never below the lake they run into
   if (stage.streams) stage.streams = stage.streams.map(st => { let lo = Infinity; return { ...st, pts: st.pts.map(([a, b, h]) => { lo = Math.min(lo, h ?? groundAt(ground, a, b) - 1.2); return [a, b, Math.round(Math.max(lo, stage.river ? stage.river.level : -Infinity) * 10) / 10]; }) }; });
-  // where the road crosses a stream it's held up off the water on a bridge
+  // where the road crosses a stream (over the water itself, not just beside it) it's held up off the water on a bridge
   const spans = (d.lift || []).slice(), over = [];
   for (const st of stage.streams || []) {
     let run = null; const at = [];
     const pk = sketch(flat, stage.startHeading || 0, 2), rn = runOf(pk);
-    pk.pts.forEach((p, i) => { const q = streamProject(st, p.a, p.b), wet = q.d < st.width / 2 + 7; if (wet && !run) run = { s0: rn[i], need: 0 }; if (wet) { run.s1 = rn[i]; run.need = Math.max(run.need, q.level + 3.5 - groundAt(ground, p.a, p.b)); } if (!wet && run) { at.push(run); run = null; } });
+    pk.pts.forEach((p, i) => { const q = streamProject(st, p.a, p.b), wet = q.d < st.width / 2 + 2; if (wet && !run) run = { s0: rn[i], need: 0 }; if (wet) { run.s1 = rn[i]; run.need = Math.max(run.need, q.level + 3.5 - groundAt(ground, p.a, p.b)); } if (!wet && run) { at.push(run); run = null; } });
     if (run) at.push(run);
     for (const r of at) { spans.push([r.s0 - 6, r.s1 + 6, Math.max(0, Math.round(r.need * 10) / 10)]); over.push([r.s0 - 4, r.s1 + 4]); }
   }
