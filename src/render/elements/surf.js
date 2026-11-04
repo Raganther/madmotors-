@@ -30,7 +30,7 @@ export function updateSurf() {
     R.rows.forEach((b, r) => {
       const i = tr.u0(b), side = tr.surfSide[b], rx = tr.rx[i] * side, rz = tr.rz[i] * side, y = tr.H[i] + 0.12, reach = surfReach(tr, b, t);
       // lateral offsets (towards the water positive): the sheet's outer edge in the water, its front at the reach, foam 1.4 m deep
-      const out = HALF + 10, front = HALF - reach, foamBack = Math.min(out, front + 1.4);
+      const out = HALF + 10, front = reach < 0.25 ? out : HALF - reach, foamBack = Math.min(out, front + 1.4);   // no wave here: the sheet folds away to nothing
       const P = (o, h) => [tr.xs[i] + rx * o, h, tr.zs[i] + rz * o];
       pw.array.set([...P(out, y - 0.4), ...P(foamBack, y)], r * 6);
       pf.array.set([...P(foamBack, y + 0.01), ...P(front, y + 0.02)], r * 6);

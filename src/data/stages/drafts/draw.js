@@ -15,7 +15,7 @@ export function bend(a, b, r, d0, d1, name0, name1) {
  *  stage's start line (half way along the first leg) is at the origin as a stage needs. A waypoint can carry a name
  *  ([a, b, 'name']); `lift: [['from', 'to', metres], ...]` then holds the road up (or, negative, down into a cutting or
  *  tunnel) between where it passes those two waypoints, so a bridge or a tunnel stays put when the line is redrawn; `pieces: [['name', tag, value], ...]` put an element there (a kicker, an
- *  arch, a water splash). Returns { stage: its fields, at: metres along the lap of each named waypoint }. */
+ *  arch, a water splash) and `spans: [['from', 'to', tag, value], ...]` along the whole stretch between two (surf). Returns { stage: its fields, at: metres along the lap of each named waypoint }. */
 /** The waypoints as a closed polygon with every corner rounded off by an arc as big as its two legs allow (up to
  *  maxR): the Draw tool's way of turning a line into a lap (fromStroke), without its clean-up of a hand-drawn stroke, so
  *  the lap passes exactly where the waypoints put it and closes by construction. Starts half way along the first leg. */
@@ -29,7 +29,7 @@ export function filletLap(waypoints, { maxR = 220 } = {}) {
   S(legs[0].len / 2 - C[0].t);
   return { segs, heading: legs[0].phi, start: { a: (V[0].a + V[1].a) / 2, b: (V[0].b + V[1].b) / 2 }, closed: true, tight: C.filter(c => c.th && c.R < 12).length };
 }
-export function drawnLap(map, waypoints, { lift = [], pieces = [], ...opts } = {}) {
+export function drawnLap(map, waypoints, { lift = [], pieces = [], spans = [], ...opts } = {}) {
   const r = filletLap(waypoints, opts);
   // rounding leaves a few centimetres: close it up exactly the way the editor's Close the loop does
   const c = closeLoop(r.segs, r.heading); if (!c.ok) throw new Error('drawnLap: ' + c.msg); r.segs = c.segs;
@@ -42,10 +42,12 @@ export function drawnLap(map, waypoints, { lift = [], pieces = [], ...opts } = {
     for (let i = from; i < Math.min(k.pts.length, from + 600); i++) { const d = Math.hypot(k.pts[i].a - pa, k.pts[i].b - pb); if (d < bd) { bd = d; best = i; } }
     from = best; if (name) at[name] = Math.round(run[best]);
   }
-  for (const [w] of pieces) if (at[w] === undefined) throw new Error(`drawnLap: no waypoint named "${w}"`);
+  for (const [f, t] of spans) for (const w of [f, t]) if (at[w] === undefined) throw new Error(`drawnLap: no waypoint named "${w}"`);
+  for (const [f, t, tag, v] of spans) for (let m = at[f]; m <= at[t]; m += 5) pieces = [...pieces, [{ m }, tag, v]];   // a tag over a whole stretch: every piece along it (they're 25 m at most)
+  for (const [w] of pieces) if (typeof w === 'string' && at[w] === undefined) throw new Error(`drawnLap: no waypoint named "${w}"`);
   for (const [f, t] of lift) if (at[f] === undefined || at[t] === undefined) throw new Error(`drawnLap: no waypoint named "${at[f] === undefined ? f : t}"`);
   const g = map.ground, line2 = R => Array.isArray(R[0]) ? [R[0].map(mv), ...R.slice(1)] : [...mv([R[0], R[1]]), ...mv([R[2], R[3]]), ...R.slice(4)];
-  const stage = { startHeading: r.heading, segs: r.segs, drape: { lift: lift.map(([f, t, m]) => [Math.min(at[f], at[t]), Math.max(at[f], at[t]), m]), pieces: pieces.map(([w, tag, v]) => ({ s: at[w], tag, v })) },
+  const stage = { startHeading: r.heading, segs: r.segs, drape: { lift: lift.map(([f, t, m]) => [Math.min(at[f], at[t]), Math.max(at[f], at[t]), m]), pieces: pieces.map(([w, tag, v]) => ({ s: typeof w === 'string' ? at[w] : w.m, tag, v })) },
     ground: { ...g, hills: (g.hills || []).map(mv), ridges: (g.ridges || []).map(line2), scarps: (g.scarps || []).map(line2) } };
   if (map.lake) stage.river = { ...map.lake, pts: map.lake.pts.map(mv) };
   if (map.streams) stage.streams = map.streams.map(s => ({ ...s, pts: s.pts.map(mv) }));

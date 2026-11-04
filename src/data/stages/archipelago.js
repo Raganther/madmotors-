@@ -1,7 +1,7 @@
 // Archipelago: a lake full of islands, each its own place, and the lap hops between them. From the log town on the
 // long south island, through the shallows to the mountain island and round and up its cone, off its top on a trestle
 // across the water to the ridge island and along its spine, through a long ford to the gorge island and down the
-// slot canyon through its middle, then island to island over the stepping stones back to town. The lake floor is the
+// slot canyon through its middle, then island to island over the stepping stones back to town, waves washing over them. The lake floor is the
 // land itself (river bed: false), so every hill that clears the water is an island, and the fords are sand bars just
 // under the surface: you drive through the water, not over it. Drawn and laid on its landscape the way the drafts
 // are (drafts/draw.js); docs/TRACK_DESIGN.md has its page.
@@ -40,7 +40,7 @@ export const LINE = [
   [405, -135, 'ford3'], [370, -152, 'stones'], [330, -174, 'ford4'], [290, -196], [252, -218, 'ford5'], [200, -232]   // the stepping stones home
 ];
 const fords = ['ford1', 'ford1b', 'ford2', 'ford2b', 'ford2c', 'ford3', 'ford4', 'ford5'];
-const { stage, at } = drawnLap(MAP, LINE, { lift: [['tr0', 'tr1', 9], ['over0', 'over1', 6], ['under0', 'under1', -4]], pieces: [...fords.map(f => [f, 'mud', 'water']), ['crest1', 'yump', 2.2], ['crest2', 'yump', 2.6], ['kicker', 'kick', 1.6]] });
+const { stage, at } = drawnLap(MAP, LINE, { lift: [['tr0', 'tr1', 9], ['over0', 'over1', 6], ['under0', 'under1', -4]], spans: [['ford3', 'ford5', 'surf', true]], pieces: [...fords.map(f => [f, 'mud', 'water']), ['crest1', 'yump', 2.2], ['crest2', 'yump', 2.6], ['kicker', 'kick', 1.6]] });
 export default { ...LOOK, ...stage, name: 'Archipelago', blurb: 'Island to island: through the shallows, up a cone, along a ridge, down a slot canyon', laps: 2,
   colors: { ...LOOK.colors, dirt: 0xB09A74 }, towns: [{ style: 'alpine', at: 0, len: 190, steep: 10 }] };
 export const design = {
@@ -56,7 +56,7 @@ export const design = {
     ['ford2', 'The long ford', '150 m through the water to the gorge island.'],
     ['slot', 'The slot canyon', 'Straight down a narrow canyon cut through the island, rock walls close either side.'],
     ['kicker', 'Out of the canyon', 'A kicker at the canyon mouth, straight into the water.'],
-    ['stones', 'The stepping stones', 'Island, ford, island, ford, island: hopping back to town.']
+    ['stones', 'The stepping stones', 'Island, ford, island, ford, island: hopping back to town, with waves washing across the islets.']
   ]),
   build: ['Fords that feel like water: the splash we have (spray, drag), at the scale of a sand bar', 'Sandy beaches round every island', 'Rock walls for the slot canyon', 'A timber trestle', 'The big lake is one water sheet: it may need a coarser grid to stay fast']
 };
