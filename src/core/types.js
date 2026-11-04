@@ -12,7 +12,7 @@
  * @property {Array} [plan]                downhill: [['st'|'sw'|'sb', arg], ...] straight / sweepers / switchbacks
  * @property {Segment[]} [segs]            'gorge' circuits: the road, section by section
  * @property {{on: number, with: number}} [traffic]  oncoming / same-way civilian cars kept alive
- * @property {{pts: number[][], level: number, width: number, logs?: number, frozen?: boolean, color?: number}} [river]   color: a lighter tint for a pond or the sea
+ * @property {{pts: number[][], level: number, width: number, logs?: number, frozen?: boolean, color?: number, bed?: boolean}} [river]   color: a lighter tint for a pond or the sea; bed: false keeps the land as the floor (a described landscape's hills become islands)
  * @property {RailDef[]} [rails]
  * @property {object} colors               terrain, road, sky and scenery palette
  * @property {object} light                sun/fill light, cloud shadows, colour grade, optional valley haze

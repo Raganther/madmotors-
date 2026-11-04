@@ -56,7 +56,7 @@ export function buildTerrain(tr, stage) {
         if ((lip && along > 0.5) || (land && along < -0.5)) { v = Math.min(v, tr.H[i] - 38); dd = 99; }
       }
       if (q && tr.mud && q.d < HALF + 30) v = Math.min(v, splashBed(tr, q.i, (x - tr.xs[q.i]) * tr.rx[q.i] + (z - tr.zs[q.i]) * tr.rz[q.i]));   // a water splash's pool
-      if (tr.river) v = Math.min(v, riverBed(tr.river, x, z));
+      if (tr.river && tr.river.bed !== false) v = Math.min(v, riverBed(tr.river, x, z));   // bed: false, the land is the lake's floor (islands stand out of it)
       if (tr.streams) for (const st of tr.streams) v = Math.min(v, streamBed(st, x, z));
       if (tr.rails) for (const L of tr.rails.lines) {           // embankments and cuttings under the tracks
         const pj = railProject(L, x, z); if (pj.d > 12 || pj.s < L.visA - 2 || pj.s > L.visB + 2) continue;
