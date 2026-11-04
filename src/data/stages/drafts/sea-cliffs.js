@@ -32,10 +32,10 @@ export const design = {
     ['gully', 'Over the gully', 'A high bridge over the gully where the creek falls to the beach.'],
     ['edge', 'The cliff edge', 'Fast along the edge over the headland.'],
     ['ravine', 'Down the ravine', 'Inland round the ravine\'s head and down it to the sea.'],
-    ['beach', 'The beach', 'Flat out along the sand, the surf on your left.'],
+    ['beach', 'The beach', 'Flat out along the sand at the water\'s edge, waves washing up across the road: time your run through them or plough through the spray.'],
     ['arch', 'Through the headland', 'Through the headland in a short sea tunnel.'],
     ['under', 'Under the bridge', 'Under the gully bridge you crossed at the start of the lap.'],
     ['up', 'Up the west ravine', 'Climbing back up to the village.']
   ]),
-  build: ['Sand and surf on the beach', 'Sea-cliff rock', 'A waterfall down the gully']
+  build: ['Surf: waves that run up the beach and across the road on a cycle, slowing and spraying the cars that drive through them (a new feature, like the drawbridge\'s cycle)', 'Sand on the beach', 'Sea-cliff rock', 'A waterfall down the gully']
 };
