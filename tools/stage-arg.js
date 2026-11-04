@@ -2,13 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { STAGES } from '../src/core/index.js';
 import { SANDBOXES } from '../src/data/sandboxes/index.js';
-/** Resolve a stage from a CLI argument: 1-based number, (part of) its name, sandbox:<name>, or a .json file (a track the
+import { DRAFTS } from '../src/data/stages/drafts/index.js';
+/** Resolve a stage from a CLI argument: 1-based number, (part of) its name, sandbox:<name>, draft:<name> (data/stages/drafts), or a .json file (a track the
  *  user sent from the editor, as ArtifactData saves it: its `stage`, with `comments` kept). Defaults to the last stage.
  *  Returns { stage, id, comments } where id names output files. */
 export function stageArg(arg) {
   if (arg && arg.endsWith('.json')) {
     const j = JSON.parse(fs.readFileSync(arg, 'utf8')), d = j.data || j;
     return { stage: d.stage || d, id: 'file-' + path.basename(arg, '.json'), comments: d.comments || [] };
+  }
+  if (arg && arg.startsWith('draft:')) {
+    const k = arg.slice(6); if (!DRAFTS[k]) throw new Error(`no draft "${k}"; drafts: ${Object.keys(DRAFTS).join(', ')}`);
+    return { stage: DRAFTS[k], id: 'draft-' + k };
   }
   if (arg && arg.startsWith('sandbox:')) {
     const k = arg.slice(8); if (!SANDBOXES[k]) throw new Error(`no sandbox "${k}"; sandboxes: ${Object.keys(SANDBOXES).join(', ')}`);

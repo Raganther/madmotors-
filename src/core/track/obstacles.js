@@ -28,6 +28,7 @@ export function placeObstacles(tr, terr, stage) {
     if (q && q.d < HALF + 11) continue; if (q && onTrail(tr, tr.bi(q.i), (x - tr.xs[q.i]) * tr.rx[q.i] + (z - tr.zs[q.i]) * tr.rz[q.i], TRAIL.CLEAR)) continue; if (slopeAt(x, z) > 0.8 || overhangs(x, z, q)) continue; if (tr.town && q && tr.town[tr.bi(q.i)] && q.d < 32) continue; if (tr.falls && tr.falls.some(f => Math.hypot(x - tr.xs[f.i], z - tr.zs[f.i]) < 32)) continue; { const qt = tr.nearestTun(x, z); if (qt && qt.d < HALF + 16) continue; }
     const y = terr.at(x, z) - 0.2, s = 0.8 + rnd() * 0.7, ry = rnd() * TAU;
     const pine = (!!stage.alpine && y > stage.alpine.treeLine) || rnd() < stage.trees.pine;
+    if (tr.river && !tr.river.frozen && y < tr.river.level + 0.3) continue;   // nothing grows under the water (a lake's flat bed); checked after the draws so the rest stay put
     if (pine) items.push({ kind: OB.PINE, x, y, z, s, sy: s * (0.9 + rnd() * 0.4), ry, color: pick(C.pine), r: 0.3 * s, brush: 0.75 * s });
     else items.push({ kind: OB.ROUND, x, y, z, s, sy: s * (0.85 + rnd() * 0.3), ry, color: pick(C.round), r: 0.32 * s });
   }

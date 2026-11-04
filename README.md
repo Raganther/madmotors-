@@ -236,6 +236,7 @@ npm run check      # lint + tests: run before every commit
 | `npm run e2e` | Builds, then loads and races every stage in headless Chromium; screenshots in `tests/e2e/shots/` |
 | `npm run golden` | Re-records `tests/golden.json`: only when a change is *meant* to alter gameplay |
 | `npm run layout -- 7` | Top-down plan of stage 7's road: heights, bridges, tunnels, river, railways, near-misses between road sections |
+| `npm run trackview` | Stage drafts (`src/data/stages/drafts`, not in the stage list yet) side by side in a light 3D viewer → `tools/out/trackview.html`: land, lake, road, bridges, trees, the lap's beats, a height profile, AI lap times. Publish it to look at on a phone. Every tool takes a draft as `draft:<name>`, the game as `?draft=<name>` |
 | `npm run terrain -- gorge` | Shaded relief map of a stage's terrain |
 | `npm run balance` | Vehicle pace vs the coupe on tarmac and loose stages; seconds each weapon costs its victim per use |
 | `npm run dashboard` | The career pacing dashboard (`tools/out/pacing.html`) from `npm run career -- --upg tier --json` |
@@ -612,6 +613,8 @@ or `?workshop` (the hub) / `?workshop=<tab>`. Tabs live in `src/data/workshop.js
    for a generated downhill) and add it to `src/data/stages/index.js`.
 2. For `type: 'gorge'` circuits, describe the road as `segs` (straights and arcs in screen axes), tagging sections
    with track elements (table above). Optional `river` (with `logs: n` drifting down it) and `rails` add the river and railways. See `src/core/types.js`.
+   A stage still being designed can live in `src/data/stages/drafts/` first (tools take `draft:<name>`; `npm run trackview` compares
+   drafts in 3D) and move into the list once it's chosen. A described landscape (`ground` + `drape`) may have branches too.
 3. Iterate with `npm run layout -- <n>`, `npm run terrain -- <n>` and `npm run sandbox -- <n>` until the plan closes cleanly and nothing
    overlaps by accident, then play it with `npm run dev`.
 4. `npm run golden` to record the new stage, then `npm run check`.

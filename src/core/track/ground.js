@@ -1,4 +1,4 @@
-import { closeLoop, fromStroke, sketch, endH } from './editing.js';
+import { closeLoop, fromStroke, sketch, endH, freeze } from './editing.js';
 import { mulberry32 } from '../math.js';
 
 // ---------- painted ground (the Terrain builder, ui/terrain.js) ----------
@@ -24,13 +24,16 @@ export function groundAt(g, a, b) {
 export const groundXZ = g => (x, z) => groundAt(g, (x - z) / Math.SQRT2, -(x + z) / Math.SQRT2);
 
 // sections no longer than `piece` metres, so the heights can follow the ground (a section's height runs straight
-// from its start to its end); the first piece keeps the section's tags
+// from its start to its end); the first piece keeps the section's tags, and every piece keeps the ones that cover a
+// stretch of road (SPAN: a town street, a dirt road, a bog). out.firsts: each section's first piece.
+const SPAN = new Set(['town', 'dirt', 'mud', 'ice', 'open', 'logs', 'gallery', 'rockfall']);
 function chop(segs, piece) {
-  const out = [];
+  const out = []; out.firsts = [];
   for (const sg of segs) {
-    const len = sg[0] === 's' ? sg[1] : sg[1] * Math.abs(sg[2]) * Math.PI / 180, n = Math.max(1, Math.ceil(len / piece));
+    const len = sg[0] === 's' ? sg[1] : sg[1] * Math.abs(sg[2]) * Math.PI / 180, n = Math.max(1, Math.ceil(len / piece)), tags = (sg[0] === 's' ? sg[3] : sg[4]) || {};
+    out.firsts.push(out.length);
     for (let k = 0; k < n; k++) {
-      const tg = k ? {} : { ...((sg[0] === 's' ? sg[3] : sg[4]) || {}) };
+      const tg = k ? Object.fromEntries(Object.entries(tags).filter(([t]) => SPAN.has(t))) : { ...tags };
       out.push(sg[0] === 's' ? ['s', Math.round(sg[1] / n * 100) / 100, endH(sg), tg] : ['a', sg[1], Math.round(sg[2] / n * 1000) / 1000, endH(sg), tg]);
     }
   }
@@ -77,6 +80,17 @@ export function roadOnGround(segs, heading, ground, start = { a: 0, b: 0 }, { pi
   }
   return out;
 }
+/** A branch (stage.branches) over the landscape: its sections cut into pieces that follow the ground like the main
+ *  road's, from the fork (main start S0, heights hs) to the merge (S1), the error at either end eased out along it. */
+function branchOnGround(br, ground, S0, S1, h0, h1, piece = GROUND.PIECE) {
+  const rel = br.segs.map(sg => sg[0] === 's' && typeof sg[1] === 'object' ? ['s', sg[1].toA !== undefined ? { toA: sg[1].toA - S0.a } : { toB: sg[1].toB - S0.b }, sg[2], sg[3]] : sg);
+  const out = chop(freeze(rel, S0.phi), piece), k = sketch(out, S0.phi, 2), run = runOf(k), n = k.pts.length, L = run[n - 1] || 1;
+  const bare = k.pts.map(p => groundAt(ground, S0.a + p.a, S0.b + p.b)), w = Math.max(1, Math.round(GROUND.SMOOTH / 4));
+  const h = bare.map((_, i) => { let s = 0, c = 0; for (let j = Math.max(0, i - w); j <= Math.min(n - 1, i + w); j++) { s += bare[j]; c++; } return s / c; });
+  const e0 = h0 - h[0], e1 = h1 - h[n - 1];
+  out.forEach((sg, s) => { const i = s + 1 < out.length ? k.starts[s + 1].i : n - 1, v = s + 1 < out.length ? Math.round((h[i] + e0 + (e1 - e0) * run[i] / L) * 10) / 10 : h1; if (sg[0] === 's') sg[2] = v; else sg[3] = v; });
+  return out;
+}
 /** A copy of the landscape moved so plan point `start` becomes (0, 0) (a stage's road starts at the origin), heights to 0.1 m. */
 export function groundFor(g, start) {
   return { a0: Math.round((g.a0 - start.a) * 100) / 100, b0: Math.round((g.b0 - start.b) * 100) / 100, cell: g.cell, cols: g.cols, rows: g.rows, h: Array.from(g.h, v => Math.round(v * 10) / 10) };
@@ -112,10 +126,15 @@ export function liftFromSpans(spans, len) {
 /** A stage with a described landscape: its ground grid, and its sections laid over it (once; the stage keeps them). */
 export function prepareGround(stage) {
   if (!stage.ground || stage.ground.h) return stage;
-  const flat = stage.segs, k = sketch(flat, stage.startHeading || 0, 4), len = k.lens.reduce((a, b) => a + b, 0);
+  const flat = freeze(stage.segs, stage.startHeading || 0), k = sketch(flat, stage.startHeading || 0, 4), len = k.lens.reduce((a, b) => a + b, 0);
   let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity; for (const p of k.pts) { a0 = Math.min(a0, p.a); a1 = Math.max(a1, p.a); b0 = Math.min(b0, p.b); b1 = Math.max(b1, p.b); }
   const ground = groundFromSpec(stage.ground, { a: (a0 + a1) / 2, b: (b0 + b1) / 2 }), d = stage.drape || {};
   stage.segs = roadOnGround(flat, stage.startHeading || 0, ground, { a: 0, b: 0 }, { lift: liftFromSpans(d.lift, len), pieces: d.pieces });
+  // branches name main sections by index: move them onto the pieces those sections became, and lay them on the land too
+  if (stage.branches) {
+    const F = stage.segs.firsts, m = sketch(stage.segs, stage.startHeading || 0, 2), hAt = s => endH(stage.segs[(s + stage.segs.length - 1) % stage.segs.length]);
+    stage.branches = stage.branches.map(br => { const from = F[br.from], to = F[br.to]; return { ...br, from, to, segs: branchOnGround(br, ground, m.starts[from], m.starts[to], hAt(from), hAt(to)) }; });
+  }
   stage.ground = ground;
   return stage;
 }

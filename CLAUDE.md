@@ -8,7 +8,8 @@ new or reworked track, and a track's page there is agreed with the user before i
 ## Commands
 - `npm run check`: lint + tests (golden included) + a production build. Run before every commit; must pass.
 - `npm run e2e`: production build + headless browser run of every stage (no console errors allowed).
-- `npm run layout -- <n>` / `npm run terrain -- <n>`: inspect a stage's road plan / terrain before playing it (`sandbox:<name>` works too).
+- `npm run layout -- <n>` / `npm run terrain -- <n>`: inspect a stage's road plan / terrain before playing it (`sandbox:<name>` works too), and `draft:<name>`).
+- `npm run trackview`: the stage drafts (src/data/stages/drafts) in a 3D viewer for the user's phone → tools/out/trackview.html; publish it to the Track Drafts artifact, https://claude.ai/artifact/GXwHrvYgHAEYFcEACmArQa (pass it as `url`).
 - The Workshop (`?workshop`, `?workshop=crash|destruct|weapons|kit|derby|cars|elements`, `npm run shot -- workshop:<tab>`): try cars, crashes, weapons and track elements without a race around them. Each new system gets a tab there (README "The Workshop").
 - `npm run sandbox -- <name|all>`: AI laps of an element sandbox, with what went wrong where. Browser: `?sandbox=<name>&debug`; backquote toggles the debug overlay.
 - `npm run shot -- <n|sandbox:name|garage> [metres ...] [--vehicle id] [--debug]`: screenshots from the player's seat (AI drives to each distance) → tools/out/. Look at them.

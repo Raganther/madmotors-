@@ -1,6 +1,6 @@
 // Screenshots from the player's seat on the production build (run `npm run build` first). The player car drives
 // itself (AI) to each race distance and the frame is saved, so wear, mud and dirt have built up the way they would.
-//   node tools/shot.mjs <stage|sandbox:name> [metres ...] [--vehicle id] [--rivals n] [--mode race|showdown|deuce|tiebreak] [--camera classic|behind|follow|heli|bonnet|tv|...] [--zoom close|near|normal|far] [--debug] [--w 1100 --h 620]
+//   node tools/shot.mjs <stage|sandbox:name|draft:name> [metres ...] [--vehicle id] [--rivals n] [--mode race|showdown|deuce|tiebreak] [--camera classic|behind|follow|heli|bonnet|tv|...] [--zoom close|near|normal|far] [--debug] [--w 1100 --h 620]
 //   --eval '<js>' runs in the page once the race is built (window.__dr as d), e.g. to recolour something to find it
 //   node tools/shot.mjs garage              the garage, top and bottom, once every vehicle's picture is drawn
 //   node tools/shot.mjs workshop[:tab]      the Workshop hub, or a tab (crash, weapons: its opening run, two seconds in)
@@ -12,16 +12,18 @@ import { mkdirSync } from 'node:fs';
 import { stageFromArg } from './stage-arg.js';
 import { STAGES } from '../src/core/index.js';
 import { SANDBOXES } from '../src/data/sandboxes/index.js';
+import { DRAFTS } from '../src/data/stages/drafts/index.js';
 
 const args = process.argv.slice(2), opt = (k, d) => { const i = args.indexOf('--' + k); if (i < 0) return d; const v = args[i + 1]; args.splice(i, 2); return v; };
 const flag = k => { const i = args.indexOf('--' + k); if (i < 0) return false; args.splice(i, 1); return true; };
 const evalJs = opt('eval', ''), camMode = opt('camera', 'classic'), camZoom = opt('zoom', 'normal'), rivals = +opt('rivals', 3), mode = opt('mode', 'race'), vehicle = opt('vehicle', 'coupe'), W = +opt('w', 1100), H = +opt('h', 620), debug = flag('debug');
-const [which = '', ...marks] = args, sb = which.startsWith('sandbox:') ? which.slice(8) : null;
+const [which = '', ...marks] = args, sb = which.startsWith('sandbox:') ? which.slice(8) : null, df = which.startsWith('draft:') ? which.slice(6) : null;
 if (sb && !SANDBOXES[sb]) throw new Error(`no sandbox "${sb}"; sandboxes: ${Object.keys(SANDBOXES).join(', ')}`);
+if (df && !DRAFTS[df]) throw new Error(`no draft "${df}"; drafts: ${Object.keys(DRAFTS).join(', ')}`);
 const garage = which === 'garage';
 const ws = which === 'workshop' ? 'hub' : which.startsWith('workshop:') ? which.slice(9) : null;
-const idx = garage || ws ? 0 : sb ? STAGES.length : stageFromArg(which), id = (sb ? 'sandbox-' + sb : String(idx + 1)) + (camMode !== 'classic' ? '-' + camMode : '');
-const q = new URLSearchParams(); if (sb) q.set('sandbox', sb); if (debug) q.set('debug', ''); if (ws) q.set('workshop', ws === 'hub' ? '' : ws);
+const idx = garage || ws ? 0 : sb || df ? STAGES.length : stageFromArg(which), id = (sb ? 'sandbox-' + sb : df ? 'draft-' + df : String(idx + 1)) + (camMode !== 'classic' ? '-' + camMode : '');
+const q = new URLSearchParams(); if (sb) q.set('sandbox', sb); if (df) q.set('draft', df); if (debug) q.set('debug', ''); if (ws) q.set('workshop', ws === 'hub' ? '' : ws);
 mkdirSync('tools/out', { recursive: true });
 
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });

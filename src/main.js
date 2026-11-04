@@ -19,6 +19,7 @@ import { respawn } from './core/sim/car.js';
 import { raceStep } from './core/sim/race.js';
 import { STAGES } from './data/stages/index.js';
 import { SANDBOXES } from './data/sandboxes/index.js';
+import { DRAFTS } from './data/stages/drafts/index.js';
 import { toggleOverlay, updateOverlay } from './render/overlay.js';
 import { updateCamera } from './render/camera.js';
 import { initDebris, updateDebris } from './render/effects/debris.js';
@@ -113,6 +114,9 @@ export async function boot() {
     // ?sandbox=<name>: append that element sandbox (data/sandboxes) as the last stage and select it
     const sbName = new URLSearchParams(location.search).get('sandbox');
     if (sbName) { if (!SANDBOXES[sbName]) throw new Error(`no sandbox "${sbName}"; try ${Object.keys(SANDBOXES).join(', ')}`); STAGES.push(SANDBOXES[sbName]); }
+    // ?draft=<name>: the same for a stage still being designed (data/stages/drafts: not in the stage list yet)
+    const dfName = new URLSearchParams(location.search).get('draft');
+    if (dfName) { if (!DRAFTS[dfName]) throw new Error(`no draft "${dfName}"; try ${Object.keys(DRAFTS).join(', ')}`); STAGES.push(DRAFTS[dfName]); }
     if (new URLSearchParams(location.search).has('debug')) toggleOverlay(true);
     wireUI(); buildStageList(); setMode(loadMode()); setRivals(loadRivals(MAX_RIVALS, DEFAULT_RIVALS)); setWeapons(loadWeapons()); G.vehicle = G.defaultVehicle = loadVehicle(); G.stageCars = loadStageVehicles();
     { const c = loadCamera(); setCamera(c.mode, c.zoom); }

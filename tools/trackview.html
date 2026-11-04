@@ -1,0 +1,307 @@
+<title>Timberline Layouts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a survey sheet. A 3D model of the ground up top, the lap's profile under it, then the field notes. One column on a phone, model + notes side by side when wide. */
+:root {
+  --paper: #EDF0EA; --sheet: #F8FAF6; --ink: #18241D; --muted: #56655B; --rule: #CDD5CB;
+  --hivis: #D9531E; --hivis-ink: #FFFFFF; --branch: #2F7FB0; --bridge: #A97C46; --tunnel: #3A3F44; --water: #4E7F8C;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121915; --sheet: #19221C; --ink: #E3EBE4; --muted: #96A69A; --rule: #2C3A30;
+  --hivis: #F07038; --hivis-ink: #170C06; --branch: #62AEDB; --bridge: #C99A62; --tunnel: #A6AFB6; --water: #6FA3B0; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121915; --sheet: #19221C; --ink: #E3EBE4; --muted: #96A69A; --rule: #2C3A30;
+  --hivis: #F07038; --hivis-ink: #170C06; --branch: #62AEDB; --bridge: #C99A62; --tunnel: #A6AFB6; --water: #6FA3B0; color-scheme: dark }
+html, body { background: var(--paper); color: var(--ink); }
+body { font: 15px/1.5 var(--body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 40px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 10px 20px; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(30px, 6vw, 46px)/0.95 var(--display); letter-spacing: .01em; margin: 6px 0 0; text-transform: uppercase; text-wrap: balance; }
+.tabs { display: flex; gap: 0; border: 1.5px solid var(--ink); border-radius: 6px; overflow: hidden; }
+.tabs button { font: 600 17px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; background: transparent; color: var(--ink); border: 0; padding: 10px 16px; cursor: pointer; }
+.tabs button + button { border-left: 1.5px solid var(--ink); }
+.tabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+button:focus-visible, .beat:focus-visible { outline: 2.5px solid var(--hivis); outline-offset: 2px; }
+.main { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 980px) { .main { grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); align-items: start; } }
+.stagebox { display: grid; gap: 10px; min-width: 0; container-type: inline-size; }
+.view { position: relative; width: 100%; height: min(62vh, 600px); min-height: 300px; border-radius: 8px; overflow: hidden; background: #A9C7D4; touch-action: none; }
+.view canvas { display: block; width: 100%; height: 100%; }
+.pins { position: absolute; inset: 0; pointer-events: none; }
+.pin { position: absolute; transform: translate(-50%, -100%); pointer-events: auto; cursor: pointer; font: 600 14px/1 var(--display); color: var(--hivis-ink); background: var(--hivis); border: 0; border-radius: 12px 12px 12px 2px; min-width: 24px; height: 24px; padding: 0 6px; box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+.pin.start { background: #FFFFFF; color: #18241D; }
+.pin[data-on="true"] { outline: 2.5px solid #FFFFFF; }
+.tools { position: absolute; left: calc(10px + env(safe-area-inset-left, 0px)); right: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+.tools button { pointer-events: auto; font: 600 15px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; border: 0; border-radius: 5px; padding: 9px 12px; background: rgba(18,26,21,.78); color: #F2F5F0; cursor: pointer; }
+.tools button[aria-pressed="true"] { background: var(--hivis); color: var(--hivis-ink); }
+.hint { position: absolute; top: 10px; right: 10px; font: 400 12px/1.3 var(--mono); color: #F2F5F0; background: rgba(18,26,21,.6); padding: 5px 8px; border-radius: 4px; pointer-events: none; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.stat { background: var(--sheet); padding: 9px 12px; min-width: 0; }
+@container (min-width: 760px) { .stats { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.stat b { display: block; font: 600 24px/1.1 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stat span { font: 500 11px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.profile { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 6px 2px; overflow-x: auto; }
+.profile svg { display: block; width: 100%; min-width: 520px; height: 150px; cursor: pointer; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 400 12px/1.4 var(--mono); color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 6px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.notes { background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 18px; display: grid; gap: 12px; min-width: 0; }
+.notes h2 { font: 700 26px/1 var(--display); text-transform: uppercase; margin: 0; letter-spacing: .01em; }
+.notes h3 { font: 600 13px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 6px 0 0; }
+.story { margin: 0; max-width: 65ch; }
+.beats { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.beat { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; padding: 8px 6px; border-radius: 6px; cursor: pointer; }
+.beat:hover { background: color-mix(in srgb, var(--hivis) 8%, transparent); }
+.beat[data-on="true"] { background: color-mix(in srgb, var(--hivis) 14%, transparent); }
+.beat .n { font: 600 15px/24px var(--display); text-align: center; height: 24px; border-radius: 12px 12px 12px 2px; background: var(--hivis); color: var(--hivis-ink); }
+.beat .t { font-weight: 600; }
+.beat .m { font: 400 12px/1 var(--mono); color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
+.beat p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.build { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
+.foot { font: 400 12px/1.5 var(--mono); color: var(--muted); max-width: 80ch; }
+@media (prefers-reduced-motion: reduce) { .tools button, .tabs button { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Downhill Rush · layout drafts · iteration 1</div>
+      <h1 id="title">Timberline</h1>
+    </div>
+    <div class="tabs" id="tabs" role="group" aria-label="Variation"></div>
+  </header>
+  <div class="main">
+    <div class="stagebox">
+      <div class="view" id="view">
+        <div class="pins" id="pins"></div>
+        <div class="hint" id="hint">drag to turn · pinch to zoom</div>
+        <div class="tools">
+          <button id="b-orbit" aria-pressed="true">Orbit</button>
+          <button id="b-top" aria-pressed="false">Plan</button>
+          <button id="b-drive" aria-pressed="false">Drive the lap</button>
+          <button id="b-fast" aria-pressed="false">2×</button>
+        </div>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="profile" id="profile"></div>
+      <div class="legend"><span><i style="background:#8E7357"></i>road</span><span><i style="background:var(--bridge)"></i>bridge / trestle</span><span><i style="background:var(--tunnel)"></i>tunnel</span><span><i style="background:var(--branch)"></i>alternative route</span><span><i style="background:var(--water)"></i>lake</span></div>
+    </div>
+    <section class="notes" id="notes"></section>
+  </div>
+  <p class="foot">Built from the stage data by tools/trackview.mjs: the same ground, road and trees the game builds, drawn simply. Lap time: AI cars on one lap in the race simulation. Nothing here is final; pick a layout, or tell me what to change on any of them.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const DATA = /*DATA*/null;
+const $ = id => document.getElementById(id);
+const view = $('view'), pinsEl = $('pins');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+view.prepend(renderer.domElement);
+const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(42, 1, 1, 6000);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.47; controls.minDistance = 40; controls.maxDistance = 2600; controls.screenSpacePanning = true;
+scene.add(new THREE.HemisphereLight(0xDDEBF5, 0x4A5238, 0.75));
+const sun = new THREE.DirectionalLight(0xFFE8C8, 0.85); sun.position.set(-0.5, 1, 0.35); scene.add(sun);
+let group = null, cur = null, beatOn = -1, mode = 'orbit', fast = false, driveS = 0, last = 0;
+
+function decode(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Int16Array(u.buffer); }
+const col = hex => new THREE.Color(hex);
+function groundAt(g, x, z) {
+  const c = (x - g.x0) / g.S, r = (z - g.z0) / g.S, c0 = Math.max(0, Math.min(g.cols - 2, Math.floor(c))), r0 = Math.max(0, Math.min(g.rows - 2, Math.floor(r)));
+  const u = Math.max(0, Math.min(1, c - c0)), v = Math.max(0, Math.min(1, r - r0)), H = g.hv, W = g.cols;
+  return (H[r0 * W + c0] * (1 - u) + H[r0 * W + c0 + 1] * u) * (1 - v) + (H[(r0 + 1) * W + c0] * (1 - u) + H[(r0 + 1) * W + c0 + 1] * u) * v;
+}
+
+function build(d) {
+  if (group) { scene.remove(group); group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
+  group = new THREE.Group(); scene.add(group);
+  const sky = col(d.sky || 0xB6D4E2); scene.background = sky; scene.fog = new THREE.Fog(sky, 900, 2600);
+  const g = d.ground; g.hv = Float32Array.from(decode(g.h), v => v / 10);
+  // ground: grass low down, darker forest floor, rock on the steep and the high, snow on the top
+  const W = g.cols, R = g.rows, pos = new Float32Array(W * R * 3), cols = new Float32Array(W * R * 3);
+  const grassA = col(d.colors.grassA), grassB = col(d.colors.grassB), rock = col(d.colors.rock), snow = col(0xF2F4F5), shore = col(d.colors.dirt), tmp = new THREE.Color();
+  for (let r = 0; r < R; r++) for (let c = 0; c < W; c++) {
+    const i = r * W + c, y = g.hv[i];
+    pos.set([g.x0 + c * g.S, y, g.z0 + r * g.S], i * 3);
+    const sl = Math.abs(g.hv[r * W + Math.min(W - 1, c + 1)] - g.hv[r * W + Math.max(0, c - 1)]) + Math.abs(g.hv[Math.min(R - 1, r + 1) * W + c] - g.hv[Math.max(0, r - 1) * W + c]);
+    tmp.copy(grassA).lerp(grassB, Math.min(1, Math.max(0, (y + 5) / 40)));
+    tmp.lerp(rock, Math.min(1, Math.max(0, (sl / (4 * g.S) - 0.35) * 2.5)));
+    tmp.lerp(rock, Math.min(1, Math.max(0, (y - 75) / 30)));
+    tmp.lerp(snow, Math.min(1, Math.max(0, (y - 120) / 25)));
+    if (d.water && y < d.water.level + 1.2) tmp.lerp(shore, 0.6);
+    cols.set([tmp.r, tmp.g, tmp.b], i * 3);
+  }
+  const idx = []; for (let r = 0; r < R - 1; r++) for (let c = 0; c < W - 1; c++) { const a = r * W + c; idx.push(a, a + W, a + 1, a + 1, a + W, a + W + 1); }
+  const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); gg.setAttribute('color', new THREE.BufferAttribute(cols, 3)); gg.setIndex(idx); gg.computeVertexNormals();
+  group.add(new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ vertexColors: true })));
+  // water: level everywhere the ground dips under it
+  if (d.water) {
+    const wp = [], L = d.water.level;
+    for (let r = 0; r < R - 1; r++) for (let c = 0; c < W - 1; c++) {
+      const a = r * W + c; if (Math.min(g.hv[a], g.hv[a + 1], g.hv[a + W], g.hv[a + W + 1]) >= L) continue;
+      const x0 = g.x0 + c * g.S, z0 = g.z0 + r * g.S, x1 = x0 + g.S, z1 = z0 + g.S;
+      wp.push(x0, L, z0, x0, L, z1, x1, L, z0, x1, L, z0, x0, L, z1, x1, L, z1);
+    }
+    const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wp, 3)); wg.computeVertexNormals();
+    group.add(new THREE.Mesh(wg, new THREE.MeshPhongMaterial({ color: d.water.color || 0x4E7F8C, shininess: 80, specular: 0x557788, transparent: true, opacity: 0.88 })));
+  }
+  // the road: a ribbon 12 m wide; trestle posts under the bridges; tunnels drawn through the hill
+  const ribbon = (P, base, lift) => {
+    const n = P.length / 4, solid = [], solidC = [], tun = [], posts = [];
+    const roadC = col(base), bridgeC = col(0xA97C46), townC = col(0x6E6A62);
+    for (let k = 0; k < n - 1; k++) {
+      const x = P[k * 4], z = P[k * 4 + 1], y = P[k * 4 + 2] + lift, f = P[k * 4 + 3], x2 = P[k * 4 + 4], z2 = P[k * 4 + 5], y2 = P[k * 4 + 6] + lift;
+      const kb = Math.min(n - 1, k + 1), ka = Math.max(0, k - 1), tx = P[kb * 4] - P[ka * 4], tz = P[kb * 4 + 1] - P[ka * 4 + 1], tl = Math.hypot(tx, tz) || 1, nx = -tz / tl * 6, nz = tx / tl * 6;
+      const kc = Math.min(n - 1, k + 2), tx2 = P[kc * 4] - P[k * 4], tz2 = P[kc * 4 + 1] - P[k * 4 + 1], tl2 = Math.hypot(tx2, tz2) || 1, mx = -tz2 / tl2 * 6, mz = tx2 / tl2 * 6;
+      const quad = [x + nx, y, z + nz, x - nx, y, z - nz, x2 + mx, y2, z2 + mz, x2 + mx, y2, z2 + mz, x - nx, y, z - nz, x2 - mx, y2, z2 - mz];
+      if (f & 2) { tun.push(...quad); continue; }
+      solid.push(...quad); const c = f & 1 ? bridgeC : f & 8 ? townC : roadC; for (let q = 0; q < 6; q++) solidC.push(c.r, c.g, c.b);
+      if (f & 1 && k % 3 === 0) for (const s of [-1, 1]) { const px = x + nx * s * 0.8, pz = z + nz * s * 0.8, gy = groundAt(g, px, pz); if (y - gy > 1.5) posts.push([px, pz, gy, y]); }
+    }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(solid, 3)); sg.setAttribute('color', new THREE.Float32BufferAttribute(solidC, 3)); sg.computeVertexNormals();
+    const m = new THREE.Mesh(sg, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); group.add(m);
+    if (tun.length) { const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(tun, 3)); const t = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: 0x2A2E33, transparent: true, opacity: 0.55, depthTest: false, side: THREE.DoubleSide })); t.renderOrder = 5; group.add(t); }
+    if (posts.length) {
+      const pm = new THREE.InstancedMesh(new THREE.BoxGeometry(0.9, 1, 0.9), new THREE.MeshLambertMaterial({ color: 0x7A5634 }), posts.length), o = new THREE.Object3D();
+      posts.forEach(([px, pz, gy, y], q) => { o.position.set(px, (gy + y) / 2, pz); o.scale.set(1, y - gy, 1); o.updateMatrix(); pm.setMatrixAt(q, o.matrix); }); group.add(pm);
+    }
+  };
+  ribbon(d.road, d.colors.road || 0x8E7357, 0.35);
+  for (const a of d.alts) ribbon(a.pts, 0x2F7FB0, 0.45);
+  // start line
+  { const P = d.road, k = Math.floor(d.start / 2) * 4, s = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 13), new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
+    s.position.set(P[k], P[k + 2] + 0.6, P[k + 1]); s.rotation.y = -Math.atan2(P[k + 5] - P[k + 1], P[k + 4] - P[k]); group.add(s); }
+  // trees: low cones in the stage's pine colours
+  const T = d.trees, nT = T.length / 5;
+  if (nT) {
+    const tg = new THREE.ConeGeometry(2.3, 8, 6); tg.translate(0, 4, 0);
+    const tm = new THREE.InstancedMesh(tg, new THREE.MeshLambertMaterial({ vertexColors: false }), nT), o = new THREE.Object3D(), pal = (d.colors.pine || [0x2C5E40]).map(col), round = (d.colors.round || [0x4F7E3C]).map(col);
+    for (let q = 0; q < nT; q++) { o.position.set(T[q * 5], T[q * 5 + 2], T[q * 5 + 1]); const s = T[q * 5 + 3]; o.scale.set(s, s * 1.15, s); o.updateMatrix(); tm.setMatrixAt(q, o.matrix); tm.setColorAt(q, (T[q * 5 + 4] === 1 ? round : pal)[q % (T[q * 5 + 4] === 1 ? round : pal).length]); }
+    group.add(tm);
+  }
+  // houses: timber boxes under a dark roof
+  if (d.houses.length) {
+    const hm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), new THREE.MeshLambertMaterial({ color: 0x8A5E3B }), d.houses.length);
+    const rg = new THREE.ConeGeometry(0.75, 0.5, 4).rotateY(Math.PI / 4).translate(0, 1.25, 0);
+    const rm = new THREE.InstancedMesh(rg, new THREE.MeshLambertMaterial({ color: 0x3A3F47 }), d.houses.length), o = new THREE.Object3D();
+    d.houses.forEach(([x, z, y, w, dd, h, yaw], q) => { o.position.set(x, y, z); o.rotation.set(0, yaw, 0); o.scale.set(w, h, dd); o.updateMatrix(); hm.setMatrixAt(q, o.matrix); o.scale.set(w * 1.15, h, dd * 1.15); o.updateMatrix(); rm.setMatrixAt(q, o.matrix); });
+    group.add(hm, rm);
+  }
+}
+
+// ---- the notes, stats and profile ----
+const roadPt = (d, m) => { const k = Math.max(0, Math.min(d.road.length / 4 - 1, Math.round(((m + d.start) % d.len) / 2))) * 4; return new THREE.Vector3(d.road[k], d.road[k + 2], d.road[k + 1]); };
+// a beat on an alternative route sits `along` metres down that branch's road instead
+const beatPt = (d, b) => { if (b.alt == null) return roadPt(d, b.m); const P = d.alts[b.alt].pts, k = Math.max(0, Math.min(P.length / 4 - 1, Math.round(b.along / 2))) * 4; return new THREE.Vector3(P[k], P[k + 2], P[k + 1]); };
+function beatsOf(d) { return (d.design.beats || []).map((b, n) => ({ ...b, n: n + 1 })); }
+function renderNotes(d) {
+  const ds = d.design, beats = beatsOf(d);
+  $('title').textContent = ds.title || d.name;
+  const lap = d.lap.best ? `${Math.round(d.lap.best)}–${Math.round(d.lap.slow)} s` : 'n/a';
+  $('stats').innerHTML = [[`${(d.len / 1000).toFixed(2)} km`, 'lap'], [`${d.laps}`, 'laps'], [lap, 'AI lap time'], [`${d.climb} m`, 'climb a lap'], [`${Math.round(d.hmax - d.hmin)} m`, 'top to bottom'], [d.surface === 'gravel' ? 'Dirt' : d.surface, 'surface']]
+    .map(([v, k]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('');
+  const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+  $('notes').innerHTML = `<div class="eyebrow">${esc(d.name)}</div><h2>${esc(ds.title || d.blurb)}</h2><p class="story">${esc(ds.story || d.blurb)}</p>
+    <h3>The lap, in order</h3><ol class="beats">${beats.map(b => `<li class="beat" tabindex="0" data-n="${b.n}"><span class="n"${b.alt != null ? ' style="background:var(--branch)"' : ''}>${b.n}</span><div><span class="t">${esc(b.name)}</span><span class="m">${b.m} m</span><p>${esc(b.text)}</p></div></li>`).join('')}</ol>
+    ${ds.build ? `<h3>Needs building for this layout</h3><ul class="build">${ds.build.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}`;
+  for (const el of document.querySelectorAll('.beat')) { const go = () => focusBeat(+el.dataset.n - 1); el.addEventListener('click', go); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }); }
+  // pins
+  pinsEl.innerHTML = '';
+  pinsEl.insertAdjacentHTML('beforeend', `<button class="pin start" data-n="0" aria-label="Start line">S</button>`);
+  for (const b of beats) pinsEl.insertAdjacentHTML('beforeend', `<button class="pin" data-n="${b.n}" aria-label="${esc(b.name)}"${b.alt != null ? ' style="background:var(--branch)"' : ''}>${b.n}</button>`);
+  for (const p of pinsEl.querySelectorAll('.pin')) p.addEventListener('click', () => { const n = +p.dataset.n; if (n) focusBeat(n - 1); });
+  renderProfile(d);
+}
+function renderProfile(d) {
+  const N = d.road.length / 4, Wd = 1000, Hd = 150, padL = 34, padB = 20, padT = 14, lo = Math.floor(d.hmin / 10) * 10, hi = Math.ceil(d.hmax / 10) * 10 || 10;
+  const X = m => padL + (m / d.len) * (Wd - padL - 8), Y = h => padT + (1 - (h - lo) / Math.max(1, hi - lo)) * (Hd - padT - padB);
+  const at = m => { const k = Math.min(N - 1, Math.round(((m + d.start) % d.len) / 2)); return { h: d.road[k * 4 + 2], f: d.road[k * 4 + 3] }; };
+  let line = '', area = '', marks = '';
+  for (let m = 0; m <= d.len; m += 4) { const p = at(m); line += `${m ? 'L' : 'M'}${X(m).toFixed(1)},${Y(p.h).toFixed(1)}`; }
+  area = line + `L${X(d.len)},${Hd - padB}L${X(0)},${Hd - padB}Z`;
+  // bridges and tunnels as bands along the bottom
+  let run = null; const flush = (m, k) => { if (run) { marks += `<rect x="${X(run.m).toFixed(1)}" y="${Hd - padB + 2}" width="${Math.max(2, X(m) - X(run.m)).toFixed(1)}" height="5" fill="var(--${run.k})"/>`; run = null; } };
+  for (let m = 0; m <= d.len; m += 2) { const f = at(m).f, k = f & 1 ? 'bridge' : f & 2 ? 'tunnel' : null; if (!run || run.k !== k) { flush(m); if (k) run = { m, k }; } } flush(d.len);
+  let grid = ''; for (let h = lo; h <= hi; h += (hi - lo > 60 ? 20 : 10)) grid += `<line x1="${padL}" x2="${Wd - 8}" y1="${Y(h)}" y2="${Y(h)}" stroke="var(--rule)" stroke-width="1"/><text x="${padL - 6}" y="${Y(h) + 4}" text-anchor="end" fill="var(--muted)" font-size="11" font-family="IBM Plex Mono, monospace">${h}</text>`;
+  for (let m = 0; m <= d.len; m += 500) grid += `<text x="${X(m)}" y="${Hd - 2}" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="IBM Plex Mono, monospace">${m ? (m / 1000).toFixed(1) + ' km' : 'start'}</text>`;
+  const beats = beatsOf(d).map(b => { const x = X(b.m) + (b.alt != null ? 16 : 0), y = Y(at(b.m).h), c = b.alt != null ? 'var(--branch)' : 'var(--hivis)'; return `<g><line x1="${x}" x2="${x}" y1="${y}" y2="${y - 14}" stroke="${c}" stroke-width="1.5"/><circle cx="${x}" cy="${y - 20}" r="8" fill="${c}"/><text x="${x}" y="${y - 16}" text-anchor="middle" fill="var(--hivis-ink)" font-size="11" font-weight="600" font-family="Barlow Condensed, sans-serif">${b.n}</text></g>`; }).join('');
+  $('profile').innerHTML = `<svg viewBox="0 0 ${Wd} ${Hd}" preserveAspectRatio="none" role="img" aria-label="Height along the lap, metres"><title>Height along the lap (m). Tap to drive from there.</title>${grid}<path d="${area}" fill="color-mix(in srgb, var(--ink) 9%, transparent)"/><path d="${line}" fill="none" stroke="var(--ink)" stroke-width="2"/>${marks}${beats}<circle id="pdot" r="5" cx="-20" cy="-20" fill="var(--hivis)" stroke="var(--sheet)" stroke-width="2"/></svg>`;
+  const svg = $('profile').querySelector('svg');
+  svg.addEventListener('click', e => { const r = svg.getBoundingClientRect(), m = ((e.clientX - r.left) / r.width * Wd - padL) / (Wd - padL - 8) * d.len; driveS = Math.max(0, Math.min(d.len - 1, m)); setMode('drive'); });
+  renderProfile.dot = m => { const dot = $('pdot'); if (!dot) return; dot.setAttribute('cx', X(m)); dot.setAttribute('cy', Y(at(m).h)); };
+}
+
+// ---- camera ----
+function bounds(d) { let a = [1e9, 1e9, -1e9, -1e9]; for (let k = 0; k < d.road.length; k += 4) { a[0] = Math.min(a[0], d.road[k]); a[1] = Math.min(a[1], d.road[k + 1]); a[2] = Math.max(a[2], d.road[k]); a[3] = Math.max(a[3], d.road[k + 1]); } return a; }
+function frame(top) {
+  const [x0, z0, x1, z1] = bounds(cur), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, span = Math.max(x1 - x0, z1 - z0), asp = camera.aspect, dist = span * (asp < 1 ? 1.25 / asp : 1.15);
+  controls.target.set(cx, 10, cz);
+  // the game's camera looks from +x +z (the plan's "up-screen" is away from it): keep that view so the drafts read the same way
+  if (top) camera.position.set(cx + 0.01, dist * 1.25, cz + 0.01); else camera.position.set(cx + dist * 0.42, dist * 0.62, cz + dist * 0.42);
+  camera.lookAt(controls.target); controls.update();
+}
+function focusBeat(n) {
+  beatOn = n; setMode('orbit', true);
+  const b = beatsOf(cur)[n], p = beatPt(cur, b);
+  const from = camera.position.clone(), to = p.clone().add(new THREE.Vector3(150, 130, 150)), t0 = controls.target.clone(), t1 = p.clone();
+  const start = performance.now(); (function fly() { const u = Math.min(1, (performance.now() - start) / 700), e = u * u * (3 - 2 * u); camera.position.lerpVectors(from, to, e); controls.target.lerpVectors(t0, t1, e); controls.update(); if (u < 1) requestAnimationFrame(fly); })();
+  for (const el of document.querySelectorAll('.beat, .pin')) el.dataset.on = String(+el.dataset.n === n + 1);
+}
+function setMode(m, keep) {
+  mode = m; controls.enabled = m !== 'drive';
+  $('b-orbit').setAttribute('aria-pressed', String(m === 'orbit')); $('b-top').setAttribute('aria-pressed', String(m === 'top')); $('b-drive').setAttribute('aria-pressed', String(m === 'drive'));
+  $('hint').textContent = m === 'drive' ? 'tap the profile to jump along the lap' : 'drag to turn · pinch to zoom';
+  if (m === 'orbit' && !keep) frame(false); if (m === 'top') frame(true);
+}
+$('b-orbit').onclick = () => setMode('orbit'); $('b-top').onclick = () => setMode('top');
+$('b-drive').onclick = () => setMode(mode === 'drive' ? 'orbit' : 'drive');
+$('b-fast').onclick = () => { fast = !fast; $('b-fast').setAttribute('aria-pressed', String(fast)); };
+
+function show(id) {
+  cur = DATA.find(d => d.id === id) || DATA[0]; build(cur); renderNotes(cur); driveS = 0; beatOn = -1;
+  for (const b of $('tabs').children) b.setAttribute('aria-pressed', String(b.dataset.id === cur.id));
+  if (mode === 'drive') setMode('drive'); else setMode('orbit');
+  try { localStorage.setItem('trackview-tab', cur.id); } catch (e) {}
+}
+$('tabs').innerHTML = DATA.map(d => `<button data-id="${d.id}" aria-pressed="false">${d.name.replace(/^.* /, '')}</button>`).join('');
+for (const b of $('tabs').children) b.onclick = () => show(b.dataset.id);
+
+function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(view); resize();
+
+const v = new THREE.Vector3();
+function tick(now) {
+  const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now;
+  if (mode === 'drive' && cur) {
+    const speed = (cur.lap.best ? cur.len / cur.lap.best : 25) * (fast ? 2 : 1);
+    driveS = (driveS + speed * dt) % cur.len;
+    const p = roadPt(cur, driveS), ahead = roadPt(cur, driveS + 30), back = roadPt(cur, driveS - 40 + cur.len);
+    const dir = ahead.clone().sub(back).setY(0).normalize();
+    camera.position.lerp(p.clone().addScaledVector(dir, -70).add(new THREE.Vector3(0, 48, 0)), 1 - Math.exp(-dt * 4));
+    controls.target.lerp(ahead, 1 - Math.exp(-dt * 5)); camera.lookAt(controls.target);
+    renderProfile.dot && renderProfile.dot(driveS);
+  } else controls.update();
+  renderer.render(scene, camera);
+  // pins follow their spot on the road
+  if (cur) {
+    const w = view.clientWidth, h = view.clientHeight, beats = beatsOf(cur);
+    for (const p of pinsEl.children) {
+      const n = +p.dataset.n, pt = n ? beatPt(cur, beats[n - 1]) : roadPt(cur, 0);
+      v.copy(pt).setY(pt.y + 6).project(camera);
+      const vis = v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1;
+      p.hidden = !vis; if (vis) { p.style.left = ((v.x + 1) / 2 * w) + 'px'; p.style.top = ((1 - v.y) / 2 * h) + 'px'; }
+    }
+  }
+  requestAnimationFrame(tick);
+}
+let first = DATA[0].id; try { first = localStorage.getItem('trackview-tab') || first; } catch (e) {}
+show(first); requestAnimationFrame(tick);
+</script>
