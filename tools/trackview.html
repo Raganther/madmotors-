@@ -25,9 +25,13 @@ header { display: grid; gap: 12px; }
 header > * { min-width: 0; }
 .eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 h1 { font: 700 clamp(30px, 6vw, 46px)/0.95 var(--display); letter-spacing: .01em; margin: 6px 0 0; text-transform: uppercase; text-wrap: balance; }
-.tabs { display: flex; gap: 0; border: 1.5px solid var(--ink); border-radius: 6px; overflow-x: auto; max-width: 100%; scrollbar-width: thin; }
-.tabs button { white-space: nowrap; flex: none; font: 600 17px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; background: transparent; color: var(--ink); border: 0; padding: 10px 16px; cursor: pointer; }
-.tabs button + button { border-left: 1.5px solid var(--ink); }
+.tabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.tabs button { font: 600 16px/1.1 var(--display); letter-spacing: .03em; text-transform: uppercase; text-align: left; background: transparent; color: var(--ink); border: 1.5px solid var(--ink); border-radius: 5px; padding: 8px 10px; cursor: pointer; min-width: 0; }
+.tabs button .k { font: 500 11px/1 var(--mono); letter-spacing: .04em; color: var(--muted); margin-right: 6px; }
+.tabs button[aria-pressed="true"] .k { color: inherit; }
+.titlerow { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+.step { display: flex; gap: 6px; flex: none; }
+.step button { font: 600 20px/1 var(--display); width: 42px; height: 38px; border: 1.5px solid var(--ink); border-radius: 5px; background: transparent; color: var(--ink); cursor: pointer; }
 .tabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 button:focus-visible, .beat:focus-visible { outline: 2.5px solid var(--hivis); outline-offset: 2px; }
 .main { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
@@ -71,9 +75,12 @@ button:focus-visible, .beat:focus-visible { outline: 2.5px solid var(--hivis); o
 
 <div class="wrap">
   <header>
-    <div>
-      <div class="eyebrow">Downhill Rush · layout drafts · iteration 3</div>
-      <h1 id="title">Timberline</h1>
+    <div class="titlerow">
+      <div>
+        <div class="eyebrow">Downhill Rush · layout drafts · <span id="count"></span></div>
+        <h1 id="title">Timberline</h1>
+      </div>
+      <div class="step"><button id="b-prev" aria-label="Previous layout">‹</button><button id="b-next" aria-label="Next layout">›</button></div>
     </div>
     <div class="tabs" id="tabs" role="group" aria-label="Variation"></div>
   </header>
@@ -286,11 +293,14 @@ $('b-fast').onclick = () => { fast = !fast; $('b-fast').setAttribute('aria-press
 
 function show(id) {
   cur = DATA.find(d => d.id === id) || DATA[0]; build(cur); renderNotes(cur); driveS = 0; beatOn = -1;
-  for (const b of $('tabs').children) { b.setAttribute('aria-pressed', String(b.dataset.id === cur.id)); if (b.dataset.id === cur.id) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+  for (const b of $('tabs').children) b.setAttribute('aria-pressed', String(b.dataset.id === cur.id));
+  $('count').textContent = `${DATA.indexOf(cur) + 1} of ${DATA.length}`;
   if (mode === 'drive') setMode('drive'); else setMode('orbit');
   try { localStorage.setItem('trackview-tab', cur.id); } catch (e) {}
 }
-$('tabs').innerHTML = DATA.map(d => `<button data-id="${d.id}" aria-pressed="false">${(d.design.title || d.name).replace(/[<&]/g, '')}</button>`).join('');
+$('tabs').innerHTML = DATA.map((d, k) => `<button data-id="${d.id}" aria-pressed="false"><span class="k">${k + 1}</span>${(d.design.title || d.name).replace(/[<&]/g, '')}</button>`).join('');
+const stepBy = n => show(DATA[(DATA.indexOf(cur) + n + DATA.length) % DATA.length].id);
+$('b-prev').onclick = () => stepBy(-1); $('b-next').onclick = () => stepBy(1);
 for (const b of $('tabs').children) b.onclick = () => show(b.dataset.id);
 
 function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
