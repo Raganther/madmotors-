@@ -20,6 +20,7 @@ export function eventSound(c, e, near) {
     case 'bush': if (close) AudioSys.crash('hay', Math.min(1, e.v / 25) * (me ? 0.8 : 0.5), at); break;
     case 'oil': if (me) S('splash', { at: c, vol: 0.3, rate: 0.7 }); break;
     case 'splash': if (close) S('splash', { at: c, vol: me ? 0.9 : 0.6 }); break;
+    case 'surf': if (close) S('splash', { at: c, vol: (me ? 0.7 : 0.45) * (0.5 + 0.5 * e.k), rate: 0.8 }); break;
     case 'boostpad': if (me) { AudioSys.whoosh(0.6); S('zap', { vol: 0.25, rate: 2.2, wet: 0.05 }); } break;
     case 'break': if (close) AudioSys.crash(BRK[e.kind] || 'wood', Math.min(1, 0.5 + e.v / 40) * (me ? 1 : 0.6), at); if (close && BREAKABLES[e.kind] && BREAKABLES[e.kind].hp >= 7) S('rubble', { at, vol: 0.5, rate: 1.2 }); break;
     case 'wallbreak':   // through a building's wall: bricks (or boards) everywhere, and the odd window

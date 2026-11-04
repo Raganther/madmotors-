@@ -90,6 +90,9 @@ export const SANDBOXES = {
   chicane: loop('chicane', 'barrier chicanes: concrete blocks to weave through (heavy cars go straight through), then hay bales', {
     bottom: [flat(90), ['s', 140, 0, { chicane: 'concrete' }], flat(40)], right: [flat(40)], top: [flat(30), ['s', 140, 0, { chicane: 'hay', chicaneSide: -1 }], flat(50)], left: [flat(20)]
   }),
+  surf: loop('surf', 'a shore road with waves washing across it from the lake: time your run or plough through the wash', {
+    bottom: [flat(40), ['s', 160, 0, { surf: true, near: -1.2, rampN: 14 }], flat(30)], right: [flat(40)], top: [flat(200)], left: [flat(20)]
+  }, { river: { pts: [[-80, -44], [330, -44]], level: -0.8, width: 56, color: 0x3F7E8E } }),
   hammer: loop('hammer', 'wrecking balls swinging across the road: time your run', {
     bottom: [flat(40), ['s', 120, 0, { hammers: 3 }], flat(40)], right: [flat(40)], top: [flat(180)], left: [flat(20)]
   }),

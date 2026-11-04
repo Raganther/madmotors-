@@ -105,6 +105,7 @@ export function handleEvents() {
           break;
         }
         case 'splash': dustRing(c, 18, 0xE6F2FF, 7, 1.4); if (c.isPlayer) callout('Splash!'); break;
+        case 'surf': dustRing(c, 10 + 10 * e.k, 0xEEF6FA, 5, 1.2); if (c.isPlayer && e.k > 0.6 && G.calloutTimer <= 0) callout('Wave!'); break;   // caught by a wave (features/surf.js)
         case 'destroyed': takedownFx(c, e, e.by.isPlayer, near); break;
         case 'break':   // smashed through a breakable (core/features/breakables.js): splinters, hay or concrete dust the way it went
           impactFx(c, { ...e, w: BRK_FX[e.kind] }, c.isPlayer, near);
