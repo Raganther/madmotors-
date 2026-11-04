@@ -1633,6 +1633,44 @@
    "trainHits": 0,
    "rockHits": 0,
    "rocks": 0
+  },
+  "Archipelago": {
+   "samples": 6122,
+   "loopN": 2988,
+   "terrain": [
+    293,
+    318,
+    163391.42
+   ],
+   "times": [
+    184.542,
+    184.45,
+    186.65,
+    184.5
+   ],
+   "respawns": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "wrecks": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "progress": [
+    6042.084,
+    6042.106,
+    6012.244,
+    6042.182
+   ],
+   "broken": 0,
+   "trafficSeen": 0,
+   "trainHits": 0,
+   "rockHits": 0,
+   "rocks": 0
   }
  },
  "walls": {

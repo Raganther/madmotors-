@@ -14,7 +14,7 @@ import * as islandLake from './island-lake.js';
 import * as crater from './crater.js';
 import * as theWall from './the-wall.js';
 import * as seaCliffs from './sea-cliffs.js';
-import * as archipelago from './archipelago.js';
+import * as archipelago from '../archipelago.js';   // promoted to a stage; still shown with the drafts
 
 const LIST = { 'timberline-1': timberline1, 'timberline-2': timberline2, 'canyon-run': canyonRun, 'mesa-spiral': mesaSpiral, 'waterfall-steps': waterfallSteps, 'dam-lakes': damLakes, 'the-knot': theKnot,
   'ridge-runner': ridgeRunner, 'island-lake': islandLake, crater, 'the-wall': theWall, 'sea-cliffs': seaCliffs, archipelago };

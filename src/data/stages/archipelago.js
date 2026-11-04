@@ -3,8 +3,9 @@
 // across the water to the ridge island and along its spine, through a long ford to the gorge island and down the
 // slot canyon through its middle, then island to island over the stepping stones back to town. The lake floor is the
 // land itself (river bed: false), so every hill that clears the water is an island, and the fords are sand bars just
-// under the surface: you drive through the water, not over it.
-import { LOOK, drawnLap, beatsAt } from './draw.js';
+// under the surface: you drive through the water, not over it. Drawn and laid on its landscape the way the drafts
+// are (drafts/draw.js); docs/TRACK_DESIGN.md has its page.
+import { LOOK, drawnLap, beatsAt } from './drafts/draw.js';
 
 const bar = (a1, b1, a2, b2) => [a1, b1, a2, b2, 4.4, 20, 8];   // a sand bar from one island to the next, 0.6 m under the water
 const MAP = {
@@ -33,13 +34,13 @@ export const LINE = [
   ...spiral,                                                  // round and up the cone
   [-428, -62], [-418, -5, 'top'], [-396, 50, 'over0'], [-372, 98], [-350, 125, 'over1'],   // over the top, across the climb below
   [-318, 150, 'tr0'], [-282, 188], [-242, 225, 'tr1'],        // off it on the trestle, across the water
-  [-170, 255, 'ridge'], [-90, 275], [-30, 285], [60, 274], [125, 266], [185, 272], [228, 252],   // along the ridge island's spine and down its end
+  [-170, 255, 'ridge'], [-90, 275, 'crest1'], [-30, 285], [60, 274, 'crest2'], [125, 266], [185, 272], [228, 252],   // along the ridge island's spine and down its end
   [275, 226, 'ford2'], [330, 212, 'ford2b'], [380, 198, 'ford2c'],   // the long ford
-  [430, 190], [438, 140, 'slot'], [436, 60], [433, -30], [430, -112],   // down the slot canyon
+  [430, 190], [438, 140, 'slot'], [436, 60], [433, -30], [430, -100, 'kicker'],   // down the slot canyon
   [405, -135, 'ford3'], [370, -152, 'stones'], [330, -174, 'ford4'], [290, -196], [252, -218, 'ford5'], [200, -232]   // the stepping stones home
 ];
 const fords = ['ford1', 'ford1b', 'ford2', 'ford2b', 'ford2c', 'ford3', 'ford4', 'ford5'];
-const { stage, at } = drawnLap(MAP, LINE, { lift: [['tr0', 'tr1', 9], ['over0', 'over1', 6], ['under0', 'under1', -4]], pieces: fords.map(f => [f, 'mud', 'water']) });
+const { stage, at } = drawnLap(MAP, LINE, { lift: [['tr0', 'tr1', 9], ['over0', 'over1', 6], ['under0', 'under1', -4]], pieces: [...fords.map(f => [f, 'mud', 'water']), ['crest1', 'yump', 2.2], ['crest2', 'yump', 2.6], ['kicker', 'kick', 1.6]] });
 export default { ...LOOK, ...stage, name: 'Archipelago', blurb: 'Island to island: through the shallows, up a cone, along a ridge, down a slot canyon', laps: 2,
   colors: { ...LOOK.colors, dirt: 0xB09A74 }, towns: [{ style: 'alpine', at: 0, len: 190, steep: 10 }] };
 export const design = {
@@ -51,9 +52,10 @@ export const design = {
     ['mountain', 'The mountain island', 'Round and up the cone, the lake falling away below.'],
     ['top', 'Over the top', 'Across the summit, over the road you climbed...'],
     ['tr0', 'The trestle', '...and off it on a long timber trestle across the water to the next island.'],
-    ['ridge', 'The ridge island', 'Along the spine of a long narrow island, water both sides.'],
+    ['ridge', 'The ridge island', 'Along the spine of a long narrow island, water both sides, over two crests.'],
     ['ford2', 'The long ford', '150 m through the water to the gorge island.'],
     ['slot', 'The slot canyon', 'Straight down a narrow canyon cut through the island, rock walls close either side.'],
+    ['kicker', 'Out of the canyon', 'A kicker at the canyon mouth, straight into the water.'],
     ['stones', 'The stepping stones', 'Island, ford, island, ford, island: hopping back to town.']
   ]),
   build: ['Fords that feel like water: the splash we have (spray, drag), at the scale of a sand bar', 'Sandy beaches round every island', 'Rock walls for the slot canyon', 'A timber trestle', 'The big lake is one water sheet: it may need a coarser grid to stay fast']

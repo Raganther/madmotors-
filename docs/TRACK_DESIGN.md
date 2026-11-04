@@ -168,3 +168,24 @@ We could also rework a few existing tracks along these lines (Village Descent co
   fair for everyone?
 - Do you want night and rain versions of the new tracks from the start?
 - Any reference tracks or games you'd like us to look at (screenshots welcome through the Sketch pad)?
+
+## 8. Track pages
+
+### Archipelago (stage 44, built from the layout drafts)
+- **Story:** a lake full of islands, each its own place; the lap hops from one to the next, mostly through the water.
+- **Mood:** northern lake, pine forest, log town, grey-blue water, morning light. Dirt roads.
+- **Type:** circuit, 3.0 km, about 90 s a lap, 2 laps.
+- **The lap in acts:** the town island (start, shore road); the mountain island (the climb round the cone, over the top
+  and off on the trestle); the ridge island (fast, two crests); the gorge island (the long ford, the slot canyon, the
+  kicker out of it); the stepping stones (ford, islet, ford, islet) home.
+- **Signature moments:** the cone climb with the road over the top crossing above it; the 150 m ford; the slot canyon.
+- **What the user liked in the drafts (their comments, 2026-11-04):** shore roads beside the water; snug, enclosed
+  passages (Canyon Run's floor, the crater); a self-contained mountain to drive round and up (Mesa Spiral); a ridge to
+  run along; crossing water by driving through it rather than over a bridge; driving onto islands; a dam as a set
+  piece; leaving the road to cross a shore; surf to drive through on a beach.
+- **Routes / choices:** none yet. Candidates: off the road across a beach (the open element) on the town island or the
+  stepping stones; a short cut through the shallows past the trestle for light cars.
+- **Destruction:** none yet. Candidate: a breach through a boathouse on the town island.
+- **New things to build:** surf on the beaches; fords that feel like water at this scale; rock walls in the slot
+  canyon and on the cone; a timber trestle; a crater island (from the Crater comment); the big lake's water sheet may
+  need a coarser grid.

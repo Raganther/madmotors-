@@ -9,7 +9,7 @@ import { NO_PANELS } from '../../src/data/anatomy.js';
 const file = path.resolve('dist/index.html'), outDir = path.resolve('tests/e2e/shots');
 fs.mkdirSync(outDir, { recursive: true });
 const opts = { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] };   // (sound on: the audio runs too)
-if (fs.existsSync('/opt/pw-browsers/chromium')) opts.executablePath = undefined;
+if (!fs.existsSync(chromium.executablePath()) && fs.existsSync('/opt/pw-browsers/chromium')) opts.executablePath = '/opt/pw-browsers/chromium';   // the pre-installed browser when playwright's own build isn't there
 const browser = await chromium.launch(opts);
 const page = await browser.newPage({ viewport: { width: 960, height: 540 } }); page.setDefaultTimeout(120000);   // (screenshots under SwiftShader on a busy machine)
 const errors = [];
@@ -33,7 +33,7 @@ await page.waitForFunction(() => [...document.querySelectorAll('.tcard canvas')]
 { const g = await page.evaluate(() => ({ groups: document.querySelectorAll('.tg-h').length, cards: document.querySelectorAll('.tcard').length, suit: document.getElementById('veh-suit').textContent })); console.log(`quick race: ${g.cards} track cards in ${g.groups} groups; ${g.suit}`); if (g.groups < 5 || g.cards < 30 || !g.suit) errors.push('quick race: track cards or car fit missing'); }
 await page.screenshot({ path: path.join(outDir, 'menu.png') });
 const n = process.env.E2E_STAGES ? +process.env.E2E_STAGES : await page.evaluate(() => window.__dr.core.STAGES.length);   // E2E_STAGES=2: a quick run over the rest of the checks
-for (let i = 0; i < n; i++) {
+for (let i = +(process.env.E2E_FROM || 0); i < n; i++) {   // E2E_FROM=k: start at stage k + 1 (a new stage at the end)
   await page.evaluate(i => window.__dr.flow.startRace(i), i);
   await page.waitForFunction(i => window.__dr.G.world && window.__dr.G.world.idx === i && window.__dr.race, i, { timeout: 30000 });
   const info = await page.evaluate(() => {
